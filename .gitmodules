@@ -1,0 +1,3 @@
+[submodule "coq/coqdocjs"]
+	path = coq/coqdocjs
+	url = https://github.com/tebbi/coqdocjs.git
