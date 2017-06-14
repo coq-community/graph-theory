@@ -35,12 +35,51 @@ Proof.
   apply: leq_subn. rewrite ltnS. exact: leq_subn.
 Qed.
 
+Lemma card_gt2 (T : finType) (S : pred T) : 
+  2 <= #|S| -> exists v v0, [/\ v \in S, v0 \in S & v != v0].
+Proof.
+  move => A. case/card_gt0P : (ltnW A) => v inS. 
+  rewrite (cardD1 v) inS /= ltnS in A. case/card_gt0P : A => v'. 
+  rewrite !inE => /andP [? ?]. by exists v'; exists v.
+Qed.
+
+Lemma card12 (T : finType) (A : {set T}) :
+  0 < #|A| -> #|A| <= 2 -> 
+                  (exists x, A = [set x]) \/ exists x y, x != y /\ A = [set x;y].
+Proof.
+  case/card_gt0P => x xA. rewrite (cardsD1 x) xA add1n ltnS. 
+  case (boolP (0 < #|A :\ x|)). 
+  - case/card_gt0P => y yA. rewrite (cardsD1 y) yA add1n ltnS leqn0 cards_eq0.
+    move => H. right. exists x. exists y. split. 
+    + move: yA. rewrite !inE eq_sym. by case/andP.
+    + apply/setP => z. by rewrite !inE -(setD1K xA) -(setD1K yA) (eqP H) !inE orbF.
+  - rewrite -eqn0Ngt cards_eq0 => H _. left. exists x. 
+    by rewrite -(setD1K xA) (eqP H) setU0.
+Qed.
+
+Lemma wf_leq X (f : X -> nat) : well_founded (fun x y => f x < f y).
+Proof. by apply: (@Wf_nat.well_founded_lt_compat _ f) => x y /ltP. Qed.
+
+Lemma nat_size_ind (X:Type) (P : X -> Type) (f : X -> nat) :
+   (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
+Proof. move => H. apply: well_founded_induction_type; last exact H. exact: wf_leq. Qed.
+
+Lemma sub_in11W (T1 : predArgType) (D1 D2 : pred T1) (P1 : T1 -> T1 -> Prop) :
+ {subset D1 <= D2} -> {in D2&D2, forall x y : T1, P1 x y} -> {in D1&D1, forall x y: T1, P1 x y}.
+Proof. firstorder. Qed.
+
 Definition restrict (T:Type) (A : pred T) (e : rel T) :=
-  [rel u v | (u \in A) && (v \in A) && e u v].
+  [rel u v in A | e u v].
+
+Lemma subrel_restrict (T : Type) (e : rel T) (a : pred T) : 
+  subrel (restrict a e) e.
+Proof. move => x y /=. by do 2 case: (_ \in a). Qed.
 
 Lemma symmetric_restrict (T : Type) (A : pred T) (e : rel T) : 
   symmetric e -> symmetric (restrict A e).
 Proof. move => sym_e x y /=. by rewrite sym_e [(x \in A) && _]andbC. Qed.
+
+
 
 Inductive void : Type :=.
 
@@ -127,6 +166,13 @@ Proof.
   - case/predU1P => [-> //|]. exact: A.
 Qed.
 
+Lemma path_restrict (T : eqType) (e : rel T) (a : pred T) x p : 
+  path (restrict a e) x p -> {subset p <= a}.
+Proof.
+  elim: p x => //= b p IH x. rewrite -!andbA => /and4P[H1 H2 H3 H4].
+  apply/subset_cons. by split; eauto.
+Qed.
+
 Lemma take_find (T : Type) (a : pred T) s : ~~ has a (take (find a s) s).
 Proof. elim: s => //= x s IH. case E: (a x) => //=. by rewrite E. Qed.
 
@@ -195,16 +241,22 @@ Lemma sub_connect (T : finType) (e : rel T) : subrel e (connect e).
 Proof. exact: connect1. Qed.
 Arguments sub_connect [T] e _ _ _.
 
-Lemma sub_trans (T:Type) (e1 e2 e3: rel T) : subrel e1 e2 -> subrel e2 e3 -> subrel e1 e3.
+Lemma sub_trans (T:Type) (e1 e2 e3: rel T) : 
+  subrel e1 e2 -> subrel e2 e3 -> subrel e1 e3.
 Proof. firstorder. Qed.
 
 Lemma connect_mono (T : finType) (e1 e2 : rel T) : 
   subrel e1 e2 -> subrel (connect e1) (connect e2).
 Proof. move => A. apply: connect_sub. exact: sub_trans (sub_connect e2). Qed.
 
+Lemma sub_restrict_connect (T : finType) (e : rel T) (a : pred T) : 
+  subrel (connect (restrict a e)) (connect e).
+Proof. apply: connect_mono. exact: subrel_restrict. Qed.
+
 Lemma connect_symI (T : finType) (e : rel T) : symmetric e -> connect_sym e.
 Proof.
-  move => sym_e. suff S x y : connect e x y -> connect e y x.
+  move => sym_e. 
+  suff S x y : connect e x y -> connect e y x.
   { move => x y. apply/idP/idP; exact: S. }
   case/connectP => p. elim: p x y => /= [x y _ -> //|z p IH x y /andP [A B] C].
   apply: (connect_trans (y := z)) (connect1 _); first exact: IH.
