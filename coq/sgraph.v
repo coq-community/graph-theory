@@ -202,6 +202,8 @@ Lemma disjointE (T : finType) (A B : {set T}) x :
   [disjoint A & B] -> x \in A -> x \in B -> False.
 Proof. by rewrite disjoint_subset => /subsetP H /H /negP. Qed.
 
+Definition clique (G : sgraph) (S : {set G}) :=
+  {in S&S, forall x y, x != y -> x -- y}.                                  
 
 Section DecompTheory.
   Variables (G : sgraph) (T : tree) (B : T -> {set G}).
@@ -221,7 +223,7 @@ Section DecompTheory.
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
 
   Lemma decomp_clique (S : {set G}) : 
-    0 < #|S| -> {in S&S, forall x y, x != y -> x -- y} -> exists t : T, S \subset B t.
+    0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 
     move: S. 
     apply: (nat_size_ind (f := fun S : {set G} => #|S|)) => S IH inh_S clique_S.
@@ -314,3 +316,50 @@ Proof.
   - move => t A. exists t. rewrite -[4](card_ord 4) -cardsT. 
     exact: subset_leq_card.
 Qed.
+
+Definition connected (G : sgraph) (S : {set G}) :=
+  {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.  
+
+Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.  
+
+(** H is a minor of G -- The order allows us to write [minor G] for the
+colletion of [G]s minors *)
+
+CoInductive minor (G H : sgraph) : Prop :=
+  MinorI (phi : G -> option H) of 
+    (forall y : H, exists x, phi x = Some y) 
+  & (forall y : H, connected (phi @^-1 Some y)) 
+  & (forall x y : H, x -- y -> 
+     exists x0 y0, [/\ x0 \in phi @^-1 Some x, y0 \in phi @^-1 Some y & x0 -- y0]).
+
+Lemma minor_trans : Transitive minor.
+Proof.
+  move => G H I [f f1 f2 f3] [g g1 g2 g3].
+  exists (fun x => obind g (f x)).
+  - move => y. case: (g1 y) => y'. case: (f1 y') => x E1 ?.
+    exists x. by rewrite E1.
+  - move => z x y. rewrite !inE. 
+    case Ef : (f x) => [fx|] //= gfx. case Eg : (f y) => [fy|] //= gfy.
+    move: (g2 z fx fy). rewrite !inE. case/(_ _ _)/Wrap => // /connectP => [[p]]. 
+    elim: p x fx Ef gfx => /= [|a p IH] x fx Ef gfx.
+    + move => _ ?. subst fy. 
+      move: (f2 fx x y). rewrite !inE Ef Eg. case/(_ _ _)/Wrap => //. 
+      apply: connect_mono => a b /=. rewrite !inE -andbA. 
+      case/and3P => /eqP-> /eqP-> -> /=. by rewrite (eqP gfx) !eqxx.
+    + rewrite !inE -!andbA => /and4P [H1 H2 H3 H4] H5. 
+      case: (f1 a) => x' Hx'. apply: (connect_trans (y := x')); last exact: IH H5.
+      move/f3 : (H3) => [x0] [y0] [X1 X2 X3]. 
+      apply: (connect_trans (y := x0)); last apply: (connect_trans (y := y0)).
+      * move: (f2 fx x x0). rewrite !inE ?Ef ?eqxx in X1 *. case/(_ _ _)/Wrap => //.
+        apply: connect_mono => u v /=. rewrite !inE -andbA. 
+        case/and3P => /eqP-> /eqP-> -> /=. by rewrite H1.
+      * apply: connect1. rewrite /= !inE ?X3 ?andbT in X1 X2 *. 
+        by rewrite (eqP X1) (eqP X2) /= (eqP gfx) eqxx.
+      * move: (f2 a y0 x' X2). case/(_ _)/Wrap. by rewrite !inE Hx'.
+        apply: connect_mono => u v /=. rewrite !inE -andbA. 
+        case/and3P => /eqP-> /eqP-> -> /=. by rewrite H2.
+  - move => x y /g3 [x'] [y'] [Hx' Hy'] /f3 [x0] [y0] [Hx0 Hy0 ?].
+    exists x0. exists y0. rewrite !inE in Hx' Hy' Hx0 Hy0 *. 
+    split => //; reflect_eq; by rewrite (Hx0,Hy0) /= (Hx',Hy'). 
+Qed.
+
