@@ -271,3 +271,22 @@ Proof.
 Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj.
+
+
+(** *** Replacement for partial functions *)
+
+Definition pimset (aT rT : finType) (f : aT -> option rT) (A : {set aT}) := 
+  [set x : rT | [exists (x0 | x0 \in A), f x0 == Some x]].
+
+Lemma pimsetP (aT rT : finType) (f : aT -> option rT) (A : {set aT}) x : 
+  reflect (exists2 x0, x0 \in A & f x0 == Some x) (x \in pimset f A).
+Proof. rewrite inE. exact: (iffP exists_inP). Qed.
+      
+Lemma pimset_card (aT rT : finType) (f : aT -> option rT) (A : {set aT}) : 
+  #|[set x : rT | [exists x0 in A, f x0 == Some x]]| <= #|A|.
+Proof.
+  apply: (@leq_trans #|[set f x | x in A]|); last exact: leq_imset_card.
+  rewrite -[X in X <= _](card_imset _ (@Some_inj _)).
+  apply: subset_leq_card. apply/subsetP => ? /imsetP [?] /pimsetP [x0].
+  move => H /eqP <- ->. by rewrite mem_imset. 
+Qed.

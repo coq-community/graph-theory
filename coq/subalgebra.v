@@ -19,13 +19,9 @@ Record decomp (T:tree) (G : graph) (bag : T -> {set G}) := Decomp
     bag_conn x t1 t2  : x \in bag t1 -> x \in bag t2 ->
       connect (restrict [pred t | x \in bag t] sedge) t1 t2}.
 
-(** Non-standard: we do not substract 1 *)
-Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
 
 Definition compatible (T:tree) (G : graph2) (B : T -> {set G}) := 
   exists t, (g_in \in B t) && (g_out \in B t).
-
-Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') := [fun x => h @: B x].
 
 (** ** Renaming *)
 

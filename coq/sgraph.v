@@ -28,8 +28,11 @@ Prenex Implicits sedge.
 
 (** ** Homomorphisms *)
 
+Definition hom_s (G1 G2 : sgraph) (h : G1 -> G2) := 
+  forall x y, x -- y -> (h x = h y) \/ (h x -- h y).
+
 Definition hom_s2 (G1 G2 : sgraph2) (h : G1 -> G2) :=
-  [/\ {homo h : x y / x -- y}, h s_in = s_in & h s_out = s_out].
+  [/\ hom_s h , h s_in = s_in & h s_out = s_out].
 
 (** ** Forests *)
 
@@ -152,6 +155,8 @@ End JoinSG.
 
 Prenex Implicits join_rel.
 
+(** ** Tree Decompositions *)
+
 
 (** Covering is not really required, but makes the renaming theorem easier to state *)
 Record sdecomp (T:tree) (G : sgraph) (bag : T -> {set G}) := SDecomp
@@ -162,7 +167,8 @@ Record sdecomp (T:tree) (G : sgraph) (bag : T -> {set G}) := SDecomp
 
 Arguments sdecomp T G bag : clear implicits.
 
-
+(** Non-standard: we do not substract 1 *)
+Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
 
 
 Definition subtree (T : tree) (A : {set T}) :=
@@ -317,6 +323,8 @@ Proof.
     exact: subset_leq_card.
 Qed.
 
+(** ** Minors *)
+
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.  
 
@@ -363,3 +371,109 @@ Proof.
     split => //; reflect_eq; by rewrite (Hx0,Hy0) /= (Hx',Hy'). 
 Qed.
 
+CoInductive strict_minor (G H : sgraph) : Prop :=
+  SMinorI (phi : G -> H) of 
+    (forall y : H, exists x, phi x = y) 
+  & (forall y : H, connected (phi @^-1 y)) 
+  & (forall x y : H, x -- y -> 
+     exists x0 y0, [/\ x0 \in phi @^-1 x, y0 \in phi @^-1 y & x0 -- y0]).
+
+Lemma strict_is_minor (G H : sgraph) : strict_minor G H -> minor G H.
+Proof.
+  case => phi A B C. exists (Some \o phi) => //= y.
+  case: (A y) => x <-. by exists x.
+Qed.
+
+Definition subgraph (S G : sgraph) := 
+  exists2 h : S -> G, injective h & hom_s h.
+
+Section InducedSubgraph.
+  Variables (G : sgraph) (S : {set G}).
+
+  Definition induced_type := sig [eta mem S].
+
+  Definition induced_rel := [rel x y : induced_type | val x -- val y].
+
+  Lemma induced_sym : symmetric induced_rel.  
+  Proof. move => x y /=. by rewrite sgP. Qed.
+         
+  Lemma induced_irrefl : irreflexive induced_rel.  
+  Proof. move => x /=. by rewrite sgP. Qed.
+
+  Definition induced := SGraph induced_sym induced_irrefl.
+
+  Lemma induced_sub : subgraph induced G.
+  Proof. exists val => //. exact: val_inj. by right. Qed.
+
+  Lemma induced_minor : minor G induced.
+  Proof.
+    exists insub. 
+    - move => y. exists (val y). by rewrite valK.
+    - move => z x y. rewrite !inE => /eqP E1 /eqP E2. 
+      case: insubP E1 => //= ? ? <- [->].
+      case: insubP E2 => //= ? ? <- [->].
+      exact: connect0.
+    - move => [/= x px] [/= y py] xy. exists x. exists y. 
+      by rewrite !inE -!insubT !eqxx.
+  Qed.
+
+End InducedSubgraph.
+
+Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') := [fun x => h @: B x].
+
+Definition edge_surjective (G1 G2 : sgraph) (h : G1 -> G2) :=
+  forall x y : G2 , x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0].
+
+(* The following should hold but does not fit the use case for minors *)
+Lemma rename_sdecomp (T : tree) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G -> H) : 
+  hom_s h -> surjective h -> edge_surjective h -> 
+  (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
+  @sdecomp T _ (rename D h).
+Abort. 
+
+(* This should hold, but there are several choices for S, the induced
+subgraph of the range of [phi] seems to be the canonical one. *)
+Lemma minor_split (G H : sgraph) : 
+  minor G H -> exists2 S, subgraph S G & strict_minor S H.
+Proof.
+  move => [phi p1 p2 p3].
+  set S := [set x | phi x]. 
+  exists (induced S); first exact: induced_sub.
+  wlog x0 : / H.
+  { admit. (* the empty graph is a minor of ever graph *) }
+  pose f (x : induced S) := odflt x0 (phi (val x)).
+  exists f. 
+Abort. 
+
+
+Lemma width_minor (G H : sgraph) (T : tree) (B : T -> {set G}) : 
+  sdecomp T G B -> minor G H -> exists T' B', sdecomp T' H B' /\ width B' <= width B.
+Proof.
+  move => decT [phi p1 p2 p3].
+  pose B' t := [set x : H | [exists (x0 | x0 \in B t), phi x0 == Some x]].
+  exists T. exists B'. split.
+  - split. 
+    + move => y. case: (p1 y) => x /eqP Hx.
+      case: (sbag_cover decT x) => t Ht.
+      exists t. apply/pimsetP. by exists x.
+    + move => x y xy. move/p3: xy => [x0] [y0]. rewrite !inE => [[H1 H2 H3]].
+      case: (sbag_edge decT H3) => t /andP [T1 T2]. exists t. 
+      apply/andP; split; apply/pimsetP; by [exists x0|exists y0].
+    + have conn_pre1 t1 t2 x x0 :
+        phi x0 == Some x -> x0 \in B t1 -> x0 \in B t2 ->
+        connect (restrict [pred t | x \in B' t] sedge) t1 t2.
+      { move => H1 H2 H3. case: (sbag_conn decT H2 H3).
+        apply: connect_mono => u v /=. rewrite !in_simpl -!andbA => /and3P [? ? ?]. 
+        apply/and3P; split => //; apply/pimsetP; eexists; eauto. }
+      move => x t1 t2 /pimsetP [x0 X1 X2] /pimsetP [y0 Y1 Y2].
+      move: (p2 x x0 y0). rewrite !inE. case/(_ _ _)/Wrap => // /connectP [p]. 
+      elim: p t1 x0 X1 X2 => /= [|z0 p IH] t1 x0 X1 X2. 
+      * move => _ E. subst x0. exact: conn_pre1 X1 Y1.
+      * rewrite -!andbA => /and3P [H1 H2 /andP [H3 H4] H5].
+        case: (sbag_edge decT H3) => t /andP [T1 T2].
+        apply: (connect_trans (y := t)). 
+        -- move => {p IH H4 H5 y0 Y1 Y2 X2}. rewrite !inE in H1 H2.
+           exact: conn_pre1 X1 T1.
+        -- apply: IH H4 H5 => //. by rewrite inE in H2.
+  - apply: max_mono => t. exact: pimset_card.
+Qed.
