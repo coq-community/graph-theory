@@ -48,14 +48,22 @@ Definition tree_axiom (T:eqType) (e : rel T) :=
 Record tree := Tree { sgraph_of_tree :> sgraph ; 
                       treeP : tree_axiom (@sedge sgraph_of_tree)}.
 
+Lemma rev_spath (G : sgraph) (x y : G) p : 
+  path sedge x p -> last x p = y -> path sedge y (rev (belast x p)).
+Proof. 
+  move => B <-. rewrite rev_path (eq_path (e' := sedge)) //.
+  move => a b /=. exact: sg_sym.
+Qed.
+
+Lemma last_rev_belast (G : finType) (x y : G) p : 
+  last x p = y -> last y (rev (belast x p)) = x.
+Proof. case: p => //= a p _. by rewrite rev_cons last_rcons. Qed.
 
 Lemma rev_upath (G : sgraph) (x y : G) p : 
   upath sedge x y p -> upath sedge y x (rev (belast x p)).
 Proof.
-  case => A B C. split.
-  - rewrite -C. by rewrite -cat1s -rev_uniq rev_cat revK cats1 -lastI.
-  - rewrite -C rev_path (eq_path (e' := sedge)) //. move => a b /=. exact: sg_sym.
-  - case: p C {A B} => //= a p _. by rewrite rev_cons last_rcons.
+  case => A B C. split; [|exact: rev_spath|exact: last_rev_belast].
+  rewrite -C. by rewrite -cat1s -rev_uniq rev_cat revK cats1 -lastI.
 Qed.
 
 Lemma upath_sym (G : sgraph) (x y : G) : 
@@ -477,3 +485,84 @@ Proof.
         -- apply: IH H4 H5 => //. by rewrite inE in H2.
   - apply: max_mono => t. exact: pimset_card.
 Qed.
+
+Section CheckPoints.
+  Variable (G : sgraph).
+  Hypothesis G_connected : forall x y : G, connect sedge x y.
+  Implicit Types x y z : G.
+  
+  Definition checkpoint x y z := forall p, path sedge x p -> last x p = y -> z \in x :: p.
+
+  Definition checkpointb x y z :=
+    [forall n : 'I_#|G|, forall p : n.-tuple G, 
+     path sedge x p ==> (last x p == y) ==> (z \in x :: p)].
+
+  Lemma checkpointP x y z : 
+    reflect (checkpoint x y z) (checkpointb x y z).
+  Proof.
+    apply: (iffP idP) => H.
+    - move => p. case/shortenP => p' pth_p' uniq_p' sub_pp' lst_p'.
+      have bound_p' : size p' < #|G|. 
+      { move/card_uniqP : uniq_p' => /= <-. exact: max_card. }
+      move/forallP : H => /(_ (Ordinal bound_p')).
+      move/forall_inP => /(_ (in_tuple p')) /=. 
+      rewrite lst_p' eqxx !inE /= => /(_ pth_p') /predU1P [->|H].
+      + by rewrite eqxx. 
+      + apply/orP;right. exact: sub_pp'.
+    - apply/forallP => n. apply/forall_inP => p Hp. 
+      apply/implyP => /eqP lst_p. exact: H. 
+  Qed.
+
+  (* This is locked to keep inE from expanding it *)
+  Definition cp x y := locked [set z | checkpointb x y z].
+
+  Lemma cpP x y z : reflect (checkpoint x y z) (z \in cp x y).
+  Proof. rewrite /cp -lock !inE. exact: checkpointP. Qed.
+
+  Lemma cp_sym x y : cp x y = cp y x.
+  Proof.
+    wlog suff S : x y / cp x y \subset cp y x. 
+    { apply/eqP. by rewrite eqEsubset !S. }
+    apply/subsetP => z /cpP H. apply/cpP => p p1 p2. 
+    move/H: (rev_spath p1 p2). rewrite (last_rev_belast p2) -p2. 
+    move/(_ erefl). rewrite inE mem_rev. 
+    case/predU1P => [->|]; by [rewrite mem_last| apply: mem_belast].
+  Qed.
+
+  Lemma mem_cpl x y : x \in cp x y.
+  Proof. apply/cpP => p. by rewrite mem_head. Qed.
+
+  Lemma subcp x y : [set x;y] \subset cp x y.
+  Proof. by rewrite subUset !sub1set {2}cp_sym !mem_cpl. Qed.
+
+  Lemma cpxx x : cp x x = [set x].
+  Proof. 
+    apply/setP => z; rewrite !inE. 
+    apply/idP/idP; last by move/eqP ->; rewrite mem_cpl.
+    move/cpP/(_ [::] erefl erefl). by rewrite inE.
+  Qed.
+
+  Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
+
+  (* Lemma 13 *)
+  Lemma CP_closed U x y : 
+    x \in CP U -> y \in CP U -> cp x y \subset CP U.
+  Proof.
+  Abort.
+
+  Definition link_rel := [rel x y | (x != y) && (cp x y == [set x; y])].
+
+  Lemma link_sym : symmetric link_rel.
+  Proof. move => x y. by rewrite /= eq_sym cp_sym set2C. Qed.
+
+  Lemma link_irrefl : irreflexive link_rel.
+  Proof. move => x /=. by rewrite eqxx. Qed.
+
+  Definition link_graph := SGraph link_sym link_irrefl.
+
+  (* Lemma 10 *)
+  Lemma link_cycle (p : seq link_graph) : cycle sedge p -> clique [set x in p].
+  Proof. 
+  Abort.
+  
+End CheckPoints.

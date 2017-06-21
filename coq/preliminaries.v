@@ -29,6 +29,9 @@ Qed.
 Lemma leq_subn n m o : n <= m -> n - o <= m.
 Proof. move => A. rewrite -[m]subn0. exact: leq_sub. Qed.
 
+Lemma set2C (T : finType) (x y : T) : [set x;y] = [set y;x].
+Proof. apply/setP => z. apply/set2P/set2P; tauto. Qed.
+
 Lemma cards3 (T : finType) (a b c : T) : #|[set a;b;c]| <= 3.
 Proof. 
   rewrite !cardsU !cards1 !addn1. 
@@ -271,7 +274,6 @@ Proof.
 Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj.
-
 
 (** *** Replacement for partial functions *)
 
