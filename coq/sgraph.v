@@ -331,6 +331,10 @@ Proof.
     exact: subset_leq_card.
 Qed.
 
+Lemma K4_width (T : tree) (D : T -> {set K4}) : 
+  sdecomp T K4 D -> 4 <= width D.
+Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
+
 (** ** Minors *)
 
 Definition connected (G : sgraph) (S : {set G}) :=
@@ -395,6 +399,25 @@ Qed.
 Definition subgraph (S G : sgraph) := 
   exists2 h : S -> G, injective h & hom_s h.
 
+Lemma sub_minor (S G : sgraph) : subgraph S G -> minor G S.
+Proof.
+  move => [h inj_h hom_h].
+  pose phi x := if @idP (x \in codom h) is ReflectT p then Some (iinv p) else None.
+  exists phi.
+  - move => y. exists (h y). rewrite /phi. 
+    case: {-}_ / idP => [p|]; by rewrite ?iinv_f ?codom_f.
+  - move => y x0 y0. rewrite !inE {1 2}/phi. 
+    case: {-}_ / idP => // p /eqP[E1]. 
+    case: {-}_ / idP => // q /eqP[E2]. 
+    suff -> : (x0 = y0) by exact: connect0. 
+    by rewrite -(f_iinv p) -(f_iinv q) E1 E2. 
+  - move => x y A. move/hom_h : (A). 
+    case => [/inj_h ?|B]; first by subst; rewrite sgP in A.
+    exists (h x). exists (h y). rewrite !inE /phi B. 
+    by do 2 case: {-}_ / idP => [?|]; rewrite ?codom_f ?iinv_f ?eqxx //.
+Qed.
+
+
 Section InducedSubgraph.
   Variables (G : sgraph) (S : {set G}).
 
@@ -414,16 +437,7 @@ Section InducedSubgraph.
   Proof. exists val => //. exact: val_inj. by right. Qed.
 
   Lemma induced_minor : minor G induced.
-  Proof.
-    exists insub. 
-    - move => y. exists (val y). by rewrite valK.
-    - move => z x y. rewrite !inE => /eqP E1 /eqP E2. 
-      case: insubP E1 => //= ? ? <- [->].
-      case: insubP E2 => //= ? ? <- [->].
-      exact: connect0.
-    - move => [/= x px] [/= y py] xy. exists x. exists y. 
-      by rewrite !inE -!insubT !eqxx.
-  Qed.
+  Proof. exact: sub_minor induced_sub. Qed.
 
 End InducedSubgraph.
 
@@ -455,11 +469,11 @@ Abort.
 
 
 Lemma width_minor (G H : sgraph) (T : tree) (B : T -> {set G}) : 
-  sdecomp T G B -> minor G H -> exists T' B', sdecomp T' H B' /\ width B' <= width B.
+  sdecomp T G B -> minor G H -> exists B', sdecomp T H B' /\ width B' <= width B.
 Proof.
   move => decT [phi p1 p2 p3].
   pose B' t := [set x : H | [exists (x0 | x0 \in B t), phi x0 == Some x]].
-  exists T. exists B'. split.
+  exists B'. split.
   - split. 
     + move => y. case: (p1 y) => x /eqP Hx.
       case: (sbag_cover decT x) => t Ht.
@@ -485,6 +499,17 @@ Proof.
         -- apply: IH H4 H5 => //. by rewrite inE in H2.
   - apply: max_mono => t. exact: pimset_card.
 Qed.
+
+
+Definition K4_free (G : sgraph) := ~ minor G K4.
+
+Lemma TW2_K4_free (G : sgraph) (T : tree) (B : T -> {set G}) : 
+  sdecomp T G B -> width B <= 3 -> K4_free G.
+Proof.
+  move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
+  suff: 4 <= 3 by []. 
+  apply: leq_trans wT. apply: leq_trans B2. exact: K4_width.
+Qed.  
 
 Section CheckPoints.
   Variable (G : sgraph).
