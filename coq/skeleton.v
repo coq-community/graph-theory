@@ -24,8 +24,6 @@ Proof. move => x. by rewrite /sk_rel /sc /= !eqxx. Qed.
 Definition skeleton (G : graph) := 
   SGraph (@sk_rel_sym G) (@sk_rel_irrefl G).
 
-Definition Symmetric := Relation_Definitions.symmetric.
-
 Lemma skelP (G : graph) (P : G -> G -> Prop) : 
   Symmetric P -> 
   (forall e : edge G, P (source e) (target e)) -> 
@@ -100,3 +98,4 @@ Proof.
   apply: minor_K4_free (@sskel_K4_free u).
   exact: sub_minor (skel_sub _).  
 Qed.
+

@@ -1,3 +1,4 @@
+Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
@@ -7,6 +8,10 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 
 (** * Preliminaries *)
+
+(** Use capitalized names for Coq.Relation_Definitions *)
+Definition Symmetric := Relation_Definitions.symmetric.
+Definition Transitive := Relation_Definitions.transitive.
 
 (** *** Tactics *)
 
@@ -81,7 +86,6 @@ Proof. move => x y /=. by do 2 case: (_ \in a). Qed.
 Lemma symmetric_restrict (T : Type) (A : pred T) (e : rel T) : 
   symmetric e -> symmetric (restrict A e).
 Proof. move => sym_e x y /=. by rewrite sym_e [(x \in A) && _]andbC. Qed.
-
 
 
 Inductive void : Type :=.

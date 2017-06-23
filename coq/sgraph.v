@@ -73,16 +73,12 @@ Proof.
   apply: rev_belast (U _ _ (rev_upath Hp) (rev_upath Hq)). by subst.
 Qed.
 
-Require Setoid Morphisms.
-Import Morphisms.
-Instance and3_mor : Proper (@iff ==> @iff ==> @iff ==> @iff) and3.
-Proof. firstorder. Qed.
-
 Lemma upath_cons (T : eqType) (e : rel T) x y a p : 
   upath e x y (a::p) <-> [/\ e x a, x != a, x \notin p & upath e a y p].
 Proof.
-  rewrite /upath /= !inE negb_or. rewrite -!(rwP and3P). rewrite -2!(rwP andP). 
-  split. firstorder.  firstorder; by case/andP : H2. (* FIXME: why does -!(rwP andP) fail ?? *)
+  rewrite /upath /= !inE negb_or -!andbA; split.
+  + by move => [/and4P [? -> -> ?] /andP[? ?]] ?. 
+  + by move => [-> -> ->] [-> -> ->].
 Qed.
 
 Lemma upath_refl (T : eqType) (e : rel T) x : upath e x x [::].
