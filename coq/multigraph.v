@@ -97,3 +97,37 @@ Canonical equiv_of_equivalence :=
   EquivRel equiv_of equiv_of_refl equiv_of_sym equiv_of_trans.
 
 End Equivalence.
+
+
+Definition subgraph (H G : graph) := 
+  exists2 h : h_ty H G, hom_g h & injective2 h.
+
+Section InducedSubgraphs.
+  Variables (G : graph) (S : {set G}).
+  
+  Definition sub_vertex := sig [eta mem S].
+
+  Definition edge_set := [set e | (source e \in S) && (target e \in S)].
+
+  Definition sub_edge := sig [eta mem edge_set].
+
+  Fact source_proof (e : sub_edge) : source (val e) \in S.
+  Proof. move: (svalP e). by rewrite !inE => /andP[]. Qed.
+
+  Fact target_proof (e : sub_edge) : target (val e) \in S.
+  Proof. move: (svalP e). by rewrite !inE => /andP[]. Qed.
+
+  Definition induced := 
+    {| vertex := [finType of sub_vertex];
+       edge := [finType of sub_edge];
+       source e := Sub (source (val e)) (source_proof e);
+       target e := Sub (target (val e)) (target_proof e);
+       label e := label (val e) |}.
+
+  Lemma induced_sub : subgraph induced G.
+  Proof. exists (val,val); split => //=; exact: val_inj. Qed.
+
+End InducedSubgraphs.
+
+    
+
