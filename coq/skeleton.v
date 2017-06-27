@@ -83,7 +83,7 @@ Proof.
   exact: TW2_K4_free (decomp_sskeleton B1 B2) _.
 Qed.
 
-Lemma skel_sub (G : graph2) : subgraph (skeleton G) (sskeleton G).
+Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
 Proof.
   (* FIXME: This is really obsucre due to the abbiguity of [x -- y] *)
   exists id => //= x y H. right. exact: subrelUl. 
@@ -99,3 +99,29 @@ Proof.
   exact: sub_minor (skel_sub _).  
 Qed.
 
+(** ** Intervals *)
+
+Definition sinterval (G : graph) (x y : G) := 
+  [set z in ~: [set x; y] | 
+   connect (restrict (predC1 y) (@sedge (skeleton G))) x z && 
+   connect (restrict (predC1 x) (@sedge (skeleton G))) y z ].
+
+Definition interval (G : graph) (x y : G) := 
+  [set x;y] :|: sinterval x y.
+
+Definition point (G : graph) (x y : G) := 
+  Eval hnf in @Graph2 G x y.
+
+Fact intervalL (G : graph) (x y : G) : 
+  x \in interval x y.
+Proof. by rewrite !inE eqxx. Qed.
+
+Fact intervalR (G : graph) (x y : G) : 
+  y \in interval x y.
+Proof. by rewrite !inE eqxx !orbT. Qed.
+
+
+Definition igraph (G : graph) (x y : G) := 
+  @point (induced (interval x y)) 
+         (Sub x (intervalL x y)) 
+         (Sub y (intervalR x y)).
