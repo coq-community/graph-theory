@@ -98,36 +98,45 @@ Canonical equiv_of_equivalence :=
 
 End Equivalence.
 
+(** ** Subgraphs and Induced Subgraphs *)
 
 Definition subgraph (H G : graph) := 
   exists2 h : h_ty H G, hom_g h & injective2 h.
 
-Section InducedSubgraphs.
-  Variables (G : graph) (S : {set G}).
+Section Subgraphs.
+  Variables (G : graph) (V : {set G}) (E : {set edge G}).
+  Definition consistent := forall e, e \in E -> source e \in V /\ target e \in V.
+  Hypothesis in_V : consistent.
   
-  Definition sub_vertex := sig [eta mem S].
+  Definition sub_vertex := sig [eta mem V].
+  Definition sub_edge := sig [eta mem E].
 
-  Definition edge_set := [set e | (source e \in S) && (target e \in S)].
+  Fact source_proof (e : sub_edge) : source (val e) \in V.
+  Proof. by move: (svalP e) => /in_V []. Qed.
 
-  Definition sub_edge := sig [eta mem edge_set].
+  Fact target_proof (e : sub_edge) : target (val e) \in V.
+  Proof. by move: (svalP e) => /in_V []. Qed.
 
-  Fact source_proof (e : sub_edge) : source (val e) \in S.
-  Proof. move: (svalP e). by rewrite !inE => /andP[]. Qed.
-
-  Fact target_proof (e : sub_edge) : target (val e) \in S.
-  Proof. move: (svalP e). by rewrite !inE => /andP[]. Qed.
-
-  Definition induced := 
+  Definition subgraph_for := 
     {| vertex := [finType of sub_vertex];
        edge := [finType of sub_edge];
        source e := Sub (source (val e)) (source_proof e);
        target e := Sub (target (val e)) (target_proof e);
        label e := label (val e) |}.
 
-  Lemma induced_sub : subgraph induced G.
+  Lemma subgraph_sub : subgraph subgraph_for G.
   Proof. exists (val,val); split => //=; exact: val_inj. Qed.
+End Subgraphs.
 
-End InducedSubgraphs.
+Definition edge_set (G:graph) (S : {set G}) := 
+  [set e | (source e \in S) && (target e \in S)].
 
-    
+Definition induced_proof (G:graph) (S : {set G}) : consistent S (edge_set S).
+Proof. move => e. by rewrite inE => /andP. Qed.
 
+(* TOTHINK: Normalize or not? *)
+Definition induced (G:graph) (S : {set G}) := 
+  Eval hnf in subgraph_for (@induced_proof G S).
+
+Lemma induced_sub (G:graph) (S : {set G}) : subgraph (induced S) G.
+Proof. exact: subgraph_sub. Qed.

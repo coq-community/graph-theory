@@ -99,7 +99,10 @@ Proof.
   exact: sub_minor (skel_sub _).  
 Qed.
 
-(** ** Intervals *)
+(** ** Intervals and Petals *)
+
+(** TOTHINK: define intervals and petals on graph or sgraph, i.e.,
+where to add theskeleton casts? *)
 
 Definition sinterval (G : graph) (x y : G) := 
   [set z in ~: [set x; y] | 
@@ -120,8 +123,19 @@ Fact intervalR (G : graph) (x y : G) :
   y \in interval x y.
 Proof. by rewrite !inE eqxx !orbT. Qed.
 
-
 Definition igraph (G : graph) (x y : G) := 
   @point (induced (interval x y)) 
          (Sub x (intervalL x y)) 
          (Sub y (intervalR x y)).
+
+
+Definition petal (G : sgraph) (U : {set G}) (x:G) :=
+  [set z | [forall y in CP U, x \in cp z y]].
+
+Lemma petal_id (G : sgraph) (U : {set G}) x : x \in petal U x.
+Proof. rewrite inE. apply/forall_inP => y _. exact: mem_cpl. Qed.
+
+Definition pgraph (G : graph) (U : {set G}) (x:G) :=
+  @point (induced (@petal (skeleton G) U x))
+         (Sub x (@petal_id (skeleton G) U x))
+         (Sub x (@petal_id (skeleton G) U x)).

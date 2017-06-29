@@ -6,3 +6,4 @@ sgraph.v
 multigraph.v
 subalgebra.v
 skeleton.v
+extraction.v

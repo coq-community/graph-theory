@@ -569,6 +569,7 @@ Section CheckPoints.
   Lemma CP_closed U x y : 
     x \in CP U -> y \in CP U -> cp x y \subset CP U.
   Proof.
+    
   Abort.
 
   Definition link_rel := [rel x y | (x != y) && (cp x y == [set x; y])].
