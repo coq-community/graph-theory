@@ -505,33 +505,52 @@ Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
   suff: 4 <= 3 by []. 
   apply: leq_trans wT. apply: leq_trans B2. exact: K4_width.
-Qed.  
+Qed.
+
+(** decidability of cycle agnostic path properties *)
+Definition short_prop (T:eqType) e (P : T -> seq T -> bool) := 
+  forall x p, path e x p -> P x (shorten x p) -> P x p.
+
+Lemma short_prop_dec (T : finType) e (P : T -> seq T -> bool) x : 
+  short_prop e P -> decidable (forall p, path e x p -> P x p).
+Proof.
+  move => spP. 
+  pose Pb := [forall n : 'I_#|T|, forall p : n.-tuple T, path e x p ==> P x p].
+  apply: (decP (b := Pb)). apply: (iffP forallP) => H.
+  - move => p pth_p. apply: spP => //. 
+    case/shortenP : pth_p => p' pth_p' uniq_p' _. 
+    have bound_p' : size p' < #|T|. 
+    { move/card_uniqP : uniq_p' => /= <-. exact: max_card. }
+    move/forall_inP: (H (Ordinal bound_p')) => /(_ (in_tuple p')). 
+    by apply.
+  - move => n. apply/forall_inP => p. exact: H.
+Qed.
+
+Lemma dec_eq (P : Prop) (decP : decidable P) : decP <-> P.
+Proof. by case: decP. Qed.
+
 
 Section CheckPoints.
-  Variable (G : sgraph).
-  Hypothesis G_connected : forall x y : G, connect sedge x y.
+  Variables (G : sgraph).
   Implicit Types x y z : G.
   
   Definition checkpoint x y z := forall p, path sedge x p -> last x p = y -> z \in x :: p.
 
-  Definition checkpointb x y z :=
-    [forall n : 'I_#|G|, forall p : n.-tuple G, 
-     path sedge x p ==> (last x p == y) ==> (z \in x :: p)].
+  Let cpb y z x p := (last x p == y) ==> (z \in x :: p).
+  Lemma cp_short_prop y z : short_prop sedge (cpb y z).
+  Proof. 
+    move => x p. rewrite /cpb !inE. 
+    case/shortenP => p' _ _ sub. do 2 case: (_ == _) => //=. exact: sub.
+  Qed.
+
+  Definition checkpointb x y z := short_prop_dec x (@cp_short_prop y z).
 
   Lemma checkpointP x y z : 
     reflect (checkpoint x y z) (checkpointb x y z).
   Proof.
-    apply: (iffP idP) => H.
-    - move => p. case/shortenP => p' pth_p' uniq_p' sub_pp' lst_p'.
-      have bound_p' : size p' < #|G|. 
-      { move/card_uniqP : uniq_p' => /= <-. exact: max_card. }
-      move/forallP : H => /(_ (Ordinal bound_p')).
-      move/forall_inP => /(_ (in_tuple p')) /=. 
-      rewrite lst_p' eqxx !inE /= => /(_ pth_p') /predU1P [->|H].
-      + by rewrite eqxx. 
-      + apply/orP;right. exact: sub_pp'.
-    - apply/forallP => n. apply/forall_inP => p Hp. 
-      apply/implyP => /eqP lst_p. exact: H. 
+    apply: (iffP idP) => /=.
+    - move => /dec_eq H p p1 p2. move/implyP: (H p p1). apply. exact/eqP.
+    - move => H. apply/dec_eq => p p1. apply/implyP => /eqP. exact: H.
   Qed.
 
   (* This is locked to keep inE from expanding it *)
@@ -586,5 +605,54 @@ Section CheckPoints.
   Lemma link_cycle (p : seq link_graph) : cycle sedge p -> clique [set x in p].
   Proof. 
   Abort.
-  
+
+  Definition upathb (T : eqType) (e : rel T) (x y : T) (p : seq T) :=
+    [&& uniq (x :: p), path e x p & last x p == y].
+
+  (* FIXME: This should probably be upathP *)
+  Lemma upath_reflect (T : eqType) (e : rel T) (x y : T) (p : seq T) :
+    reflect (upath e x y p) (upathb e x y p).
+  Admitted. 
+
+  Variables (i o : G).
+  Hypothesis conn_io : connect sedge i o.
+
+  Lemma the_upath_proof : exists p, upathb sedge i o p.
+  Proof. 
+    case/upathP : conn_io => p /upath_reflect Hp. by exists p.
+  Qed.
+                                                                
+  Definition the_upath := xchoose (the_upath_proof).
+
+  Lemma the_upathP x y : upath sedge i o (the_upath).
+  Proof. apply/upath_reflect. exact: xchooseP. Qed.
+
+  Definition cpo x y := let p := the_upath in 
+                        index x (i::p) <= index y (i::p).
+
+  Lemma cpo_trans : transitive cpo.
+  Proof. move => ? ? ?. exact: leq_trans. Qed.
+
+  Lemma cpo_total : total cpo.
+  Proof. move => ? ?. exact: leq_total. Qed.
+
+  Lemma cpo_antisym : {in cp i o&,antisymmetric cpo}.
+  Proof. 
+    move => x y Cx Cy. rewrite /cpo -eqn_leq. 
+    have Hx: x \in i :: the_upath. 
+    { move/cpP : Cx => /(_ (the_upath)). 
+      apply; by case: (the_upathP). }
+    have Hy: y \in i :: the_upath.
+    { move/cpP : Cy => /(_ (the_upath)). 
+      apply; by case: (the_upathP). }
+    by rewrite -{2}[x](nth_index i Hx) -{2}[y](nth_index i Hy) => /eqP->.
+  Qed.
+
+  (** All paths visist all checkpoints in the same order as the canonical upath *)
+  (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
+  Lemma cpo_order x y p : 
+    x \in cp i o -> y \in cp i o -> path sedge i p -> last i p = o -> 
+    cpo x y = (index x (i::p) <= index y (i::p)).
+  Admitted.
+    
 End CheckPoints.

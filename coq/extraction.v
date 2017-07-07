@@ -1,3 +1,5 @@
+Require Import Omega Lia.
+
 From mathcomp Require Import all_ssreflect.
 Require Import finite_quotient preliminaries sgraph multigraph subalgebra skeleton bounded.
 
@@ -36,14 +38,28 @@ Definition term_of_measure (G : graph2) :=
 
 Local Notation measure G := (term_of_measure G).
 
+Ltac normH := match goal 
+  with 
+  | [ H : is_true (_ <= _) |- _] => move/leP : H 
+  | [ H : is_true (_ == _) |- _] => move/eqP : H 
+  end.
+Ltac elim_ops := rewrite -multE -plusE -!(rwP leP).
+Ltac somega := repeat normH; elim_ops; intros; omega.
+
 Lemma measure_card (G' G : graph2) : 
   #|edge G'| < #|edge G| -> measure G' < measure G.
-Admitted.
+Proof. 
+  rewrite /term_of_measure. 
+  do 2 case: (g_in == g_out) => /=; somega.
+Qed.
 
 Lemma measure_io (G' G : graph2) : 
   (g_in == g_out :> G) -> (g_in != g_out :> G') -> #|edge G'| <= #|edge G| -> 
   measure G' < measure G.
-Admitted.
+Proof. 
+  rewrite /term_of_measure. 
+  do 2 case: (g_in == g_out) => //=; somega.
+Qed.
 
 (** ** Subroutines *)
 
@@ -55,6 +71,8 @@ Proof. by rewrite !inE eqxx ?orbT. Qed.
 Fact split_proof2 (T : finType) (A : {set T}) x y : y \in A :|: [set x; y].
 Proof. by rewrite !inE eqxx ?orbT. Qed.
 
+(** Take the graphs induced by "{i,o} ∪ H" with H being the components of "G\{i,o}" *)
+
 Definition parcomp (G : graph2) (A : {set G}) := 
   @point (induced (A :|: [set g_in; g_out]))
          (Sub g_in (split_proof1 A g_in g_out))
@@ -65,22 +83,27 @@ and i and o are not adjacent *)
 Definition split_par (G : graph2) : seq graph2 := 
   let H := ~: [set g_in; g_out] in 
   let P := equivalence_partition (connect (@sedge (skeleton G))) H in 
-  if #|P| == 1 then [:: G] 
+  if #|P| <= 1 then [:: G] 
   else [seq parcomp A | A <- enum P].
 
-(** Take the graphs induced by "{i,o} ∪ H" with H being the components of "G\{i,o}" *)
+Definition edges (G : graph) (x y : G) := 
+  [set e : edge G | (source e == x) && (target e == y)].
 
-(* FIXME: [top2] is not connected; how to state this for connected
-graphs only *)
+Definition adjacent (G : graph) (x y : G) := 
+  0 < #|edges x y :|: edges y x|.
 
 Lemma split_iso (G : graph2) :
-  \big[par2/top2]_(H <- split_par G) H ≈ G.
+  ~~ @adjacent G g_in g_out -> \big[par2/top2]_(H <- split_par G) H ≈ G.
 Admitted.
 
 Lemma split_inhab (G : graph2) : 0 < size (split_par G).
-Admitted.
+Proof.
+  rewrite /split_par. case: ifP => //.
+  move/negbT. by rewrite -ltnNge size_map -cardE => /ltnW. 
+Qed.
 
-(* WARN: we do not have decidable equality on graphs, this might become problematic? *)
+(* WARN: we do not have decidable equality on graphs, this might
+become problematic? *)
 Lemma split_nontrivial (G H : graph2) : 
   0 < #|edge G| -> List.In H (split_par G) -> 0 < #|edge H|.
 Admitted.
@@ -89,21 +112,21 @@ Lemma split_subgraph (G H : graph2) :
   List.In H (split_par G) -> subgraph H G.
 Admitted.
 
-Lemma split2 (G : graph2) : 
+Lemma split_edges (G : graph2) : 
+  ~~ @adjacent G g_in g_out -> 
+  \sum_(H <- split_par G) #|edge H| = #|edge G|.
+Admitted.
+
+Lemma split_K4_free (G : graph2) : 
   connected [set: skeleton G] -> 
-  1 < #|edge G| -> 
   #|@CP (skeleton G) [set g_in; g_out]| == 2 -> 
+  ~~ @adjacent G g_in g_out ->
   1 < size (split_par G).
 Admitted.
 
 (* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
 parts do not have non-trivial splits *)
 
-(** Sequence of checkpoints going from x to y *)
-Definition ch_seq (G : graph) (x y : G) : seq G.
-Admitted.
-
-(* FIXME: this should use the bag graphs not the interval graphs *)
 Definition degenerate (G : graph2) := 
   [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
       #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
@@ -113,29 +136,32 @@ Fixpoint pairs (T : Type) (x : T) (s : seq T) :=
   if s is y::s' then (x,y) :: pairs y s' else nil.
 
 (** list of checkpoint bewteen x and y (excluding x) *)
-Definition checkpoint_seq (G : graph) (x y : G) : seq G.
-Admitted.
+(* NOTE: see insub in eqtype.v *)
+Definition checkpoint_seq (G : graph) (x y : G) := 
+  if @idP (connect (@sedge (skeleton G)) x y) isn't ReflectT con_xy then [::]
+  else sort (cpo con_xy) (enum (@cp (skeleton G) x y)).
 
 Notation IO := ([set g_in; g_out]).
 
 Definition check_point_term (t : graph2 -> term) (G : graph2) (x y : G) :=
   let c := checkpoint_seq x y in
-  tmS (t (pgraph IO x)) (\big[tmS/tm1]_(p <- pairs x c) tmS (t(igraph p.1 p.2)) (t(pgraph IO p.2))).
+  tmS (t (pgraph IO x)) 
+      (\big[tmS/tm1]_(p <- pairs x c) tmS (t(igraph p.1 p.2)) (t(pgraph IO p.2))).
 
 Definition check_point_wf (F1 F2 : graph2 -> term) (G : graph2) (x y : G) : 
   g_in != g_out :> G ->
   ~~ degenerate G -> 
-  (forall H, measure H < measure G -> F1 H = F2 H) -> 
+  (forall H : graph2, connected [set: skeleton H] /\ K4_free (skeleton H) -> 
+        measure H < measure G -> F1 H = F2 H) -> 
   check_point_term F1 x y = check_point_term F2 x y.
 Admitted.
-
 
 (* NOTE: we assume the input to be connected *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
     let E := [set e : edge G | (source e == g_in) && (target e == g_in)] in
-    if 0 <= #|E| 
+    if 0 < #|E| 
     then (* there are self loops) *)
       tmI (\big[tmI/tmT]_(e in E) tmA (label e)) 
           (term_of (remove_edges E))
@@ -150,30 +176,59 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
   else (* distinct input and output *)
     if degenerate G
     then (* no checkpoints and no petals on i and o *)
-      let Eio := [set e : edge G | (source e == g_in) && (target e == g_out)] in
-      let Eoi := [set e : edge G | (source e == g_out) && (target e == g_in)] in
-      if 0 < #|Eio :|: Eoi|
+      if @adjacent G g_in g_out 
       then (* i and o are adjacent an we can remove some direct edges *)
-        tmI (tmI (\big[tmI/tmT]_(e in Eio) tmA (label e))
-                 (\big[tmI/tmT]_(e in Eio) tmC (tmA (label e))))
-            (term_of (remove_edges (Eio :|: Eoi)))
+        tmI (tmI (\big[tmI/tmT]_(e in @edges G g_in g_out) tmA (label e))
+                 (\big[tmI/tmT]_(e in @edges G g_out g_in) tmC (tmA (label e))))
+            (* FIXME: this graph could be g(tmT) *)
+            (term_of (remove_edges (@edges G g_in g_out :|: edges g_out g_in)))
       else (* i and o not adjacent - no progress unless G is K4-free *)
         \big[tmI/tmT]_(H <- split_par G) term_of H
     else (* at least one nontrivial petal or checkpoint *)
       @check_point_term term_of G g_in g_out
 .
 
+Lemma cardsI (T : finType) (A : {set T}) : #|[pred x in A]| = #|A|.
+Proof. exact: eq_card. Qed.
+
+Lemma cardsCT (T : finType) (A : {set T}) : 
+  (#|~:A| < #|T|) = (0 < #|A|).
+Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
+
+Lemma eq_big_seq_In (R : Type) (idx : R) (op : R -> R -> R) I (r : seq I) (F1 F2 : I -> R) :
+  (forall x, List.In x r -> F1 x = F2 x) ->
+  \big[op/idx]_(i <- r) F1 i = \big[op/idx]_(i <- r) F2 i.
+Proof.
+  elim: r => [|a r IH] eqF; rewrite ?big_nil // !big_cons eqF ?IH //; last by left.
+  move => x Hx. apply: eqF. by right.
+Qed.
+    
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
 Lemma term_of_eq (G : graph2) : 
-  (* connected [set: skeleton G] -> K4_free (skeleton G) -> *)
+  connected [set: skeleton G] -> K4_free (skeleton G) ->
   term_of G = term_of_rec term_of G.
 Proof.
-  (* move => con_G free_G. *)
-  (* FIXME: Fix_eq needs to allow for conditions on the argument *)
-  apply: Fix_eq => {G} F1 F2 G H.
-  rewrite /term_of_rec. case: ifP.
+  move => con_G free_G. 
+  pose P (H:graph2) := connected [set: skeleton H] /\ K4_free (skeleton H).
+  apply: (Fix_eq P) => // {con_G free_G G} f g G [con_G free_G] Efg.
+  rewrite /term_of_rec. 
+  case: (boolP (@g_in G == g_out)) => Hio.
+  - (* input equals output *)
+    case: (posnP #|[set e | source e == g_in & target e == g_in]|) => E.
+    + admit.
+    + rewrite Efg // /P; first split.
+      ** admit. (*need: removing self loops does not change skeletons *)
+      ** admit.
+      ** apply: measure_card. by rewrite card_sig cardsI cardsCT.
+  - case: (boolP (degenerate G)) => [deg_G|ndeg_G].
+    + case: (boolP (adjacent g_in g_out)) => adj_io.
+      * congr tmI. admit. 
+      * apply: eq_big_seq_In. 
+        (* need: parallel splits of K4 free degenerate graphs are smaller and K4_free *)
+        admit.
+    + exact: check_point_wf.
 Admitted.
 
 
