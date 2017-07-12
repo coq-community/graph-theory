@@ -533,7 +533,6 @@ Proof. by case: decP. Qed.
 Section CheckPoints.
   Variables (G : sgraph).
   Implicit Types x y z : G.
-  
   Definition checkpoint x y z := forall p, path sedge x p -> last x p = y -> z \in x :: p.
 
   Let cpb y z x p := (last x p == y) ==> (z \in x :: p).
@@ -559,6 +558,13 @@ Section CheckPoints.
   Lemma cpP x y z : reflect (checkpoint x y z) (z \in cp x y).
   Proof. rewrite /cp -lock !inE. exact: checkpointP. Qed.
 
+  Hypothesis G_conn : forall x y:G, connect sedge x y.
+
+  Lemma cpPn x y z : 
+    reflect [/\ z != x, z != y & exists p, [/\ path sedge x p, last x p = y & z \notin p]]
+            (z \notin cp x y).
+  Admitted. (* Properly refactor the decidability result to obtain this *)
+
   Lemma cp_sym x y : cp x y = cp y x.
   Proof.
     wlog suff S : x y / cp x y \subset cp y x. 
@@ -582,6 +588,16 @@ Section CheckPoints.
     move/cpP/(_ [::] erefl erefl). by rewrite inE.
   Qed.
 
+  Lemma cp_triangle z {x y} : cp x y \subset cp x z :|: cp z y.
+  Proof.
+    apply/subsetP => u /cpP cp_u. rewrite -[_ \in _]negbK inE negb_or.
+    apply/negP => /andP[]. 
+    case/cpPn => A B [p] [p1 p2 p3]. case/cpPn => C D [q] [q1 q2 q3]. 
+    move: (cp_u (p ++ q)). 
+    rewrite cat_path p1 p2 q1 last_cat p2 q2. case/(_ _ _)/Wrap => //.
+    by rewrite !inE mem_cat (negbTE A) (negbTE p3) (negbTE q3).
+  Qed.
+
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
 
   (* Lemma 13 *)
@@ -591,7 +607,7 @@ Section CheckPoints.
     
   Abort.
 
-  Definition link_rel := [rel x y | (x != y) && (cp x y == [set x; y])].
+  Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
 
   Lemma link_sym : symmetric link_rel.
   Proof. move => x y. by rewrite /= eq_sym cp_sym set2C. Qed.
@@ -601,10 +617,37 @@ Section CheckPoints.
 
   Definition link_graph := SGraph link_sym link_irrefl.
 
+  Lemma link_avoid (x y z : G) : 
+    z \notin [set x; y] -> link_rel x y -> 
+    exists p, [/\ path sedge x p, last x p = y & z \notin p].
+  Admitted.
+  
+  Lemma link_seq_cp (y x : G) p :
+    path link_rel x p -> last x p = y -> cp x y \subset [set z in [:: x, y & p]].
+  Proof.
+    elim: p x => [|z p IH] x /=.
+    - move => _ ->. rewrite cpxx. admit.
+    - rewrite -andbA => /and3P [A B C D]. 
+      move: (IH _ C D) => IHz. apply: subset_trans (cp_triangle z) _.
+      (* TODO: set theory reasoning *)
+  Admitted.  
+
   (* Lemma 10 *)
-  Lemma link_cycle (p : seq link_graph) : cycle sedge p -> clique [set x in p].
+  Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
   Proof. 
-  Abort.
+    move => cycle_p x y. rewrite !inE /= => xp yp xy. rewrite xy /=.
+    case/andP : cycle_p => C1 C2. 
+    case: (rot_to_arc C2 xp yp xy) => i p1 p2 _ _ I. 
+    have {C1} C1 : cycle sedge (x :: p1 ++ y :: p2) by rewrite -I rot_cycle. 
+    have {C2} C2 : uniq (x :: p1 ++ y :: p2) by rewrite -I rot_uniq.
+    rewrite /cycle -cat_rcons rcons_cat cat_path last_rcons in C1. 
+    case/andP: C1 => P1 /(rev_spath (y := x)).
+    rewrite last_rcons belast_rcons rev_cons => /(_ erefl) P2 {i I}.
+    apply/subsetP => z cp_z.
+    move/(@link_seq_cp y) : P1. rewrite last_rcons => /(_ erefl) A.
+    move/(@link_seq_cp y) : P2. rewrite last_rcons => /(_ erefl) B.
+    (* TODO: p1 and p2 are disjoint, so the intersection is just {x,y} *)    
+  Admitted.
 
   Definition upathb (T : eqType) (e : rel T) (x y : T) (p : seq T) :=
     [&& uniq (x :: p), path e x p & last x p == y].
@@ -614,6 +657,8 @@ Section CheckPoints.
     reflect (upath e x y p) (upathb e x y p).
   Admitted. 
 
+  (** This is redundant, but a boolean property. See [checkpoint_seq]
+  in extraction.v *)
   Variables (i o : G).
   Hypothesis conn_io : connect sedge i o.
 
