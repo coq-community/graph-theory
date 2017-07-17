@@ -529,10 +529,12 @@ Qed.
 Lemma dec_eq (P : Prop) (decP : decidable P) : decP <-> P.
 Proof. by case: decP. Qed.
 
+(** ** Checkpoints *)
 
 Section CheckPoints.
   Variables (G : sgraph).
   Implicit Types x y z : G.
+
   Definition checkpoint x y z := forall p, path sedge x p -> last x p = y -> z \in x :: p.
 
   Let cpb y z x p := (last x p == y) ==> (z \in x :: p).
@@ -542,6 +544,7 @@ Section CheckPoints.
     case/shortenP => p' _ _ sub. do 2 case: (_ == _) => //=. exact: sub.
   Qed.
 
+  (** TODO: instead decide existence of a path avoiding z *)
   Definition checkpointb x y z := short_prop_dec x (@cp_short_prop y z).
 
   Lemma checkpointP x y z : 
@@ -604,8 +607,9 @@ Section CheckPoints.
   Lemma CP_closed U x y : 
     x \in CP U -> y \in CP U -> cp x y \subset CP U.
   Proof.
-    
-  Abort.
+  Admitted.
+
+  (* Lemma 16 *)
 
   Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
 
@@ -620,7 +624,11 @@ Section CheckPoints.
   Lemma link_avoid (x y z : G) : 
     z \notin [set x; y] -> link_rel x y -> 
     exists p, [/\ path sedge x p, last x p = y & z \notin p].
-  Admitted.
+  Proof.
+    move => Hz /andP[l1 l2].
+    suff/cpPn [ _ _ [p] Hp] : z \notin cp x y by exists p.
+    apply: contraNN Hz. by move/(subsetP l2). 
+  Qed.
   
   Lemma link_seq_cp (y x : G) p :
     path link_rel x p -> last x p = y -> cp x y \subset [set z in [:: x, y & p]].
@@ -630,7 +638,7 @@ Section CheckPoints.
     - rewrite -andbA => /and3P [A B C D]. 
       move: (IH _ C D) => IHz. apply: subset_trans (cp_triangle z) _.
       (* TODO: set theory reasoning *)
-  Admitted.  
+  Admitted.
 
   (* Lemma 10 *)
   Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
@@ -646,7 +654,7 @@ Section CheckPoints.
     apply/subsetP => z cp_z.
     move/(@link_seq_cp y) : P1. rewrite last_rcons => /(_ erefl) A.
     move/(@link_seq_cp y) : P2. rewrite last_rcons => /(_ erefl) B.
-    (* TODO: p1 and p2 are disjoint, so the intersection is just {x,y} *)    
+    (* TODO: p1 and p2 are disjoint, so the intersection is just {x,y} *)
   Admitted.
 
   Definition upathb (T : eqType) (e : rel T) (x y : T) (p : seq T) :=
@@ -698,6 +706,32 @@ Section CheckPoints.
   Lemma cpo_order x y p : 
     x \in cp i o -> y \in cp i o -> path sedge i p -> last i p = o -> 
     cpo x y = (index x (i::p) <= index y (i::p)).
+  Admitted.
+
+  Variable (U : {set G}).
+
+  Definition CP_ := @induced link_graph (CP U).
+
+  Lemma CP_base (x y : CP_) : 
+    x -- y -> exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
+  Proof.
+    case/bigcupP : (valP x) => [[x1 x2]] /=.
+    case/bigcupP : (valP y) => [[y1 y2]] /=.
+    rewrite !inE /= => /andP[Uy1 Uy2] cp_y /andP[Ux1 Ux2] cp_x /andP [E_xy cp_xy].
+    (* TOTHINK: what is the argument here? *)
+  Admitted.
+
+  Lemma CP_triangle (x y z: CP_) : 
+    x -- y -> y -- z -> z -- x -> 
+    exists x' y' z':G, 
+      [/\ x' \in U, y' \in U & z' \in U] /\
+      [/\ [set val x;val y] \subset cp x' y',
+         [set val y;val z] \subset cp y' z'&
+         [set val z;val x] \subset cp z' x'].
+  Proof.
+    (* TODO: Obtain x' and y' from x -- y and x'' -- z' from x -- z,
+    show that x' can play the role of x'', and then show y,z in [cp y'z']
+    (see notes)  *)
   Admitted.
     
 End CheckPoints.
