@@ -42,6 +42,14 @@ duplicate free path between any two nodes *)
 Definition upath (T : eqType) e (x y : T) p := 
   [/\ uniq (x::p), path e x p & last x p = y].
 
+Definition upathb (T : eqType) (e : rel T) (x y : T) (p : seq T) :=
+  [&& uniq (x :: p), path e x p & last x p == y].
+
+(* FIXME: This should probably be upathP *)
+Lemma upath_reflect (T : eqType) (e : rel T) (x y : T) (p : seq T) :
+  reflect (upath e x y p) (upathb e x y p).
+Proof. rewrite /upath. apply: (iffP and3P); by move => [? ? /eqP]. Qed.
+
 Definition tree_axiom (T:eqType) (e : rel T) :=
   forall (x y : T), unique (upath e x y).
   
@@ -657,13 +665,6 @@ Section CheckPoints.
     (* TODO: p1 and p2 are disjoint, so the intersection is just {x,y} *)
   Admitted.
 
-  Definition upathb (T : eqType) (e : rel T) (x y : T) (p : seq T) :=
-    [&& uniq (x :: p), path e x p & last x p == y].
-
-  (* FIXME: This should probably be upathP *)
-  Lemma upath_reflect (T : eqType) (e : rel T) (x y : T) (p : seq T) :
-    reflect (upath e x y p) (upathb e x y p).
-  Admitted. 
 
   (** This is redundant, but a boolean property. See [checkpoint_seq]
   in extraction.v *)
