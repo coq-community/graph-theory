@@ -151,7 +151,7 @@ Definition check_point_term (t : graph2 -> term) (G : graph2) (x y : G) :=
 Definition check_point_wf (F1 F2 : graph2 -> term) (G : graph2) (x y : G) : 
   g_in != g_out :> G ->
   ~~ degenerate G -> 
-  (forall H : graph2, connected [set: skeleton H] /\ K4_free (skeleton H) -> 
+  (forall H : graph2, connected [set: skeleton H] /\ K4_free (sskeleton H) -> 
         measure H < measure G -> F1 H = F2 H) -> 
   check_point_term F1 x y = check_point_term F2 x y.
 Admitted.
@@ -207,11 +207,11 @@ Qed.
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
 Lemma term_of_eq (G : graph2) : 
-  connected [set: skeleton G] -> K4_free (skeleton G) ->
+  connected [set: skeleton G] -> K4_free (sskeleton G) ->
   term_of G = term_of_rec term_of G.
 Proof.
   move => con_G free_G. 
-  pose P (H:graph2) := connected [set: skeleton H] /\ K4_free (skeleton H).
+  pose P (H:graph2) := connected [set: skeleton H] /\ K4_free (sskeleton H).
   apply: (Fix_eq P) => // {con_G free_G G} f g G [con_G free_G] Efg.
   rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
