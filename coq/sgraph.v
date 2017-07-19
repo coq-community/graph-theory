@@ -566,7 +566,7 @@ Section CheckPoints.
   (* This is locked to keep inE from expanding it *)
   Definition cp x y := locked [set z | checkpointb x y z].
 
-  Lemma cpP x y z : reflect (checkpoint x y z) (z \in cp x y).
+  Lemma cpP {x y z} : reflect (checkpoint x y z) (z \in cp x y).
   Proof. rewrite /cp -lock !inE. exact: checkpointP. Qed.
 
   Hypothesis G_conn : forall x y:G, connect sedge x y.
@@ -611,11 +611,89 @@ Section CheckPoints.
 
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
 
+  (** Lemmas on splitting and concatenating paths between nodes *)
+  Definition spath (x y : G) p := path sedge x p && (last x p == y).
+
+  Lemma upath_spath (x y: G) p : upath sedge x y p -> spath x y p.
+  Admitted.
+
+  Lemma spathP (x y : G) : exists p, spath x y p.
+  Proof. case/connectP : (G_conn x y) => p p1 /esym /eqP p2. exists p. exact/andP. Qed.
+ 
+  Lemma spath_cat x y p1 p2 : 
+    spath x y (p1++p2) = (spath x (last x p1) p1) && (spath (last x p1) y p2).
+  Proof. by rewrite {1}/spath cat_path last_cat /spath eqxx andbT /= -andbA. Qed.
+
+  Lemma spath_concat x y z p q : 
+    spath x y p -> spath y z q -> spath x z (p++q).
+  Proof. 
+    move => /andP[A B] /andP [C D]. 
+    rewrite spath_cat (eqP B) /spath -andbA. exact/and4P.
+  Qed.
+  
+  Lemma spath_rev x y p : spath x y p -> spath y x (rev (belast x p)).
+  Proof. 
+    move/andP => [A /eqP B]. apply/andP;split. exact: rev_spath. rewrite -B.
+    elim/last_ind: p {A B} => // p z _. 
+    by rewrite belast_rcons rev_cons last_rcons.
+  Qed.
+
+  (* 
+  CoInductive spath_split (z x y : G) : seq G -> Prop := 
+    SSplit p1 p2 : spath x z p1 -> spath z y p2 -> spath_split z x y (p1 ++ p2).
+
+  Lemma ssplitP z x y p : z \in x :: p -> spath x y p -> spath_split z x y p.
+  Proof. 
+    case/splitPl => p1 p2 H1 /andP [H2 /eqP H3]. 
+  Admitted.
+  *)
+
+  (* could provide upaths if needed *)
+  Lemma cp_mid z x y t : z \in cp x y -> 
+    exists p1 p2, [/\ spath z x p1, spath z y p2 & t \notin p1 \/ t \notin p2].
+  Proof.
+    case/upathP : (G_conn x y) => p [p1 p2 p3] /cpP cp_z.
+    move/(_ _ p2 p3) : cp_z => H. case/splitPl : H p1 p2 p3.
+    move => pl pr A B C /eqP D. 
+    exists (rev (belast x pl)). exists pr. 
+    have: spath x y (pl++pr) by apply/andP.   
+    rewrite spath_cat A => /andP [S1 S2]. split => //. 
+    - exact: spath_rev.
+    - apply/orP. rewrite -negb_and !mem_rev. apply/negP => /andP[/mem_belast E F].
+      rewrite -cat_cons cat_uniq in B. case/and3P : B => _ /hasPn /= B _.
+      by rewrite (negbTE (B _ F)) in E.
+  Qed.
+
   (* Lemma 13 *)
   Lemma CP_closed U x y : 
     x \in CP U -> y \in CP U -> cp x y \subset CP U.
   Proof.
-  Admitted.
+    case/bigcupP => [[x1 x2] /= /setXP [x1U x2U] x_cp]. 
+    case/bigcupP => [[y1 y2] /= /setXP [y1U y2U] y_cp]. 
+    apply/subsetP => t t_cp. 
+    case (boolP (t == y)) => [/eqP-> //|T2].
+    { apply/bigcupP. exists (y1,y2); by [exact/setXP|]. }
+    case (boolP (t == x)) => [/eqP-> //|T1].
+    { apply/bigcupP. exists (x1,x2); by [exact/setXP|]. }
+    move: (cp_mid t x_cp) => [p1] [p2] [u1 u2] H.
+    wlog P1 : p1 p2 x1 x2 u1 u2 H x1U x2U x_cp / t \notin p1 => [W|{H}].
+    { case: H => H; [apply: (W p1 p2 x1 x2)|apply: (W p2 p1 x2 x1)] => //; try tauto. 
+      by rewrite cp_sym. }
+    move: (cp_mid t y_cp) => [q1] [q2] [v1 v2] H.
+    wlog P2 : q1 q2 y1 y2 v1 v2 H y1U y2U y_cp / t \notin q1 => [W|{H}].
+    { case: H => H; [apply: (W q1 q2 y1 y2)|apply: (W q2 q1 y2 y1)] => //; try tauto. 
+      by rewrite cp_sym. }
+    apply/bigcupP; exists (x1,y1) => /= ; first exact/setXP. 
+    apply: contraTT t_cp => /cpPn => [[? ? [s] [s1 /eqP s2 s3]]].
+    apply/cpPn; split => //. 
+    have /andP[S1 /eqP S2] : spath x y (p1++s++rev(belast y q1)).
+    { apply: spath_concat. (* apply: upath_spath. *) exact: u1.
+      apply: (spath_concat (y := y1)); first exact/andP. exact: spath_rev. }
+    exists (p1++s++rev(belast y q1)). split => //. 
+    rewrite !mem_cat !negb_or P1 s3 /= mem_rev. 
+    apply/negP. move/mem_belast. by rewrite !inE (negbTE T2) (negbTE P2).
+  Qed.
+
 
   (* Lemma 16 *)
 
