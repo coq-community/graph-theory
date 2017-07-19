@@ -238,7 +238,7 @@ Section Link.
     move => Up Uq in_p. apply/negP => in_q. 
     case: (path.splitP in_p) Up => pl pr /upath_split [/(rev_upath (G := link)) Upl Upr D].
     move => {p in_p}. 
-    move: Upl. rewrite belast_rcons rev_cons. move E : (rcons _ _) => pl' Upl'.
+    move: Upl. rewrite srev_rcons.  move E : (rcons _ _) => pl' Upl'.
     have {D E} D' : [disjoint pl' & pr]. 
     { apply: disjoint_trans D. apply/subsetP => a. rewrite -E ?(mem_rcons,in_cons,mem_rev). 
       case/orP => -> //. by rewrite !orbT. }
