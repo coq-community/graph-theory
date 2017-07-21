@@ -1,0 +1,15 @@
+*.vo
+*.swp
+*.v.d
+*.glob
+*.pdf
+*#
+*~
+*.crashcoqide
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.log
+*.out
+*.toc
