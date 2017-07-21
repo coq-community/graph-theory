@@ -19,6 +19,7 @@ Ltac done := trivial; hnf in |- *; intros;
       | contradiction
       | eassumption
       | split
+      | apply/andP;split
       | rewrite ?andbT ?andbF ?orbT ?orbF ]
     )
     | case not_locked_false_eq_true; assumption
