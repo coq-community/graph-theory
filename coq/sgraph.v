@@ -346,9 +346,7 @@ Lemma upathPR (G : sgraph) (x y : G) A :
           (connect (restrict A sedge) x y).
 Proof. exact: (@upathP (srestrict A)). Qed.
 
-Lemma mem_tail (T : eqType) (x y : T) s : y \in s -> y \in x :: s.
-Admitted.
-Arguments mem_tail [T] x [y s].
+
 
 Set Printing Implicit Defensive.
 Lemma subtree_connect (T : tree) (c : T) (a : pred T) : 
@@ -684,40 +682,42 @@ Section CheckPoints.
   Variables (G : sgraph).
   Implicit Types x y z : G.
 
-  Definition checkpoint x y z := forall p, spath x y p -> z \in x :: p.
+  Let avoids z x y (p : seq G) := upath x y p && (z \notin x::p).
+  Definition avoidable z x y := [exists n : 'I_#|G|, exists p : n.-tuple G, avoids z x y p].
 
-  Let cpb y z x p := (last x p == y) ==> (z \in x :: p).
-  Lemma cp_short_prop y z : short_prop sedge (cpb y z).
-  Proof. 
-    move => x p. rewrite /cpb !inE. 
-    case/shortenP => p' _ _ sub. do 2 case: (_ == _) => //=. exact: sub.
+  Definition cp x y := locked [set z | ~~ avoidable z x y].
+
+  Lemma cpPn z x y : reflect (exists2 p, upath x y p & z \notin x::p) (z \notin cp x y).
+  Proof.
+    rewrite /cp -lock inE negbK. apply: (iffP existsP) => [[n] /exists_inP|[p]].
+    - case => p ? ?. by exists p.
+    - case/andP => U S I.
+      have size_p : size p < #|G|.
+      { by rewrite -[(size p).+1]/(size (x::p)) -(card_uniqP U) max_card. }
+      exists (Ordinal size_p). by apply/exists_inP; exists (in_tuple p).
   Qed.
 
-  (** TODO: instead decide existence of a path avoiding z *)
-  Definition checkpointb x y z := short_prop_dec x (@cp_short_prop y z).
-
-  Lemma checkpointP x y z : 
-    reflect (checkpoint x y z) (checkpointb x y z).
-  Admitted.
-  (* FIXME: Refactor for cpP/cpPn *)
-  (* Proof. *)
-  (*   apply: (iffP idP) => /=. *)
-  (*   - move => /dec_eq H p p1 p2. move/implyP: (H p p1). apply. exact/eqP. *)
-  (*   - move => H. apply/dec_eq => p p1. apply/implyP => /eqP. exact: H. *)
-  (* Qed. *)
-
-  (* This is locked to keep inE from expanding it *)
-  Definition cp x y := locked [set z | checkpointb x y z].
+  Lemma cpNI z x y p : spath x y p -> z \notin x::p -> z \notin cp x y.
+  Proof.
+    case/andP. case/shortenP => p' ? ? sub_p ? E. apply/cpPn. exists p' => //.
+    apply: contraNN E. rewrite !inE. case: (_ == _) => //=. exact: sub_p.
+  Qed.
+  
+  Definition checkpoint x y z := forall p, spath x y p -> z \in x :: p.
 
   Lemma cpP {x y z} : reflect (checkpoint x y z) (z \in cp x y).
-  Proof. rewrite /cp -lock !inE. exact: checkpointP. Qed.
+  Proof.
+    apply: introP.
+    - move => H p pth_p. apply: contraTT H. exact: cpNI.
+    - case/cpPn => p /upathW pth_p mem_p /(_ p pth_p). by rewrite (negbTE mem_p).
+  Qed.
 
   Hypothesis G_conn : forall x y:G, connect sedge x y.
 
-  Lemma cpPn x y z : 
-    reflect [/\ z != x, z != y & exists p, [/\ spath x y p & z \notin p]]
-            (z \notin cp x y).
-  Admitted. (* Properly refactor the decidability result to obtain this *)
+  Lemma cpPn' x y z : 
+    reflect [/\ z != x, z != y & exists p, [/\ spath x y p & z \notin p]] (z \notin cp x y).
+  Proof. apply: (iffP (cpPn _ _ _)).        
+  Admitted. (* should not be used *)
 
   Lemma cp_sym x y : cp x y = cp y x.
   Proof.
@@ -744,9 +744,9 @@ Section CheckPoints.
   Proof.
     apply/subsetP => u /cpP cp_u. rewrite -[_ \in _]negbK inE negb_or.
     apply/negP => /andP[]. 
-    case/cpPn => A B [p] [p1 p2]. case/cpPn => C D [q] [q1 q2]. 
+    case/cpPn => (* A B *) [p] [/upathW p1 p2]. case/cpPn => (* C D *) [q] [/upathW q1 /notin_tail q2]. 
     move: (cp_u (p ++ q)). case/(_ _)/Wrap; first exact: spath_concat q1.
-    by rewrite !inE mem_cat (negbTE A) (negbTE p2) (negbTE q2).
+    by rewrite -cat_cons mem_cat (negbTE p2) (negbTE q2).
   Qed.
 
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
@@ -778,6 +778,7 @@ Section CheckPoints.
     { apply/bigcupP. exists (x1,x2); by [exact/setXP|]. }
     move: (cp_mid t x_cp) => [p1] [p2] [u1 u2] H.
     wlog P1 : p1 p2 x1 x2 u1 u2 H x1U x2U x_cp / t \notin p1 => [W|{H}].
+    (* FIXME: This [done] takes to long *)
     { case: H => H; [apply: (W p1 p2 x1 x2)|apply: (W p2 p1 x2 x1)] => //; try tauto. 
       by rewrite cp_sym. }
     move: (cp_mid t y_cp) => [q1] [q2] [v1 v2] H.
@@ -785,11 +786,10 @@ Section CheckPoints.
     { case: H => H; [apply: (W q1 q2 y1 y2)|apply: (W q2 q1 y2 y1)] => //; try tauto. 
       by rewrite cp_sym. }
     apply/bigcupP; exists (x1,y1) => /= ; first exact/setXP. 
-    apply: contraTT t_cp => /cpPn => [[? ? [s] [s1 s2]]].
-    apply/cpPn; split => //. 
-    exists (p1++s++srev y q1). split.
+    apply: contraTT t_cp => /cpPn [s] [/upathW s1 /notin_tail s2].
+    apply: (cpNI (p := p1++s++srev y q1)). 
     - apply: spath_concat u1 _. apply: spath_concat s1 _. exact: spath_rev. 
-    - rewrite !mem_cat !negb_or P1 s2 /= mem_rev. 
+    - rewrite !inE !mem_cat !negb_or mem_rev T1 P1 s2 /=.  
       apply/negP. move/mem_belast. by rewrite !inE (negbTE T2) (negbTE P2).
   Qed.
 
@@ -806,12 +806,13 @@ Section CheckPoints.
   Definition link_graph := SGraph link_sym link_irrefl.
 
   Lemma link_avoid (x y z : G) : 
-    z \notin [set x; y] -> link_rel x y -> exists2 p, spath x y p & z \notin p.
-  Proof.
-    move => Hz /andP[l1 l2].
-    suff/cpPn [_ _ [p] [? ?]] : z \notin cp x y by exists p.
-    apply: contraNN Hz. by move/(subsetP l2). 
-  Qed.
+    z \notin [set x; y] -> link_rel x y -> exists2 p, spath x y p & z \notin (x::p).
+  Admitted.
+  (* Proof. *)
+  (*   move => Hz /andP[l1 l2]. *)
+  (*   suff/cpPn [[p] [? ?]] : z \notin cp x y by exists p. *)
+  (*   apply: contraNN Hz. by move/(subsetP l2).  *)
+  (* Qed. *)
   
   Lemma link_seq_cp (y x : G) p :
     @spath link_graph x y p -> cp x y \subset [:: x, y & p].
@@ -904,6 +905,6 @@ Section CheckPoints.
     (* TODO: Obtain x' and y' from x -- y and x'' -- z' from x -- z,
     show that x' can play the role of x'', and then show y,z in [cp y'z']
     (see notes)  *)
-  Admitted.
+    Admitted.
     
 End CheckPoints.

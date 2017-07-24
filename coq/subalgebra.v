@@ -218,9 +218,6 @@ Section Link.
       rewrite connect_symI; last exact: sg_sym. 
       apply/spathP. by exists p0.
   Qed.
-
-  Lemma notin_tail (X : eqType) (x y : X) s : y \notin x :: s -> y \notin s.
-  Proof. rewrite !inE orbC. by case: (y \in s). Qed.
         
   Lemma unique_None x : unique (@upath link None x).
   Proof.

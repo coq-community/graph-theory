@@ -1,5 +1,6 @@
 Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
+Require Import edone.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -165,6 +166,13 @@ Proof. firstorder. Qed.
 
 (** *** Sequences and Paths *)
 
+Lemma mem_tail (T : eqType) (x y : T) s : y \in s -> y \in x :: s.
+Proof. by rewrite inE => ->. Qed.
+Arguments mem_tail [T] x [y s].
+
+Lemma notin_tail (X : eqType) (x y : X) s : y \notin x :: s -> y \notin s.
+Proof. apply: contraNN. exact: mem_tail. Qed.
+
 Lemma subset_cons (T : eqType) (a:T) s1 (s2 : pred T) : 
   {subset a::s1 <= s2} <-> {subset s1 <= s2} /\ a \in s2.
 Proof. 
@@ -222,7 +230,7 @@ Proof.
   move => sym_e uni_e Hx Hy. 
   elim: p x Hx => // a p IH x Hx /= /andP[H1 H2] H3 /and3P[H4 H5 H6]. 
   case: (boolP (a \in A)) => [B|B].
-  - apply/subset_cons. split => //. apply: (IH a) => //=. by rewrite H5 H6.
+  - apply/subset_cons. split => //. by apply: (IH a) => //=. 
   - exfalso. 
     have X : has (mem A) p. 
     { move: a B H3 Hy {H1 H2 H4 H5 H6 IH}. (* Lemma *)
