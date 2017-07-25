@@ -246,22 +246,18 @@ Section Link.
     None \in p -> None \in q.
   Proof.
     move => Up Uq in_p. apply: contraT => in_q. exfalso.
-    case: (path.splitP in_p) Up => pl pr /upath_split [/(rev_upath (G := link)) Upl Upr D].
-    move => {p in_p}. 
-    move: Upl. rewrite srev_rcons.  move E : (rcons _ _) => pl' Upl'.
-    have {D E} D' : [disjoint pl' & pr]. 
-    { apply: disjoint_trans D. apply/subsetP => a. rewrite -E ?(mem_rcons,in_cons,mem_rev). 
-      by case/orP => ->. }
+    case: (usplitP (G := link) (mem_tail _ in_p) Up) => {in_p Up p} p1 p2 Upl Upr.
+    move/(rev_upath (G := link)) : (Upl) => Upl'.
+    rewrite (eq_disjoint (srev_nodes (upathW Upl))) => D'.
     case: (upath_None_Some Upr) => a [p] [? H]. subst. 
-    case: (upath_None_Some Upl') => b [p'] [? H']. subst.
+    case: (upath_None_Some Upl') => b [p'] [E H']. rewrite E in Upl' D' => {E Upl p1}.
     case/upath_consE : Upr => _ /notin_tail P1 P2.
     case/upath_consE : Upl' => _ /notin_tail Q1 Q2.
     have {D'} X: a != b. 
-    { apply/negP => /eqP ?;subst. by rewrite disjoint_cons mem_head in D'. }
+    { apply/negP => /eqP ?;subst. by rewrite !disjoint_cons mem_head /= andbF in D'. }
     have [s S1 S2] : exists2 s, @spath link (Some b) (Some y) s & None \notin s.
-    { exists (p'++q). 
-      - apply: spath_concat; apply upathW; eassumption. 
-      - by rewrite mem_cat (negbTE in_q) (negbTE Q1). }
+    { exists (p'++q); first by spath_tac;eapply spath_concat; eassumption. (* TODO: fix spath_tac *)
+      by rewrite mem_cat (negbTE in_q) (negbTE Q1). }
     rewrite !inE in H H'. case/orP : H; case/orP : H' => /eqP ? /eqP ?; 
       subst; try by rewrite eqxx in X.
     - apply: (@diamond y p s) => //. exact: upathW.
@@ -274,15 +270,12 @@ Section Link.
     2: by apply: (upath_sym (G := link)) ; apply: unique_None.
     move => p q.  case: (boolP (None \in p)) => in_p Up Uq.
     - have in_q : None \in q by apply: link_none Uq in_p.
-      case: (path.splitP in_p) Up => {p in_p} pl pr. 
-      case/upath_split => Upl Upr _.
-      case: (path.splitP in_q) Uq => {q in_q} ql qr. 
-      case/upath_split => Uql Uqr _.
+      case:(usplitP (G := link) (mem_tail _ in_p) Up) => pl pr Upl Upr _.
+      case:(usplitP (G := link) (mem_tail _ in_q) Uq) => ql qr Uql Uqr _.
       by rewrite (unique_None Upr Uqr) (unique_None' Upl Uql).
     - have in_q : None \notin q. apply: contraNN in_p. exact: link_none Up.
       exact: (@unique_Some_aux x y). 
   Qed.
-
 
   Definition tlink := @Tree link link_tree_axiom.
 

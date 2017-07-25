@@ -221,21 +221,6 @@ Proof.
   apply/negP. apply: disjointE C _. by rewrite -(spath_last z x p1) // mem_last. 
 Qed.  
 
-
-Lemma upath_split x y z  p q : 
-  upath x y (rcons p z ++ q) -> 
-  [/\ upath x z (rcons p z), upath z y q & [disjoint x::rcons p z & q]].
-Admitted.
-(* TODO: replace all occurrences with uses of [usplitP] *)
-(* Proof. *)
-(*   rewrite {1}/upath last_cat cat_path last_rcons => [[A /andP [B C] D]].  *)
-(*   move: A. rewrite -cat_cons cat_uniq => /and3P [E F G]. split.  *)
-(*   - split => //. by rewrite last_rcons. *)
-(*   - split => //=. rewrite G andbT. apply: contraNN F => H.  *)
-(*     apply/hasP. exists z => //=. by rewrite !inE mem_rcons mem_head orbT. *)
-(*   - by rewrite disjoint_sym disjoint_has. *)
-(* Qed. *)
-
 Lemma upathP x y : reflect (exists p, upath x y p) (connect sedge x y).
 Proof.
   apply: (iffP connectP) => [[p p1 p2]|[p /and3P [p1 p2 /eqP p3]]]; last by exists p.
@@ -244,7 +229,10 @@ Qed.
 
 (* Really useful? *)
 Lemma spathP x y : reflect (exists p, spath x y p) (connect sedge x y).
-Admitted. 
+Proof. 
+  apply: (iffP idP) => [|[p] /andP[A /eqP B]]; last by apply/connectP; exists p.
+  case/upathP => p /upathW ?. by exists p.
+Qed.
 
 End Upath.
 
@@ -273,6 +261,9 @@ Qed.
 
 
 
+Ltac spath_tac :=
+  repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
+  eauto using spath_concat, spath_rev.
 
 (** ** Forests *)
 
@@ -891,10 +882,6 @@ Section CheckPoints.
 
   Lemma notin_srev z x p : z \notin x::p -> z \notin srev x p.
   Proof. apply: contraNN. rewrite /srev mem_rev. exact: mem_belast. Qed.
-
-  Ltac spath_tac :=
-    repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
-    eauto using spath_concat, spath_rev.
 
   (* Lemma 16 *)
   Lemma CP_base x y : x \in CP U -> y \in CP U ->
