@@ -17,7 +17,6 @@ Ltac done := trivial; hnf in |- *; intros;
       [ solve [ trivial | apply : sym_equal; trivial ]
       | discriminate
       | contradiction
-      | eassumption
       | split
       | apply/andP;split
       | rewrite ?andbT ?andbF ?orbT ?orbF ]
@@ -28,3 +27,16 @@ Ltac done := trivial; hnf in |- *; intros;
       end
   ]
 ).
+
+(* TODO: what is going wring here?? 
+Goal forall a b : bool, a && b.
+move => ? ?.
+(do ! [ solve [ trivial ]
+      | match goal with  (* this may be useful, but also costly *)
+        | |- is_true (_ && _) => apply/andP;split
+        end ]).
+
+match goal with  
+| |- is_true (_ && _) => apply/andP;split
+end.
+*)

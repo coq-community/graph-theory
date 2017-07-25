@@ -749,6 +749,12 @@ Section CheckPoints.
     by rewrite -cat_cons mem_cat (negbTE p2) (negbTE q2).
   Qed.
 
+  Lemma cpN_cat a x z y : a \notin cp x z -> a \notin cp z y -> a \notin cp x y.
+  Proof. 
+    move => /negbTE A /negbTE B. apply/negP. move/(subsetP (cp_triangle z)). 
+    by rewrite !inE A B.
+  Qed.
+
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
   
   (* could provide upaths if needed *)
@@ -792,8 +798,6 @@ Section CheckPoints.
     - rewrite !inE !mem_cat !negb_or mem_rev T1 P1 s2 /=.  
       apply/negP. move/mem_belast. by rewrite !inE (negbTE T2) (negbTE P2).
   Qed.
-
-  (* Lemma 16 *)
 
   Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
 
@@ -885,14 +889,50 @@ Section CheckPoints.
 
   Definition CP_ := @induced link_graph (CP U).
 
-  Lemma CP_base (x y : CP_) : 
-    x -- y -> exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
+  Lemma notin_srev z x p : z \notin x::p -> z \notin srev x p.
+  Proof. apply: contraNN. rewrite /srev mem_rev. exact: mem_belast. Qed.
+
+  Ltac spath_tac :=
+    repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
+    eauto using spath_concat, spath_rev.
+
+  (* Lemma 16 *)
+  Lemma CP_base x y : x \in CP U -> y \in CP U ->
+    exists x' y':G, [/\ x' \in U, y' \in U & [set x;y] \subset cp x' y'].
   Proof.
-    case/bigcupP : (valP x) => [[x1 x2]] /=.
-    case/bigcupP : (valP y) => [[y1 y2]] /=.
-    rewrite !inE /= => /andP[Uy1 Uy2] cp_y /andP[Ux1 Ux2] cp_x /andP [E_xy cp_xy].
-    (* TOTHINK: what is the argument here? *)
-  Admitted.
+    move => U1 U2. case/bigcupP : U1 => [[x1 x2]]. case/bigcupP : U2 => [[y1 y2]] /=.
+    rewrite !inE /= => /andP[Uy1 Uy2] cp_y /andP[Ux1 Ux2] cp_x.
+    case: (boolP (x \in cp y1 y2)) => [C|Wx]; first by exists y1; exists y2; rewrite subUset !sub1set C.
+    case: (boolP (y \in cp x1 x2)) => [C|Wy]; first by exists x1; exists x2; rewrite subUset !sub1set C.
+    gen have H,A: x x1 x2 y1 y2 {Ux1 Ux2 Uy1 Uy2 Wy cp_y} Wx cp_x /
+      (x \in cp x1 y1) || (x \in cp x2 y2).
+    { case/cpPn : Wx => p pth_p av_x.
+      apply: contraTT cp_x. rewrite negb_or => /andP[/cpPn [s s1 s2] /cpPn [t t1 t2]].
+      apply: (cpNI (p := s++p++srev x2 t)); first by spath_tac.
+      by rewrite -cat_cons !mem_cat /= 2!negb_or s2 (notin_tail av_x) notin_srev. }
+    move: (H _ _ _ _ _ Wy cp_y) => B {H}. rewrite (cp_sym y1 x1) (cp_sym y2 x2) in B. 
+    wlog {A} /andP [Hx Hy] : x1 x2 y1 y2 A B cp_x cp_y Ux1 Ux2 Uy1 Uy2 Wx Wy
+        / (x \in cp x1 y1) && (y \notin cp x1 y1).
+    { case: (boolP (y \in cp x1 y1)) A B => A; case: (boolP (x \in cp x1 y1)) => /= B C D W. 
+      - by exists x1; exists y1; rewrite subUset !sub1set B. 
+      - case: (boolP (y \in cp x2 y2)) => E. (* TOTHINK: why the second case anlysis in this case? *)
+        + exists x2; exists y2; by rewrite subUset !sub1set C.
+        + move: (W x2 x1 y2 y1). rewrite (cp_sym x2 x1) (cp_sym y2 y1) A C /= orbT. exact.
+      - apply: (W x1 x2 y1 y2) => //. by rewrite B. by rewrite D. (* exact/andP. *)
+      - exists x2; exists y2; by rewrite subUset !sub1set C D. }
+    rewrite (negbTE Hy) /= in B.
+    case: (boolP (x \in cp x2 y2)) => [C|Wx']; first by exists x2; exists y2; rewrite subUset !sub1set C.
+    exists x1. exists y2. rewrite subUset !sub1set. split => //. apply/andP; split.
+    - apply: contraTT cp_x => C. apply: cpN_cat C _. by rewrite cp_sym.
+    - apply: contraTT cp_y. apply: cpN_cat. by rewrite cp_sym.
+  Qed.
+
+  Print Assumptions CP_base.
+
+  (* Lemma 16 *)
+  Lemma CP_base_ (x y : CP_) : 
+    exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
+  Proof. exact: CP_base  (svalP x) (svalP y). Qed.
 
   Lemma CP_triangle (x y z: CP_) : 
     x -- y -> y -- z -> z -- x -> 
@@ -905,6 +945,6 @@ Section CheckPoints.
     (* TODO: Obtain x' and y' from x -- y and x'' -- z' from x -- z,
     show that x' can play the role of x'', and then show y,z in [cp y'z']
     (see notes)  *)
-    Admitted.
+  Admitted.
     
 End CheckPoints.
