@@ -888,9 +888,9 @@ Section CheckPoints.
 
   (** All paths visist all checkpoints in the same order as the canonical upath *)
   (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
-  Lemma cpo_order x y p : 
-    x \in cp i o -> y \in cp i o -> path sedge i p -> last i p = o -> 
+  Lemma cpo_order (x y : G) p : x \in cp i o -> y \in cp i o -> upath i o p -> 
     cpo x y = (index x (i::p) <= index y (i::p)).
+    move => cp_x cp_y pth_p. rewrite /cpo. 
   Admitted.
 
   Variable (U : {set G}).
@@ -954,22 +954,22 @@ Section CheckPoints.
   Arguments mem_catD [T x s1 s2].
     
 
-  Lemma CP_base_ (x y : CP_) : 
+ Lemma CP_base_ (x y : CP_) : 
     exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
   Proof. exact: CP_base  (svalP x) (svalP y). Qed.
 
-  Lemma CP_triangle_avoid x' y' (x y z: CP_) : x' \in U -> y' \in U ->
-    x -- y -> y -- z -> z -- x -> val x \in cp x' y' -> val y \in cp x' y' -> val z \notin cp x' y'.
+  Lemma CP_triangle_avoid x' y' (x y z: link_graph) : 
+    x -- y -> y -- z -> z -- x -> x \in cp x' y' -> y \in cp x' y' -> z \notin cp x' y'.
   Proof.
-    move => inU inU' xy yz zx Cx Cy. apply/negP => Cz.
+    move => xy yz zx Cx Cy. apply/negP => Cz.
     case/upathP : (G_conn x' y') => p pth_p. 
-    gen have Hp,x_in_p: x Cx {xy yz zx} / val x \in x'::p.
+    gen have Hp,x_in_p: x Cx {xy yz zx} / x \in x'::p.
     { apply/cpP. apply: Cx. by spath_tac. }
     move: (Hp _ Cy) (Hp _ Cz) => y_in_p z_in_p.
-    pose I (x: CP_) := index (val x) (x'::p).
-    have D (x1 x2 : CP_) : x1 -- x2 -> val x1 \in x'::p -> I x1 <> I x2.
+    pose I (x: link_graph) := index (x) (x'::p).
+    have D (x1 x2 : link_graph) : x1 -- x2 -> x1 \in x'::p -> I x1 <> I x2.
     { move => H in_p. move/index_uniq_inj. case/(_ _ _)/Wrap => //.
-      exact: upath_uniq pth_p. move/val_inj => ?. subst. by rewrite sgP in H. }
+      exact: upath_uniq pth_p. move => ?. subst. by rewrite sgP in H. }
     wlog /andP [x_lt_y y_lt_z] : x y z xy yz zx x_in_p y_in_p z_in_p Cy {Cx  Cz D Hp}
          / I x < I y < I z.
     { move => W. 
@@ -981,28 +981,28 @@ Section CheckPoints.
         + exact: (W z x y).
         + apply: (W x z y); by rewrite // sg_sym. }
     case/(usplitP (G := G) x_in_p) def_p : {1}p / pth_p => [p1 p2 pth1 pth2 D]. subst.
-    gen have Gy, Hy : y x_lt_y {xy yz y_in_p Cy y_lt_z} / val y \notin x' :: p1.
+    gen have Gy, Hy : y x_lt_y {xy yz y_in_p Cy y_lt_z} / y \notin x' :: p1.
     { apply: contraTN (x_lt_y) => X. 
       rewrite -leqNgt /I -cat_cons !index_cat (spath_end (upathW pth1)) X. 
       rewrite -(spath_last _ _ _ (upathW pth1)) index_last; last exact: upath_uniq pth1.
       by rewrite -ltnS index_mem. }
-    have {Gy} Hz : val z \notin x' :: p1 by apply: Gy; exact: ltn_trans y_lt_z. 
+    have {Gy} Hz : z \notin x' :: p1 by apply: Gy; exact: ltn_trans y_lt_z. 
     rewrite -!cat_cons !(mem_catD D)  (negbTE Hy) (negbTE Hz) /= in y_in_p z_in_p.
-    move/(mem_tail (val x)) : z_in_p => C. (* this looses information that needs to be recovered *)
+    move/(mem_tail (x)) : z_in_p => C. (* this looses information that needs to be recovered *)
     case/(usplitP (G:=G) C) def_p1 : {1}p2 / pth2 => [p21 p22 pth21 pth22 D2]. subst.
-    have Hy': val y \notin p22. 
+    have Hy': y \notin p22. 
     { move: D2. rewrite disjoint_cons => /andP [? D2].
       apply: contraTN y_lt_z => X. 
       rewrite -leqNgt /I -!cat_cons !index_cat (negbTE Hy) (negbTE Hz) leq_add2l.
-      have -> : val y \in p21 = false. 
+      have -> : y \in p21 = false. 
       { apply/negP. apply: disjointE X. by rewrite disjoint_sym. }
-      have Y : val z \in p21. 
+      have Y : z \in p21. 
       { rewrite (spath_endD (upathW pth21)) //. by rewrite eq_sym; apply: contraTN zx => /= ->. }
       apply: leq_trans (leq_addr _ _). rewrite Y. apply: ltnW. by rewrite index_mem. }
     move: Cy. apply/negP. 
-    have: (val y) \notin cp (val x) (val z). 
+    have: (y) \notin cp (x) (z). 
     { case/andP : zx => _ sub. apply/negP. rewrite cp_sym. move/(subsetP sub). 
-      rewrite !inE. by case/orP => /eqP/val_inj => ?;subst; rewrite sg_irrefl in xy yz. }
+      rewrite !inE. by case/orP => /eqP ?;subst; rewrite sg_irrefl in xy yz. }
     case/cpPn => q pth_q /notin_tail Hq. 
     apply: (cpNI (p := p1++q++p22)); first by spath_tac.
     rewrite -cat_cons !mem_cat (negbTE Hy) (negbTE Hq) //=.
@@ -1016,6 +1016,15 @@ Section CheckPoints.
          [set val y;val z] \subset cp y' z'&
          [set val z;val x] \subset cp z' x'].
   Proof.
+    move => xy yz zx.
+    move: (CP_base_ x y) => [x'] [y'] [Ux Uy]. rewrite subUset !sub1set => /andP[cp_x cp_y].
+    have cp_z : val z \notin cp x' y' by apply: CP_triangle_avoid (cp_x) (cp_y). 
+    case/cpPn : cp_z => p pth_p av_z. 
+    have [z1 [z2 [Uz1 Uz2 cp_z]]] : exists z1 z2, [/\ z1 \in U, z2 \in U & val z \in cp z1 z2].
+    { case: (CP_base_ z z) => z1 [z2] [? ?]. rewrite setUid sub1set => ?. by exists z1; exists z2. }
+    
+    
+    
     (* TODO: Obtain x' and y' from x -- y and x'' -- z' from x -- z,
     show that x' can play the role of x'', and then show y,z in [cp y'z']
     (see notes)  *)
