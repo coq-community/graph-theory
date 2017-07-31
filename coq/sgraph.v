@@ -107,7 +107,7 @@ Proof. exact: eqxx. Qed.
 Lemma spath_nil x y : spath x y [::] -> x = y.
 Proof. by case/andP => _ /eqP. Qed.
 
-Lemma spath_end x y z p: spath x y (rcons p z) -> y = z.
+Lemma spath_rcons x y z p: spath x y (rcons p z) -> y = z.
 Proof. case/andP => _ /eqP <-. exact: last_rcons. Qed.
 
 Lemma spath_cat x y p1 p2 : 
@@ -124,6 +124,12 @@ Proof.
   move => /andP[A B] /andP [C D]. 
   rewrite spath_cat (eqP B) /spath -andbA. exact/and4P.
 Qed.
+
+Lemma spath_end x y p : spath x y p -> y \in x :: p.
+Proof. move => A. by rewrite -(spath_last A) mem_last. Qed.
+
+Lemma spath_endD x y p : spath x y p -> x != y -> y \in p.
+Proof. move => A B. move: (spath_end A). by rewrite !inE eq_sym (negbTE B). Qed.
 
 Lemma srev_rcons x z p : srev x (rcons p z) = rcons (rev p) x.
 Proof. by rewrite /srev belast_rcons rev_cons. Qed.
@@ -148,7 +154,7 @@ Lemma srev_nodes x y p : spath x y p -> x :: p =i y :: srev x p.
 Proof. 
   elim/last_ind: p => //; first by move/spath_nil ->.
   move => p z _ H a. rewrite srev_rcons !(inE,mem_rcons,mem_rev). 
-  rewrite (spath_end H). by case: (a == x).
+  rewrite (spath_rcons H). by case: (a == x).
 Qed.
 
 CoInductive spath_split z x y : seq G -> Prop := 
@@ -174,6 +180,9 @@ Implicit Types (x y z : G).
 Definition upath x y p := uniq (x::p) && spath x y p.
 
 Lemma upathW x y p : upath x y p -> spath x y p.
+Proof. by case/andP. Qed.
+
+Lemma upath_uniq x y p : upath x y p -> uniq (x::p).
 Proof. by case/andP. Qed.
 
 Lemma rev_upath x y p : upath x y p -> upath y x (srev x p).
@@ -210,7 +219,7 @@ Lemma upath_nil x p : upath x x p -> p = [::].
 Proof. case: p => //= a p /and3P[/= A B C]. by rewrite -(eqP C) mem_last in A. Qed.
 
 CoInductive usplit z x y : seq G -> Prop := 
-  USplit p1 p2 : upath x z p1 -> upath z y p2 -> [disjoint x::p1 & p2] 
+  USplit p1 p2 : upath x z p1 -> upath z y p2 -> [disjoint x::p1 & p2]
                  -> usplit z x y (p1 ++ p2).
 
 Lemma usplitP z x y p : z \in x :: p -> upath x y p -> usplit z x y p.
@@ -219,7 +228,15 @@ Proof.
   rewrite -cat_cons cat_uniq -disjoint_has disjoint_sym => /and3P [? C ?].
   suff H: z \notin p2 by constructor.
   apply/negP. apply: disjointE C _. by rewrite -(spath_last z x p1) // mem_last. 
-Qed.  
+Qed.
+
+(* CoInductive usplitr z x y : seq G -> Prop :=  *)
+(*   USplit p1 p2 : upath x z p1 -> upath z y p2 -> [disjoint x::rcons p1 z & p2] *)
+(*                  -> usplit z x y (p1 ++ p2). *)
+
+
+(* Lemma usplitPr z x y p : z \in p -> upath x y p -> usplit z x y p. *)
+
 
 Lemma upathP x y : reflect (exists p, upath x y p) (connect sedge x y).
 Proof.
@@ -878,8 +895,6 @@ Section CheckPoints.
 
   Variable (U : {set G}).
 
-  Definition CP_ := @induced link_graph (CP U).
-
   Lemma notin_srev z x p : z \notin x::p -> z \notin srev x p.
   Proof. apply: contraNN. rewrite /srev mem_rev. exact: mem_belast. Qed.
 
@@ -917,9 +932,81 @@ Section CheckPoints.
   Print Assumptions CP_base.
 
   (* Lemma 16 *)
+  Definition CP_ := @induced link_graph (CP U).
+
+  Lemma link_sup (x y : CP_) : x -- y -> (val x:G) -- val y.
+  Abort.
+
+  Lemma index_uniq_inj (T:eqType) (s : seq T) : 
+    uniq s -> {in s, injective (index^~ s)}. 
+  Proof. 
+    move => uniq_s x in_s y E. 
+    have A : y \in s by rewrite -index_mem -E index_mem.
+    by rewrite -(nth_index x in_s) E nth_index.
+  Qed.
+
+  Lemma mem_catD (T:finType) (x:T) (s1 s2 : seq T) : [disjoint s1 & s2] ->
+      (x \in s1 ++ s2) = (x \in s1) (+) (x \in s2).
+  Proof. 
+    move => D. rewrite mem_cat. case C1 : (x \in s1) => //=. 
+    symmetry. apply/negP. exact: disjointE D _.
+  Qed.
+  Arguments mem_catD [T x s1 s2].
+    
+
   Lemma CP_base_ (x y : CP_) : 
     exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
   Proof. exact: CP_base  (svalP x) (svalP y). Qed.
+
+  Lemma CP_triangle_avoid x' y' (x y z: CP_) : x' \in U -> y' \in U ->
+    x -- y -> y -- z -> z -- x -> val x \in cp x' y' -> val y \in cp x' y' -> val z \notin cp x' y'.
+  Proof.
+    move => inU inU' xy yz zx Cx Cy. apply/negP => Cz.
+    case/upathP : (G_conn x' y') => p pth_p. 
+    gen have Hp,x_in_p: x Cx {xy yz zx} / val x \in x'::p.
+    { apply/cpP. apply: Cx. by spath_tac. }
+    move: (Hp _ Cy) (Hp _ Cz) => y_in_p z_in_p.
+    pose I (x: CP_) := index (val x) (x'::p).
+    have D (x1 x2 : CP_) : x1 -- x2 -> val x1 \in x'::p -> I x1 <> I x2.
+    { move => H in_p. move/index_uniq_inj. case/(_ _ _)/Wrap => //.
+      exact: upath_uniq pth_p. move/val_inj => ?. subst. by rewrite sgP in H. }
+    wlog /andP [x_lt_y y_lt_z] : x y z xy yz zx x_in_p y_in_p z_in_p Cy {Cx  Cz D Hp}
+         / I x < I y < I z.
+    { move => W. 
+      wlog x_lt_y : x y xy yz zx Cx Cy x_in_p y_in_p z_in_p / I x < I y => [W2|].
+      { case: (ltngtP (I x) (I y)); [exact: W2|apply:W2; by rewrite // sg_sym |exact: D]. }
+      case: (ltngtP (I y) (I z)) => [Hyz|Hyz|]; last exact: D. 
+      - exact: (W x y z).
+      - case: (ltngtP (I z) (I x)) => [Hzx|Hzx|]; last exact: D. 
+        + exact: (W z x y).
+        + apply: (W x z y); by rewrite // sg_sym. }
+    case/(usplitP (G := G) x_in_p) def_p : {1}p / pth_p => [p1 p2 pth1 pth2 D]. subst.
+    gen have Gy, Hy : y x_lt_y {xy yz y_in_p Cy y_lt_z} / val y \notin x' :: p1.
+    { apply: contraTN (x_lt_y) => X. 
+      rewrite -leqNgt /I -cat_cons !index_cat (spath_end (upathW pth1)) X. 
+      rewrite -(spath_last _ _ _ (upathW pth1)) index_last; last exact: upath_uniq pth1.
+      by rewrite -ltnS index_mem. }
+    have {Gy} Hz : val z \notin x' :: p1 by apply: Gy; exact: ltn_trans y_lt_z. 
+    rewrite -!cat_cons !(mem_catD D)  (negbTE Hy) (negbTE Hz) /= in y_in_p z_in_p.
+    move/(mem_tail (val x)) : z_in_p => C. (* this looses information that needs to be recovered *)
+    case/(usplitP (G:=G) C) def_p1 : {1}p2 / pth2 => [p21 p22 pth21 pth22 D2]. subst.
+    have Hy': val y \notin p22. 
+    { move: D2. rewrite disjoint_cons => /andP [? D2].
+      apply: contraTN y_lt_z => X. 
+      rewrite -leqNgt /I -!cat_cons !index_cat (negbTE Hy) (negbTE Hz) leq_add2l.
+      have -> : val y \in p21 = false. 
+      { apply/negP. apply: disjointE X. by rewrite disjoint_sym. }
+      have Y : val z \in p21. 
+      { rewrite (spath_endD (upathW pth21)) //. by rewrite eq_sym; apply: contraTN zx => /= ->. }
+      apply: leq_trans (leq_addr _ _). rewrite Y. apply: ltnW. by rewrite index_mem. }
+    move: Cy. apply/negP. 
+    have: (val y) \notin cp (val x) (val z). 
+    { case/andP : zx => _ sub. apply/negP. rewrite cp_sym. move/(subsetP sub). 
+      rewrite !inE. by case/orP => /eqP/val_inj => ?;subst; rewrite sg_irrefl in xy yz. }
+    case/cpPn => q pth_q /notin_tail Hq. 
+    apply: (cpNI (p := p1++q++p22)); first by spath_tac.
+    rewrite -cat_cons !mem_cat (negbTE Hy) (negbTE Hq) //=.
+  Qed.
 
   Lemma CP_triangle (x y z: CP_) : 
     x -- y -> y -- z -> z -- x -> 
