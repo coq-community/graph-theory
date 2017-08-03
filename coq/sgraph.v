@@ -12,6 +12,14 @@ Lemma disjointE (T : finType) (A B : pred T) x :
   [disjoint A & B] -> x \in A -> x \in B -> False.
 Proof. by rewrite disjoint_subset => /subsetP H /H /negP. Qed.
 
+Lemma disjointFr (T : finType) (A B : pred T) (x:T) : 
+  [disjoint A & B] -> x \in A -> x \in B = false.
+Proof. move => D L. apply/negbTE. apply/negP. exact: (disjointE D). Qed.
+
+Lemma disjointFl (T : finType) (A B : pred T) (x:T) : 
+  [disjoint A & B] -> x \in B -> x \in A = false.
+Proof. move => D L. apply/negbTE. apply/negP => ?. exact: (disjointE D) L. Qed.
+
 (** * Simple Graphs *)
 
 Record sgraph := SGraph { svertex :> finType ; 
@@ -288,8 +296,20 @@ Ltac spath_tac :=
 Section Pack.
 Variables (G : sgraph).
 Implicit Types x y z : G.
+
+Section PathDef.
+  Variables (x y : G).
+
+  Inductive Path := BPath p of spath x y p.
+  Definition spath_of p := let: BPath s _ := p in s.
+
+  Canonical Path_subType := [subType for spath_of].
+  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:]. 
+  Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
   
-Definition Path x y := { p : seq G | spath x y p }.
+(* Definition Path x y := { p : seq G | spath x y p }. *)
+
+End PathDef.
 
 Section Primitives.
   Variables (x y z : G) (p : Path x y) (q : Path y z).
@@ -306,23 +326,54 @@ Section Primitives.
 
   Lemma path_last: last x (val p) = y.
   Proof. move: (valP p). exact: spath_last. Qed.
+
 End Primitives.
 
-Lemma mem_pcat u x y z (p : Path x y) (q : Path y z) :
-  u \in nodes (pcat p q) = (u \in nodes p) || (u \in nodes q).
+Definition in_nodes x y := (fun (p : Path x y) u => nosimpl u \in nodes p).
+Canonical Path_predType x y := Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
+
+Section PathTheory.
+Variables (x y z : G) (p : Path x y) (q : Path y z).
+
+(* Set Printing All. *)
+
+(* Set Printing All. *)
+
+Lemma mem_path u : u \in p = (u \in x :: val p).
+Proof. done. Qed.
+
+Lemma nodes_end : y \in p. 
+Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
+
+Lemma mem_pcatT u : (u \in pcat p q) = (u \in p) || (u \in tail q).
+Proof. by rewrite !inE mem_cat -orbA. Qed.
+
+Lemma tailW : {subset tail p <= nodes p}.
+Proof. move => u. exact: mem_tail. Qed.
+
+Lemma mem_pcat u :  (u \in pcat p q) = (u \in p) || (u \in q).
 Admitted.
 
-Lemma mem_prev u x y (p : Path x y) : 
-  (u \in nodes (prev p)) = (u \in nodes p).
+End PathTheory.
+
+Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Admitted.
 
 
 Lemma Path_split z x y (p : Path x y) : 
-  z \in nodes p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
+  z \in p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
 Proof.
   move: (valP p) => pth_p in_p. 
   case/(ssplitP in_p) E : {1}(val p) / pth_p => [p1 p2 P1 P2].
   exists (Sub p1 P1). exists (Sub p2 P2). exact: val_inj. 
+Qed.
+
+Lemma irred_cat x y z (p : Path x z) (q : Path z y) : 
+  irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
+Proof.
+  rewrite /irred /nodes /pcat -cat_cons cat_uniq -disjoint_has disjoint_sym.
+  case A : [disjoint _ & _] => //. case: (uniq (x :: _)) => //=. 
+  case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // nodes_end. 
 Qed.
 
 Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
@@ -333,23 +384,20 @@ Admitted.
 
 CoInductive isplit z x y : Path x y -> Prop := 
   ISplit (p1 : Path x z) (p2 : Path z y) : 
-    irred p1 -> irred p2 -> [disjoint nodes p1 & tail p2] -> isplit z (pcat p1 p2).
+    irred p1 -> irred p2 -> [disjoint p1 & tail p2] -> isplit z (pcat p1 p2).
 
-Lemma isplitP z x y (p : Path x y) : irred p -> z \in nodes p -> isplit z p.
+Lemma isplitP z x y (p : Path x y) : irred p -> z \in p -> isplit z p.
 Admitted.
-                                                   
 
-(* Lemma isplitP z x y (p : Path x y) : irred p -> z \in nodes p ->  *)
-(*   exists (p1 : Path x z) (p2 : Path z y), [/\ irred p1, irred p2 & [disjoint nodes p1 & tail p2]]. *)
-(* Proof. *)
-(*   move => irr_p in_p. case: (Path_split in_p) => p1 [p2] E. subst. *)
-(*   exists p1. exists p2. rewrite /irred /= cat_uniq mem_cat negb_or -andbA in irr_p.  *)
-(*   case/and5P : irr_p => A B C D E. split => //. *)
-(* Admitted. *)
-  
 End Pack.
 
-
+Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
+  (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
+  exists p : Path a b, map f (val p) = val p'.
+Proof. 
+  move => A I S. case: (lift_spath A I (valP p') _). admit.
+  move => p [p1 p2]. exists (Sub p p1). by rewrite -p2. 
+Admitted.
 
 (** ** Forests *)
 
@@ -764,7 +812,7 @@ Section CheckPoints.
 
   Definition cp x y := locked [set z | ~~ avoidable z x y].
 
-  Lemma cpPn z x y : reflect (exists2 p, upath x y p & z \notin x::p) (z \notin cp x y).
+  Lemma cpPn {z x y} : reflect (exists2 p, upath x y p & z \notin x::p) (z \notin cp x y).
   Proof.
     rewrite /cp -lock inE negbK. apply: (iffP existsP) => [[n] /exists_inP|[p]].
     - case => p ? ?. by exists p.
@@ -789,12 +837,25 @@ Section CheckPoints.
     - case/cpPn => p /upathW pth_p mem_p /(_ p pth_p). by rewrite (negbTE mem_p).
   Qed.
 
-  Hypothesis G_conn : forall x y:G, connect sedge x y.
+  (* BEGIN TEST *)
+  Lemma cpP' x y z : reflect (forall p : Path x y, z \in p) (z \in cp x y).
+  Proof. 
+    apply: (iffP cpP) => [H p|H p Hp]; last exact: (H (Sub p Hp)).
+    apply: H.  exact: valP. 
+  Qed.
 
-  (* Lemma cpPn' x y z :  *)
-  (*   reflect [/\ z != x, z != y & exists p, [/\ spath x y p & z \notin p]] (z \notin cp x y). *)
-  (* Proof. apply: (iffP (cpPn _ _ _)).         *)
-  (* Admitted. (* should not be used *) *)
+  Lemma cpPn' x y z : reflect (exists2 p : Path x y, irred p & z \notin p) (z \notin cp x y).
+  Proof. 
+    apply: (iffP cpPn) => [[p /andP [I Hp] N]|[p U N]]; first by exists (Sub p Hp).
+    exists (val p) => //. apply/andP. split => //. exact: valP. 
+  Qed.
+
+  Lemma cpNI' x y (p : Path x y) z : z \notin p -> z \notin cp x y.
+  Proof. by apply: contraNN => /cpP'. Qed.
+
+  (* END TEST *)
+
+  Hypothesis G_conn : forall x y:G, connect sedge x y.
 
   Lemma cp_sym x y : cp x y = cp y x.
   Proof.
@@ -819,13 +880,11 @@ Section CheckPoints.
 
   Lemma cp_triangle z {x y} : cp x y \subset cp x z :|: cp z y.
   Proof.
-    apply/subsetP => u /cpP cp_u. rewrite -[_ \in _]negbK inE negb_or.
-    apply/negP => /andP[]. 
-    case/cpPn => (* A B *) [p] [/upathW p1 p2]. case/cpPn => (* C D *) [q] [/upathW q1 /notin_tail q2]. 
-    move: (cp_u (p ++ q)). case/(_ _)/Wrap; first exact: spath_concat q1.
-    by rewrite -cat_cons mem_cat (negbTE p2) (negbTE q2).
+    apply/subsetP => u /cpP' => A. apply: contraT. 
+    rewrite !inE negb_or => /andP[/cpPn' [p1 _ up1]] /cpPn' [p2 _ up2]. 
+    move: (A (pcat p1 p2)). by rewrite mem_pcat (negbTE up1) (negbTE up2).
   Qed.
-
+  
   Lemma cpN_cat a x z y : a \notin cp x z -> a \notin cp z y -> a \notin cp x y.
   Proof. 
     move => /negbTE A /negbTE B. apply/negP. move/(subsetP (cp_triangle z)). 
@@ -876,30 +935,16 @@ Section CheckPoints.
       apply/negP. move/mem_belast. by rewrite !inE (negbTE T2) (negbTE P2).
   Qed.
 
-  (* BEGIN TEST *)
-  Lemma cpP' x y z : reflect (forall p : Path x y, z \in nodes p) (z \in cp x y).
-  Admitted.
-
-  Lemma cpPn' x y z : reflect (exists2 p : Path x y, irred p & z \notin nodes p) (z \notin cp x y).
-  Admitted.
-
-  Lemma cpNI' x y (p : Path x y) z : z \notin nodes p -> z \notin cp x y.
-  Admitted.
-
-
-  Lemma nodes_prev x y (p : Path x y) : nodes (prev p) =i nodes p.
-  Admitted.
-
   Unset Printing Implicit Defensive.
 
   Lemma cp_mid' (z x y t : G) : t != z -> z \in cp x y ->
-   exists (p1 : Path z x) (p2 : Path z y), t \notin nodes p1 \/ t \notin nodes p2.
+   exists (p1 : Path z x) (p2 : Path z y), t \notin p1 \/ t \notin p2.
   Proof. 
     move => tNz cp_z.
     case/uPathP : (G_conn x y) => p irr_p.
     move/cpP'/(_ p) : cp_z. case/(isplitP irr_p) => p1 p2 A B C.
-    exists (prev p1). exists p2. rewrite nodes_prev. apply/orP. 
-    case E : (t \in nodes p1) => //=. rewrite !inE (negbTE tNz) /=.
+    exists (prev p1). exists p2. rewrite mem_prev. apply/orP. 
+    case E : (t \in p1) => //=. rewrite !inE (negbTE tNz) /=.
     apply/negP. exact: disjointE C _.
   Qed.
   
@@ -914,18 +959,18 @@ Section CheckPoints.
     case (boolP (t == x)) => [/eqP-> //|T1].
     { apply/bigcupP. exists (x1,x2); by [exact/setXP|]. }
     move: (cp_mid' T1 x_cp) => [p1] [p2] H.
-    wlog P1 : x1 x2 p1 p2 x1U x2U x_cp H / t \notin nodes p1 => [W|{H}].
+    wlog P1 : x1 x2 p1 p2 x1U x2U x_cp H / t \notin p1 => [W|{H}].
     { case: H => H. 
       - by apply : (W _ _ p1 p2) => //; tauto.
       - rewrite cp_sym in x_cp. apply : (W _ _ p2 p1) => //; tauto. }
     move: (cp_mid' T2 y_cp) => [q1] [q2] H.
-    wlog P2 : y1 y2 q1 q2 y1U y2U y_cp H / t \notin nodes q1 => [W|{H}].
+    wlog P2 : y1 y2 q1 q2 y1U y2U y_cp H / t \notin q1 => [W|{H}].
     { case: H => H. 
       - by apply : (W _ _ q1 q2) => //; tauto.
       - rewrite cp_sym in y_cp. apply : (W _ _ q2 q1) => //; tauto. }
     apply/bigcupP; exists (x1,y1) => /= ; first exact/setXP. 
     apply: contraTT t_cp => /cpPn' [s _ Hs]. 
-    suff: t \notin nodes (pcat p1 (pcat s (prev q1))) by apply: cpNI'.
+    suff: t \notin (pcat p1 (pcat s (prev q1))) by apply: cpNI'.
     by rewrite !mem_pcat !mem_prev (negbTE P1) (negbTE P2) (negbTE Hs).
   Qed.
 
@@ -951,12 +996,12 @@ Section CheckPoints.
   (* Qed. *)
 
   (* Lemma path_ind y (P : forall x, Path x y -> Prop) :  *)
-  (*   (forall x (p : Path x x), nodes p = [:: x] -> P x p)  *)
+  (*   (forall x (p : Path x x), p = [:: x] -> P x p)  *)
   (*   (forall x y (p : Path x y) *)
   (*   forall x (p : Path x y) : P x P  *)
 
   (* Lemma link_seq_cp (y x : G) (p : @Path link_graph x y) :  *)
-  (*   cp x y \subset nodes p. *)
+  (*   cp x y \subset p. *)
   (* Proof. *)
     
     
@@ -1180,13 +1225,6 @@ Section CheckPoints.
 
   (* BEGIN TEST*)
 
-  Lemma disjointFr (T : finType) (A B : pred T) (x:T) : 
-    [disjoint A & B] -> x \in A -> x \in B = false.
-  Admitted.
-
-  Lemma disjointFl (T : finType) (A B : pred T) (x:T) : 
-    [disjoint A & B] -> x \in B -> x \in A = false.
-  Admitted.
 
   Definition idx x y (p : Path x y) u := index u (nodes p).
 
@@ -1196,14 +1234,9 @@ Section CheckPoints.
     move => irr_p. by rewrite /idx /nodes -[in index _](path_last p) index_last.
   Qed.
 
-
   Section IDX.
     Variables (x z y : G) (p : Path x z) (q : Path z y).
     Implicit Types u v : G.
-
-    Lemma nodes_end : z \in nodes p.
-    Admitted.
-
 
     Lemma idx_inj : {in nodes p, injective (idx p) }.
     Proof.
@@ -1212,47 +1245,40 @@ Section CheckPoints.
       by rewrite -(nth_index x in_s) E nth_index.
     Qed.
 
-    Lemma mem_pcatT u : (u \in nodes (pcat p q)) = (u \in nodes p) || (u \in tail q).
-    Admitted.
-
-    Lemma tailW : {subset tail p <= nodes p}.
-    Proof. move => u. exact: mem_tail. Qed.
-
     Hypothesis irr_pq : irred (pcat p q).
     
     Let dis_pq : [disjoint nodes p & tail q].
-    Admitted.
+    Proof. move: irr_pq. by rewrite irred_cat => /and3P[]. Qed.
 
     Let irr_p : irred p.
-    Admitted.  
+    Proof. move: irr_pq. by rewrite irred_cat => /and3P[]. Qed.
 
     Let irr_q : irred q.
-    Admitted.  
+    Proof. move: irr_pq. by rewrite irred_cat => /and3P[]. Qed.
 
+    (* TOTHINK: This only parses if the level is at most 10, why? *)
+    Notation "x '<[' p ] y" := (idx p x < idx p y) (at level 10, format "x  <[ p ]  y").
+    (* (at level 70, p at level 200, y at next level, format "x  <[ p ]  y"). *)
 
     Lemma idxR u : u \in nodes (pcat p q) -> 
-      (u \in tail q) = (idx (pcat p q) z < idx (pcat p q) u).
+      (u \in tail q) = z <[pcat p q] u.
     Proof.
       move => A. symmetry. rewrite /idx /pcat /nodes -cat_cons index_cat nodes_end.
       rewrite index_cat mem_pcatT in A *. case/orP: A => A.
       - rewrite A (disjointFr dis_pq A). apply/negbTE. 
-        rewrite -leqNgt -!/(idx _ _) (idx_end irr_p) -ltnS.
-        apply: leq_ltn_trans (index_size _ _) _. rewrite ltnS.
-        
-    Admitted.
+        rewrite -leqNgt -!/(idx _ _) (idx_end irr_p) -ltnS. 
+        rewrite -index_mem in A. by apply: leq_trans A _.
+      - rewrite A (disjointFl dis_pq A) -!/(idx _ _) (idx_end irr_p).
+        by rewrite /= addSn ltnS leq_addr. 
+    Qed.
 
-    (* Lemma idxL u : u \in nodes (pcat p q) ->  *)
-    (*   (u \in nodes p) = (idx (pcat p q) u <= idx (pcat p q) z). *)
-    (* Admitted. *)
-
-    Lemma idx_catL u v : u \in tail q -> v \in tail q ->
-      (idx (pcat p q) u < idx (pcat p q) v) = (idx q u < idx q v).
+    Lemma idx_catL u v : u \in tail q -> v \in tail q -> u <[pcat p q] v = u <[q] v.
     Proof.
       move => A B. rewrite /idx /nodes -!cat_cons !index_cat.
       have C : (u \notin x :: val p). 
-      { apply/negP. apply: disjointE A. by rewrite disjoint_sym. }
+      { apply/negP. apply: disjointE A. by rewrite disjoint_sym dis_pq. }
       have D : (v \notin x :: val p). 
-      { apply/negP. apply: disjointE B. by rewrite disjoint_sym. }
+      { apply/negP. apply: disjointE B. by rewrite disjoint_sym dis_pq. }
       rewrite (negbTE C) (negbTE D) ltn_add2l /=.
       have -> : z == u = false. apply: contraTF C => /eqP<-. by rewrite negbK nodes_end.
       have -> : z == v = false. apply: contraTF D => /eqP<-. by rewrite negbK nodes_end.
@@ -1261,7 +1287,7 @@ Section CheckPoints.
 
     Lemma idx_nLR u : u \in nodes (pcat p q) -> 
       idx (pcat p q) z < idx (pcat p q) u -> u \notin nodes p /\ u \in tail q.
-    Admitted.
+    Proof. move => A B. rewrite -idxR // in B. by rewrite (disjointFl dis_pq B). Qed.
   
   End IDX.
 
@@ -1286,11 +1312,11 @@ Section CheckPoints.
         + apply: (W x z y); by rewrite // sg_sym. }
     suff: y \notin cp x' y' by rewrite Cy.
     case/(isplitP (G := G) irr_p) def_p : {1}p / (x_in_p) => [p1 p2 irr_p1 irr_p2 D]. subst.
-    case: (idx_nLR D y_in_p) => // Y1 Y2.
-    (case: (idx_nLR D z_in_p); first by apply: ltn_trans y_lt_z) => Z1 Z2.
+    case: (idx_nLR irr_p y_in_p) => // Y1 Y2.
+    (case: (idx_nLR irr_p z_in_p); first by apply: ltn_trans y_lt_z) => Z1 Z2.
     case/(isplitP (G:=G) irr_p2) def_p1 : {1}p2 / (tailW Z2) => [p21 p22 irr21 irr22 D2]. subst.
     have Hy' : y \notin tail p22.
-    { rewrite (idxR D2) ?tailW //. rewrite -(idx_catL D Z2 Y2). by rewrite -leqNgt ltnW. }
+    { rewrite (idxR irr_p2) ?tailW //. rewrite -(idx_catL irr_p Z2 Y2). by rewrite -leqNgt ltnW. }
     have/cpPn' [q q1 q2] : y \notin cp x z. 
     { case/andP : zx => _ sub. apply/negP. rewrite cp_sym. move/(subsetP sub). 
       rewrite !inE. by case/orP => /eqP ?;subst; rewrite sg_irrefl in xy yz. }
