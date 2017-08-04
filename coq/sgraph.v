@@ -300,14 +300,15 @@ Implicit Types x y z : G.
 Section PathDef.
   Variables (x y : G).
 
-  Inductive Path := BPath p of spath x y p.
-  Definition spath_of p := let: BPath s _ := p in s.
+  Record Path := { pval : seq G; _ : spath x y pval }.
 
-  Canonical Path_subType := [subType for spath_of].
+  (* Inductive Path := BPath p of spath x y p.   *)
+  (* Definition pval p := let: BPath s _ := p in s.  *)
+
+  Canonical Path_subType := [subType for pval].
   Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:]. 
   Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
   
-(* Definition Path x y := { p : seq G | spath x y p }. *)
 
 End PathDef.
 
@@ -332,6 +333,9 @@ End Primitives.
 Definition in_nodes x y := (fun (p : Path x y) u => nosimpl u \in nodes p).
 Canonical Path_predType x y := Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
 
+Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
+Proof. done. Qed.
+
 Section PathTheory.
 Variables (x y z : G) (p : Path x y) (q : Path y z).
 
@@ -339,8 +343,6 @@ Variables (x y z : G) (p : Path x y) (q : Path y z).
 
 (* Set Printing All. *)
 
-Lemma mem_path u : u \in p = (u \in x :: val p).
-Proof. done. Qed.
 
 Lemma nodes_end : y \in p. 
 Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
@@ -348,17 +350,20 @@ Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
 Lemma mem_pcatT u : (u \in pcat p q) = (u \in p) || (u \in tail q).
 Proof. by rewrite !inE mem_cat -orbA. Qed.
 
-Lemma tailW : {subset tail p <= nodes p}.
+Lemma tailW : {subset tail q <= nodes q}.
 Proof. move => u. exact: mem_tail. Qed.
 
 Lemma mem_pcat u :  (u \in pcat p q) = (u \in p) || (u \in q).
-Admitted.
+Proof. 
+  rewrite mem_pcatT. case A: (u \in p) => //=. 
+  rewrite inE (_ : u == y = false) //. 
+  apply: contraFF A => /eqP->. exact: nodes_end. 
+Qed.
 
 End PathTheory.
 
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
-Admitted.
-
+Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 
 Lemma Path_split z x y (p : Path x y) : 
   z \in p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
@@ -377,27 +382,38 @@ Proof.
 Qed.
 
 Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
-Admitted.
+Proof.
+  rewrite /irred /nodes => U. apply: leq_size_uniq U _ _. 
+  - move => u. by rewrite mem_prev.
+  - by rewrite /= ltnS /srev size_rev size_belast.
+Qed.
  
 Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect sedge x y).
-Admitted.
+Proof. 
+  apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]]; first by exists (Sub p P).
+  exists (val p). apply/andP;split => //. exact: valP.
+Qed.
 
 CoInductive isplit z x y : Path x y -> Prop := 
   ISplit (p1 : Path x z) (p2 : Path z y) : 
     irred p1 -> irred p2 -> [disjoint p1 & tail p2] -> isplit z (pcat p1 p2).
 
 Lemma isplitP z x y (p : Path x y) : irred p -> z \in p -> isplit z p.
-Admitted.
+Proof.
+  move => I in_p. case: (Path_split in_p) => p1 [p2] E; subst. 
+  move: I. rewrite irred_cat => /and3P[*]. by constructor. 
+Qed.
 
 End Pack.
 
+(* TOTHINK: What do we do about the forest constructions, to we move to packaged paths? *)
 Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
   exists p : Path a b, map f (val p) = val p'.
 Proof. 
   move => A I S. case: (lift_spath A I (valP p') _). admit.
   move => p [p1 p2]. exists (Sub p p1). by rewrite -p2. 
-Admitted.
+Abort. 
 
 (** ** Forests *)
 
@@ -838,6 +854,7 @@ Section CheckPoints.
   Qed.
 
   (* BEGIN TEST *)
+  
   Lemma cpP' x y z : reflect (forall p : Path x y, z \in p) (z \in cp x y).
   Proof. 
     apply: (iffP cpP) => [H p|H p Hp]; last exact: (H (Sub p Hp)).
@@ -878,12 +895,14 @@ Section CheckPoints.
     move/cpP/(_ [::] (spathxx _)). by rewrite inE.
   Qed.
 
+  (* BEGIN TEST *)
   Lemma cp_triangle z {x y} : cp x y \subset cp x z :|: cp z y.
   Proof.
     apply/subsetP => u /cpP' => A. apply: contraT. 
     rewrite !inE negb_or => /andP[/cpPn' [p1 _ up1]] /cpPn' [p2 _ up2]. 
     move: (A (pcat p1 p2)). by rewrite mem_pcat (negbTE up1) (negbTE up2).
   Qed.
+  (* END TEST *)
   
   Lemma cpN_cat a x z y : a \notin cp x z -> a \notin cp z y -> a \notin cp x y.
   Proof. 
@@ -936,6 +955,8 @@ Section CheckPoints.
   Qed.
 
   Unset Printing Implicit Defensive.
+
+  (* BEGIN TEST *)
 
   Lemma cp_mid' (z x y t : G) : t != z -> z \in cp x y ->
    exists (p1 : Path z x) (p2 : Path z y), t \notin p1 \/ t \notin p2.
@@ -1339,9 +1360,6 @@ Section CheckPoints.
     case/cpPn : cp_z => p pth_p av_z. 
     have [z1 [z2 [Uz1 Uz2 cp_z]]] : exists z1 z2, [/\ z1 \in U, z2 \in U & val z \in cp z1 z2].
     { case: (CP_base_ z z) => z1 [z2] [? ?]. rewrite setUid sub1set => ?. by exists z1; exists z2. }
-
-    
-    
     (* TODO: Obtain x' and y' from x -- y and x'' -- z' from x -- z,
     show that x' can play the role of x'', and then show y,z in [cp y'z']
     (see notes)  *)
