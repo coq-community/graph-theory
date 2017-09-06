@@ -1212,18 +1212,57 @@ Section CheckPoints.
     by rewrite mem_pcat mem_pcatT (negbTE Hy') (negbTE Y1) (negbTE q2).
   Qed.
 
-  Lemma index_rev (T : eqType) a (s : seq T) : 
-    a \in s -> index a (rev s) = (size s).-1 - index a s.
-  Admitted.
+  Lemma index_rcons (T : eqType) a b (s : seq T):
+    a \in b::s -> uniq (b :: s) ->
+    index a (rcons s b) = if a == b then size s else index a s.
+  Proof.
+    case: (boolP (a == b)) => [/eqP<- _|]. 
+    - elim: s a {b} => //= [|b s IH] a; first by rewrite eqxx. 
+      rewrite !inE negb_or -andbA => /and4P[A B C D].
+      rewrite eq_sym (negbTE A) IH //. 
+    - elim: s a b => //. 
+      + move => a b. by rewrite inE => /negbTE->. 
+      + move => c s IH a b A. rewrite inE (negbTE A) /=. 
+        rewrite inE eq_sym. case: (boolP (c == a)) => //= B C D. 
+        rewrite IH //. 
+        * by rewrite inE C.
+        * case/and3P:D => D1 D2 D3. rewrite /= D3 andbT. exact: notin_tail D1.
+  Qed.
 
+  Lemma index_rev (T : eqType) a (s : seq T) : 
+    a \in s -> uniq s -> index a (rev s) = (size s).-1 - index a s.
+  Proof.
+    elim: s => // b s IH. rewrite in_cons [uniq _]/=. 
+    case/predU1P => [?|A] /andP [B uniq_s].
+    - subst b. rewrite rev_cons index_rcons. 
+      + by rewrite eqxx index_head subn0 size_rev.
+      + by rewrite mem_head.
+      + by rewrite /= rev_uniq mem_rev B.
+    - have D : b == a = false. { by apply: contraNF B => /eqP->. }
+      rewrite rev_cons index_rcons. 
+      + rewrite eq_sym D IH //= D. by case s.
+      + by rewrite inE mem_rev A. 
+      + by rewrite /= rev_uniq mem_rev B.
+  Qed.
+    
   Lemma idx_srev a x y (p : Path x y) : 
-    a \in p -> idx (prev p) a = size (pval p) - idx p a.
-  Proof. move => A. rewrite /idx /nodes /prev SubK -rev_rcons index_rev. Abort.
-  
+    a \in p -> irred p -> idx (prev p) a = size (pval p) - idx p a.
+  Proof. 
+    move => A B. rewrite /idx /nodes /prev SubK /srev. 
+    case/andP: (valP p) => p1 /eqP p2. 
+    by rewrite -rev_rcons -[X in rcons _ X]p2 -lastI index_rev.
+  Qed.
                                               
-  Lemma idx_swap a b x y (p : Path x y) : a \in p -> b \in p -> 
+  Lemma idx_swap a b x y (p : Path x y) : a \in p -> b \in p -> irred p ->
     idx p a < idx p b -> idx (prev p) b < idx (prev p) a.
-  Admitted.
+  Proof.
+    move => aP bP ip A. 
+    have H : a != b. { apply: contraTN A => /eqP->. by rewrite ltnn. }
+    rewrite !idx_srev //. apply: ltn_sub2l => //. 
+    apply: (@leq_trans (idx p b)) => //. 
+    rewrite -ltnS -[X in _ < X]/(size (nodes p)).
+    by rewrite index_mem.
+  Qed. 
 
   Lemma three_way_split x y (p : Path x y) a b :
     irred p -> a \in p -> b \in p -> a <[p] b -> 
