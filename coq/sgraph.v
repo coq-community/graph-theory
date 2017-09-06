@@ -342,10 +342,13 @@ Variables (x y z : G) (p : Path x y) (q : Path y z).
 Lemma nodes_end : y \in p. 
 Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
 
+Lemma nodes_start : x \in p.
+Proof. by rewrite mem_head. Qed.
+
 Lemma mem_pcatT u : (u \in pcat p q) = (u \in p) || (u \in tail q).
 Proof. by rewrite !inE mem_cat -orbA. Qed.
 
-Lemma tailW : {subset tail q <= nodes q}.
+Lemma tailW : {subset tail q <= q}.
 Proof. move => u. exact: mem_tail. Qed.
 
 Lemma mem_pcat u :  (u \in pcat p q) = (u \in p) || (u \in q).
@@ -1112,6 +1115,11 @@ Section CheckPoints.
 
   Definition idx x y (p : Path x y) u := index u (nodes p).
 
+  (* TOTHINK: This only parses if the level is at most 10, why? *)
+  Notation "x '<[' p ] y" := (idx p x < idx p y) (at level 10, format "x  <[ p ]  y").
+  (* (at level 70, p at level 200, y at next level, format "x  <[ p ]  y"). *)
+
+
   Lemma idx_end x y (p : Path x y) : 
     irred p -> idx p y = size (tail p).
   Proof.
@@ -1139,10 +1147,6 @@ Section CheckPoints.
 
     Let irr_q : irred q.
     Proof. move: irr_pq. by rewrite irred_cat => /and3P[]. Qed.
-
-    (* TOTHINK: This only parses if the level is at most 10, why? *)
-    Notation "x '<[' p ] y" := (idx p x < idx p y) (at level 10, format "x  <[ p ]  y").
-    (* (at level 70, p at level 200, y at next level, format "x  <[ p ]  y"). *)
 
     Lemma idxR u : u \in nodes (pcat p q) -> 
       (u \in tail q) = z <[pcat p q] u.
@@ -1208,6 +1212,28 @@ Section CheckPoints.
     by rewrite mem_pcat mem_pcatT (negbTE Hy') (negbTE Y1) (negbTE q2).
   Qed.
 
+  Lemma index_rev (T : eqType) a (s : seq T) : 
+    a \in s -> index a (rev s) = (size s).-1 - index a s.
+  Admitted.
+
+  Lemma idx_srev a x y (p : Path x y) : 
+    a \in p -> idx (prev p) a = size (pval p) - idx p a.
+  Proof. move => A. rewrite /idx /nodes /prev SubK -rev_rcons index_rev. Abort.
+  
+                                              
+  Lemma idx_swap a b x y (p : Path x y) : a \in p -> b \in p -> 
+    idx p a < idx p b -> idx (prev p) b < idx (prev p) a.
+  Admitted.
+
+  Lemma three_way_split x y (p : Path x y) a b :
+    irred p -> a \in p -> b \in p -> a <[p] b -> 
+    exists (p1 : Path x a) (p2 : Path a b) p3, 
+      [/\ p = pcat p1 (pcat p2 p3), a \notin p3 & b \notin p1].
+   Proof.
+   Admitted.
+    
+   
+
   Lemma CP_triangle (x y z: CP_) : 
     x -- y -> y -- z -> z -- x -> 
     exists x' y' z':G, 
@@ -1217,14 +1243,90 @@ Section CheckPoints.
          [set val z;val x] \subset cp z' x'].
   Proof.
     move => xy yz zx.
-    move: (CP_base_ x y) => [x'] [y'] [Ux Uy]. rewrite subUset !sub1set => /andP[cp_x cp_y].
-    have cp_z : val z \notin cp x' y' by apply: CP_triangle_avoid (cp_x) (cp_y). 
-    case/cpPn : cp_z => p pth_p av_z. 
-    have [z1 [z2 [Uz1 Uz2 cp_z]]] : exists z1 z2, [/\ z1 \in U, z2 \in U & val z \in cp z1 z2].
-    { case: (CP_base_ z z) => z1 [z2] [? ?]. rewrite setUid sub1set => ?. by exists z1; exists z2. }
-    (* TODO: Obtain x' and y' from x -- y and x'' -- z' from x -- z,
-    show that x' can play the role of x'', and then show y,z in [cp y'z']
-    (see notes)  *)
-  Admitted.
+    move: (CP_base_ x y) => [x'] [y'] [Ux Uy]. 
+    rewrite subUset !sub1set => /andP[cp_x cp_y].
+    have ncp_z : val z \notin cp x' y' by apply: CP_triangle_avoid cp_x cp_y. 
+    case/cpPn' : ncp_z => p irr_p av_z. 
+    have x_in_p : val x \in p by apply/cpP'.
+    have y_in_p : val y \in p by apply/cpP'.
+  
+    wlog x_before_y : x' y' Ux Uy cp_x cp_y p irr_p av_z x_in_p y_in_p / 
+      idx p (val x) < idx p (val y). 
+    { move => W. case: (ltngtP (idx p (val x)) (idx p (val y))) => H.
+      - exact: (W x' y' _ _ _ _ p). 
+      - apply: (W y' x' _ _ _ _ (prev p)); rewrite 1?cp_sym //. 
+        + exact: prev_irred.
+        + by rewrite mem_prev.
+        + rewrite /=. (* FIXME: why is this needed *) by rewrite mem_prev.
+        + by rewrite /= mem_prev.
+        + exact: idx_swap H. 
+      - move/idx_inj : H. move/(_ x_in_p)/val_inj => ?. subst y. by rewrite sgP in xy. }
+    
+    move: (CP_base_ x z) => [x''] [z'] [Ux' Uz]. 
+    rewrite subUset !sub1set => /andP[cp_x' cp_z].
+    have ncp_z : val y \notin cp x'' z' by apply: CP_triangle_avoid cp_x' cp_z; by rewrite sgP.
+    case/cpPn' : ncp_z => q irr_q av_y.
+    have x_in_q : val x \in q by apply/cpP'.
+    have z_in_q : val z \in q by apply/cpP'.
+
+    wlog x_before_z : x'' z' Ux' Uz cp_x' cp_z q irr_q av_y x_in_q z_in_q / 
+      idx q (val x) < idx q (val z).
+    { move => W. case: (ltngtP (idx q (val x)) (idx q (val z))) => H.
+      - exact: (W x'' z' _ _ _ _ q).
+      - apply: (W z' x'' _ _ _ _ (prev q)); try rewrite 1?cp_sym /= ?mem_prev //. 
+        + exact: prev_irred.
+        + exact: idx_swap H. 
+      - move/idx_inj : H. move/(_ x_in_q)/val_inj => ?. subst z. by rewrite sgP in zx. }
+
+    (*
+
+    case/(isplitP irr_p) def_p : {1}p / (x_in_p) => [p1 p2' irr_p1 irr_p2' D1]. subst p.
+    case: (idx_nLR irr_p y_in_p) => // Y1 /tailW Y2.
+    case/(isplitP irr_p2') def_p1' : {1}p2' / Y2 => [p2 p3 irr_p2 irr_p3 D2]. subst p2'.
+    rewrite !mem_pcat 2!negb_or in av_z. case/and3P : av_z => p1_z p2_z p3_z.
+
+    case/(isplitP irr_q) def_q : {1}q / (x_in_q) => [q1 q2' irr_q1 irr_q2' D3]. subst q.
+    case: (idx_nLR irr_q z_in_q) => // Z1 /tailW Z2.
+    case/(isplitP irr_q2') def_q1' : {1}q2' / Z2 => [q2 q3 irr_q2 irr_q3 D4]. subst q2'.
+    rewrite !mem_pcat 2!negb_or in av_y. case/and3P : av_y => q1_y q2_y q3_y.
+    
+    move => {irr_p irr_q x_in_p y_in_p x_in_q z_in_q x_before_y x_before_z irr_p2' irr_q2'}.
+    move => {(* D1 D2 D3 D4 *) irr_p1 irr_p2 irr_p3 irr_q1 irr_q2 irr_q3}.
+
+    have px : val x \notin p3. admit.
+    have qx : val x \notin q3. admit. 
+
+    *)
+
+    case: (three_way_split irr_p x_in_p y_in_p x_before_y) => p1 [p2] [p3] [? ? ?]. subst p.
+    rewrite !mem_pcat 2!negb_or in av_z. case/and3P : av_z => p1_z p2_z p3_z. 
+    case: (three_way_split irr_q x_in_q z_in_q x_before_z) => q1 [q2] [q3] [? ? ?]. subst q.
+    rewrite !mem_pcat 2!negb_or in av_y. case/and3P : av_y => q1_y q2_y q3_y.
+    
+
+    exists x'. exists y'. exists z'. split; split; rewrite // subUset !sub1set; apply/andP;split.
+    - done.
+    - done.
+    - apply: contraTT cp_y. case/cpPn' => r _ Hr. 
+      apply: (cpNI' (p := pcat p1 (pcat q2 (pcat q3 (prev r))))).
+      rewrite /= !mem_pcat !mem_prev 3!negb_or. exact/and4P.
+    - apply: contraTT cp_z. case/cpPn' => r _ Hr. 
+      apply: (cpNI' (p := pcat q1 (pcat p2 (pcat p3 r)))).
+      rewrite /= !mem_pcat 3!negb_or. exact/and4P.
+    - rewrite cp_sym. 
+      apply: contraTT cp_z. case/cpPn' => r _ Hr. 
+      apply: (cpNI' (p := pcat q1 (pcat (prev p1) r))).
+      rewrite /= !mem_pcat mem_prev 2!negb_or. exact/and3P.
+    - rewrite cp_sym. 
+      have: val x \notin cp (val y) (val z).
+      { apply/negP. move: yz => /= /andP [_ B] /(subsetP B).
+        rewrite !inE => /orP[]/eqP/val_inj=>?; subst x. 
+        by rewrite sgP in xy. by rewrite sgP in zx. }
+      case/cpPn' => s _ Hs. 
+      apply: contraTT cp_x. case/cpPn' => r _ Hr. 
+      apply: (cpNI' (p := pcat r (pcat (prev q3) (pcat (prev s) p3)))).
+      rewrite /= !mem_pcat !mem_prev 3!negb_or. exact/and4P.
+  Qed.
+
     
 End CheckPoints.
