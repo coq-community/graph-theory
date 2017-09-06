@@ -1229,10 +1229,15 @@ Section CheckPoints.
     irred p -> a \in p -> b \in p -> a <[p] b -> 
     exists (p1 : Path x a) (p2 : Path a b) p3, 
       [/\ p = pcat p1 (pcat p2 p3), a \notin p3 & b \notin p1].
-   Proof.
-   Admitted.
-    
-   
+  Proof.
+    move => irr_p a_in_p b_in_p a_before_b.
+    case/(isplitP irr_p) def_p : {1}p / (a_in_p) => [p1 p2' irr_p1 irr_p2' D1]. subst p.
+    case: (idx_nLR irr_p b_in_p) => // Y1 Y2.
+    case/(isplitP irr_p2') def_p1' : {1}p2' / (tailW Y2) => [p2 p3 irr_p2 irr_p3 D2]. subst p2'.
+    exists p1. exists p2. exists p3. split => //. 
+    have A: a != b. { apply: contraTN a_before_b => /eqP=>?. subst b. by rewrite ltnn. }
+    by rewrite inE (negbTE A) (disjointFr D2 (nodes_start p2)).
+  Qed.
 
   Lemma CP_triangle (x y z: CP_) : 
     x -- y -> y -- z -> z -- x -> 
@@ -1278,31 +1283,10 @@ Section CheckPoints.
         + exact: idx_swap H. 
       - move/idx_inj : H. move/(_ x_in_q)/val_inj => ?. subst z. by rewrite sgP in zx. }
 
-    (*
-
-    case/(isplitP irr_p) def_p : {1}p / (x_in_p) => [p1 p2' irr_p1 irr_p2' D1]. subst p.
-    case: (idx_nLR irr_p y_in_p) => // Y1 /tailW Y2.
-    case/(isplitP irr_p2') def_p1' : {1}p2' / Y2 => [p2 p3 irr_p2 irr_p3 D2]. subst p2'.
-    rewrite !mem_pcat 2!negb_or in av_z. case/and3P : av_z => p1_z p2_z p3_z.
-
-    case/(isplitP irr_q) def_q : {1}q / (x_in_q) => [q1 q2' irr_q1 irr_q2' D3]. subst q.
-    case: (idx_nLR irr_q z_in_q) => // Z1 /tailW Z2.
-    case/(isplitP irr_q2') def_q1' : {1}q2' / Z2 => [q2 q3 irr_q2 irr_q3 D4]. subst q2'.
-    rewrite !mem_pcat 2!negb_or in av_y. case/and3P : av_y => q1_y q2_y q3_y.
-    
-    move => {irr_p irr_q x_in_p y_in_p x_in_q z_in_q x_before_y x_before_z irr_p2' irr_q2'}.
-    move => {(* D1 D2 D3 D4 *) irr_p1 irr_p2 irr_p3 irr_q1 irr_q2 irr_q3}.
-
-    have px : val x \notin p3. admit.
-    have qx : val x \notin q3. admit. 
-
-    *)
-
     case: (three_way_split irr_p x_in_p y_in_p x_before_y) => p1 [p2] [p3] [? ? ?]. subst p.
     rewrite !mem_pcat 2!negb_or in av_z. case/and3P : av_z => p1_z p2_z p3_z. 
     case: (three_way_split irr_q x_in_q z_in_q x_before_z) => q1 [q2] [q3] [? ? ?]. subst q.
     rewrite !mem_pcat 2!negb_or in av_y. case/and3P : av_y => q1_y q2_y q3_y.
-    
 
     exists x'. exists y'. exists z'. split; split; rewrite // subUset !sub1set; apply/andP;split.
     - done.
