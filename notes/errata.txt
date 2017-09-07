@@ -24,6 +24,7 @@ p7. Proof of Prop 21: "T = ..." -> "T = ]]x;y[[ \cup ]]y;z[[ \cup ]]z;x[["
 
 p9. (2nd bullet): "Proposition 20(ii) applies" -> "Proposition 20(i) applies"
 
+p9. (middle): I could not find an explanation that "\bigcap" is used for n-ary "||" 
 
 Suggestions:
 
