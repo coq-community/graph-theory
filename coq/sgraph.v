@@ -20,6 +20,23 @@ Lemma disjointFl (T : finType) (A B : pred T) (x:T) :
   [disjoint A & B] -> x \in B -> x \in A = false.
 Proof. move => D L. apply/negbTE. apply/negP => ?. exact: (disjointE D) L. Qed.
 
+Lemma disjointNI (T : finType) (A B : pred T) (x:T) : 
+  x \in A -> x \in B -> ~~ [disjoint A & B].
+Proof. move => ? ?. apply/negP => /disjointE. move/(_ x). by apply. Qed.
+
+Lemma subset_seqR (T : finType) (A : pred T) (s : seq T) : 
+  (A \subset s) = (A \subset [set x in s]).
+Proof. 
+  apply/idP/idP => H; apply: subset_trans H _; apply/subsetP => x; by rewrite inE. 
+Qed.
+
+Lemma subset_seqL (T : finType) (A : pred T) (s : seq T) : 
+  (s \subset A) = ([set x in s] \subset A).
+Proof.
+  apply/idP/idP; apply: subset_trans; apply/subsetP => x; by rewrite inE. 
+Qed.
+
+
 (** * Simple Graphs *)
 
 Record sgraph := SGraph { svertex :> finType ; 
@@ -974,17 +991,18 @@ Section CheckPoints.
   (* Lemma link_seq_cp (y x : G) (p : @Path link_graph x y) :  *)
   (*   cp x y \subset p. *)
   (* Proof. *)
-    
-    
+
   Lemma link_seq_cp (y x : G) p :
     @spath link_graph x y p -> cp x y \subset x :: p.
   Proof.
     elim: p x => [|z p IH] x /=.
-    - move/spath_nil->. rewrite cpxx. admit.
+    - move/spath_nil->. rewrite cpxx. apply/subsetP => z. by rewrite !inE.
     - rewrite spath_cons => /andP [/= /andP [A B] /IH C]. 
       apply: subset_trans (cp_triangle z) _.
-      (* TODO: set theory reasoning *)
-  Admitted.
+      rewrite subset_seqR. apply/subUsetP; split. 
+      + apply: subset_trans B _. by rewrite !set_cons setUA subsetUl.
+      + apply: subset_trans C _. by rewrite set_cons subset_seqL subsetUr.
+  Qed.
 
   (* Lemma 10 *)
   Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
@@ -997,9 +1015,15 @@ Section CheckPoints.
     rewrite /cycle -cat_rcons rcons_cat cat_path last_rcons in C1. 
     case/andP : C1 => /rcons_spath P1 /rcons_spath /spath_rev P2. 
     rewrite srev_rcons in P2. 
-    move/link_seq_cp : P1 => P1. move/link_seq_cp : P2 => P2.
-    (* TODO: p1 and p2 are disjoint, so the intersection is just {x,y} *)
-  Admitted.
+    move/link_seq_cp : P1 => P1. move/link_seq_cp : P2 => P2. 
+    have D: [disjoint p1 & p2].
+    { move: C2 => /= /andP [_]. rewrite cat_uniq -disjoint_has disjoint_cons disjoint_sym.
+      by case/and3P => _ /andP [_ ?] _. }
+    apply: contraTT D. case/subsetPn => z. rewrite !inE negb_or => A /andP [B C].
+    move: (subsetP P1 _ A) (subsetP P2 _ A). 
+    rewrite !(inE,mem_rcons,negbTE B,negbTE C,mem_rev) /=. 
+    exact: disjointNI.
+  Qed.
 
   
   (** This is redundant, but a boolean property. See [checkpoint_seq]
