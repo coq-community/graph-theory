@@ -78,12 +78,17 @@ Definition parcomp (G : graph2) (A : {set G}) :=
          (Sub g_in (split_proof1 A g_in g_out))
          (Sub g_in (split_proof1 A g_in g_out)).
 
+Definition lens (G : graph2) := 
+  [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
+      #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
+      #|@CP (skeleton G) [set g_in; g_out]| == 2].
+
 (* NOTE: This only does the right thing if (skeleton G) is connected
 and i and o are not adjacent *)
 Definition split_par (G : graph2) : seq graph2 := 
   let H := ~: [set g_in; g_out] in 
   let P := equivalence_partition (connect (@sedge (skeleton G))) H in 
-  if #|P| <= 1 then [:: G] 
+  if #|P| <= 1 then [:: G] (* actually we always have 0 < #|P| since G is nonempty *)
   else [seq parcomp A | A <- enum P].
 
 Definition edges (G : graph) (x y : G) := 
@@ -92,8 +97,15 @@ Definition edges (G : graph) (x y : G) :=
 Definition adjacent (G : graph) (x y : G) := 
   0 < #|edges x y :|: edges y x|.
 
+Lemma adjacentE (G : graph) (x y : skeleton G) : 
+  (x != y) && adjacent x y = x -- y.
+Proof.
+  apply/andP/orP. 
+Admitted.
+
 Lemma split_iso (G : graph2) :
-  ~~ @adjacent G g_in g_out -> \big[par2/top2]_(H <- split_par G) H ≈ G.
+  lens G -> ~~ @adjacent G g_in g_out -> 
+  \big[par2/top2]_(H <- split_par G) H ≈ G.
 Admitted.
 
 Lemma split_inhab (G : graph2) : 0 < size (split_par G).
@@ -105,32 +117,44 @@ Qed.
 (* WARN: we do not have decidable equality on graphs, this might
 become problematic? *)
 Lemma split_nontrivial (G H : graph2) : 
-  0 < #|edge G| -> List.In H (split_par G) -> 0 < #|edge H|.
+  connected [set: skeleton G] -> lens G -> ~~ @adjacent G g_in g_out -> 
+  List.In H (split_par G) -> 0 < #|edge H|.
 Admitted.
 
 Lemma split_subgraph (G H : graph2) : 
   List.In H (split_par G) -> subgraph H G.
 Admitted.
 
+Lemma split_connected (G H : graph2) :
+  lens G -> 
+  List.In H (split_par G) -> connected [set: skeleton H].
+Admitted.
+
+Lemma split_K4_free (G H : graph2) :
+  lens G -> K4_free (sskeleton G) ->
+  List.In H (split_par G) -> K4_free (sskeleton H).
+Admitted.
+
 Lemma split_edges (G : graph2) : 
-  ~~ @adjacent G g_in g_out -> 
+  lens G -> ~~ @adjacent G g_in g_out -> 
   \sum_(H <- split_par G) #|edge H| = #|edge G|.
 Admitted.
 
-Lemma split_K4_free (G : graph2) : 
+(** This is one fundamental property underlying the term extraction *)
+Lemma split_K4_nontrivial (G : graph2) : 
+  lens G -> ~~ @adjacent G g_in g_out -> K4_free (sskeleton G) -> 
   connected [set: skeleton G] -> 
-  #|@CP (skeleton G) [set g_in; g_out]| == 2 -> 
-  ~~ @adjacent G g_in g_out ->
   1 < size (split_par G).
+Admitted.
+
+Lemma sum_gt1 (T : Type) (s : seq T) (F : T -> nat) : 
+  (forall a, List.In a s -> 0 < F a) -> 1 < size s ->
+  forall b, List.In b s -> F b < \sum_(a <- s) F a.
 Admitted.
 
 (* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
 parts do not have non-trivial splits *)
 
-Definition degenerate (G : graph2) := 
-  [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
-      #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
-      #|@CP (skeleton G) [set g_in; g_out]| == 2].
 
 Fixpoint pairs (T : Type) (x : T) (s : seq T) := 
   if s is y::s' then (x,y) :: pairs y s' else nil.
@@ -150,7 +174,7 @@ Definition check_point_term (t : graph2 -> term) (G : graph2) (x y : G) :=
 
 Definition check_point_wf (F1 F2 : graph2 -> term) (G : graph2) (x y : G) : 
   g_in != g_out :> G ->
-  ~~ degenerate G -> 
+  ~~ lens G -> 
   (forall H : graph2, connected [set: skeleton H] /\ K4_free (sskeleton H) -> 
         measure H < measure G -> F1 H = F2 H) -> 
   check_point_term F1 x y = check_point_term F2 x y.
@@ -174,7 +198,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
            then dom (term_of (point g_in x)) (* have H0 ≈ G? G0 = G *)
            else tm1 
   else (* distinct input and output *)
-    if degenerate G
+    if lens G
     then (* no checkpoints and no petals on i and o *)
       if @adjacent G g_in g_out 
       then (* i and o are adjacent an we can remove some direct edges *)
@@ -222,12 +246,17 @@ Proof.
       ** admit. (*need: removing self loops does not change skeletons *)
       ** admit.
       ** apply: measure_card. by rewrite card_sig cardsI cardsCT.
-  - case: (boolP (degenerate G)) => [deg_G|ndeg_G].
+  - case: (boolP (lens G)) => [deg_G|ndeg_G].
     + case: (boolP (adjacent g_in g_out)) => adj_io.
       * congr tmI. admit. 
-      * apply: eq_big_seq_In. 
-        (* need: parallel splits of K4 free degenerate graphs are smaller and K4_free *)
-        admit.
+      * apply: eq_big_seq_In => H in_parG. apply: Efg.
+        + split. 
+          * exact: split_connected in_parG.
+          * exact: split_K4_free in_parG.
+          * apply: measure_card. rewrite -[X in _ < X]split_edges //.
+            apply: sum_gt1 => // [{H in_parG} H|].
+            -- exact: split_nontrivial.
+            -- exact: split_K4_nontrivial.
     + exact: check_point_wf.
 Admitted.
 
