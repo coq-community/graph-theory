@@ -19,7 +19,7 @@ p7. Proof of Prop 20: "then could" -> "then one/we could"
     	     	      "contract [...] and all subgraphs of the form [[x;y]] to the edge xy" ->
 		      "contract [...] and every subgraph of the form [[x;y]] to an edge xy"
 
-p7. Proof of Prop 21: "T = ..." -> "T = ]]x;y[[ \cup ]]y;z[[ \cup ]]z;x[["
+p7. Proof of Prop 21: "T = ..." -> "T = ]]x;y[[ \cap ]]y;z[[ \cap ]]z;x[["
     	     	      "proposition 20" -> "Proposition 20"
 
 p9. (2nd bullet): "Proposition 20(ii) applies" -> "Proposition 20(i) applies"
