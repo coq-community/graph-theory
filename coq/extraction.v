@@ -81,15 +81,19 @@ Definition parcomp (G : graph2) (A : {set G}) :=
 Definition lens (G : graph2) := 
   [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
       #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
-      #|@CP (skeleton G) [set g_in; g_out]| == 2].
+      @sgraph.link_rel (skeleton G) g_in g_out].
 
-(* NOTE: This only does the right thing if (skeleton G) is connected
-and i and o are not adjacent *)
+(** NOTE: This only does the right thing if 
+    - G is connected
+    - there is no direct edge between i and o
+    - i != o and no (nontrivial) petals on i and o
+    - TOTHINK: Can we use the same construction for i=0 (i.e., using H := ~: [set g_in;g_out] 
+ *)
 Definition split_par (G : graph2) : seq graph2 := 
-  let H := ~: [set g_in; g_out] in 
-  let P := equivalence_partition (connect (@sedge (skeleton G))) H in 
-  if #|P| <= 1 then [:: G] (* actually we always have 0 < #|P| since G is nonempty *)
-  else [seq parcomp A | A <- enum P].
+  let H := @sinterval (skeleton G) g_in g_out in 
+  let P := equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H in 
+  (* if #|P| <= 1 then [:: G] (* actually we always have 0 < #|P| since G is nonempty *) else *)
+  [seq parcomp A | A <- enum P].
 
 Definition edges (G : graph) (x y : G) := 
   [set e : edge G | (source e == x) && (target e == y)].
@@ -109,10 +113,11 @@ Lemma split_iso (G : graph2) :
 Admitted.
 
 Lemma split_inhab (G : graph2) : 0 < size (split_par G).
-Proof.
-  rewrite /split_par. case: ifP => //.
-  move/negbT. by rewrite -ltnNge size_map -cardE => /ltnW. 
-Qed.
+Abort.
+(* Proof. *)
+(*   rewrite /split_par. case: ifP => //. *)
+(*   move/negbT. by rewrite -ltnNge size_map -cardE => /ltnW.  *)
+(* Qed. *)
 
 (* WARN: we do not have decidable equality on graphs, this might
 become problematic? *)
@@ -140,12 +145,80 @@ Lemma split_edges (G : graph2) :
   \sum_(H <- split_par G) #|edge H| = #|edge G|.
 Admitted.
 
+(* TOTHINK: What is the most natural formulation of "has at least two components"? *)
+
+Lemma card_gt1P {T : finType}  {D : pred T} : 
+  reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
+Admitted.
+
+Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
+  symmetric e -> equivalence_rel (connect e).
+Admitted.
+
+Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
+  equivalence_rel (connect (restrict (mem A) sedge)). 
+apply: equivalence_rel_of_sym.  apply: symmetric_restrict. exact:sg_sym. Qed.
+
+(* NOTE: could restrict [E] to [D] *)
+Lemma part_gt1P (T : finType) (R : rel T) (E : equivalence_rel R) (D : {set T}) : 
+   reflect (exists x y, [/\ x \in D, y \in D & ~~ R x y]) (1 < #|equivalence_partition R D|).
+Proof.
+  set P := equivalence_partition R D.
+  have EP : partition P D. 
+  { apply: equivalence_partitionP. move => x y z _ _ _. exact: E. }
+  apply: (iffP card_gt1P). 
+  - move => [B1] [B2] [A B C]. 
+    admit.
+  - move => [x] [y] [A B C]. exists (pblock P x). exists (pblock P y). 
+    rewrite !pblock_mem ?(cover_partition EP) //. split => //.
+    rewrite eq_pblock ?(cover_partition EP) //; last by case/and3P : EP.
+    by rewrite pblock_equivalence_partition.
+Admitted.
+
+Lemma connected2 (G : sgraph) (D : {set G}) : 
+  (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
+Admitted.
+
+  
+Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
+
+Definition is_tree (G : sgraph) := forall x y : G, unique (fun p : Path x y => irred p).
+
+(* TODO: tree_axiom still uses upath - should use packaged paths ... *)
+Lemma CP_tree (G : sgraph) (i : G) (U : {set sgraph.induced [set~ i] }) :
+  K4_free G -> [set val x | x in U] = (neighbours i) :> {set G} ->
+  is_tree (CP_ U).
+Admitted.
+
+
+Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
+  ~~ i -- o -> sgraph.link_rel G i o -> K4_free (add_edge i o) -> 
+  connected [set: G] -> ~ connected (sinterval i o).
+Proof.
+  move => /= io1 /andP [io2 io3] K4F conn_G. 
+  pose G' := @sgraph.induced (add_edge i o) [set~ i].
+  set H := add_edge i o in K4F *.
+  set U := o |: neighbours i.
+  have Ho : o \in [set~ i]. admit.
+  pose o' : G' := Sub o Ho.
+  set U' : {set G'} := [set insubd o' x | x in U].
+  have tree_CPU' : is_tree (CP_ U').
+  { apply: CP_tree K4F _. admit. }
+Admitted.
+
 (** This is one fundamental property underlying the term extraction *)
 Lemma split_K4_nontrivial (G : graph2) : 
-  lens G -> ~~ @adjacent G g_in g_out -> K4_free (sskeleton G) -> 
+  g_in != g_out :> G -> lens G -> ~~ @adjacent G g_in g_out -> K4_free (sskeleton G) -> 
   connected [set: skeleton G] -> 
   1 < size (split_par G).
-Admitted.
+Proof.
+  move => A B C D E. rewrite /split_par size_map -cardE. apply/part_gt1P. 
+  - exact: (sedge_equiv (G := skeleton G)).
+  - set H := sinterval _ _. apply/(@connected2 (skeleton G)). 
+    apply: ssplit_K4_nontrivial => //. 
+    + by rewrite -adjacentE A.
+    + by case/and3P : B. 
+Qed.
 
 Lemma sum_gt1 (T : Type) (s : seq T) (F : T -> nat) : 
   (forall a, List.In a s -> 0 < F a) -> 1 < size s ->

@@ -51,13 +51,30 @@ Proof. move => sym_e sym_e' x y /=. by rewrite sym_e sym_e'. Qed.
 Lemma sc_sym (T : Type) (e : rel T) : symmetric (sc e).
 Proof. move => x y /=. by rewrite orbC. Qed.
 
-Lemma ssk_sym (G : graph2) : symmetric (ssk_rel G).
-Proof. apply: relU_sym' (@sk_rel_sym _) _. exact: sc_sym. Qed.
+Definition add_edge_rel (G:sgraph) (i o : G) := 
+  relU (@sedge G) (sc [rel x y | [&& x != y, x == i & y == o]]).
 
-Lemma ssk_irrefl (G : graph2) : irreflexive (ssk_rel G).
-Proof. move => x /=. by rewrite sk_rel_irrefl eqxx. Qed.
+Lemma add_edge_sym (G:sgraph) (i o : G) : symmetric (add_edge_rel i o).
+Proof. apply: relU_sym'. exact: sg_sym. exact: sc_sym. Qed.
 
-Definition sskeleton (G : graph2) := SGraph (@ssk_sym G) (@ssk_irrefl G).
+Lemma add_edge_irrefl (G:sgraph) (i o : G) : irreflexive (add_edge_rel i o).
+Proof. move => x /=. by rewrite sg_irrefl eqxx. Qed.
+
+Definition add_edge (G:sgraph) (i o : G) :=
+  {| svertex := G;
+     sedge := add_edge_rel i o;
+     sg_sym := add_edge_sym i o;
+     sg_irrefl := add_edge_irrefl i o |}.
+
+Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
+
+(* Lemma ssk_sym (G : graph2) : symmetric (ssk_rel G). *)
+(* Proof. apply: relU_sym' (@sk_rel_sym _) _. exact: sc_sym. Qed. *)
+
+(* Lemma ssk_irrefl (G : graph2) : irreflexive (ssk_rel G). *)
+(* Proof. move => x /=. by rewrite sk_rel_irrefl eqxx. Qed. *)
+
+(* Definition sskeleton (G : graph2) := SGraph (@ssk_sym G) (@ssk_irrefl G). *)
 
 Lemma sskelP (G : graph2) (P : G -> G -> Prop) : 
   Symmetric P -> 
@@ -104,26 +121,26 @@ Qed.
 (** TOTHINK: define intervals and petals on graph or sgraph, i.e.,
 where to add theskeleton casts? *)
 
-Definition sinterval (G : graph) (x y : G) := 
+Definition sinterval (G : sgraph) (x y : G) := 
   [set z in ~: [set x; y] | 
-   connect (restrict (predC1 y) (@sedge (skeleton G))) x z && 
-   connect (restrict (predC1 x) (@sedge (skeleton G))) y z ].
+   connect (restrict (predC1 y) (@sedge G)) x z && 
+   connect (restrict (predC1 x) (@sedge G)) y z ].
 
-Definition interval (G : graph) (x y : G) := 
+Definition interval (G : sgraph) (x y : G) := 
   [set x;y] :|: sinterval x y.
 
 Definition point (G : graph) (x y : G) := 
   Eval hnf in @Graph2 G x y.
 
-Fact intervalL (G : graph) (x y : G) : 
+Fact intervalL (G : sgraph) (x y : G) : 
   x \in interval x y.
 Proof. by rewrite !inE eqxx. Qed.
 
-Fact intervalR (G : graph) (x y : G) : 
+Fact intervalR (G : sgraph) (x y : G) : 
   y \in interval x y.
 Proof. by rewrite !inE eqxx !orbT. Qed.
 
-Definition igraph (G : graph) (x y : G) := 
+Definition igraph (G : graph) (x y : skeleton G) := 
   @point (induced (interval x y)) 
          (Sub x (intervalL x y)) 
          (Sub y (intervalR x y)).
