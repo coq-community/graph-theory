@@ -21,6 +21,7 @@ p7. Proof of Prop 20: "then could" -> "then one/we could"
 
 p7. Proof of Prop 21: "T = ..." -> "T = ]]x;y[[ \cap ]]y;z[[ \cap ]]z;x[["
     	     	      "proposition 20" -> "Proposition 20"
+		      "the graph G" -> "the graph H"
 
 p9. (2nd bullet): "Proposition 20(ii) applies" -> "Proposition 20(i) applies"
 
@@ -28,4 +29,7 @@ p9. (middle): I could not find an explanation that "\bigcap" is used for n-ary "
 
 Suggestions:
 
-- change CP(x,y) to cp(x,y) to make CP(x,y) and CP({x,y}) more visibly distinct.
+p8. Use the the more specific "Proposition 21(i)" in proof of Prop. 22.
+
+(maybe:
+ change CP(x,y) to cp(x,y) to make CP(x,y) and CP({x,y}) more visibly distinct.)
