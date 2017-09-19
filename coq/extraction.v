@@ -87,12 +87,11 @@ Definition lens (G : graph2) :=
     - G is connected
     - there is no direct edge between i and o
     - i != o and no (nontrivial) petals on i and o
-    - TOTHINK: Can we use the same construction for i=0 (i.e., using H := ~: [set g_in;g_out] 
+    - TOTHINK: Can we use the same construction for i=0 (i.e., using H := ~: [set g_in;g_out])
  *)
 Definition split_par (G : graph2) : seq graph2 := 
   let H := @sinterval (skeleton G) g_in g_out in 
   let P := equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H in 
-  (* if #|P| <= 1 then [:: G] (* actually we always have 0 < #|P| since G is nonempty *) else *)
   [seq parcomp A | A <- enum P].
 
 Definition edges (G : graph) (x y : G) := 
@@ -159,21 +158,33 @@ Lemma sedge_equiv (G : sgraph) (A : {set G}) :
   equivalence_rel (connect (restrict (mem A) sedge)). 
 apply: equivalence_rel_of_sym.  apply: symmetric_restrict. exact:sg_sym. Qed.
 
+Lemma part0N (T : finType) P (D : {set T}) A : 
+  partition P D -> A \in P -> (mem A) =1 xpred0 -> False.
+Admitted.
+
 (* NOTE: could restrict [E] to [D] *)
-Lemma part_gt1P (T : finType) (R : rel T) (E : equivalence_rel R) (D : {set T}) : 
+Lemma part_gt1P (T : finType) (R : rel T) (D : {set T}) (E : {in D & &, equivalence_rel R})  : 
    reflect (exists x y, [/\ x \in D, y \in D & ~~ R x y]) (1 < #|equivalence_partition R D|).
 Proof.
   set P := equivalence_partition R D.
-  have EP : partition P D. 
-  { apply: equivalence_partitionP. move => x y z _ _ _. exact: E. }
+  have EP : partition P D by apply: equivalence_partitionP. 
   apply: (iffP card_gt1P). 
   - move => [B1] [B2] [A B C]. 
-    admit.
+    case: (pickP (mem B1)) => /=; last by move/(part0N EP).
+    case: (pickP (mem B2)) => /=; last by move/(part0N EP).
+    move => x2 inB2 x1 inB1. 
+    have ? : x1 \in cover P. { apply/bigcupP. by exists B1. }
+    have ? : x2 \in cover P. { apply/bigcupP. by exists B2. }
+    exists x1; exists x2. split; rewrite -?(cover_partition EP) //. 
+    have TP : trivIset P by case/and3P : EP.
+    apply:contraNN C => Rxy. 
+    rewrite -(def_pblock TP A inB1) -(def_pblock TP B inB2) eq_pblock //.  
+    by rewrite pblock_equivalence_partition // -?(cover_partition EP).
   - move => [x] [y] [A B C]. exists (pblock P x). exists (pblock P y). 
     rewrite !pblock_mem ?(cover_partition EP) //. split => //.
     rewrite eq_pblock ?(cover_partition EP) //; last by case/and3P : EP.
     by rewrite pblock_equivalence_partition.
-Admitted.
+Qed.
 
 Lemma connected2 (G : sgraph) (D : {set G}) : 
   (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
@@ -182,14 +193,123 @@ Admitted.
   
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
-Definition is_tree (G : sgraph) := forall x y : G, unique (fun p : Path x y => irred p).
-
 (* TODO: tree_axiom still uses upath - should use packaged paths ... *)
-Lemma CP_tree (G : sgraph) (i : G) (U : {set sgraph.induced [set~ i] }) :
-  K4_free G -> [set val x | x in U] = (neighbours i) :> {set G} ->
+Definition is_tree (G : sgraph) := 
+  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
+
+Lemma CP_extensive (G : sgraph) (U : {set G}) : 
+  {subset U <= CP U}.
+Proof.
+  move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
+Qed.
+
+(* TOTHINK: What is the right formulation here? *)
+Lemma CP_path_aux (G : sgraph) (U : {set G}) (x y : G) (p : seq G) :
+  x \in CP U -> y \in CP U -> @spath G x y p -> uniq (x :: p) ->
+  @spath (link_graph G) x y [seq z <- p | z \in CP U].
+Admitted.
+
+Lemma CP_path (G : sgraph) (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) : 
+  irred p -> exists2 q : @Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
+Admitted.
+
+Lemma restrictE (T : finType) (e : rel T) (A : pred T) : 
+  A =i predT -> connect (restrict A e) =2 connect e.
+Proof. 
+  move => H x y. rewrite (eq_connect (e' := e)) //. 
+  move => {x y} x y /=. by rewrite !H.
+Qed.
+
+Lemma connectedTE (G : sgraph) (x y : G) : 
+  connected [set: G] -> connect sedge x y. 
+Proof. 
+  move => A. move: (A x y). rewrite !restrictE; last by move => ?; rewrite inE.
+  apply; by rewrite inE. 
+Qed.
+
+Lemma connectedTI (G : sgraph) : 
+  (forall x y : G, connect sedge x y) -> connected [set: G].
+Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
+
+
+Lemma PathP (G : sgraph) (x y : G) :
+  reflect (inhabited (Path x y)) (connect sedge x y).
+Admitted.
+
+Lemma CP_connected (G : sgraph) (U : {set G}) : 
+  connected [set: G] -> connected [set: CP_ U].
+Proof.
+Admitted.
+
+
+Lemma CP2_part (G : sgraph) x y x' y' : 
+  [set x; y] \subset cp x' y' -> 
+  let U := [set x'; y'] in 
+  partition [set petal U x; petal U y; sinterval x y] [set: G].
+Admitted.
+(** TOTHINK: 
+    Does the lemma above have a direct proof without going through Prop. 20?
+    Is this really the formulation needed for Prop 21(i)?
+    What is the right formulation for the edges? *)
+
+
+(** Proposition 21(i) *)
+(** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
+    is written in the paper. Is there a better way to phrase this? *)
+
+Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
+  K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
   is_tree (CP_ U).
 Admitted.
 
+
+Lemma cp_neighbours (G : sgraph) (x y : G) z : 
+  x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
+Proof.
+  move => A B. apply/cpP => p. case: p => [|x' p].
+  - move/spath_nil/eqP => ?. by contrab.
+  - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
+    apply/(cpP (y := y)) => //. exact: B. 
+Qed.
+
+
+Arguments Path G x y : clear implicits.
+
+Lemma link_path_cp (G : sgraph) (x y : G) (p : Path (link_graph G) x y) : 
+  {subset cp x y <= p}.
+Proof. apply/subsetP. apply: link_seq_cp. exact: (valP p). Qed.
+
+(* TOTHINK: is this the best way to  *)
+Lemma induced_path (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path _ x y) : 
+  @spath G (val x) (val y) (map val (val p)).
+Proof.
+  case: p => p pth_p /=. elim: p x pth_p => /= [|z p IH] x pth_p.
+  - by rewrite (spath_nil pth_p) spathxx.
+  - rewrite !spath_cons in pth_p *. 
+    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
+Qed.
+
+Lemma CP_path_cp (G : sgraph) (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
+  val z \in @cp G (val x) (val y) -> z \in p.
+Proof. 
+  move/link_path_cp. 
+  suff P : @spath (link_graph G) (val x) (val y) (map val (val p)).
+  { move/(_ (Build_Path P)). rewrite inE /= mem_map //. exact: val_inj. }
+  exact: induced_path.
+Qed.
+
+
+(** NOTE: If [CP_ U] is a tree, then there exists exactly one irredundant xy-path. *)
+Lemma CP_subtree1 (G : sgraph) (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
+  is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in @cp G (val x) (val y)).
+Proof.
+  move => tree_U irr_p. split.
+  - move => z_in_p. apply/negPn. apply/negP => /=. 
+    case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
+    have zr : z \notin r. { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
+    case: tree_U => _ /(_ x y p r). case/(_ _ _)/Wrap => // ?. subst. by contrab.
+  - simpl. exact: CP_path_cp.
+Qed.
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> sgraph.link_rel G i o -> K4_free (add_edge i o) -> 
@@ -204,6 +324,23 @@ Proof.
   set U' : {set G'} := [set insubd o' x | x in U].
   have tree_CPU' : is_tree (CP_ U').
   { apply: CP_tree K4F _. admit. }
+  have o'_in_U' : o' \in CP U'. 
+  { admit. }
+  pose N := @neighbours (CP_ U') (Sub o' o'_in_U').
+  have Ngt1: 1 < #|N|.
+  { suff: 0 < #|N| /\ #|N| != 1. admit.
+    split.
+    - admit.
+    - apply/negP. case/cards1P => z E. 
+      (* need that the unique oi-path in CP(U) passes through {z}. Hence, z is a checkpoint *)
+      admit.
+  }
+  case/card_gt1P : Ngt1 => x [y] [Nx Ny xy]. 
+  (* TOTHINK: can we avoid nested vals using a proper lemma? *)
+  apply/connected2. exists (val (val x)). exists (val (val y)). split.
+  - admit. (* whats the argument that the neighbours are in ]]i;o[[ *)
+  - admit.
+  - admit. (* argue that o, which is not in ]]i;o[[, is a checkpoint beween x an y *)
 Admitted.
 
 (** This is one fundamental property underlying the term extraction *)
@@ -213,21 +350,32 @@ Lemma split_K4_nontrivial (G : graph2) :
   1 < size (split_par G).
 Proof.
   move => A B C D E. rewrite /split_par size_map -cardE. apply/part_gt1P. 
-  - exact: (sedge_equiv (G := skeleton G)).
+  - move => x y z _ _ _.  exact: (sedge_equiv (G := skeleton G)).
   - set H := sinterval _ _. apply/(@connected2 (skeleton G)). 
     apply: ssplit_K4_nontrivial => //. 
     + by rewrite -adjacentE A.
     + by case/and3P : B. 
 Qed.
 
-Lemma sum_gt1 (T : Type) (s : seq T) (F : T -> nat) : 
+Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
+  List.In b s -> F b <= \sum_(a <- s) F a.
+Proof. 
+  elim: s b => //= a s IH b [<-|A]; rewrite big_cons ?leq_addr //.
+  apply: leq_trans (IH _ A) _. exact: leq_addl.
+Qed.
+
+Lemma sum_gt0 (T : Type) (s : seq T) (F : T -> nat) : 
   (forall a, List.In a s -> 0 < F a) -> 1 < size s ->
   forall b, List.In b s -> F b < \sum_(a <- s) F a.
+Proof.
+  move => A B a a_in_s. apply/negPn. apply/negP => C. rewrite -leqNgt in C.
+  destruct s as [|b [|c s']] => //= {B}. rewrite !big_cons in C. 
+  rewrite /= in a_in_s.
+  (* should work even if we don't have decidable equality on elements of T *)
 Admitted.
 
 (* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
 parts do not have non-trivial splits *)
-
 
 Fixpoint pairs (T : Type) (x : T) (s : seq T) := 
   if s is y::s' then (x,y) :: pairs y s' else nil.
@@ -299,7 +447,6 @@ Proof.
   elim: r => [|a r IH] eqF; rewrite ?big_nil // !big_cons eqF ?IH //; last by left.
   move => x Hx. apply: eqF. by right.
 Qed.
-    
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
@@ -316,7 +463,7 @@ Proof.
     case: (posnP #|[set e | source e == g_in & target e == g_in]|) => E.
     + admit.
     + rewrite Efg // /P; first split.
-      ** admit. (*need: removing self loops does not change skeletons *)
+      ** admit. (*need: removing self loops does not change skeletons - does this force up to ISO? *)
       ** admit.
       ** apply: measure_card. by rewrite card_sig cardsI cardsCT.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
@@ -327,14 +474,13 @@ Proof.
           * exact: split_connected in_parG.
           * exact: split_K4_free in_parG.
           * apply: measure_card. rewrite -[X in _ < X]split_edges //.
-            apply: sum_gt1 => // [{H in_parG} H|].
+            apply: sum_gt0 => // [{H in_parG} H|].
             -- exact: split_nontrivial.
             -- exact: split_K4_nontrivial.
     + exact: check_point_wf.
 Admitted.
 
-
-Lemma term_of_iso (G : graph2) : 
+Theorem term_of_iso (G : graph2) : 
   connected [set: skeleton G] ->  
   K4_free (sskeleton G) -> 
   iso2 G (graph_of_term (term_of G)).
