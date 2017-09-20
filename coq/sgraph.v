@@ -569,7 +569,7 @@ Section DecompTheory.
       + case: (sbag_cover decD x) => t A. exists t. by rewrite sub1set.
       + have xy: x -- y. by apply: clique_S => //; rewrite !inE !eqxx ?orbT.
         case: (sbag_edge decD xy) => t A. exists t. by rewrite subUset !sub1set.
-    - have [v [v0] [[Hv Hv0 X]]] := card_gt2 (ltnW card_S).
+    - have [v [v0] [[Hv Hv0 X]]] := card_gt1P (ltnW card_S).
       pose S0 := S :\ v.
       pose T0 := [set t | S0 \subset B t]. 
       (* Wlog. no bag from [T0] contains [v] *)

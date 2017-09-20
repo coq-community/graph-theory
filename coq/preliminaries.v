@@ -44,13 +44,17 @@ Proof.
   apply: leq_subn. rewrite ltnS. exact: leq_subn.
 Qed.
 
-Lemma card_gt2 (T : finType) (S : pred T) : 
-  2 <= #|S| -> exists v v0, [/\ v \in S, v0 \in S & v != v0].
-Proof.
-  move => A. case/card_gt0P : (ltnW A) => v inS. 
-  rewrite (cardD1 v) inS /= ltnS in A. case/card_gt0P : A => v'. 
-  rewrite !inE => /andP [? ?]. by exists v'; exists v.
-Qed.
+Lemma card_gt1P {T : finType}  {D : pred T} : 
+  reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
+Proof. 
+  apply: (iffP idP).
+  - move => A. case/card_gt0P : (ltnW A) => v inS. 
+    rewrite (cardD1 v) inS /= ltnS in A. case/card_gt0P : A => v'. 
+    rewrite !inE => /andP [? ?]. by exists v'; exists v.
+  - move => [x] [y] [xD yD xy]. apply: contraNT xy.
+    rewrite -leqNgt. 
+Admitted.
+
 
 Lemma card12 (T : finType) (A : {set T}) :
   0 < #|A| -> #|A| <= 2 -> 
@@ -65,6 +69,14 @@ Proof.
   - rewrite -eqn0Ngt cards_eq0 => H _. left. exists x. 
     by rewrite -(setD1K xA) (eqP H) setU0.
 Qed.
+
+Lemma cardsI (T : finType) (A : {set T}) : #|[pred x in A]| = #|A|.
+Proof. exact: eq_card. Qed.
+
+Lemma cardsCT (T : finType) (A : {set T}) : 
+  (#|~:A| < #|T|) = (0 < #|A|).
+Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
+
 
 Lemma wf_leq X (f : X -> nat) : well_founded (fun x y => f x < f y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ f) => x y /ltP. Qed.
@@ -303,4 +315,33 @@ Proof.
   rewrite -[X in X <= _](card_imset _ (@Some_inj _)).
   apply: subset_leq_card. apply/subsetP => ? /imsetP [?] /pimsetP [x0].
   move => H /eqP <- ->. by rewrite mem_imset. 
+Qed.
+
+
+(** *** Partitions *)
+
+(* TOTHINK: This proof appears to complicated/monolithic *)
+Lemma equivalence_partition_gt1P (T : finType) (R : rel T) (D : {set T}) :
+   {in D & &, equivalence_rel R} ->
+   reflect (exists x y, [/\ x \in D, y \in D & ~~ R x y]) (1 < #|equivalence_partition R D|).
+Proof.
+  move => E. 
+  set P := equivalence_partition R D.
+  have EP : partition P D by apply: equivalence_partitionP. 
+  apply: (iffP card_gt1P). 
+  - move => [B1] [B2] [A B C]. 
+    have ?: set0 \notin P by case/and3P: EP. 
+    case: (set_0Vmem B1) => [?|[x1 inB1]]; first by subst; contrab.
+    case: (set_0Vmem B2) => [?|[x2 inB2]]; first by subst; contrab.
+    have ? : x1 \in cover P. { apply/bigcupP. by exists B1. }
+    have ? : x2 \in cover P. { apply/bigcupP. by exists B2. }
+    exists x1; exists x2. split; rewrite -?(cover_partition EP) //. 
+    have TP : trivIset P by case/and3P : EP.
+    apply:contraNN C => Rxy. 
+    rewrite -(def_pblock TP A inB1) -(def_pblock TP B inB2) eq_pblock //.  
+    by rewrite pblock_equivalence_partition // -?(cover_partition EP).
+  - move => [x] [y] [A B C]. exists (pblock P x). exists (pblock P y). 
+    rewrite !pblock_mem ?(cover_partition EP) //. split => //.
+    rewrite eq_pblock ?(cover_partition EP) //; last by case/and3P : EP.
+    by rewrite pblock_equivalence_partition.
 Qed.

@@ -9,6 +9,9 @@ Unset Printing Implicit Defensive.
 
 Definition dom t := tmI (tmS t tmT) tm1.
 
+(** (S)Graph preliminaries *)
+
+
 Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
 Proof. by []. Qed.
 Arguments consistentT [G] E.
@@ -71,7 +74,9 @@ Proof. by rewrite !inE eqxx ?orbT. Qed.
 Fact split_proof2 (T : finType) (A : {set T}) x y : y \in A :|: [set x; y].
 Proof. by rewrite !inE eqxx ?orbT. Qed.
 
-(** Take the graphs induced by "{i,o} ∪ H" with H being the components of "G\{i,o}" *)
+
+(** The graph induced by "{i,o} ∪ H" 
+    (with H being a component of "G\{i,o}" and G a lens *)
 
 Definition parcomp (G : graph2) (A : {set G}) := 
   @point (induced (A :|: [set g_in; g_out]))
@@ -82,13 +87,15 @@ Definition lens (G : graph2) :=
   [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
       #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
       @sgraph.link_rel (skeleton G) g_in g_out].
+(** alternative condition on i/o: [petal [set g_in;g_out] g_in  = [set g_in]] *)
+
 
 (** NOTE: This only does the right thing if 
     - G is connected
     - there is no direct edge between i and o
     - i != o and no (nontrivial) petals on i and o
-    - TOTHINK: Can we use the same construction for i=0 (i.e., using H := ~: [set g_in;g_out])
- *)
+    - TOTHINK: Can we use the same construction for i=0 
+      (i.e., using H := ~: [set g_in;g_out])  *)
 Definition split_par (G : graph2) : seq graph2 := 
   let H := @sinterval (skeleton G) g_in g_out in 
   let P := equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H in 
@@ -97,6 +104,7 @@ Definition split_par (G : graph2) : seq graph2 :=
 Definition edges (G : graph) (x y : G) := 
   [set e : edge G | (source e == x) && (target e == y)].
 
+(* alternative: [exists e, e \in edges x y] || [exists e \in edges y x] *)
 Definition adjacent (G : graph) (x y : G) := 
   0 < #|edges x y :|: edges y x|.
 
@@ -104,6 +112,7 @@ Lemma adjacentE (G : graph) (x y : skeleton G) :
   (x != y) && adjacent x y = x -- y.
 Proof.
   apply/andP/orP. 
+  - move => /= [Hxy]. 
 Admitted.
 
 Lemma split_iso (G : graph2) :
@@ -146,9 +155,6 @@ Admitted.
 
 (* TOTHINK: What is the most natural formulation of "has at least two components"? *)
 
-Lemma card_gt1P {T : finType}  {D : pred T} : 
-  reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
-Admitted.
 
 Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
   symmetric e -> equivalence_rel (connect e).
@@ -158,33 +164,7 @@ Lemma sedge_equiv (G : sgraph) (A : {set G}) :
   equivalence_rel (connect (restrict (mem A) sedge)). 
 apply: equivalence_rel_of_sym.  apply: symmetric_restrict. exact:sg_sym. Qed.
 
-Lemma part0N (T : finType) P (D : {set T}) A : 
-  partition P D -> A \in P -> (mem A) =1 xpred0 -> False.
-Admitted.
 
-(* NOTE: could restrict [E] to [D] *)
-Lemma part_gt1P (T : finType) (R : rel T) (D : {set T}) (E : {in D & &, equivalence_rel R})  : 
-   reflect (exists x y, [/\ x \in D, y \in D & ~~ R x y]) (1 < #|equivalence_partition R D|).
-Proof.
-  set P := equivalence_partition R D.
-  have EP : partition P D by apply: equivalence_partitionP. 
-  apply: (iffP card_gt1P). 
-  - move => [B1] [B2] [A B C]. 
-    case: (pickP (mem B1)) => /=; last by move/(part0N EP).
-    case: (pickP (mem B2)) => /=; last by move/(part0N EP).
-    move => x2 inB2 x1 inB1. 
-    have ? : x1 \in cover P. { apply/bigcupP. by exists B1. }
-    have ? : x2 \in cover P. { apply/bigcupP. by exists B2. }
-    exists x1; exists x2. split; rewrite -?(cover_partition EP) //. 
-    have TP : trivIset P by case/and3P : EP.
-    apply:contraNN C => Rxy. 
-    rewrite -(def_pblock TP A inB1) -(def_pblock TP B inB2) eq_pblock //.  
-    by rewrite pblock_equivalence_partition // -?(cover_partition EP).
-  - move => [x] [y] [A B C]. exists (pblock P x). exists (pblock P y). 
-    rewrite !pblock_mem ?(cover_partition EP) //. split => //.
-    rewrite eq_pblock ?(cover_partition EP) //; last by case/and3P : EP.
-    by rewrite pblock_equivalence_partition.
-Qed.
 
 Lemma connected2 (G : sgraph) (D : {set G}) : 
   (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
@@ -349,7 +329,7 @@ Lemma split_K4_nontrivial (G : graph2) :
   connected [set: skeleton G] -> 
   1 < size (split_par G).
 Proof.
-  move => A B C D E. rewrite /split_par size_map -cardE. apply/part_gt1P. 
+  move => A B C D E. rewrite /split_par size_map -cardE. apply/equivalence_partition_gt1P. 
   - move => x y z _ _ _.  exact: (sedge_equiv (G := skeleton G)).
   - set H := sinterval _ _. apply/(@connected2 (skeleton G)). 
     apply: ssplit_K4_nontrivial => //. 
@@ -433,12 +413,6 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       @check_point_term term_of G g_in g_out
 .
 
-Lemma cardsI (T : finType) (A : {set T}) : #|[pred x in A]| = #|A|.
-Proof. exact: eq_card. Qed.
-
-Lemma cardsCT (T : finType) (A : {set T}) : 
-  (#|~:A| < #|T|) = (0 < #|A|).
-Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
 
 Lemma eq_big_seq_In (R : Type) (idx : R) (op : R -> R -> R) I (r : seq I) (F1 F2 : I -> R) :
   (forall x, List.In x r -> F1 x = F2 x) ->
