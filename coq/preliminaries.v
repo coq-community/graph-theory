@@ -44,6 +44,24 @@ Proof.
   apply: leq_subn. rewrite ltnS. exact: leq_subn.
 Qed.
 
+Lemma card1P (T : finType) (A : pred T) : 
+  reflect (exists x, A =i pred1 x) (#|A| == 1).
+Proof.
+  rewrite -cardsE. apply: (iffP cards1P).
+  - move => [x /setP E]. exists x => y. move: (E y). by rewrite !inE.
+  - move => [x E]. exists x. apply/setP => y. by rewrite !inE E.
+Qed.
+
+(* This looks rather roundabout *)
+Lemma card_le1 (T : finType) (D : pred T) (x y : T) : 
+  #|D| <= 1 -> x \in D -> y \in D -> x = y.
+Proof.
+  case: (posnP #|D|) => A B; first by rewrite (card0_eq A).
+  have/card1P [z E] : #|D| == 1 by rewrite eqn_leq B.
+  by rewrite !E !inE => /eqP-> /eqP->.
+Qed. 
+
+
 Lemma card_gt1P {T : finType}  {D : pred T} : 
   reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
 Proof. 
@@ -52,9 +70,8 @@ Proof.
     rewrite (cardD1 v) inS /= ltnS in A. case/card_gt0P : A => v'. 
     rewrite !inE => /andP [? ?]. by exists v'; exists v.
   - move => [x] [y] [xD yD xy]. apply: contraNT xy.
-    rewrite -leqNgt. 
-Admitted.
-
+    rewrite -leqNgt => A. by rewrite (card_le1 A xD yD).
+Qed.
 
 Lemma card12 (T : finType) (A : {set T}) :
   0 < #|A| -> #|A| <= 2 -> 
