@@ -123,8 +123,8 @@ where to add theskeleton casts? *)
 
 Definition sinterval (G : sgraph) (x y : G) := 
   [set z in ~: [set x; y] | 
-   connect (restrict (predC1 y) (@sedge G)) x z && 
-   connect (restrict (predC1 x) (@sedge G)) y z ].
+   connect (restrict (predC1 y) (@sedge G)) z x && 
+   connect (restrict (predC1 x) (@sedge G)) z y ].
 
 Definition interval (G : sgraph) (x y : G) := 
   [set x;y] :|: sinterval x y.
