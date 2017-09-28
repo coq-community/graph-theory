@@ -121,12 +121,27 @@ Proof. by rewrite inE. Qed.
 Lemma Path_connect (G : sgraph) (x y : G) (p : Path x y) : connect sedge x y.
 Abort. 
 
-(** NOTE: can require either x != y or x \in A *)
+
+Lemma connectRI (G : sgraph) (A : pred G) x y (p : Path x y) :
+  {subset p <= A} -> connect (restrict A sedge) x y.
+Admitted.
+
+(** NOTE: need to require either x != y or x \in A *)
 Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
   reflect (exists2 p: Path x y, irred p & p \subset A) 
           (connect (restrict A sedge) x y).
 Admitted. (* this is essentially upathPR *)
 
+Lemma split_at_first (G : sgraph) {A : pred G} x y (p : Path x y) k :
+  k \in A -> k \in p ->
+  exists z (p1 : Path x z) (p2 : Path z y), 
+    [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
+Proof.
+  case: p => p pth_p /= kA kp. rewrite inE in kp. case/predU1P : kp => kp.
+  - subst x. exists k. exists (idp k). exists (Build_Path pth_p). admit.
+  - rewrite /= in kp. 
+    pose n := find A p.
+Admitted. (* find-take-drop surgery *)
 
 Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
   equivalence_rel (connect (restrict (mem A) sedge)). 
@@ -210,9 +225,18 @@ Qed.
 Definition ncp (U : {set G}) (p : G) : {set G} := 
   [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
 
+(* TOTHINK: Do we also want to require [irred q] *)
 Lemma ncpP (U : {set G}) (p : G) x : 
   reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) (x \in ncp U p).
-Admitted.
+Proof.
+  rewrite inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
+  - case: (boolP (p == x)) => [/eqP ?|px]. 
+    + subst p. exists (idp x) => y _ . by rewrite mem_idp => /eqP.
+    + case/(uPathRP px) : A => q irr_q /subsetP sub_q. 
+      exists q => y CPy /sub_q. by rewrite !inE CPy => /eqP.
+  - apply: (connectRI (p := q)) => y y_in_q.
+    rewrite inE. apply/implyP => A. by rewrite [y]Hq.
+Qed.
 
 Lemma ncp_petal (U : {set G}) (p : G) x :
   x \in CP U -> (p \in petal U x) = (ncp U p == [set x]).
@@ -222,20 +246,24 @@ Proof.
     + apply/ncpP; split => //.
       case/uPathP : (conn_G p x) => q irr_q. 
       case: (boolP [exists y in CP U, y \in [predD1 q & x]]).
-      * case/exists_inP => y /= B /predD1P /= [C D]. 
+      * case/exists_inP => y /= B. rewrite inE eq_sym => /= /andP [C D]. 
         case:notF. apply: contraTT (A _ B) => _. apply/cpPn'.
         case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
-        exists q1 => //. rewrite (disjointFl D12) //. admit.
+        exists q1 => //. rewrite (disjointFl D12) //. 
+        suff: x \in q2. by rewrite inE (negbTE C). 
+        by rewrite nodes_end.
       * rewrite negb_exists_in => /forall_inP B.
         exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
         by rewrite inE C.
     + move => y /ncpP [Uy [q Hq]]. 
       have Hx : x \in q. { apply/cpP'. exact: A. }
       apply: esym. exact: Hq. 
-  - case => A B y Hy. 
-    (* apply/negPn/negP => /cpPn' [q irr_q].  *)
-    admit.
-Admitted.
+  - case => A B y Hy. apply/cpP' => q.
+    have qy : y \in q by rewrite nodes_end.
+    move: (split_at_first Hy qy) => [x'] [q1] [q2] [def_q cp_x' Hq1]. 
+    suff ?: x' = x. { subst x'. by rewrite def_q mem_pcat nodes_end. }
+    apply: B. apply/ncpP. split => //. exists q1 => z' H1 H2. exact: Hq1.
+Qed.
 
 Lemma ncp_CP (U : {set G}) (u : G) :
   u \in CP U -> ncp U u = [set u].
