@@ -9,20 +9,78 @@ Unset Printing Implicit Defensive.
 
 Definition dom t := tmI (tmS t tmT) tm1.
 
-(** (S)Graph preliminaries *)
+(** Preliminaries *)
 
 
-Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
-Proof. by []. Qed.
-Arguments consistentT [G] E.
+Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
+  symmetric e -> equivalence_rel (connect e).
+Proof. 
+  move => sym_e x y z. split => // A. apply/idP/idP; last exact: connect_trans.
+  rewrite connect_symI // in A. exact: connect_trans A.
+Qed.
 
-Definition remove_edges (G : graph2) (E : {set edge G}) :=
-  @point (subgraph_for (consistentT (~:E))) 
-         (Sub g_in (in_setT _)) 
-         (Sub g_in (in_setT _)).
+Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
+  reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
+Proof.
+  apply: (iffP eqP).
+  - move->. rewrite !inE eqxx. by split => // y /set1P.
+  - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
+Qed.
+
+Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
+  (u == Sub x Px) = (val u == x).
+Proof. by case: (SubP u) => {u} u Pu. Qed.
 
 
-(** * Term Extraction *)
+Lemma mem_cover (T : finType) (P : {set {set T}}) (x : T) (A : {set T}) : 
+  A \in P -> x \in A -> x \in cover P.
+Proof. move => HP HA. apply/bigcupP. by exists A. Qed.
+
+Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
+  List.In b s -> F b <= \sum_(a <- s) F a.
+Proof. 
+  elim: s b => //= a s IH b [<-|A]; rewrite big_cons ?leq_addr //.
+  apply: leq_trans (IH _ A) _. exact: leq_addl.
+Qed.
+
+Lemma sum_gt0 (T : Type) (s : seq T) (F : T -> nat) : 
+  (forall a, List.In a s -> 0 < F a) -> 1 < size s ->
+  forall b, List.In b s -> F b < \sum_(a <- s) F a.
+Proof.
+  move => A B a a_in_s. apply/negPn. apply/negP => C. rewrite -leqNgt in C.
+  destruct s as [|b [|c s']] => //= {B}. rewrite !big_cons in C. 
+  rewrite /= in a_in_s.
+  (* should work even if we don't have decidable equality on elements of T *)
+Admitted.
+
+Lemma eq_big_seq_In (R : Type) (idx : R) (op : R -> R -> R) I (r : seq I) (F1 F2 : I -> R) :
+  (forall x, List.In x r -> F1 x = F2 x) ->
+  \big[op/idx]_(i <- r) F1 i = \big[op/idx]_(i <- r) F2 i.
+Proof.
+  elim: r => [|a r IH] eqF; rewrite ?big_nil // !big_cons eqF ?IH //; last by left.
+  move => x Hx. apply: eqF. by right.
+Qed.
+
+Lemma set1_inj (T : finType) : injective (@set1 T).
+Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
+
+Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
+  x != y -> 
+  (A \subset [set x;y]) = [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
+Admitted.
+
+(** Partitions possibly including the empty equivalence class *)
+Definition pe_partition (T : finType) (P : {set {set T}}) (D : {set T}) :=
+  (cover P == D) && (trivIset P).
+
+Lemma restrictE (T : finType) (e : rel T) (A : pred T) : 
+  A =i predT -> connect (restrict A e) =2 connect e.
+Proof. 
+  move => H x y. rewrite (eq_connect (e' := e)) //. 
+  move => {x y} x y /=. by rewrite !H.
+Qed.
+
+(** Graph preliminaries *)
 
 (* Isomorphim of graphs *)
 
@@ -33,6 +91,267 @@ Definition iso2 (G1 G2 : graph2) : Prop :=
   exists2 h : h_ty G1 G2, hom_g2 h & bijective2 h.
 
 Notation "G ≈ H" := (iso2 G H) (at level 45).
+
+Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
+Proof. by []. Qed.
+Arguments consistentT [G] E.
+
+Definition remove_edges (G : graph2) (E : {set edge G}) :=
+  @point (subgraph_for (consistentT (~:E))) 
+         (Sub g_in (in_setT _)) 
+         (Sub g_in (in_setT _)).
+
+(** SGraph preliminaries *)
+
+(* TOTHINK: is this the best way to  *)
+Lemma induced_path (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path x y) : 
+  @spath G (val x) (val y) (map val (val p)).
+Proof.
+  case: p => p pth_p /=. elim: p x pth_p => /= [|z p IH] x pth_p.
+  - by rewrite (spath_nil pth_p) spathxx.
+  - rewrite !spath_cons in pth_p *. 
+    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
+Qed.
+
+Definition idp (G : sgraph) (u : G) := Build_Path (spathxx u).
+
+Lemma mem_idp (G : sgraph) (x u : G) : (x \in idp u) = (x == u).
+Proof. by rewrite inE. Qed.
+
+Lemma Path_connect (G : sgraph) (x y : G) (p : Path x y) : connect sedge x y.
+Abort. 
+
+(** NOTE: can require either x != y or x \in A *)
+Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
+  reflect (exists2 p: Path x y, irred p & p \subset A) 
+          (connect (restrict A sedge) x y).
+Admitted. (* this is essentially upathPR *)
+
+
+Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
+  equivalence_rel (connect (restrict (mem A) sedge)). 
+Proof. apply: equivalence_rel_of_sym.  apply: symmetric_restrict. exact:sg_sym. Qed.
+
+Lemma connectedTE (G : sgraph) (x y : G) : 
+  connected [set: G] -> connect sedge x y. 
+Proof. 
+  move => A. move: (A x y). rewrite !restrictE; last by move => ?; rewrite inE.
+  apply; by rewrite inE. 
+Qed.
+
+Lemma connectedTI (G : sgraph) : 
+  (forall x y : G, connect sedge x y) -> connected [set: G].
+Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
+
+Lemma connected2 (G : sgraph) (D : {set G}) : 
+  (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
+Admitted.
+
+Lemma clique1 (G : sgraph) (x : G) : clique [set x].
+Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
+
+Lemma clique2 (G : sgraph) (x y : G) : x -- y -> clique [set x;y].
+Proof. 
+  move => xy z z'. rewrite !inE. 
+  do 2 case/orP => /eqP-> // ; try by rewrite eqxx. 
+  by rewrite sg_sym.
+Qed.
+
+(* TODO: tree_axiom still uses upath - should use packaged paths ... *)
+Definition is_tree (G : sgraph) := 
+  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
+
+
+Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
+
+(** Additional Checkpoint Properties *)
+
+Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
+Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
+
+Section Checkpoints.
+Variables (G : sgraph).
+
+Hypothesis (conn_G : forall x y :G, connect sedge x y).
+
+Lemma CP_connected (U : {set G}) : connected [set: CP_ U].
+Admitted.
+
+Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
+Proof.
+  move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
+Qed.
+
+Lemma CP_SubK (U : {set G}) x (Px : x \in CP U) :
+  x = val (Sub x Px : CP_ U). 
+Proof. by rewrite SubK. Qed.
+
+Lemma cp_neighbours (x y : G) z : 
+  x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
+Proof.
+  move => A B. apply/cpP => p. case: p => [|x' p].
+  - move/spath_nil/eqP => ?. by contrab.
+  - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
+    apply/(cpP (y := y)) => //. exact: B. 
+Qed.
+
+Lemma CP_clique (U : {set G}) : 
+ @clique (link_graph G) U -> CP U = U.
+Proof.
+  move => clique_U. apply/setP => x. apply/bigcupP/idP. 
+  - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
+    move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
+    + rewrite (eqP A) cpxx inE. by move/eqP->.
+    + case/andP: (B erefl) => _ /subsetP => S /S. by case/setUP => /set1P->.
+  - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
+Qed.
+
+(** TOTHINK: have neighbouring checkpoints as {set G} or {set CP_ U} *)
+Definition ncp (U : {set G}) (p : G) : {set G} := 
+  [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
+
+Lemma ncpP (U : {set G}) (p : G) x : 
+  reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) (x \in ncp U p).
+Admitted.
+
+Lemma ncp_petal (U : {set G}) (p : G) x :
+  x \in CP U -> (p \in petal U x) = (ncp U p == [set x]).
+Proof.
+  move => Ux. rewrite inE. apply/forall_inP/eq_set1P.
+  - move => A. split.
+    + apply/ncpP; split => //.
+      case/uPathP : (conn_G p x) => q irr_q. 
+      case: (boolP [exists y in CP U, y \in [predD1 q & x]]).
+      * case/exists_inP => y /= B /predD1P /= [C D]. 
+        case:notF. apply: contraTT (A _ B) => _. apply/cpPn'.
+        case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
+        exists q1 => //. rewrite (disjointFl D12) //. admit.
+      * rewrite negb_exists_in => /forall_inP B.
+        exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
+        by rewrite inE C.
+    + move => y /ncpP [Uy [q Hq]]. 
+      have Hx : x \in q. { apply/cpP'. exact: A. }
+      apply: esym. exact: Hq. 
+  - case => A B y Hy. 
+    (* apply/negPn/negP => /cpPn' [q irr_q].  *)
+    admit.
+Admitted.
+
+Lemma ncp_CP (U : {set G}) (u : G) :
+  u \in CP U -> ncp U u = [set u].
+Proof. 
+  move => Hu.
+  apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
+  - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
+  - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_idp => /eqP.
+Qed.
+
+Lemma ncp0 (U : {set G}) x p : 
+  x \in U -> ncp U p == set0 = false.
+Admitted.
+Arguments ncp0 [U] x p.
+
+
+Lemma ncp_sinterval U (x y p : G) :
+  [set x;y] \subset CP U ->
+   sgraph.link_rel G x y -> 
+   (p \in sinterval x y) = (ncp U p == [set x; y]).
+Admitted. (* Is this really what we want? *)
+
+Lemma link_part (x y : G) :  
+  sgraph.link_rel G x y ->
+  pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
+Proof.
+  move => /= /andP [xy cp_xy]. 
+  have CPxy : CP [set x; y] = [set x; y].
+  { apply: CP_clique. exact: clique2. }
+  apply/andP; split.
+  - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
+    pose N := ncp [set x; y] p. 
+    have: N \subset [set x; y]. by rewrite /N /ncp setIdE CPxy subsetIl.
+    rewrite subset2 // (ncp0 x) ?in_setU ?set11 //=. case/or3P. 
+    + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
+      apply: mem_cover. by rewrite !inE eqxx. 
+    + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
+      apply: mem_cover. by rewrite !inE eqxx. 
+    + rewrite /N. 
+Admitted.
+
+
+(* The following lemma looks a bit strange if [ncp : {set G}] *)
+(* But do we really need this? *)
+Lemma ncp_clique (U : {set G}) (u : G) : 
+  @clique (CP_ U) [set x | val x \in (ncp U u)].
+Abort. 
+(* Proof.  *)
+(*   case: (boolP (u \in CP U)) => Hu; first by rewrite (ncp_CP Hu); exact: clique1. *)
+(*   move => x y. rewrite !inE => Hx Hy xy. *)
+(*   gen have H, A : x y Hx Hy xy / u != val x.  *)
+(*   { apply: contraNN Hu => /eqP->. exact: valP. } *)
+(*   have {H} B : u != val y by apply: (H y x) => //; by rewrite eq_sym. *)
+(*   case/(uPathRP A) : Hx => p irr_p /subsetP p_cp.  *)
+(*   case/(uPathRP B) : Hy => q irr_q /subsetP q_cp.  *)
+(*   rewrite /=. apply/andP;split. *)
+(*   - apply: contraNN xy. by move/eqP/val_inj->. *)
+(*   - set r := pcat (prev p) q. *)
+(*     apply/subsetP => z cp_z.  *)
+(*     have Hz : z \in CP U.  *)
+(*     { admit. (* Follows with CP_closed when G is connected *) } *)
+(*     move/cpP' : cp_z => /(_ r). rewrite mem_pcat mem_prev.  *)
+(*     case/orP => [/p_cp|/q_cp]; rewrite inE Hz /= => /eqP->; by rewrite !inE eqxx ?orbT. *)
+(* Admitted. *)
+
+Arguments Path G x y : clear implicits.
+
+Lemma link_path_cp (x y : G) (p : Path (link_graph G) x y) : 
+  {subset cp x y <= p}.
+Proof. apply/subsetP. apply: link_seq_cp. exact: (valP p). Qed.
+
+Lemma CP_path_cp (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
+  val z \in @cp G (val x) (val y) -> z \in p.
+Proof. 
+  move/link_path_cp. 
+  suff P : @spath (link_graph G) (val x) (val y) (map val (val p)).
+  { move/(_ (Build_Path P)). rewrite inE /= mem_map //. exact: val_inj. }
+  exact: induced_path.
+Qed.
+
+(* TOTHINK: What is the right formulation here? *)
+Lemma CP_path_aux (U : {set G}) (x y : G) (p : seq G) :
+  x \in CP U -> y \in CP U -> @spath G x y p -> uniq (x :: p) ->
+  @spath (link_graph G) x y [seq z <- p | z \in CP U].
+Admitted.
+
+Lemma CP_path (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) : 
+  irred p -> exists2 q : @Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
+Admitted.
+
+
+(** NOTE: If [CP_ U] is a tree, then there exists exactly one irredundant xy-path. *)
+Lemma CP_subtree1 (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
+  is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in @cp G (val x) (val y)).
+Proof.
+  move => tree_U irr_p. split.
+  - move => z_in_p. apply/negPn. apply/negP => /=. 
+    case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
+    have zr : z \notin r. { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
+    case: tree_U => _ /(_ x y p r). case/(_ _ _)/Wrap => // ?. subst. by contrab.
+  - simpl. exact: CP_path_cp.
+Qed.
+
+Lemma petal_inj (U : {set G}) x y :
+  x \in CP U -> y \in CP U -> x != y -> [disjoint petal U x & petal U y].
+Proof.
+  move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
+  rewrite [x](CP_SubK Ux) [y](CP_SubK Uy) !ncp_petal //.
+  by move => /eqP-> /eqP/set1_inj->.
+Qed.
+
+
+End Checkpoints.
+
+
+(** * Term Extraction *)
 
 
 (** Termination Metric *)
@@ -155,252 +474,10 @@ Admitted.
 
 (* TOTHINK: What is the most natural formulation of "has at least two components"? *)
 
-
-Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
-  symmetric e -> equivalence_rel (connect e).
-Admitted.
-
-Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
-  equivalence_rel (connect (restrict (mem A) sedge)). 
-apply: equivalence_rel_of_sym.  apply: symmetric_restrict. exact:sg_sym. Qed.
-
-
-
-Lemma connected2 (G : sgraph) (D : {set G}) : 
-  (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
-Admitted.
-
-  
-Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
-
-(* TODO: tree_axiom still uses upath - should use packaged paths ... *)
-Definition is_tree (G : sgraph) := 
-  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
-
-Lemma CP_extensive (G : sgraph) (U : {set G}) : 
-  {subset U <= CP U}.
-Proof.
-  move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
-Qed.
-
-(* TOTHINK: What is the right formulation here? *)
-Lemma CP_path_aux (G : sgraph) (U : {set G}) (x y : G) (p : seq G) :
-  x \in CP U -> y \in CP U -> @spath G x y p -> uniq (x :: p) ->
-  @spath (link_graph G) x y [seq z <- p | z \in CP U].
-Admitted.
-
-Lemma CP_path (G : sgraph) (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) : 
-  irred p -> exists2 q : @Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
-Admitted.
-
-(** NOTE: can require either x != y or x \in A *)
-Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
-  reflect (exists2 p: Path x y, irred p & p \subset A) 
-          (connect (restrict A sedge) x y).
-Admitted. (* this is essentially upathPR *)
-
-(** TOTHINK: have neighbouring checkpoints as {set G} or {set CP_ U} *)
-Definition ncp (G : sgraph) (U : {set G}) (p : G) : {set G} := 
-  [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
-
-(* Definition ncp (G : sgraph) (U : {set G}) (p : G) : {set CP_ U} :=  *)
-(*   [set x | connect (restrict [pred z | (z \in CP U) ==> (z == val x)] sedge) p (val x)]. *)
-
-Lemma ncpP (G : sgraph) (U : {set G}) (p : G) x : 
-  reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) (x \in ncp U p).
-Admitted.
-
-Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
-Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
-
-Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
-  reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
-Proof.
-  apply: (iffP eqP).
-  - move->. rewrite !inE eqxx. by split => // y /set1P.
-  - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
-Qed.
-
-
-
-Lemma ncp_petal (G : sgraph) (U : {set G}) (p : G) x  
-  (conn_G : forall x y :G, connect sedge x y) : 
-  x \in CP U -> (p \in petal U x) = (ncp U p == [set x]).
-Proof.
-  move => Ux. rewrite inE. apply/forall_inP/eq_set1P.
-  - move => A. split.
-    + apply/ncpP; split => //.
-      case/uPathP : (conn_G p x) => q irr_q. 
-      case: (boolP [exists y in CP U, y \in [predD1 q & x]]).
-      * case/exists_inP => y /= B /predD1P /= [C D]. 
-        case:notF. apply: contraTT (A _ B) => _. apply/cpPn'.
-        case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
-        exists q1 => //. rewrite (disjointFl D12) //. admit.
-      * rewrite negb_exists_in => /forall_inP B.
-        exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
-        by rewrite inE C.
-    + move => y /ncpP [Uy [q Hq]]. 
-      have Hx : x \in q. { apply/cpP'. exact: A. }
-      apply: esym. exact: Hq. 
-  - case => A B y Hy. 
-    (* apply/negPn/negP => /cpPn' [q irr_q].  *)
-    admit.
-Admitted.
-             
-
-Lemma sub_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
-  (u == Sub x Px) = (val u == x).
-Proof. by case: (SubP u) => {u} u Pu. Qed.
-
-Lemma CP_clique (G : sgraph) (U : {set G}) : 
- @clique (link_graph G) U -> CP U = U.
-Proof.
-  move => clique_U. apply/setP => x. apply/bigcupP/idP. 
-  - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
-    move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
-    + rewrite (eqP A) cpxx inE. by move/eqP->.
-    + case/andP: (B erefl) => _ /subsetP => S /S. by case/setUP => /set1P->.
-  - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
-Qed.
-
-Lemma set1_inj (T : finType) : injective (@set1 T).
-Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
-
-Lemma CP_SubK (G : sgraph) (U : {set G}) x (Px : x \in CP U) :
-  x = val (Sub x Px : CP_ U). 
-Proof. by rewrite SubK. Qed.
-
-Lemma petal_inj (G : sgraph) (U : {set G}) x y 
-  (conn_G : forall x y :G, connect sedge x y) : 
-  x \in CP U -> y \in CP U -> x != y -> [disjoint petal U x & petal U y].
-Proof.
-  move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
-  rewrite [x](CP_SubK Ux) [y](CP_SubK Uy) !ncp_petal //.
-  by move => /eqP-> /eqP/set1_inj->.
-Qed.
-
-Definition idp (G : sgraph) (u : G) := Build_Path (spathxx u).
-
-Lemma mem_pnil (G : sgraph) (x u : G) : (x \in idp u) = (x == u).
-Proof. by rewrite inE. Qed.
-
-Lemma ncp_CP (G : sgraph) (U : {set G}) (u : G) :
-  u \in CP U -> ncp U u = [set u].
-Proof. 
-  move => Hu.
-  apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
-  - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
-  - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_pnil => /eqP.
-Qed.
-
-Lemma clique1 (G : sgraph) (x : G) : clique [set x].
-Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
-
-Lemma clique2 (G : sgraph) (x y : G) : 
-  x -- y -> clique [set x;y].
-Proof. 
-  move => xy z z'. rewrite !inE. 
-  do 2 case/orP => /eqP-> // ; try by rewrite eqxx. 
-  by rewrite sg_sym.
-Qed.
-
-(* The following lemma looks a bit strange if [ncp : {set G}] *)
-(* But do we really need this? *)
-Lemma ncp_clique (G : sgraph) (U : {set G}) (u : G) : 
-  @clique (CP_ U) [set x | val x \in (ncp U u)].
-Abort. 
-(* Proof.  *)
-(*   case: (boolP (u \in CP U)) => Hu; first by rewrite (ncp_CP Hu); exact: clique1. *)
-(*   move => x y. rewrite !inE => Hx Hy xy. *)
-(*   gen have H, A : x y Hx Hy xy / u != val x.  *)
-(*   { apply: contraNN Hu => /eqP->. exact: valP. } *)
-(*   have {H} B : u != val y by apply: (H y x) => //; by rewrite eq_sym. *)
-(*   case/(uPathRP A) : Hx => p irr_p /subsetP p_cp.  *)
-(*   case/(uPathRP B) : Hy => q irr_q /subsetP q_cp.  *)
-(*   rewrite /=. apply/andP;split. *)
-(*   - apply: contraNN xy. by move/eqP/val_inj->. *)
-(*   - set r := pcat (prev p) q. *)
-(*     apply/subsetP => z cp_z.  *)
-(*     have Hz : z \in CP U.  *)
-(*     { admit. (* Follows with CP_closed when G is connected *) } *)
-(*     move/cpP' : cp_z => /(_ r). rewrite mem_pcat mem_prev.  *)
-(*     case/orP => [/p_cp|/q_cp]; rewrite inE Hz /= => /eqP->; by rewrite !inE eqxx ?orbT. *)
-(* Admitted. *)
-
-Lemma restrictE (T : finType) (e : rel T) (A : pred T) : 
-  A =i predT -> connect (restrict A e) =2 connect e.
-Proof. 
-  move => H x y. rewrite (eq_connect (e' := e)) //. 
-  move => {x y} x y /=. by rewrite !H.
-Qed.
-
-Lemma connectedTE (G : sgraph) (x y : G) : 
-  connected [set: G] -> connect sedge x y. 
-Proof. 
-  move => A. move: (A x y). rewrite !restrictE; last by move => ?; rewrite inE.
-  apply; by rewrite inE. 
-Qed.
-
-Lemma connectedTI (G : sgraph) : 
-  (forall x y : G, connect sedge x y) -> connected [set: G].
-Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
-
-
-Lemma Path_connect (G : sgraph) (x y : G) (p : Path x y) : connect sedge x y.
-Admitted.
-
-Lemma CP_connected (G : sgraph) (U : {set G}) : 
-  connected [set: G] -> connected [set: CP_ U].
-Proof.
-Admitted.
-
-Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
-  x != y -> 
-  (A \subset [set x;y]) = [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
-Admitted.
-
-Lemma ncp0 (G : sgraph) (U : {set G}) x p : 
-  x \in U -> ncp U p == set0 = false.
-Admitted.
-Arguments ncp0 [G U] x p.
-  
-Lemma mem_cover (T : finType) (P : {set {set T}}) (x : T) (A : {set T}) : 
-  A \in P -> x \in A -> x \in cover P.
-Proof. move => HP HA. apply/bigcupP. by exists A. Qed.
-
-Definition pe_partition (T : finType) (P : {set {set T}}) (D : {set T}) :=
-  (cover P == D) && (trivIset P).
-
-Lemma ncp_sinterval (G : sgraph) U (x y p : G) :
-  [set x;y] \subset CP U ->
-   sgraph.link_rel G x y -> 
-   (p \in sinterval x y) = (ncp U p == [set x; y]).
-Admitted. (* Is this really what we want? *)
-
-Lemma link_part (G : sgraph) (x y : G) :  
-  sgraph.link_rel G x y ->
-  pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
-Proof.
-  move => /= /andP [xy cp_xy]. 
-  have CPxy : CP [set x; y] = [set x; y].
-  { apply: CP_clique. exact: clique2. }
-  apply/andP; split.
-  - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
-    pose N := ncp [set x; y] p. 
-    have: N \subset [set x; y]. by rewrite /N /ncp setIdE CPxy subsetIl.
-    rewrite subset2 // (ncp0 x) ?in_setU ?set11 //=. case/or3P. 
-    + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-      apply: mem_cover. by rewrite !inE eqxx. admit.
-    + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-      apply: mem_cover. by rewrite !inE eqxx. admit.
-    + rewrite /N.
-Admitted.    
-
-
 Lemma CP2_part (G : sgraph) x y x' y' : 
   [set x; y] \subset cp x' y' -> 
   let U := [set x'; y'] in 
-  partition [set petal U x; petal U y; sinterval x y] [set: G].
+  pe_partition [set petal U x; petal U y; sinterval x y] [set: G].
 Proof.
   rewrite subUset !sub1set => /andP[A B]. 
 Admitted.
@@ -413,60 +490,11 @@ Admitted.
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
     is written in the paper. Is there a better way to phrase this? *)
-
 Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
   K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
   is_tree (CP_ U).
 Admitted.
 
-
-Lemma cp_neighbours (G : sgraph) (x y : G) z : 
-  x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
-Proof.
-  move => A B. apply/cpP => p. case: p => [|x' p].
-  - move/spath_nil/eqP => ?. by contrab.
-  - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
-    apply/(cpP (y := y)) => //. exact: B. 
-Qed.
-
-
-Arguments Path G x y : clear implicits.
-
-Lemma link_path_cp (G : sgraph) (x y : G) (p : Path (link_graph G) x y) : 
-  {subset cp x y <= p}.
-Proof. apply/subsetP. apply: link_seq_cp. exact: (valP p). Qed.
-
-(* TOTHINK: is this the best way to  *)
-Lemma induced_path (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path _ x y) : 
-  @spath G (val x) (val y) (map val (val p)).
-Proof.
-  case: p => p pth_p /=. elim: p x pth_p => /= [|z p IH] x pth_p.
-  - by rewrite (spath_nil pth_p) spathxx.
-  - rewrite !spath_cons in pth_p *. 
-    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
-Qed.
-
-Lemma CP_path_cp (G : sgraph) (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
-  val z \in @cp G (val x) (val y) -> z \in p.
-Proof. 
-  move/link_path_cp. 
-  suff P : @spath (link_graph G) (val x) (val y) (map val (val p)).
-  { move/(_ (Build_Path P)). rewrite inE /= mem_map //. exact: val_inj. }
-  exact: induced_path.
-Qed.
-
-
-(** NOTE: If [CP_ U] is a tree, then there exists exactly one irredundant xy-path. *)
-Lemma CP_subtree1 (G : sgraph) (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
-  is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in @cp G (val x) (val y)).
-Proof.
-  move => tree_U irr_p. split.
-  - move => z_in_p. apply/negPn. apply/negP => /=. 
-    case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
-    have zr : z \notin r. { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
-    case: tree_U => _ /(_ x y p r). case/(_ _ _)/Wrap => // ?. subst. by contrab.
-  - simpl. exact: CP_path_cp.
-Qed.
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> sgraph.link_rel G i o -> K4_free (add_edge i o) -> 
@@ -514,22 +542,6 @@ Proof.
     + by case/and3P : B. 
 Qed.
 
-Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
-  List.In b s -> F b <= \sum_(a <- s) F a.
-Proof. 
-  elim: s b => //= a s IH b [<-|A]; rewrite big_cons ?leq_addr //.
-  apply: leq_trans (IH _ A) _. exact: leq_addl.
-Qed.
-
-Lemma sum_gt0 (T : Type) (s : seq T) (F : T -> nat) : 
-  (forall a, List.In a s -> 0 < F a) -> 1 < size s ->
-  forall b, List.In b s -> F b < \sum_(a <- s) F a.
-Proof.
-  move => A B a a_in_s. apply/negPn. apply/negP => C. rewrite -leqNgt in C.
-  destruct s as [|b [|c s']] => //= {B}. rewrite !big_cons in C. 
-  rewrite /= in a_in_s.
-  (* should work even if we don't have decidable equality on elements of T *)
-Admitted.
 
 (* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
 parts do not have non-trivial splits *)
@@ -591,13 +603,6 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
 .
 
 
-Lemma eq_big_seq_In (R : Type) (idx : R) (op : R -> R -> R) I (r : seq I) (F1 F2 : I -> R) :
-  (forall x, List.In x r -> F1 x = F2 x) ->
-  \big[op/idx]_(i <- r) F1 i = \big[op/idx]_(i <- r) F2 i.
-Proof.
-  elim: r => [|a r IH] eqF; rewrite ?big_nil // !big_cons eqF ?IH //; last by left.
-  move => x Hx. apply: eqF. by right.
-Qed.
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
