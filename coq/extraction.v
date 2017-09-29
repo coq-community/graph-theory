@@ -65,8 +65,10 @@ Lemma set1_inj (T : finType) : injective (@set1 T).
 Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
 
 Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
-  x != y -> 
   (A \subset [set x;y]) = [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
+Proof.
+  case: (boolP (x == y)) => [/eqP ?|xy].
+  - subst y. rewrite setUid subset1. by do 2  case (A == _).
 Admitted.
 
 (** Partitions possibly including the empty equivalence class *)
@@ -313,10 +315,6 @@ Lemma ncp_sinterval U (x y p : G) :
 Proof.
 Abort.
   
-
-
-
-
 (** NOTE: This looks fairly specific, but it also has a fairly
 straightforward proof *)
 Lemma interval_petal_disj U (x y : G) :
@@ -371,11 +369,25 @@ Proof.
     + by rewrite interval_petal_disj // CPxy !inE eqxx.
 Qed.
 
-Lemma link_cp (x y u v : G) : sgraph.link_rel G x y -> 
-  u \in petal [set x; y] x -> v \in petal [set x;y] y -> [set x; y] \subset cp u v.
-Admitted.
-  
-  
+Lemma link_cpL (x y u v : G) : sgraph.link_rel G x y -> 
+  u \in petal [set x; y] x -> v \in petal [set x;y] y -> x \in cp u v.
+Proof.
+  move => /= /andP[xy CPxy]. rewrite !ncp_petal ?CP_extensive ?inE ?eqxx //. 
+  move => Nu Nv. apply: contraTT Nu. 
+  case/cpPn' => [p irr_p av_x]. 
+  have/ncpP [CPy [q Hq]]: y \in ncp [set x;y] v by rewrite (eqP Nv) set11.
+  rewrite eqEsubset negb_and. apply/orP;left. 
+  apply/subsetPn; exists y; last by rewrite !inE eq_sym.
+  apply/ncpP; split => //. exists (pcat p q) => z. 
+  have ? : @clique (link_graph G) [set x; y] by apply: clique2.
+  rewrite CP_clique // mem_pcat 3!inE => /orP[]/eqP-> //. 
+  rewrite (negbTE av_x) /=. apply: Hq. by rewrite CP_clique // inE set11.
+Qed.
+
+Lemma link_cpR (x y u v : G) : sgraph.link_rel G x y -> 
+  u \in petal [set x; y] x -> v \in petal [set x;y] y -> y \in cp u v.
+Proof. rewrite link_sym setUC cp_sym => *. exact: (@link_cpL y x v u). Qed.
+
 
 (* The following lemma looks a bit strange if [ncp : {set G}] *)
 (* But do we really need this? *)
