@@ -290,9 +290,6 @@ Proof.
   by move => /eqP-> /eqP/set1_inj->.
 Qed.
 
-
-
-
 Lemma ncp_CP (U : {set G}) (u : G) :
   u \in CP U -> ncp U u = [set u].
 Proof. 
@@ -304,7 +301,14 @@ Qed.
 
 Lemma ncp0 (U : {set G}) x p : 
   x \in U -> ncp U p == set0 = false.
-Admitted.
+Proof. 
+  move => Ux'. 
+  case/uPathP : (conn_G p x) => q irr_q. 
+  have Ux: x \in CP U by apply: CP_extensive.
+  case: (split_at_first Ux (nodes_end q)) => y [q1] [q2] [def_q CPy Hy].
+  suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
+  apply/ncpP. split => //. by exists q1. 
+Qed.
 Arguments ncp0 [U] x p.
 
 (** Do we really need the follwing lemma in its full generality *)
