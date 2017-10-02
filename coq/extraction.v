@@ -142,11 +142,78 @@ Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
           (connect (restrict A sedge) x y).
 Admitted. (* this is essentially upathPR *)
 
+Lemma last_take (T : eqType) (x : T) (p : seq T) (n : nat): 
+  n <= size p -> last x (take n p) = nth x (x :: p) n.
+Proof.
+  elim: p x n => [|a p IHp] x [|n] Hn //=.
+  by rewrite IHp // (set_nth_default a x). 
+Qed.
+
+(** TOTHINK: Providing an injection from (proofs of [x -- y]) to
+(trivial) paths and then using the monoid structure with [pcat] seems
+preferable to providing a cons operation *)
+
+Lemma trivp_proof (G : sgraph) (x y : G) (xy : x -- y) : 
+  spath x y [:: y]. 
+Proof. by rewrite spath_cons xy spathxx. Qed.
+
+Definition trivp (G : sgraph) (x y : G) (xy : x -- y) := 
+  Build_Path (trivp_proof xy).
+
+Lemma splitL (G : sgraph) (x y : G) (p : Path x y) : 
+  x != y -> exists z xy (p' : Path z y), p = pcat (trivp xy) p'.
+Admitted.
+
+Lemma splitR (G : sgraph) (x y : G) (p : Path x y) : 
+  x != y -> exists z (p' : Path x z) zy, p = pcat p' (trivp zy).
+Admitted.
+
+(** 
+Lemma pcons_proof (G : sgraph) (x y z : G) (p : seq G) :
+  x -- y -> spath y z p -> spath x z (y::p).
+Proof. by rewrite spath_cons => -> ->.  Qed.
+
+Definition pcons (G : sgraph) (x y z : G) (xy : x -- y) (p : Path y z) :=
+  Build_Path (pcons_proof xy (valP p)).
+Arguments pcons [G x y z] xy p. 
+
+Lemma splitL (G : sgraph) (x y : G) (p : Path x y) : 
+  x != y -> exists z xz (p' : Path z y), p = pcons xz p'.
+*)
+
+Lemma split_at_first_aux (G : sgraph) {A : pred G} x y (p : seq G) k : 
+    spath x y p -> k \in A -> k \in x::p -> 
+    exists z p1 p2, [/\ p = p1 ++ p2, spath x z p1, spath z y p2, z \in A 
+                & forall z', z' \in A -> z' \in x::p1 -> z' = z].
+Proof.
+  move => pth_p in_A in_p. 
+  pose n := find A (x::p). 
+  pose p1 := take n p.
+  pose p2 := drop n p.
+  pose z := last x p1.
+  have def_p : p = p1 ++ p2 by rewrite cat_take_drop.
+  move: pth_p. rewrite {1}def_p spath_cat. case/andP => pth_p1 pth_p2.
+  have X : has A (x::p) by apply/hasP; exists k.
+  have z_nth : z = nth x (x :: p) (find A (x :: p)). 
+  { rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. }
+  exists z. exists p1. exists p2. split => //.
+  - rewrite z_nth. exact: nth_find.
+  - move => z' in_A' in_p'. rewrite z_nth. 
+Admitted.
+                                                                
+
 Lemma split_at_first (G : sgraph) {A : pred G} x y (p : Path x y) k :
   k \in A -> k \in p ->
   exists z (p1 : Path x z) (p2 : Path z y), 
     [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
 Proof.
+  case: p => p pth_p /= kA kp. 
+  case: (split_at_first_aux pth_p kA kp) => z [p1] [p2] [def_p pth_p1 pth_p2 A1 A2].
+  exists z. exists (Build_Path pth_p1). exists (Build_Path pth_p2). split => //.
+  subst p. exact: val_inj.
+Qed.
+  
+
   case: p => p pth_p /= kA kp. rewrite inE in kp. case/predU1P : kp => kp.
   - subst x. exists k. exists (idp k). exists (Build_Path pth_p). admit.
   - rewrite /= in kp. 
