@@ -126,7 +126,7 @@ Qed.
 Definition idp (G : sgraph) (u : G) := Build_Path (spathxx u).
 
 Lemma mem_idp (G : sgraph) (x u : G) : (x \in idp u) = (x == u).
-Proof. by rewrite inE. Qed.
+Proof. by rewrite mem_path !inE. Qed.
 
 Lemma Path_connect (G : sgraph) (x y : G) (p : Path x y) : connect sedge x y.
 Abort. 
@@ -207,18 +207,13 @@ Lemma split_at_first (G : sgraph) {A : pred G} x y (p : Path x y) k :
   exists z (p1 : Path x z) (p2 : Path z y), 
     [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
 Proof.
-  case: p => p pth_p /= kA kp. 
+  case: p => p pth_p /= kA kp. rewrite mem_path in kp.
   case: (split_at_first_aux pth_p kA kp) => z [p1] [p2] [def_p pth_p1 pth_p2 A1 A2].
   exists z. exists (Build_Path pth_p1). exists (Build_Path pth_p2). split => //.
-  subst p. exact: val_inj.
+  + subst p. exact: val_inj.
+  + move => ?. rewrite mem_path. exact: A2.
 Qed.
-  
-
-  case: p => p pth_p /= kA kp. rewrite inE in kp. case/predU1P : kp => kp.
-  - subst x. exists k. exists (idp k). exists (Build_Path pth_p). admit.
-  - rewrite /= in kp. 
-    pose n := find A p.
-Admitted. (* find-take-drop surgery *)
+ 
 
 Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
   equivalence_rel (connect (restrict (mem A) sedge)). 
@@ -334,7 +329,7 @@ Proof.
         case:notF. apply: contraTT (A _ B) => _. apply/cpPn'.
         case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
         exists q1 => //. rewrite (disjointFl D12) //. 
-        suff: x \in q2. by rewrite inE (negbTE C). 
+        suff: x \in q2. by rewrite mem_path inE (negbTE C). 
         by rewrite nodes_end.
       * rewrite negb_exists_in => /forall_inP B.
         exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
@@ -483,18 +478,22 @@ Abort.
 (*     case/orP => [/p_cp|/q_cp]; rewrite inE Hz /= => /eqP->; by rewrite !inE eqxx ?orbT. *)
 (* Admitted. *)
 
-Arguments Path G x y : clear implicits.
 
 Lemma link_path_cp (x y : G) (p : Path (link_graph G) x y) : 
   {subset cp x y <= p}.
-Proof. apply/subsetP. apply: link_seq_cp. exact: (valP p). Qed.
+Proof. 
+  apply/subsetP. rewrite /in_nodes nodesE. apply: link_seq_cp.
+  exact: (valP p). 
+Qed.
 
 Lemma CP_path_cp (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
   val z \in @cp G (val x) (val y) -> z \in p.
 Proof. 
   move/link_path_cp. 
   suff P : @spath (link_graph G) (val x) (val y) (map val (val p)).
-  { move/(_ (Build_Path P)). rewrite inE /= mem_map //. exact: val_inj. }
+  { move/(_ (Build_Path P)). 
+    (* TOTHINK: Why do we need in_collective BEFORE mem_path??? *)
+    rewrite !in_collective !mem_path -map_cons mem_map //. exact: val_inj. }
   exact: induced_path.
 Qed.
 

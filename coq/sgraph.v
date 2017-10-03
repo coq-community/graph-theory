@@ -332,8 +332,10 @@ End PathDef.
 Section Primitives.
   Variables (x y z : G) (p : Path x y) (q : Path y z).
 
-  Definition nodes := x :: val p.
+  Definition nodes := locked (x :: val p).
+  Lemma nodesE : nodes = x :: val p. by rewrite /nodes -lock. Qed.
   Definition irred := uniq nodes.
+  Lemma irredE : irred = uniq (x :: val p). by rewrite /irred nodesE.  Qed.
   Definition tail := val p.
 
   Definition pcat_proof := spath_concat (valP p) (valP q).
@@ -347,11 +349,11 @@ Section Primitives.
 
 End Primitives.
 
-Definition in_nodes x y := (fun (p : Path x y) u => nosimpl u \in nodes p).
+Definition in_nodes x y (p : Path x y) : collective_pred G := [pred u | u \in nodes p].
 Canonical Path_predType x y := Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
 
 Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
-Proof. done. Qed.
+Proof. by rewrite in_collective /nodes -lock. Qed.
 
 Section PathTheory.
 Variables (x y z : G) (p : Path x y) (q : Path y z).
@@ -360,18 +362,18 @@ Lemma nodes_end : y \in p.
 Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
 
 Lemma nodes_start : x \in p.
-Proof. by rewrite mem_head. Qed.
+Proof. by rewrite mem_path mem_head. Qed.
 
 Lemma mem_pcatT u : (u \in pcat p q) = (u \in p) || (u \in tail q).
-Proof. by rewrite !inE mem_cat -orbA. Qed.
+Proof. by rewrite !mem_path !inE mem_cat -orbA. Qed.
 
 Lemma tailW : {subset tail q <= q}.
-Proof. move => u. exact: mem_tail. Qed.
+Proof. move => u. rewrite mem_path. exact: mem_tail. Qed.
 
 Lemma mem_pcat u :  (u \in pcat p q) = (u \in p) || (u \in q).
 Proof. 
   rewrite mem_pcatT. case A: (u \in p) => //=. 
-  rewrite inE (_ : u == y = false) //. 
+  rewrite mem_path inE (_ : u == y = false) //. 
   apply: contraFF A => /eqP->. exact: nodes_end. 
 Qed.
 
@@ -383,7 +385,7 @@ Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 Lemma Path_split z x y (p : Path x y) : 
   z \in p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
 Proof.
-  move: (valP p) => pth_p in_p. 
+  move: (valP p) => pth_p in_p. rewrite mem_path in in_p.
   case/(ssplitP in_p) E : {1}(val p) / pth_p => [p1 p2 P1 P2].
   exists (Sub p1 P1). exists (Sub p2 P2). exact: val_inj. 
 Qed.
@@ -391,8 +393,8 @@ Qed.
 Lemma irred_cat x y z (p : Path x z) (q : Path z y) : 
   irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
 Proof.
-  rewrite /irred /nodes /pcat -cat_cons cat_uniq -disjoint_has disjoint_sym.
-  case A : [disjoint _ & _] => //. case: (uniq (x :: _)) => //=. 
+  rewrite /irred {1}/nodes -lock /pcat SubK -cat_cons cat_uniq -disjoint_has disjoint_sym -nodesE.
+  case A : [disjoint _ & _] => //. case: (uniq (nodes p)) => //=. rewrite nodesE /=.
   case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // nodes_end. 
 Qed.
 
@@ -400,13 +402,14 @@ Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
 Proof.
   rewrite /irred /nodes => U. apply: leq_size_uniq U _ _. 
   - move => u. by rewrite mem_prev.
-  - by rewrite /= ltnS /srev size_rev size_belast.
+  - by rewrite -!lock /= ltnS /srev size_rev size_belast.
 Qed.
  
 Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect sedge x y).
 Proof. 
-  apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]]; first by exists (Sub p P).
-  exists (val p). apply/andP;split => //. exact: valP.
+  apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]]. 
+  + exists (Sub p P).  by rewrite /irred nodesE.
+  + exists (val p). apply/andP;split; by [rewrite /irred nodesE in I| exact: valP].
 Qed.
 
 CoInductive isplit z x y : Path x y -> Prop := 
@@ -872,14 +875,17 @@ Section CheckPoints.
   
   Lemma cpP' x y z : reflect (forall p : Path x y, z \in p) (z \in cp x y).
   Proof. 
-    apply: (iffP cpP) => [H p|H p Hp]; last exact: (H (Sub p Hp)).
-    apply: H.  exact: valP. 
+    apply: (iffP cpP) => [H p|H p Hp]. 
+    + rewrite in_collective nodesE. apply: H. exact: valP. 
+    + move: (H (Sub p Hp)). by rewrite in_collective nodesE. 
   Qed.
 
   Lemma cpPn' x y z : reflect (exists2 p : Path x y, irred p & z \notin p) (z \notin cp x y).
   Proof. 
-    apply: (iffP cpPn) => [[p /andP [I Hp] N]|[p U N]]; first by exists (Sub p Hp).
-    exists (val p) => //. apply/andP. split => //. exact: valP. 
+    apply: (iffP cpPn) => [[p /andP [I Hp] N]|[p U N]]. 
+    + exists (Sub p Hp); by rewrite /irred ?in_collective nodesE. 
+    + rewrite /irred ?in_collective nodesE in U N.
+      exists (val p) => //. apply/andP. split => //. exact: valP. 
   Qed.
 
   Lemma cpNI' x y (p : Path x y) z : z \notin p -> z \notin cp x y.
@@ -932,8 +938,8 @@ Section CheckPoints.
     case/uPathP : (G_conn x y) => p irr_p.
     move/cpP'/(_ p) : cp_z. case/(isplitP irr_p) => p1 p2 A B C.
     exists (prev p1). exists p2. rewrite mem_prev. apply/orP. 
-    case E : (t \in p1) => //=. rewrite !inE (negbTE tNz) /=.
-    apply/negP. exact: disjointE C _.
+    case E : (t \in p1) => //=. 
+    by rewrite mem_path !inE (negbTE tNz) (disjointFr C E).
   Qed.
   
   Lemma CP_closed U x y : 
@@ -1147,7 +1153,8 @@ Section CheckPoints.
   Lemma idx_end x y (p : Path x y) : 
     irred p -> idx p y = size (tail p).
   Proof.
-    move => irr_p. by rewrite /idx /nodes -[in index _](path_last p) index_last.
+    rewrite /irred nodesE => irr_p. 
+    by rewrite /idx nodesE -[in index _](path_last p) index_last.
   Qed.
 
   Section IDX.
@@ -1175,23 +1182,23 @@ Section CheckPoints.
     Lemma idxR u : u \in nodes (pcat p q) -> 
       (u \in tail q) = z <[pcat p q] u.
     Proof.
-      move => A. symmetry. rewrite /idx /pcat /nodes -cat_cons index_cat nodes_end.
+      move => A. symmetry. rewrite /idx /pcat nodesE -cat_cons index_cat -nodesE nodes_end.
       rewrite index_cat mem_pcatT in A *. case/orP: A => A.
       - rewrite A (disjointFr dis_pq A). apply/negbTE. 
         rewrite -leqNgt -!/(idx _ _) (idx_end irr_p) -ltnS. 
-        rewrite -index_mem in A. by apply: leq_trans A _.
+        rewrite -index_mem in A. apply: leq_trans A _. by rewrite nodesE.
       - rewrite A (disjointFl dis_pq A) -!/(idx _ _) (idx_end irr_p).
-        by rewrite /= addSn ltnS leq_addr. 
+        by rewrite nodesE /= addSn ltnS leq_addr. 
     Qed.
 
     Lemma idx_catL u v : u \in tail q -> v \in tail q -> u <[pcat p q] v = u <[q] v.
     Proof.
-      move => A B. rewrite /idx /nodes -!cat_cons !index_cat.
-      have C : (u \notin x :: val p). 
+      move => A B. rewrite /idx nodesE -!cat_cons !index_cat -nodesE.
+      have C : (u \notin nodes p). 
       { apply/negP. apply: disjointE A. by rewrite disjoint_sym dis_pq. }
-      have D : (v \notin x :: val p). 
+      have D : (v \notin nodes p). 
       { apply/negP. apply: disjointE B. by rewrite disjoint_sym dis_pq. }
-      rewrite (negbTE C) (negbTE D) ltn_add2l /=.
+      rewrite (negbTE C) (negbTE D) ltn_add2l nodesE /=.
       have -> : z == u = false. apply: contraTF C => /eqP<-. by rewrite negbK nodes_end.
       have -> : z == v = false. apply: contraTF D => /eqP<-. by rewrite negbK nodes_end.
       by rewrite ltnS.
@@ -1272,9 +1279,9 @@ Section CheckPoints.
   Lemma idx_srev a x y (p : Path x y) : 
     a \in p -> irred p -> idx (prev p) a = size (pval p) - idx p a.
   Proof. 
-    move => A B. rewrite /idx /nodes /prev SubK /srev. 
+    move => A B. rewrite /idx /prev !nodesE SubK /srev. 
     case/andP: (valP p) => p1 /eqP p2. 
-    by rewrite -rev_rcons -[X in rcons _ X]p2 -lastI index_rev.
+    by rewrite -rev_rcons -[X in rcons _ X]p2 -lastI index_rev // -?nodesE -?irredE. 
   Qed.
                                               
   Lemma idx_swap a b x y (p : Path x y) : a \in p -> b \in p -> irred p ->
@@ -1284,8 +1291,8 @@ Section CheckPoints.
     have H : a != b. { apply: contraTN A => /eqP->. by rewrite ltnn. }
     rewrite !idx_srev //. apply: ltn_sub2l => //. 
     apply: (@leq_trans (idx p b)) => //. 
-    rewrite -ltnS -[X in _ < X]/(size (nodes p)).
-    by rewrite index_mem.
+    rewrite -ltnS -[X in _ < X]/(size (x :: pval p)).
+    by rewrite -nodesE index_mem.
   Qed. 
 
   Lemma three_way_split x y (p : Path x y) a b :
@@ -1299,7 +1306,7 @@ Section CheckPoints.
     case/(isplitP irr_p2') def_p1' : {1}p2' / (tailW Y2) => [p2 p3 irr_p2 irr_p3 D2]. subst p2'.
     exists p1. exists p2. exists p3. split => //. 
     have A: a != b. { apply: contraTN a_before_b => /eqP=>?. subst b. by rewrite ltnn. }
-    by rewrite inE (negbTE A) (disjointFr D2 (nodes_start p2)).
+    by rewrite mem_path inE (negbTE A) (disjointFr D2 (nodes_start p2)).
   Qed.
 
   Lemma CP_triangle (x y z: CP_) : 
