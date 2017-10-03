@@ -134,7 +134,17 @@ Abort.
 
 Lemma connectRI (G : sgraph) (A : pred G) x y (p : Path x y) :
   {subset p <= A} -> connect (restrict A sedge) x y.
-Admitted.
+Proof.
+  case: p => p pth_p sub_A.
+  have {sub_A} sub_A : {subset (x::p) <= A}. 
+  { move => z ?. apply: sub_A. by rewrite mem_path. }
+  elim: p x pth_p sub_A  => [|a p IH] x. 
+  - move/spath_nil => -> _. exact: connect0.
+  - rewrite spath_cons => /andP [H1 H2] sub. 
+    apply: connect_trans _ (IH _ H2 _).
+    + apply: connect1. by rewrite /= H1 !sub ?inE ?eqxx.
+    + by case/subset_cons : sub.
+Qed.
 
 (** NOTE: need to require either x != y or x \in A *)
 Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
@@ -160,13 +170,46 @@ Proof. by rewrite spath_cons xy spathxx. Qed.
 Definition trivp (G : sgraph) (x y : G) (xy : x -- y) := 
   Build_Path (trivp_proof xy).
 
+Lemma mem_trivp (G : sgraph) (x y z : G) (xy : x -- y) :
+  z \in trivp xy = (z == x) || (z == y).
+Proof. by rewrite mem_path !inE. Qed.
+
 Lemma splitL (G : sgraph) (x y : G) (p : Path x y) : 
   x != y -> exists z xy (p' : Path z y), p = pcat (trivp xy) p'.
-Admitted.
+Proof.
+  move => xy. case: p => p. elim: p x xy => [|a p IH] x xy H.
+  - move/spath_nil : (H) => ?. subst y. by rewrite eqxx in xy.
+  - move: (H) => H'. move: H. rewrite spath_cons => /andP [A B].
+    exists a. exists A. exists (Build_Path B). exact: val_inj.
+Qed.
 
 Lemma splitR (G : sgraph) (x y : G) (p : Path x y) : 
   x != y -> exists z (p' : Path x z) zy, p = pcat p' (trivp zy).
-Admitted.
+Proof.
+  move => xy. case: p. elim/last_ind => [|p a IH] H.
+  - move/spath_nil : (H) => ?. subst y. by rewrite eqxx in xy.
+  - move: (H) => H'. 
+    case/andP : H. rewrite rcons_path => /andP [A B] C.
+    have sP : spath x (last x p) p by rewrite /spath A eqxx.
+    move: (spath_rcons H') => ?; subst a.
+    exists (last x p). exists (Build_Path sP). exists B. 
+    apply: val_inj => /=. by rewrite cats1.
+Qed.
+
+Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
+  connected [set z in p].
+Proof. 
+  move => u v. rewrite 2!inE => A B. 
+  case: (Path_split A) => {A} p1 [p2 def_p]. subst p.
+  rewrite mem_pcat in B. case/orP: B. 
+  - case/Path_split => p11 [p12 def_p1]. 
+    apply: (connectRI (p := (prev p12))) => z. 
+    by rewrite mem_prev !inE def_p1 !mem_pcat => ->.
+  - case/Path_split => p21 [p22 def_p2]. 
+    apply: (connectRI (p := p21)) => z. 
+    by rewrite !inE def_p2 !mem_pcat => ->.
+Qed.
+  
 
 (** 
 Lemma pcons_proof (G : sgraph) (x y z : G) (p : seq G) :
@@ -198,7 +241,19 @@ Proof.
   { rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. }
   exists z. exists p1. exists p2. split => //.
   - rewrite z_nth. exact: nth_find.
-  - move => z' in_A' in_p'. rewrite z_nth. 
+  - move => z' in_A' in_p'. 
+    rewrite z_nth. 
+    rewrite -[z'](nth_index x in_p'). 
+    suff S: index z' (x :: p1) = find A (x :: p).
+    { by rewrite -S def_p -cat_cons nth_cat index_mem in_p'. }
+    rewrite def_p -cat_cons find_cat (_ : has A (x::p1) = true); last by (apply/hasP;exists z').
+
+    (* rewrite /z. apply/eqP.  *)
+    (* apply: contraTT in_A' => B. *)
+    (* rewrite -[z'](nth_index x in_p') unfold_in before_find //. *)
+    (* suff S: find A (x::p1) = find A (x::p). *)
+    (* { rewrite S.  *)
+    (** What exactly is going on here *)
 Admitted.
                                                                 
 
@@ -251,15 +306,117 @@ Definition is_tree (G : sgraph) :=
 
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
+
+Definition minor_map (G H : sgraph) (phi : G -> option H) := 
+  [/\ (forall y : H, exists x : G, phi x = Some y),
+     (forall y : H, connected (phi @^-1 Some y)) &
+     (forall x y : H, x -- y -> exists x0 y0 : G,
+      [/\ x0 \in phi @^-1 Some x, y0 \in phi @^-1 Some y & x0 -- y0])].
+
+Fact minor_of_map (G H : sgraph) (phi : G -> option H): 
+  minor_map phi -> minor G H.
+Proof. case => *. exact: (MinorI (phi := phi)). Qed.
+
+Definition C3_rel := [rel x y : 'I_3 | x != y].
+
+Fact C3_sym : symmetric C3_rel. 
+Proof. move => x y /=. by rewrite eq_sym. Qed.
+
+Fact C3_irrefl : irreflexive C3_rel. 
+Proof. move => x /=. by rewrite eqxx. Qed.
+
+Definition C3 := SGraph C3_sym C3_irrefl.
+
 (** Additional Checkpoint Properties *)
 
 Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
 Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
 
+Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
+Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
+
+  
+    
+
+
 Section Checkpoints.
 Variables (G : sgraph).
 
 Hypothesis (conn_G : forall x y :G, connect sedge x y).
+
+Lemma linkNeq (x y : link_graph G) : x -- y -> x != y.
+Admitted.
+
+Lemma link_cpN (x y z : G) : 
+  (x : link_graph G) -- y -> z != x -> z != y -> z \notin cp x y.
+Admitted.
+
+Arguments Path G x y : clear implicits.
+
+Lemma triangle_lemma (x y z : link_graph G) : 
+  x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
+  minor_map phi & {in [set x;y;z] & , injective phi}.
+Proof.
+  (* move => /= /andP [xy CPxy] /andP [yz CPyz] /andP [zx CPzx].  *)
+  move => xy yz zx.
+  have/cpPn' [p irr_p av_z] : (z:G) \notin @cp G x y. 
+  { apply: link_cpN => //; apply: linkNeq => //. by rewrite sg_sym. }
+  case/uPathP : (conn_G z y) => q irr_q. 
+  have Yq : y \in q by apply: nodes_end. 
+  have Yp : y \in p by apply: nodes_end. 
+  case: (split_at_first (G := G) Yp Yq) => n1 [q1] [q2] [def_q Q1 Q2]. 
+  have {q irr_q Yq def_q q2 Yp} irr_q1 : irred q1.
+  { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
+  wlog Hn : x y xy yz zx p irr_p av_z Q1 Q2 / n1 != x.
+  { move => W.
+    have/orP [E|E] : (n1 != x) || (n1 != y). 
+    { rewrite -negb_and. apply: contraTN (linkNeq xy). 
+      case/andP=> /eqP<- /eqP<-. by rewrite eqxx. }
+    - by apply: (W x y _ _ _ p).
+    - rewrite [[set x;y]]setUC. 
+      apply: (W y x _ _ _ (prev p)); try by rewrite // ?mem_prev 1?sg_sym.
+      + exact: prev_irred.
+      + move => z'. rewrite mem_prev. exact: Q2. }
+  have/cpPn' [q irr_q av_n1] : n1 \notin @cp G z x. 
+  { apply link_cpN => //. apply: contraNN av_z => /eqP?. by subst n1. }
+  have Xq : x \in q by apply: nodes_end. 
+  have Xp : x \in p by apply: nodes_start.
+  case: (split_at_first (G := G) Xp Xq) => n2 [q2] [q2'] [def_q Q3 Q4]. 
+  have N : n1 != n2. 
+  { apply: contraNN av_n1 => /eqP->. by rewrite def_q mem_pcat nodes_end. }
+  have {q irr_q av_n1 Xp Xq q2' def_q} irr_q2 : irred q2.
+  { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
+  wlog before: n1 n2 q1 q2 irr_q1 irr_q2 Q1 Q2 Q3 Q4 N {Hn} / idx p n1 < idx p n2. 
+  { move => W. 
+    case: (ltngtP (idx p n1) (idx p n2)) => H.
+    - by apply: (W n1 n2 q1 q2).
+    - apply: (W n2 n1 q2 q1) => //. by rewrite eq_sym.
+    - case:notF. apply: contraNT N => _. apply/eqP. exact: idx_inj H. }
+  case: (splitR q1 _) => [|z1 [q1' [zn1 def_q1]]]; 
+    first by apply: contraNN av_z => /eqP->.
+  case: (splitR q2 _) => [|z2 [q2' [zn2 def_q2]]]; 
+    first by apply: contraNN av_z => /eqP->.
+  gen have D,D1 : z1 n1 q1 q1' zn1 irr_q1 def_q1  Q2 {Q1 N before} / 
+     [disjoint p & q1'].
+  { have A : n1 \notin q1'. 
+    { move: irr_q1. rewrite def_q1 irred_cat /= => /and3P[_ _ A].
+      by rewrite (disjointFl A _). }
+    rewrite disjoint_subset. apply/subsetP => z' Hz'. rewrite !inE.
+    apply: contraNN A => A. 
+    by rewrite -[n1](Q2 _ Hz' _) // def_q1 mem_pcat A. }
+  have {D} D2 : [disjoint p & q2'] by apply: (D z2 n2 q2 q2' zn2).
+  case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ _ D3]; subst p.
+  have N2 : n2 \in p2. { rewrite -idxR // in before. exact: tailW. }
+  
+  (* TODO: This will be a nightmare to reason about *)
+  pose phi u : option C3 := 
+    if u \in p1 then Some ord0
+    else if u \in tail p2 then Some ord1
+         else if u \in pcat (prev q1') (q2') then Some ord2
+              else None.
+  exists phi.
+Admitted.                    
+
 
 Lemma petalP (U : {set G}) x z : 
   reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
@@ -306,7 +463,7 @@ Definition ncp (U : {set G}) (p : G) : {set G} :=
 
 (* TOTHINK: Do we also want to require [irred q] *)
 Lemma ncpP (U : {set G}) (p : G) x : 
-  reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) (x \in ncp U p).
+  reflect (x \in CP U /\ exists q : Path _ p x, forall y, y \in CP U -> y \in q -> y = x) (x \in ncp U p).
 Proof.
   rewrite inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
   - case: (boolP (p == x)) => [/eqP ?|px]. 
@@ -519,6 +676,8 @@ Proof.
     case: tree_U => _ /(_ x y p r). case/(_ _ _)/Wrap => // ?. subst. by contrab.
   - simpl. exact: CP_path_cp.
 Qed.
+
+
 
 
 
