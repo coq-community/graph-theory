@@ -7,6 +7,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Set Bullet Behavior "Strict Subproofs". 
+
 Definition dom t := tmI (tmS t tmT) tm1.
 
 (** Preliminaries *)
@@ -361,12 +363,18 @@ Proof. apply: contraTN => /eqP->. by rewrite sgP. Qed.
 
 Lemma link_cpN (x y z : G) : 
   (x : link_graph G) -- y -> z != x -> z != y -> z \notin cp x y.
-Admitted.
+Proof.
+  move => /= /andP [_ A] B C. 
+  apply/negP. move/(subsetP A). by rewrite !inE (negbTE B) (negbTE C).
+Qed.
+
+Notation "[ 'disjoint3' A & B & C ]" :=
+  ([&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]])
+  (format "[ 'disjoint3'  A  &  B  &  C ]" ).
 
 Section Disjoint3.
 Variables (T : finType) (A B C : mem_pred T).
 
-Definition disjoint3 := [&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]].
 
 CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
 | Dis3In1   of x \in A : disjoint3_cases x true false false
@@ -374,7 +382,8 @@ CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=
 | Dis3In3   of x \in C : disjoint3_cases x false false true
 | Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
 
-Lemma disjoint3P x : disjoint3 -> disjoint3_cases x (x \in A) (x \in B) (x \in C).
+Lemma disjoint3P x : 
+  [disjoint3 A & B & C] -> disjoint3_cases x (x \in A) (x \in B) (x \in C).
 Proof.
   case/and3P => D1 D2 D3.
   case: (boolP (x \in A)) => HA. 
@@ -389,8 +398,13 @@ Lemma restrict_mono (T : Type) (A B : pred T) (e : rel T) :
   subpred A B -> subrel (restrict A e) (restrict B e).
 Proof. move => H x y /= => /andP [/andP [H1 H2] ->]. by rewrite !unfold_in !H. Qed.
 
+Definition disjoint_transL := disjoint_trans.
+Lemma disjoint_transR (T : finType) (A B C : pred T) :
+ A \subset B -> [disjoint C & B] -> [disjoint C & A].
+Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjoint_trans. Qed.
+
 Arguments Path G x y : clear implicits.
-Set Bullet Behavior "Strict Subproofs". 
+
 
 Lemma triangle_lemma (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
@@ -458,8 +472,12 @@ Proof.
     else if u \in p2' then Some ord1
          else if u \in pz then Some ord2
               else None.
-  have D : disjoint3 (mem p1) (mem p2') (mem pz).
-  { admit. }
+  have D : [disjoint3 p1 & p2' & pz].
+  { apply/and3P. split.
+    - apply: disjoint_transR D3. apply/subsetP => u. 
+      rewrite def_p2. by rewrite /tail /= in_collective nodesE. (* ugly *)
+    - admit.
+    - admit. }
   (** TODO: clean up assumptions that are no longer needed *)
 
   have [Px Py Pz] : [/\ x \in p1, y \in p2' & z \in pz]. 
@@ -484,11 +502,18 @@ Proof.
       * move: (connected_path (p := p1) (ins Hu) (ins Hv)).
         apply: connect_mono. apply: restrict_mono => {u v Hu Hv} u.
         rewrite !inE /phi. by case: (disjoint3P u D).
-      * move: (connected_path (p := p2')). admit.
-      * admit.
+      * move: (connected_path (p := p2') (ins Hu) (ins Hv)).
+        apply: connect_mono. apply: restrict_mono => {u v Hu Hv} u.
+        rewrite !inE /phi. by case: (disjoint3P u D).
+      * move: (connected_path (p := pz) (ins Hu) (ins Hv)).
+        apply: connect_mono. apply: restrict_mono => {u v Hu Hv} u.
+        rewrite !inE /phi. by case: (disjoint3P u D).
     + move => c1 c2.
-      wlog: c1 c2 / c1 < c2. 
-      { admit. }
+      wlog: c1 c2 / c1 < c2.
+      { move => W. case: (ltngtP c1 c2) => [|A B|A B]; first exact: W.
+        - case: (W _ _ A _) => [|y0 [x0] [? ? ?]]; first by rewrite sgP. 
+          exists x0; exists y0. by rewrite sgP.
+        - case/ord_inj : A => ?. subst. by rewrite sgP in B. }        
       case: c1 => [[|[|[|//]]]]; case: c2 => [[|[|[|//]]]] //= Hc2 Hc1 _ _. 
       * exists n1. exists n1'. rewrite !inE n_edge. split => //.
         -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 
@@ -1045,13 +1070,13 @@ Proof.
     + case: (boolP (adjacent g_in g_out)) => adj_io.
       * congr tmI. admit. 
       * apply: eq_big_seq_In => H in_parG. apply: Efg.
-        + split. 
-          * exact: split_connected in_parG.
-          * exact: split_K4_free in_parG.
-          * apply: measure_card. rewrite -[X in _ < X]split_edges //.
-            apply: sum_gt0 => // [{H in_parG} H|].
-            -- exact: split_nontrivial.
-            -- exact: split_K4_nontrivial.
+        -- split. 
+          ** exact: split_connected in_parG.
+          ** exact: split_K4_free in_parG.
+        -- apply: measure_card. rewrite -[X in _ < X]split_edges //.
+           apply: sum_gt0 => // [{H in_parG} H|].
+           ** exact: split_nontrivial.
+           ** exact: split_K4_nontrivial.
     + exact: check_point_wf.
 Admitted.
 
