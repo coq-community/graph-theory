@@ -128,6 +128,11 @@ Definition idp (G : sgraph) (u : G) := Build_Path (spathxx u).
 Lemma mem_idp (G : sgraph) (x u : G) : (x \in idp u) = (x == u).
 Proof. by rewrite mem_path !inE. Qed.
 
+Lemma irred_idp (G : sgraph) (x : G) (p : Path x x) : 
+  irred p -> p = idp x.
+Proof. 
+Admitted.
+
 Lemma Path_connect (G : sgraph) (x y : G) (p : Path x y) : connect sedge x y.
 Abort. 
 
@@ -195,6 +200,9 @@ Proof.
     exists (last x p). exists (Build_Path sP). exists B. 
     apply: val_inj => /=. by rewrite cats1.
 Qed.
+
+Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
+Proof. by rewrite inE. Qed.
 
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
   connected [set z in p].
@@ -344,14 +352,45 @@ Variables (G : sgraph).
 
 Hypothesis (conn_G : forall x y :G, connect sedge x y).
 
+Lemma edgeNeq (x y : G) : x -- y -> x != y.
+Proof. apply: contraTN => /eqP->. by rewrite sgP. Qed.
+
 Lemma linkNeq (x y : link_graph G) : x -- y -> x != y.
-Admitted.
+Proof. apply: contraTN => /eqP->. by rewrite sgP. Qed.
+
 
 Lemma link_cpN (x y z : G) : 
   (x : link_graph G) -- y -> z != x -> z != y -> z \notin cp x y.
 Admitted.
 
+Section Disjoint3.
+Variables (T : finType) (A B C : mem_pred T).
+
+Definition disjoint3 := [&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]].
+
+CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
+| Dis3In1   of x \in A : disjoint3_cases x true false false
+| Dis3In2   of x \in B : disjoint3_cases x false true false
+| Dis3In3   of x \in C : disjoint3_cases x false false true
+| Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
+
+Lemma disjoint3P x : disjoint3 -> disjoint3_cases x (x \in A) (x \in B) (x \in C).
+Proof.
+  case/and3P => D1 D2 D3.
+  case: (boolP (x \in A)) => HA. 
+  { rewrite (disjointFr D1 HA) (disjointFl D3 HA). by constructor. }
+  case: (boolP (x \in B)) => HB. 
+  { rewrite (disjointFr D2 HB). by constructor. }
+  case: (boolP (x \in C)) => ?; by constructor.
+Qed.
+End Disjoint3.
+
+Lemma restrict_mono (T : Type) (A B : pred T) (e : rel T) : 
+  subpred A B -> subrel (restrict A e) (restrict B e).
+Proof. move => H x y /= => /andP [/andP [H1 H2] ->]. by rewrite !unfold_in !H. Qed.
+
 Arguments Path G x y : clear implicits.
+Set Bullet Behavior "Strict Subproofs". 
 
 Lemma triangle_lemma (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
@@ -407,15 +446,62 @@ Proof.
   have {D} D2 : [disjoint p & q2'] by apply: (D z2 n2 q2 q2' zn2).
   case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ _ D3]; subst p.
   have N2 : n2 \in p2. { rewrite -idxR // in before. exact: tailW. }
-  
-  (* TODO: This will be a nightmare to reason about *)
+  have N1 : n1 != y.
+  { apply: contraNN N => /eqP ?. subst y. 
+    suff idp_p : p2 = idp n1 by rewrite idp_p mem_idp eq_sym in N2.
+    apply: irred_idp. move: irr_p. rewrite irred_cat. by case/and3P. }
+  case: (splitL p2 N1) => n1' [n_edge] [p2'] def_p2. 
+    
+  pose pz := pcat (prev q1') q2'.
   pose phi u : option C3 := 
     if u \in p1 then Some ord0
-    else if u \in tail p2 then Some ord1
-         else if u \in pcat (prev q1') (q2') then Some ord2
+    else if u \in p2' then Some ord1
+         else if u \in pz then Some ord2
               else None.
-  exists phi.
-Admitted.                    
+  have D : disjoint3 (mem p1) (mem p2') (mem pz).
+  { admit. }
+  (** TODO: clean up assumptions that are no longer needed *)
+
+  have [Px Py Pz] : [/\ x \in p1, y \in p2' & z \in pz]. 
+  { by rewrite /= mem_pcat ?nodes_start ?nodes_end. }
+  have phi_x : phi x = Some ord0. 
+  { rewrite /phi. by case: (disjoint3P x D) Px. }
+  have phi_y : phi y = Some ord1. 
+  { rewrite /phi. by case: (disjoint3P y D) Py. }
+  have phi_z : phi z = Some ord2. 
+  { rewrite /phi. by case: (disjoint3P z D) Pz. }
+  have N2' : n2 \in p2'.
+  { move: N2. rewrite def_p2 mem_pcat mem_trivp eq_sym (negbTE N) /=.
+    case/predU1P => [->|//]. exact: nodes_start. }
+  exists phi. 
+  - split. 
+    + case. move => [|[|[|//]]] Hc; [exists x|exists y|exists z]; 
+        rewrite ?phi_x ?phi_y ?phi_z;exact/eqP.
+    + move => c u v. rewrite !inE => /eqP E1 /eqP E2; move: E1 E2. 
+      rewrite {1 2}/phi. 
+      case: (disjoint3P u D) => [Hu|Hu|Hu|? ? ?];
+      case: (disjoint3P v D) => [Hv|Hv|Hv|? ? ?] // <- // _.
+      * move: (connected_path (p := p1) (ins Hu) (ins Hv)).
+        apply: connect_mono. apply: restrict_mono => {u v Hu Hv} u.
+        rewrite !inE /phi. by case: (disjoint3P u D).
+      * move: (connected_path (p := p2')). admit.
+      * admit.
+    + move => c1 c2.
+      wlog: c1 c2 / c1 < c2. 
+      { admit. }
+      case: c1 => [[|[|[|//]]]]; case: c2 => [[|[|[|//]]]] //= Hc2 Hc1 _ _. 
+      * exists n1. exists n1'. rewrite !inE n_edge. split => //.
+        -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 
+        -- rewrite /phi. by case: (disjoint3P n1' D) (nodes_start p2'). 
+      * exists n1. exists z1. rewrite !inE sg_sym zn1. split => //.
+        -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 
+        -- rewrite /phi. by case: (disjoint3P z1 D) (nodes_start pz). 
+      * exists n2. exists z2. rewrite !inE sg_sym zn2. split => //.
+        -- rewrite /phi. by case: (disjoint3P n2 D) N2'.
+        -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
+  - move => u v. rewrite !inE -!orbA. 
+    do 2 case/or3P => /eqP ->; by rewrite ?phi_x ?phi_y ?phi_z.
+Admitted.
 
 
 Lemma petalP (U : {set G}) x z : 
