@@ -407,38 +407,41 @@ Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjoint_trans. Qed.
 
 Lemma disjoint_sym' (T : finType) (A B : mem_pred T) : 
   disjoint A B = disjoint B A.
-Abort.
+Admitted.
 
 Lemma eq_disjoint (T : finType) (A A' B : pred T) :
   A =i A' -> [disjoint A & B] = [disjoint A' & B].
 Proof. Admitted.
 Arguments eq_disjoint [T A] A' [B].
+
+Lemma idx_end (x y : G) (p : Path x y) z : 
+  irred p -> z \in p -> idx p z <= idx p y.
+Proof.
+  case: p => p pth_p. rewrite /idx /irred in_collective nodesE SubK.
+  elim: p x pth_p  => [|a p IH] x.
+  - rewrite inE. by move/spath_nil => -> _ /eqP->.
+  - admit.
+Admitted.
   
 
 Arguments Path G x y : clear implicits.
 
 Lemma C3_of_triangle (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
-  minor_map phi & {in [set x;y;z] & , injective phi}.
+  minor_map phi & {in [set x;y;z] & , injective phi}. (* phi x = None ??? *)
 Proof.
   move => xy yz zx.
   have/cpPn' [p irr_p av_z] : (z:G) \notin @cp G x y. 
   { apply: link_cpN => //; apply: linkNeq => //. by rewrite sg_sym. }
-  case/uPathP : (conn_G z y) => q irr_q. 
+  have/cpPn' [q irr_q av_x] : (x:G) \notin @cp G z y.
+  { apply: link_cpN => //; first (by rewrite sg_sym) ;apply: linkNeq => //. 
+    by rewrite sg_sym. }
   have [Yq Yp] : y \in q /\ y \in p by split;apply: nodes_end.
   case: (split_at_first (G := G) (A := mem p) Yp Yq) => n1 [q1] [q2] [def_q Q1 Q2]. 
-  have {q irr_q Yq def_q q2 Yp} irr_q1 : irred q1.
+  have Hn : n1 != x.
+  { apply: contraNN av_x => /eqP<-. by rewrite def_q mem_pcat nodes_end. }
+  have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1.
   { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
-  wlog Hn : x y xy yz zx p irr_p av_z Q1 Q2 / n1 != x.
-  { move => W.
-    have/orP [E|E] : (n1 != x) || (n1 != y). 
-    { rewrite -negb_and. apply: contraTN (linkNeq xy). 
-      case/andP=> /eqP<- /eqP<-. by rewrite eqxx. }
-    - by apply: (W x y _ _ _ p).
-    - rewrite [[set x;y]]setUC. 
-      apply: (W y x _ _ _ (prev p)); try by rewrite // ?mem_prev 1?sg_sym.
-      + exact: prev_irred.
-      + move => z'. rewrite mem_prev. exact: Q2. }
   have/cpPn' [q irr_q av_n1] : n1 \notin @cp G z x. 
   { apply link_cpN => //. apply: contraNN av_z => /eqP?. by subst n1. }
   have [Xq Xp] : x \in q /\ x \in p by split; rewrite /= ?nodes_end ?nodes_start. 
@@ -453,7 +456,7 @@ Proof.
     - by apply: (W n1 n2 q1 q2).
     - apply: (W n2 n1 q2 q1) => //. by rewrite eq_sym.
     - case:notF. apply: contraNT N => _. apply/eqP. exact: idx_inj H. }
-  case: (splitR q1 _) => [|z1 [q1' [zn1 def_q1]]].
+  case: (splitR q1 _) => [|z1 [q1' [zn1 def_q1]]]. (* trivp -> edp *)
   { by apply: contraNN av_z => /eqP->. }
   case: (splitR q2 _) => [|z2 [q2' [zn2 def_q2]]].
   { by apply: contraNN av_z => /eqP->. }
@@ -466,25 +469,22 @@ Proof.
     apply: contraNN A => A. 
     by rewrite -[n1](Q2 _ Hz' _) // def_q1 mem_pcat A. }
   have {D} D2 : [disjoint p & q2'] by apply: (D z2 n2 q2 q2' zn2).
-  case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ _ D3].
+  case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ irr_p2 D3].
   have N2 : n2 \in tail p2. { subst p. by rewrite -idxR in before. }
-  have N1 : n1 != y.
-  { apply: contraNN N => /eqP ?. subst y. 
-    have idp_p : p2 = idp n1. 
-    { apply: irred_idp. move: irr_p. rewrite def_p irred_cat. by case/and3P. }
-    move/tailW : N2. by rewrite idp_p mem_idp eq_sym. }
-  case: (splitL p2 N1) => n1' [n_edge] [p2'] [def_p2 tail_p2].    
+  have N1 : n1 != y. 
+  { apply: contraTN before => /eqP->. by rewrite -leqNgt idx_end. }
+  case: (splitL p2 N1) => n1' [n_edge] [p2'] [def_p2 tail_p2].
   have N2' : n2 \in p2' by rewrite tail_p2.
   
   pose pz := pcat (prev q1') q2'.
   pose phi u : option C3 := 
-    if u \in p1 then Some ord0
+         if u \in p1  then Some ord0
     else if u \in p2' then Some ord1
-         else if u \in pz then Some ord2
-              else None.
+    else if u \in pz  then Some ord2
+                    else None.
   have D_aux : [disjoint p & pz].
   { (* ugly: exposes in_nodes *)
-    rewrite ![[disjoint p & _]]disjoint_sym in D1 D2 *. 
+    rewrite ![[disjoint p & _]]disjoint_sym' in D1 D2 *. 
     rewrite (eq_disjoint [predU q1' & q2']) ?disjointU ?D1 //.
     move => u. by rewrite !inE mem_pcat mem_prev. }
   have {D_aux} D : [disjoint3 p1 & p2' & pz].
@@ -496,7 +496,7 @@ Proof.
       by rewrite mem_pcat => ->. }
   (* clean up assumptions that are no longer needed *)
   move => {Q2 Q3 Q4 av_z irr_p before D2 D1 D3 irr_q1 irr_q2 xy yz zx}.
-  move => {def_q1 def_q2 N1 N2 def_p2 tail_p2 p def_p N}.
+  move => {def_q1 def_q2 N1 N2 def_p2 tail_p2 p def_p N q1 q2}.
 
   have [Px Py Pz] : [/\ x \in p1, y \in p2' & z \in pz]. 
   { by rewrite /= mem_pcat ?nodes_start ?nodes_end. }
@@ -528,7 +528,7 @@ Proof.
       { move => W. case: (ltngtP c1 c2) => [|A B|A B]; first exact: W.
         - case: (W _ _ A _) => [|y0 [x0] [? ? ?]]; first by rewrite sgP. 
           exists x0; exists y0. by rewrite sgP.
-        - case/ord_inj : A => ?. subst. by rewrite sgP in B. }        
+        - case/ord_inj : A => ?. subst. by rewrite sgP in B. }
       case: c1 => [[|[|[|//]]]]; case: c2 => [[|[|[|//]]]] //= Hc2 Hc1 _ _. 
       * exists n1. exists n1'. rewrite !inE n_edge. split => //.
         -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 
@@ -541,7 +541,7 @@ Proof.
         -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
   - move => u v. rewrite !inE -!orbA. 
     do 2 case/or3P => /eqP ->; by rewrite ?phi_x ?phi_y ?phi_z.
-Admitted.
+Qed.
 
 
 Lemma petalP (U : {set G}) x z : 
