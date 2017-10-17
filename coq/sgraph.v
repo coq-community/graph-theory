@@ -8,34 +8,6 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
-Lemma disjointE (T : finType) (A B : pred T) x : 
-  [disjoint A & B] -> x \in A -> x \in B -> False.
-Proof. by rewrite disjoint_subset => /subsetP H /H /negP. Qed.
-
-Lemma disjointFr (T : finType) (A B : pred T) (x:T) : 
-  [disjoint A & B] -> x \in A -> x \in B = false.
-Proof. move => D L. apply/negbTE. apply/negP. exact: (disjointE D). Qed.
-
-Lemma disjointFl (T : finType) (A B : pred T) (x:T) : 
-  [disjoint A & B] -> x \in B -> x \in A = false.
-Proof. move => D L. apply/negbTE. apply/negP => ?. exact: (disjointE D) L. Qed.
-
-Lemma disjointNI (T : finType) (A B : pred T) (x:T) : 
-  x \in A -> x \in B -> ~~ [disjoint A & B].
-Proof. move => ? ?. apply/negP => /disjointE. move/(_ x). by apply. Qed.
-
-Lemma subset_seqR (T : finType) (A : pred T) (s : seq T) : 
-  (A \subset s) = (A \subset [set x in s]).
-Proof. 
-  apply/idP/idP => H; apply: subset_trans H _; apply/subsetP => x; by rewrite inE. 
-Qed.
-
-Lemma subset_seqL (T : finType) (A : pred T) (s : seq T) : 
-  (s \subset A) = ([set x in s] \subset A).
-Proof.
-  apply/idP/idP; apply: subset_trans; apply/subsetP => x; by rewrite inE. 
-Qed.
-
 
 (** * Simple Graphs *)
 

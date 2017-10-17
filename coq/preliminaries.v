@@ -25,6 +25,9 @@ Ltac contrab :=
 
 (** *** Generic Trivialities *)
 
+Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
+Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
+
 Lemma max_mono (I :Type) (r : seq I) P (F G : I -> nat) :
   (forall x, F x <= G x) -> \max_(i <- r | P i) F i <= \max_(i <- r | P i) G i.
 Proof.
@@ -34,6 +37,9 @@ Qed.
 
 Lemma leq_subn n m o : n <= m -> n - o <= m.
 Proof. move => A. rewrite -[m]subn0. exact: leq_sub. Qed.
+
+Lemma set1_inj (T : finType) : injective (@set1 T).
+Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
 
 Lemma set2C (T : finType) (x y : T) : [set x;y] = [set y;x].
 Proof. apply/setP => z. apply/set2P/set2P; tauto. Qed.
@@ -50,6 +56,14 @@ Proof.
   rewrite -cardsE. apply: (iffP cards1P).
   - move => [x /setP E]. exists x => y. move: (E y). by rewrite !inE.
   - move => [x E]. exists x. apply/setP => y. by rewrite !inE E.
+Qed.
+
+Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
+  reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
+Proof.
+  apply: (iffP eqP).
+  - move->. rewrite !inE eqxx. by split => // y /set1P.
+  - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
 Qed.
 
 (* This looks rather roundabout *)
@@ -192,6 +206,23 @@ Definition unique X (P : X -> Prop) := forall x y, P x -> P y -> x = y.
 Lemma empty_uniqe X (P : X -> Prop) : (forall x, ~ P x) -> unique P.
 Proof. firstorder. Qed.
 
+(** *** Disjointness *)
+Lemma disjointE (T : finType) (A B : pred T) x : 
+  [disjoint A & B] -> x \in A -> x \in B -> False.
+Proof. by rewrite disjoint_subset => /subsetP H /H /negP. Qed.
+
+Lemma disjointFr (T : finType) (A B : pred T) (x:T) : 
+  [disjoint A & B] -> x \in A -> x \in B = false.
+Proof. move => D L. apply/negbTE. apply/negP. exact: (disjointE D). Qed.
+
+Lemma disjointFl (T : finType) (A B : pred T) (x:T) : 
+  [disjoint A & B] -> x \in B -> x \in A = false.
+Proof. move => D L. apply/negbTE. apply/negP => ?. exact: (disjointE D) L. Qed.
+
+Lemma disjointNI (T : finType) (A B : pred T) (x:T) : 
+  x \in A -> x \in B -> ~~ [disjoint A & B].
+Proof. move => ? ?. apply/negP => /disjointE. move/(_ x). by apply. Qed.
+
 
 (** *** Sequences and Paths *)
 
@@ -210,11 +241,30 @@ Proof.
   - case/predU1P => [-> //|]. exact: A.
 Qed.
 
+Lemma subset_seqR (T : finType) (A : pred T) (s : seq T) : 
+  (A \subset s) = (A \subset [set x in s]).
+Proof. 
+  apply/idP/idP => H; apply: subset_trans H _; apply/subsetP => x; by rewrite inE. 
+Qed.
+
+Lemma subset_seqL (T : finType) (A : pred T) (s : seq T) : 
+  (s \subset A) = ([set x in s] \subset A).
+Proof.
+  apply/idP/idP; apply: subset_trans; apply/subsetP => x; by rewrite inE. 
+Qed.
+
 Lemma path_restrict (T : eqType) (e : rel T) (a : pred T) x p : 
   path (restrict a e) x p -> {subset p <= a}.
 Proof.
   elim: p x => //= b p IH x. rewrite -!andbA => /and4P[H1 H2 H3 H4].
   apply/subset_cons. by split; eauto.
+Qed.
+
+Lemma last_take (T : eqType) (x : T) (p : seq T) (n : nat): 
+  n <= size p -> last x (take n p) = nth x (x :: p) n.
+Proof.
+  elim: p x n => [|a p IHp] x [|n] Hn //=.
+  by rewrite IHp // (set_nth_default a x). 
 Qed.
 
 Lemma take_find (T : Type) (a : pred T) s : ~~ has a (take (find a s) s).
@@ -307,6 +357,13 @@ Proof.
   by rewrite sym_e.
 Qed.
 
+Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
+  symmetric e -> equivalence_rel (connect e).
+Proof. 
+  move => sym_e x y z. split => // A. apply/idP/idP; last exact: connect_trans.
+  rewrite connect_symI // in A. exact: connect_trans A.
+Qed.
+
 Lemma connect_img (aT rT : finType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a b :
   {homo f : x y / e x y >-> e' x y} -> connect e a b -> connect e' (f a) (f b).
 Proof. 
@@ -336,6 +393,10 @@ Qed.
 
 
 (** *** Partitions *)
+
+Lemma mem_cover (T : finType) (P : {set {set T}}) (x : T) (A : {set T}) : 
+  A \in P -> x \in A -> x \in cover P.
+Proof. move => HP HA. apply/bigcupP. by exists A. Qed.
 
 (* TOTHINK: This proof appears to complicated/monolithic *)
 Lemma equivalence_partition_gt1P (T : finType) (R : rel T) (D : {set T}) :

@@ -14,29 +14,9 @@ Definition dom t := tmI (tmS t tmT) tm1.
 (** Preliminaries *)
 
 
-Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
-  symmetric e -> equivalence_rel (connect e).
-Proof. 
-  move => sym_e x y z. split => // A. apply/idP/idP; last exact: connect_trans.
-  rewrite connect_symI // in A. exact: connect_trans A.
-Qed.
-
-Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
-  reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
-Proof.
-  apply: (iffP eqP).
-  - move->. rewrite !inE eqxx. by split => // y /set1P.
-  - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
-Qed.
-
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
-
-
-Lemma mem_cover (T : finType) (P : {set {set T}}) (x : T) (A : {set T}) : 
-  A \in P -> x \in A -> x \in cover P.
-Proof. move => HP HA. apply/bigcupP. by exists A. Qed.
 
 Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
   List.In b s -> F b <= \sum_(a <- s) F a.
@@ -62,9 +42,6 @@ Proof.
   elim: r => [|a r IH] eqF; rewrite ?big_nil // !big_cons eqF ?IH //; last by left.
   move => x Hx. apply: eqF. by right.
 Qed.
-
-Lemma set1_inj (T : finType) : injective (@set1 T).
-Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
 
 Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
   (A \subset [set x;y]) = [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
@@ -159,12 +136,6 @@ Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
           (connect (restrict A sedge) x y).
 Admitted. (* this is essentially upathPR *)
 
-Lemma last_take (T : eqType) (x : T) (p : seq T) (n : nat): 
-  n <= size p -> last x (take n p) = nth x (x :: p) n.
-Proof.
-  elim: p x n => [|a p IHp] x [|n] Hn //=.
-  by rewrite IHp // (set_nth_default a x). 
-Qed.
 
 (** TOTHINK: Providing an injection from (proofs of [x -- y]) to
 (trivial) paths and then using the monoid structure with [pcat] seems
@@ -342,13 +313,6 @@ Definition C3 := SGraph C3_sym C3_irrefl.
 
 Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
 Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
-
-Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
-Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
-
-  
-    
-
 
 Section Checkpoints.
 Variables (G : sgraph).
