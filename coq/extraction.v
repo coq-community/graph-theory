@@ -1,7 +1,7 @@
 Require Import Omega Lia.
 
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph multigraph subalgebra skeleton bounded.
+Require Import edone finite_quotient preliminaries sgraph minor multigraph subalgebra skeleton bounded.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

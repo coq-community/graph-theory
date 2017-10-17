@@ -4,6 +4,7 @@ finite_quotient.v
 bounded.v
 preliminaries.v
 sgraph.v
+minor.v
 multigraph.v
 subalgebra.v
 skeleton.v

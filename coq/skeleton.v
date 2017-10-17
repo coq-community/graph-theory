@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import finite_quotient preliminaries sgraph multigraph subalgebra.
+Require Import finite_quotient preliminaries sgraph minor multigraph subalgebra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
