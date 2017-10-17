@@ -219,26 +219,22 @@ Proof.
   have def_p : p = p1 ++ p2 by rewrite cat_take_drop.
   move: pth_p. rewrite {1}def_p spath_cat. case/andP => pth_p1 pth_p2.
   have X : has A (x::p) by apply/hasP; exists k.
-  have z_nth : z = nth x (x :: p) (find A (x :: p)). 
-  { rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. }
   exists z. exists p1. exists p2. split => //.
-  - rewrite z_nth. exact: nth_find.
+  - suff -> : z = nth x (x :: p) (find A (x :: p)) by exact: nth_find.
+    rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. 
   - move => z' in_A' in_p'. 
-    rewrite z_nth. 
-    rewrite -[z'](nth_index x in_p'). 
-    suff S: index z' (x :: p1) = find A (x :: p).
-    { by rewrite -S def_p -cat_cons nth_cat index_mem in_p'. }
-    rewrite def_p -cat_cons find_cat (_ : has A (x::p1) = true); last by (apply/hasP;exists z').
-
-    (* rewrite /z. apply/eqP.  *)
-    (* apply: contraTT in_A' => B. *)
-    (* rewrite -[z'](nth_index x in_p') unfold_in before_find //. *)
-    (* suff S: find A (x::p1) = find A (x::p). *)
-    (* { rewrite S.  *)
-    (** What exactly is going on here *)
-Admitted.
+    have has_p1 : has A (x::p1) by (apply/hasP;exists z').
+    rewrite /z (last_nth x) -[z'](nth_index x in_p').
+    suff -> : index z' (x::p1) = size p1 by [].
+    apply/eqP. rewrite eqn_leq. apply/andP;split.
+    + by rewrite -ltnS -[(size p1).+1]/(size (x::p1)) index_mem.
+    + rewrite leqNgt. apply: contraTN in_A' => C.
+      rewrite -[z'](nth_index x in_p') unfold_in before_find //.
+      apply: leq_trans C _. 
+      have -> : find A (x :: p1) = n by rewrite /n def_p -cat_cons find_cat has_p1. 
+      rewrite size_take. by case: (ltngtP n (size p)) => [|/ltnW|->].
+Qed.
                                                                 
-
 Lemma split_at_first (G : sgraph) {A : pred G} x y (p : Path x y) k :
   k \in A -> k \in p ->
   exists z (p1 : Path x z) (p2 : Path z y), 
@@ -250,7 +246,6 @@ Proof.
   + subst p. exact: val_inj.
   + move => ?. rewrite mem_path. exact: A2.
 Qed.
- 
 
 Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
   equivalence_rel (connect (restrict (mem A) sedge)). 
