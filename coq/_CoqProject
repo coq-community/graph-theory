@@ -5,6 +5,7 @@ bounded.v
 preliminaries.v
 sgraph.v
 minor.v
+checkpoint.v
 multigraph.v
 subalgebra.v
 skeleton.v

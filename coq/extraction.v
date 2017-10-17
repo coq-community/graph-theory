@@ -1,7 +1,9 @@
 Require Import Omega Lia.
 
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph minor multigraph subalgebra skeleton bounded.
+
+Require Import edone finite_quotient preliminaries sgraph minor checkpoint. 
+Require Import multigraph subalgebra skeleton bounded.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,8 +13,10 @@ Set Bullet Behavior "Strict Subproofs".
 
 Definition dom t := tmI (tmS t tmT) tm1.
 
-(** Preliminaries *)
+(* TODO: resolve this name clash *)
+Local Notation link_rel := checkpoint.link_rel.
 
+(** Preliminaries *)
 
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
@@ -618,7 +622,7 @@ Arguments ncp0 [U] x p.
 (** Do we really need the follwing lemma in its full generality *)
 Lemma ncp_sinterval U (x y p : G) :
   [set x;y] \subset CP U ->
-  sgraph.link_rel G x y -> 
+  link_rel G x y -> 
   (p \in sinterval x y) = (ncp U p == [set x; y]).
 Proof.
 Abort.
@@ -654,7 +658,7 @@ Proof.
   apply/andP;split; apply: S => //. by rewrite eq_sym.
 Qed.
 
-Lemma link_part (x y : G) : sgraph.link_rel G x y ->
+Lemma link_part (x y : G) : link_rel G x y ->
   pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
 Proof.
   move => /= /andP [xy cp_xy]. 
@@ -677,7 +681,7 @@ Proof.
     + by rewrite interval_petal_disj // CPxy !inE eqxx.
 Qed.
 
-Lemma link_cpL (x y u v : G) : sgraph.link_rel G x y -> 
+Lemma link_cpL (x y u v : G) : link_rel G x y -> 
   u \in petal [set x; y] x -> v \in petal [set x;y] y -> x \in cp u v.
 Proof.
   move => /= /andP[xy CPxy]. rewrite !ncp_petal ?CP_extensive ?inE ?eqxx //. 
@@ -692,7 +696,7 @@ Proof.
   rewrite (negbTE av_x) /=. apply: Hq. by rewrite CP_clique // inE set11.
 Qed.
 
-Lemma link_cpR (x y u v : G) : sgraph.link_rel G x y -> 
+Lemma link_cpR (x y u v : G) : link_rel G x y -> 
   u \in petal [set x; y] x -> v \in petal [set x;y] y -> y \in cp u v.
 Proof. rewrite link_sym setUC cp_sym => *. exact: (@link_cpL y x v u). Qed.
 
@@ -823,7 +827,7 @@ Definition parcomp (G : graph2) (A : {set G}) :=
 Definition lens (G : graph2) := 
   [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
       #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
-      @sgraph.link_rel (skeleton G) g_in g_out].
+      @link_rel (skeleton G) g_in g_out].
 (** alternative condition on i/o: [petal [set g_in;g_out] g_in  = [set g_in]] *)
 
 
@@ -915,7 +919,7 @@ Admitted.
 
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
-  ~~ i -- o -> sgraph.link_rel G i o -> K4_free (add_edge i o) -> 
+  ~~ i -- o -> link_rel G i o -> K4_free (add_edge i o) -> 
   connected [set: G] -> ~ connected (sinterval i o).
 Proof.
   move => /= io1 /andP [io2 io3] K4F conn_G. 
