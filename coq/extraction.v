@@ -391,7 +391,7 @@ Arguments Path G x y : clear implicits.
 
 Lemma C3_of_triangle (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
-  minor_map phi & {in [set x;y;z] & , injective phi}. (* phi x = None ??? *)
+  minor_map phi & [/\ phi x = Some ord0, phi y = Some ord1 & phi z = Some ord2].
 Proof.
   move => xy yz zx.
   have/cpPn' [p irr_p av_z] : (z:G) \notin @cp G x y. 
@@ -469,8 +469,7 @@ Proof.
   { rewrite /phi. by case: (disjoint3P y D) Py. }
   have phi_z : phi z = Some ord2. 
   { rewrite /phi. by case: (disjoint3P z D) Pz. }
-  exists phi. 
-  - split. 
+  exists phi => //. split. 
     + case. move => [|[|[|//]]] Hc; [exists x|exists y|exists z]; 
         rewrite ?phi_x ?phi_y ?phi_z;exact/eqP.
     + move => c u v. rewrite !inE => /eqP E1 /eqP E2; move: E1 E2. 
@@ -502,8 +501,6 @@ Proof.
       * exists n2. exists z2. rewrite !inE sg_sym zn2. split => //.
         -- rewrite /phi. by case: (disjoint3P n2 D) N2'.
         -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
-  - move => u v. rewrite !inE -!orbA. 
-    do 2 case/or3P => /eqP ->; by rewrite ?phi_x ?phi_y ?phi_z.
 Qed.
 
 
