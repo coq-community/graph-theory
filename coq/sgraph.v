@@ -506,6 +506,47 @@ Lemma upathPR (G : sgraph) (x y : G) A :
           (connect (restrict A sedge) x y).
 Proof. exact: (@upathP (srestrict A)). Qed.
 
+(** TODO: this should be one of the first lemmas we prove *)
+Lemma connectUP (T : finType) (e : rel T) (x y : T) : 
+  reflect (exists p, [/\ path e x p, last x p = y & uniq (x::p)])
+          (connect e x y).
+Proof.
+  apply: (iffP connectP) => [[p p1 p2]|]; last by firstorder.
+  exists (shorten x p). by case/shortenP : p1 p2 => p' ? ? _ /esym ?. 
+Qed.
+Arguments connectUP [T e x y]. 
+
+Lemma restrict_path (G : eqType) (e : rel G) (A : pred G) (x : G) (p : seq G) :
+  path e x p -> x \in A -> {subset p <= A} -> path (restrict A e) x p.
+Proof.
+  elim: p x => [//|a p IH] x /= /andP[-> pth_p] -> /subset_cons [? Ha] /=.
+  rewrite /= Ha. exact: IH.
+Qed.
+
+(** NOTE: need to require either x != y or x \in A since packaged
+paths are never empy *)
+Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
+  reflect (exists2 p: Path x y, irred p & p \subset A) 
+          (connect (restrict A sedge) x y).
+Proof.
+  move => Hxy. apply: (iffP connectUP). 
+  - move => [p [p1 p2 p3]]. 
+    have pth_p : spath x y p. 
+    { rewrite /spath p2 eqxx andbT. 
+      apply: sub_path p1. exact: subrel_restrict. }
+    exists (Build_Path pth_p); first by rewrite /irred nodesE.
+    apply/subsetP => z. rewrite mem_path SubK inE. 
+    case: p p1 p2 {p3 pth_p} => [/= _ /eqP?|a p pth_p _]; first by contrab.
+    case/predU1P => [->|]; last exact: path_restrict pth_p _.
+    move: pth_p => /=. by case: (x \in A).
+  - move => [p irr_p subA]. case/andP: (valP p) => p1 /eqP p2.
+    exists (val p); split => //; last by rewrite /irred nodesE in irr_p.
+    have/andP [A1 A2] : (x \in A) && (val p \subset A).
+    { move/subsetP : subA => H. rewrite !H ?nodes_start //=. 
+      apply/subsetP => z Hz. apply: H. by rewrite mem_path !inE Hz. }
+    apply: restrict_path => //. exact/subsetP.
+Qed.
+
 Lemma upathWW (G : sgraph) (x y : G) p : upath x y p -> path (@sedge G) x p.
 Proof. by move/upathW/spathW. Qed.
 

@@ -134,11 +134,6 @@ Proof.
     + by case/subset_cons : sub.
 Qed.
 
-(** NOTE: need to require either x != y or x \in A *)
-Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
-  reflect (exists2 p: Path x y, irred p & p \subset A) 
-          (connect (restrict A sedge) x y).
-Admitted. (* this is essentially upathPR *)
 
 
 
