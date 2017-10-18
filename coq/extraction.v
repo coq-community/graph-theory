@@ -96,7 +96,7 @@ Definition remove_edges (G : graph2) (E : {set edge G}) :=
 
 (** SGraph preliminaries *)
 
-(* TOTHINK: is this the best way to  *)
+(* TOTHINK: is this the best way to transfer path from induced subgraphs *)
 Lemma induced_path (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path x y) : 
   @spath G (val x) (val y) (map val (val p)).
 Proof.
@@ -110,32 +110,6 @@ Definition idp (G : sgraph) (u : G) := Build_Path (spathxx u).
 
 Lemma mem_idp (G : sgraph) (x u : G) : (x \in idp u) = (x == u).
 Proof. by rewrite mem_path !inE. Qed.
-
-Lemma irred_idp (G : sgraph) (x : G) (p : Path x x) : 
-  irred p -> p = idp x.
-Proof. 
-Admitted.
-
-Lemma Path_connect (G : sgraph) (x y : G) (p : Path x y) : connect sedge x y.
-Abort. 
-
-
-Lemma connectRI (G : sgraph) (A : pred G) x y (p : Path x y) :
-  {subset p <= A} -> connect (restrict A sedge) x y.
-Proof.
-  case: p => p pth_p sub_A.
-  have {sub_A} sub_A : {subset (x::p) <= A}. 
-  { move => z ?. apply: sub_A. by rewrite mem_path. }
-  elim: p x pth_p sub_A  => [|a p IH] x. 
-  - move/spath_nil => -> _. exact: connect0.
-  - rewrite spath_cons => /andP [H1 H2] sub. 
-    apply: connect_trans _ (IH _ H2 _).
-    + apply: connect1. by rewrite /= H1 !sub ?inE ?eqxx.
-    + by case/subset_cons : sub.
-Qed.
-
-
-
 
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
@@ -155,59 +129,6 @@ Proof.
 Qed.
   
 
-(** 
-Lemma pcons_proof (G : sgraph) (x y z : G) (p : seq G) :
-  x -- y -> spath y z p -> spath x z (y::p).
-Proof. by rewrite spath_cons => -> ->.  Qed.
-
-Definition pcons (G : sgraph) (x y z : G) (xy : x -- y) (p : Path y z) :=
-  Build_Path (pcons_proof xy (valP p)).
-Arguments pcons [G x y z] xy p. 
-
-Lemma splitL (G : sgraph) (x y : G) (p : Path x y) : 
-  x != y -> exists z xz (p' : Path z y), p = pcons xz p'.
-*)
-
-Lemma split_at_first_aux (G : sgraph) {A : pred G} x y (p : seq G) k : 
-    spath x y p -> k \in A -> k \in x::p -> 
-    exists z p1 p2, [/\ p = p1 ++ p2, spath x z p1, spath z y p2, z \in A 
-                & forall z', z' \in A -> z' \in x::p1 -> z' = z].
-Proof.
-  move => pth_p in_A in_p. 
-  pose n := find A (x::p). 
-  pose p1 := take n p.
-  pose p2 := drop n p.
-  pose z := last x p1.
-  have def_p : p = p1 ++ p2 by rewrite cat_take_drop.
-  move: pth_p. rewrite {1}def_p spath_cat. case/andP => pth_p1 pth_p2.
-  have X : has A (x::p) by apply/hasP; exists k.
-  exists z. exists p1. exists p2. split => //.
-  - suff -> : z = nth x (x :: p) (find A (x :: p)) by exact: nth_find.
-    rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. 
-  - move => z' in_A' in_p'. 
-    have has_p1 : has A (x::p1) by (apply/hasP;exists z').
-    rewrite /z (last_nth x) -[z'](nth_index x in_p').
-    suff -> : index z' (x::p1) = size p1 by [].
-    apply/eqP. rewrite eqn_leq. apply/andP;split.
-    + by rewrite -ltnS -[(size p1).+1]/(size (x::p1)) index_mem.
-    + rewrite leqNgt. apply: contraTN in_A' => C.
-      rewrite -[z'](nth_index x in_p') unfold_in before_find //.
-      apply: leq_trans C _. 
-      have -> : find A (x :: p1) = n by rewrite /n def_p -cat_cons find_cat has_p1. 
-      rewrite size_take. by case: (ltngtP n (size p)) => [|/ltnW|->].
-Qed.
-                                                                
-Lemma split_at_first (G : sgraph) {A : pred G} x y (p : Path x y) k :
-  k \in A -> k \in p ->
-  exists z (p1 : Path x z) (p2 : Path z y), 
-    [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
-Proof.
-  case: p => p pth_p /= kA kp. rewrite mem_path in kp.
-  case: (split_at_first_aux pth_p kA kp) => z [p1] [p2] [def_p pth_p1 pth_p2 A1 A2].
-  exists z. exists (Build_Path pth_p1). exists (Build_Path pth_p2). split => //.
-  + subst p. exact: val_inj.
-  + move => ?. rewrite mem_path. exact: A2.
-Qed.
 
 Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
   equivalence_rel (connect (restrict (mem A) sedge)). 

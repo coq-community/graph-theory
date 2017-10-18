@@ -433,6 +433,47 @@ Proof.
   move: I. rewrite irred_cat => /and3P[*]. by constructor. 
 Qed.
 
+Lemma split_at_first_aux {A : pred G} x y (p : seq G) k : 
+    spath x y p -> k \in A -> k \in x::p -> 
+    exists z p1 p2, [/\ p = p1 ++ p2, spath x z p1, spath z y p2, z \in A 
+                & forall z', z' \in A -> z' \in x::p1 -> z' = z].
+Proof.
+  move => pth_p in_A in_p. 
+  pose n := find A (x::p). 
+  pose p1 := take n p.
+  pose p2 := drop n p.
+  pose z := last x p1.
+  have def_p : p = p1 ++ p2 by rewrite cat_take_drop.
+  move: pth_p. rewrite {1}def_p spath_cat. case/andP => pth_p1 pth_p2.
+  have X : has A (x::p) by apply/hasP; exists k.
+  exists z. exists p1. exists p2. split => //.
+  - suff -> : z = nth x (x :: p) (find A (x :: p)) by exact: nth_find.
+    rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. 
+  - move => z' in_A' in_p'. 
+    have has_p1 : has A (x::p1) by (apply/hasP;exists z').
+    rewrite /z (last_nth x) -[z'](nth_index x in_p').
+    suff -> : index z' (x::p1) = size p1 by [].
+    apply/eqP. rewrite eqn_leq. apply/andP;split.
+    + by rewrite -ltnS -[(size p1).+1]/(size (x::p1)) index_mem.
+    + rewrite leqNgt. apply: contraTN in_A' => C.
+      rewrite -[z'](nth_index x in_p') unfold_in before_find //.
+      apply: leq_trans C _. 
+      have -> : find A (x :: p1) = n by rewrite /n def_p -cat_cons find_cat has_p1. 
+      rewrite size_take. by case: (ltngtP n (size p)) => [|/ltnW|->].
+Qed.
+                                                                
+Lemma split_at_first {A : pred G} x y (p : Path x y) k :
+  k \in A -> k \in p ->
+  exists z (p1 : Path x z) (p2 : Path z y), 
+    [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
+Proof.
+  case: p => p pth_p /= kA kp. rewrite mem_path in kp.
+  case: (split_at_first_aux pth_p kA kp) => z [p1] [p2] [def_p pth_p1 pth_p2 A1 A2].
+  exists z. exists (Build_Path pth_p1). exists (Build_Path pth_p2). split => //.
+  + subst p. exact: val_inj.
+  + move => ?. rewrite mem_path. exact: A2.
+Qed.
+
 End Pack.
 
 (* TOTHINK: What do we do about the forest constructions, to we move to packaged paths? *)
@@ -516,6 +557,19 @@ Proof.
 Qed.
 Arguments connectUP [T e x y]. 
 
+Lemma spath_shorten (G : sgraph) (x y : G) p : 
+  spath x y p -> exists p', [/\ spath x y p', uniq (x::p') & {subset p' <= p}].
+Proof. case/andP. case/shortenP => p' *. by exists p'. Qed.
+
+Lemma uncycle (G : sgraph) (x y : G) (p : Path x y) :
+  exists2 p' : Path x y, {subset p' <= p} & irred p'.
+Proof.
+  case: p => p pth_p. case/spath_shorten : (pth_p) => p' [A B C].
+  exists (Build_Path A). move => z. rewrite !mem_path !SubK. 
+  + rewrite !inE. case/predU1P => [->|/C ->] //. by rewrite eqxx.
+  + by rewrite /irred nodesE.
+Qed.
+  
 Lemma restrict_path (G : eqType) (e : rel G) (A : pred G) (x : G) (p : seq G) :
   path e x p -> x \in A -> {subset p <= A} -> path (restrict A e) x p.
 Proof.
@@ -545,6 +599,14 @@ Proof.
     { move/subsetP : subA => H. rewrite !H ?nodes_start //=. 
       apply/subsetP => z Hz. apply: H. by rewrite mem_path !inE Hz. }
     apply: restrict_path => //. exact/subsetP.
+Qed.
+
+Lemma connectRI (G : sgraph) (A : pred G) x y (p : Path x y) :
+  {subset p <= A} -> connect (restrict A sedge) x y.
+Proof. 
+  case: (boolP (x == y)) => [/eqP ?|]; first by subst y; rewrite connect0. 
+  move => xy subA. apply/uPathRP => //. case: (uncycle p) => p' p1 p2.
+  exists p' => //. apply/subsetP => z /p1. exact: subA.
 Qed.
 
 Lemma upathWW (G : sgraph) (x y : G) p : upath x y p -> path (@sedge G) x p.
