@@ -145,19 +145,19 @@ Admitted. (* this is essentially upathPR *)
 (trivial) paths and then using the monoid structure with [pcat] seems
 preferable to providing a cons operation *)
 
-Lemma trivp_proof (G : sgraph) (x y : G) (xy : x -- y) : 
+Lemma edgep_proof (G : sgraph) (x y : G) (xy : x -- y) : 
   spath x y [:: y]. 
 Proof. by rewrite spath_cons xy spathxx. Qed.
 
-Definition trivp (G : sgraph) (x y : G) (xy : x -- y) := 
-  Build_Path (trivp_proof xy).
+Definition edgep (G : sgraph) (x y : G) (xy : x -- y) := 
+  Build_Path (edgep_proof xy).
 
-Lemma mem_trivp (G : sgraph) (x y z : G) (xy : x -- y) :
-  z \in trivp xy = (z == x) || (z == y).
+Lemma mem_edgep (G : sgraph) (x y z : G) (xy : x -- y) :
+  z \in edgep xy = (z == x) || (z == y).
 Proof. by rewrite mem_path !inE. Qed.
 
 Lemma splitL (G : sgraph) (x y : G) (p : Path x y) : 
-  x != y -> exists z xy (p' : Path z y), p = pcat (trivp xy) p' /\ p' =i tail p.
+  x != y -> exists z xy (p' : Path z y), p = pcat (edgep xy) p' /\ p' =i tail p.
 Proof.
   move => xy. case: p => p. elim: p x xy => [|a p IH] x xy H.
   - move/spath_nil : (H) => ?. subst y. by rewrite eqxx in xy.
@@ -167,7 +167,7 @@ Proof.
 Qed.
 
 Lemma splitR (G : sgraph) (x y : G) (p : Path x y) : 
-  x != y -> exists z (p' : Path x z) zy, p = pcat p' (trivp zy).
+  x != y -> exists z (p' : Path x z) zy, p = pcat p' (edgep zy).
 Proof.
   move => xy. case: p. elim/last_ind => [|p a IH] H.
   - move/spath_nil : (H) => ?. subst y. by rewrite eqxx in xy.
@@ -419,7 +419,7 @@ Proof.
     - by apply: (W n1 n2 q1 q2).
     - apply: (W n2 n1 q2 q1) => //. by rewrite eq_sym.
     - case:notF. apply: contraNT N => _. apply/eqP. exact: idx_inj H. }
-  case: (splitR q1 _) => [|z1 [q1' [zn1 def_q1]]]. (* trivp -> edp *)
+  case: (splitR q1 _) => [|z1 [q1' [zn1 def_q1]]].
   { by apply: contraNN av_z => /eqP->. }
   case: (splitR q2 _) => [|z2 [q2' [zn2 def_q2]]].
   { by apply: contraNN av_z => /eqP->. }
