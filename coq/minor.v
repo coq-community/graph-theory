@@ -74,9 +74,9 @@ Section DecompTheory.
       have C_subtree : subtree C by apply: subtree_connect.
       have disC: [disjoint C & T0]. 
       { rewrite disjoints_subset. apply/subsetP => c0. rewrite 2!inE.
-        case/connectP => p /path_restrict H ->. case: p H => /=. 
-        - move => _. apply/negPn. move/HT0. by rewrite Hc1. 
-        - move => a p. apply. exact: mem_last. }
+        case: (boolP (c == c0)) => [/eqP<- _|H].
+        - apply/negPn. move/HT0. by rewrite Hc1.
+        - case/(uPathRP H) => p _ /subsetP. apply. exact: nodes_end. }
       (* Let [t0 -- c0] be the link connecting [T0] to [C] *)
       have [t0 [c0 [Ht0 Hc0 tc0]]] : exists t0 c0, [/\ t0 \in T0, c0 \in C & t0 -- c0].
       { case: (IH S0 _ _) => [|||t Ht].
@@ -87,6 +87,7 @@ Section DecompTheory.
           have H : connect sedge c t. 
           { apply: connect_mono (sbag_conn decD v0 c t Hc2 A). exact: subrel_restrict. }
           (* bespoke - is there a reasonable lemma? *)
+          (* TOTHINK: this should follow with uPathRP / split_at_first / splitL / splitR *)
           case/connectP : H => p. generalize c inC. 
           elim: p => /= [|a p IHp] c0 inC0.
           + move => _ /= ?. subst c0. 
