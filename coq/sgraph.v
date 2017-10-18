@@ -322,8 +322,10 @@ Section Primitives.
 
 End Primitives.
 
-Definition in_nodes x y (p : Path x y) : collective_pred G := [pred u | u \in nodes p].
-Canonical Path_predType x y := Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
+Definition in_nodes x y (p : Path x y) : collective_pred G := 
+  [pred u | u \in nodes p].
+Canonical Path_predType x y := 
+  Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
 
 Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
 Proof. by rewrite in_collective /nodes -lock. Qed.
@@ -351,6 +353,42 @@ Proof.
 Qed.
 
 End PathTheory.
+
+(** Providing an injection from (proofs of [x -- y]) to one edge paths
+and then using the monoid structure with [pcat] seems preferable to
+providing a cons operation *)
+
+Lemma edgep_proof x y (xy : x -- y) : spath x y [:: y]. 
+Proof. by rewrite spath_cons xy spathxx. Qed.
+
+Definition edgep x y (xy : x -- y) := Build_Path (edgep_proof xy).
+
+Lemma mem_edgep x y z (xy : x -- y) :
+  z \in edgep xy = (z == x) || (z == y).
+Proof. by rewrite mem_path !inE. Qed.
+
+Lemma splitL x y (p : Path x y) : 
+  x != y -> exists z xz (p' : Path z y), p = pcat (edgep xz) p' /\ p' =i tail p.
+Proof.
+  move => xy. case: p => p. elim: p x xy => [|a p IH] x xy H.
+  - move/spath_nil : (H) => ?. subst y. by rewrite eqxx in xy.
+  - move: (H) => H'. move: H. rewrite spath_cons => /andP [A B].
+    exists a. exists A. exists (Build_Path B). split; first exact: val_inj.
+    move => w. by rewrite in_collective nodesE !inE.
+Qed.
+
+Lemma splitR x y (p : Path x y) : 
+  x != y -> exists z (p' : Path x z) zy, p = pcat p' (edgep zy).
+Proof.
+  move => xy. case: p. elim/last_ind => [|p a IH] H.
+  - move/spath_nil : (H) => ?. subst y. by rewrite eqxx in xy.
+  - move: (H) => H'. 
+    case/andP : H. rewrite rcons_path => /andP [A B] C.
+    have sP : spath x (last x p) p by rewrite /spath A eqxx.
+    move: (spath_rcons H') => ?; subst a.
+    exists (last x p). exists (Build_Path sP). exists B. 
+    apply: val_inj => /=. by rewrite cats1.
+Qed.
 
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
