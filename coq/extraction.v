@@ -785,12 +785,79 @@ Admitted.
     What is the right formulation for the edges? *)
 
 
+Notation val2 x := (val (val x)).
+Arguments cp : clear implicits.
+Arguments Path : clear implicits.
+
+
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
     is written in the paper. Is there a better way to phrase this? *)
 Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
   K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
   is_tree (CP_ U).
+Proof.
+  set G := sgraph.induced _ in U *.
+  move => H_K4_free UisN. 
+  suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x].
+  (* CP_ U is a tree if it does not contain a triangle *)
+  { admit. } 
+  move => [x] [y] [z] [xy yz zx]. apply: H_K4_free. 
+  have G_conn : forall x y : G, connect sedge x y. 
+  { admit. (* Where exactly does this come from *) }
+  move: (CP_triangle G_conn xy yz zx) => 
+    [x'] [y'] [z'] [[x_inU y_inU z_inU] [CPxy CPyz CPzx]].
+  pose U3 : {set G} := [set val x; val y; val z]. 
+  pose X := petal U3 (val x). 
+  pose Y := petal U3 (val y). 
+  pose Z := petal U3 (val z).
+  pose T := @sinterval G (val x) (val y) :&: 
+            @sinterval G (val y) (val z) :&: 
+            @sinterval G (val z) (val x). 
+  have part1 : pe_partition [set X; Y; Z; T] [set: G].
+  { admit. }
+  pose T' : {set G} := [set val x; val y; val z] :|: T. 
+  have alt_T' := T' = @interval G (val x) (val y) :&: 
+                      @interval G (val y) (val z) :&: 
+                      @interval G (val z) (val x). 
+  (* TOTHINK:  *)
+  (* pose GT' := @sgraph.induced H (val @: T'). *)
+  pose GT' := @sgraph.induced G T'.
+  pose H' := @sgraph.induced H (i |: val @: T').
+  suff: minor H' K4.
+  { apply: minor_trans. 
+    (* collapse [X] to [val x] and similarly for Y and Z *) 
+    admit. }
+  have GT'_conn : forall x y : GT', connect sedge x y. 
+  { admit. (* This is the union of overlapping intervals *) }
+  have xH' : val x \in T' by rewrite /T' [T]lock !inE eqxx. 
+  have yH' : val y \in T' by rewrite /T' [T]lock !inE eqxx. 
+  have zH' : val z \in T' by rewrite /T' [T]lock !inE eqxx. 
+  have irred_inT x0 y0 (p : Path G x0 y0) : 
+    x0 \in U3 -> y0 \in U3 -> irred p -> {subset p <= T}.
+  { admit. (* assume p contains some node u \notin T *)
+    (* use link_cpL/link_cpR to argue that p is not irredundant *) }
+  have cp_lift u x0 y0 : (* x,y \in ... *)
+    u \in @cp GT' x0 y0 -> val u \in @cp G (val x0) (val y0).
+  { apply: contraTT => /cpPn' [p] /irred_inT. admit. }
+
+  pose x0 : GT' := Sub (val x) xH'.
+  pose y0 : GT' := Sub (val y) yH'.
+  pose z0 : GT' := Sub (val z) zH'.
+
+  have link_xy : @link_rel GT' x0 y0.
+  { admit. (* follows with cp_lift *) }
+  have link_yz : @link_rel GT' y0 z0.
+  { admit. (* follows with cp_lift *) }
+  have link_zx : @link_rel GT' z0 x0.
+  { admit. (* follows with cp_lift *) }
+  case: (C3_of_triangle GT'_conn link_xy link_yz link_zx) => 
+   phi mm_phi [phi1 phi2 phi3].
+
+  (* how treat GT' (for which we can obtain phi) as a subgraph of H'
+  (for which we need to construct the minor ??? *)
+  (* pose phi' (u : H' ) : option K4 := *)
+  (*   if val u \in val @: T' then phi (insubd x0 (val u)) else Some ord0. *)
 Admitted.
 
 
@@ -802,7 +869,7 @@ Proof.
   pose G' := @sgraph.induced (add_edge i o) [set~ i].
   set H := add_edge i o in K4F *.
   set U := o |: neighbours i.
-  have Ho : o \in [set~ i]. admit.
+  have Ho : o \in [set~ i] by rewrite !inE eq_sym.
   pose o' : G' := Sub o Ho.
   set U' : {set G'} := [set insubd o' x | x in U].
   have tree_CPU' : is_tree (CP_ U').
