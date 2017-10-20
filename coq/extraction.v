@@ -18,6 +18,28 @@ Local Notation link_rel := checkpoint.link_rel.
 
 (** Preliminaries *)
 
+Section AddNode.
+  Variables (G : sgraph) (N : {set G}).
+  
+  Definition add_node_rel (x y : option G) := 
+    match x,y with 
+    | None, Some y => y \in N
+    | Some x, None => x \in N
+    | Some x,Some y => x -- y
+    | None, None => false
+    end.
+
+  Lemma add_node_sym : symmetric add_node_rel.
+  Admitted.
+
+  Lemma add_node_irrefl : irreflexive add_node_rel.
+  Admitted.
+
+  Definition add_node := SGraph add_node_sym add_node_irrefl.
+End AddNode.
+Arguments add_node : clear implicits.
+
+
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
@@ -382,6 +404,15 @@ Proof.
         -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
 Qed.
 
+Lemma K4_of_triangle (x y z : link_graph G) : 
+  x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
+Proof.
+  move => xy yz zx. case: (C3_of_triangle xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
+  pose psi u : option K4 := 
+    if u isn't Some u' then Some ord3 
+    else obind (fun n => Some (widen_ord (isT : 3 <= 4) n)) (phi u').
+  exists psi. 
+Admitted.
 
 Lemma petalP (U : {set G}) x z : 
   reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
@@ -649,6 +680,41 @@ Qed.
 End Checkpoints.
 
 
+Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
+  (phi : (sgraph.induced S) -> option G') : 
+  i \notin S -> 
+  (forall y, y \in N -> exists2 x , x \in phi @^-1 (Some y) & val x -- i) ->
+  @minor_map (sgraph.induced S) G' phi -> 
+  minor H (add_node G' N).
+Proof.
+  move => Hi Hphi mm_phi.
+  pose psi (u:H) : option (add_node G' N) := 
+    match @idP (u \in S) with 
+    | ReflectT p => obind (fun x => Some (Some x)) (phi (Sub u p))
+    | ReflectF _ => if u == i then Some None else None
+    end.
+  (* NOTE: use (* case: {-}_ / idP *) to analyze psi *)
+  have psi_G' (a : G') : psi @^-1 (Some (Some a)) = val @: (phi @^-1 (Some a)).
+  { admit. }
+  have psi_None : psi @^-1 (Some None) = [set i].
+  { apply/setP => z. rewrite !inE /psi. 
+    case: {-}_ / idP => [p|_]; last by case: (z == i).
+    have: z != i. admit. case: (phi _) => [b|] /=; admit. }     
+  case: mm_phi => M1 M2 M3. exists psi. 
+  - case. 
+    + admit.
+    + exists i. rewrite /psi. move: Hi. 
+      case: {-}_ / idP => [? ?|_ _]; by [contrab|rewrite eqxx].
+  - case. 
+    + move => y. move: (M2 y). rewrite psi_G'. admit.
+    + rewrite psi_None. (* singletons are connected *) admit.
+  - move => [a|] [b|]; last by rewrite sg_irrefl.
+    + move => /= /M3 [x0] [y0] [? ? ?]. exists (val x0). exists (val y0). by rewrite !psi_G' !mem_imset.
+    + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !mem_imset.
+    + admit. (* symmetric *)
+Admitted.
+
+
 (** * Term Extraction *)
 
 
@@ -790,6 +856,8 @@ Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
 
+
+
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
     is written in the paper. Is there a better way to phrase this? *)
@@ -822,13 +890,8 @@ Proof.
                       @interval G (val z) (val x). 
   (* TOTHINK:  *)
   (* pose GT' := @sgraph.induced H (val @: T'). *)
-  pose GT' := @sgraph.induced G T'.
-  pose H' := @sgraph.induced H (i |: val @: T').
-  suff: minor H' K4.
-  { apply: minor_trans. 
-    (* collapse [X] to [val x] and similarly for Y and Z *) 
-    admit. }
-  have GT'_conn : forall x y : GT', connect sedge x y. 
+  pose G' := @sgraph.induced G T'.
+  have G'_conn : forall x y : G', connect sedge x y. 
   { admit. (* This is the union of overlapping intervals *) }
   have xH' : val x \in T' by rewrite /T' [T]lock !inE eqxx. 
   have yH' : val y \in T' by rewrite /T' [T]lock !inE eqxx. 
@@ -837,27 +900,32 @@ Proof.
     x0 \in U3 -> y0 \in U3 -> irred p -> {subset p <= T}.
   { admit. (* assume p contains some node u \notin T *)
     (* use link_cpL/link_cpR to argue that p is not irredundant *) }
+
   have cp_lift u x0 y0 : (* x,y \in ... *)
-    u \in @cp GT' x0 y0 -> val u \in @cp G (val x0) (val y0).
+    u \in @cp G' x0 y0 -> val u \in @cp G (val x0) (val y0).
   { apply: contraTT => /cpPn' [p] /irred_inT. admit. }
 
-  pose x0 : GT' := Sub (val x) xH'.
-  pose y0 : GT' := Sub (val y) yH'.
-  pose z0 : GT' := Sub (val z) zH'.
+  pose x0 : G' := Sub (val x) xH'.
+  pose y0 : G' := Sub (val y) yH'.
+  pose z0 : G' := Sub (val z) zH'.
+  pose H' := @add_node G' [set x0;y0;z0].  
 
-  have link_xy : @link_rel GT' x0 y0.
+  have link_xy : @link_rel G' x0 y0.
   { admit. (* follows with cp_lift *) }
-  have link_yz : @link_rel GT' y0 z0.
+  have link_yz : @link_rel G' y0 z0.
   { admit. (* follows with cp_lift *) }
-  have link_zx : @link_rel GT' z0 x0.
+  have link_zx : @link_rel G' z0 x0.
   { admit. (* follows with cp_lift *) }
-  case: (C3_of_triangle GT'_conn link_xy link_yz link_zx) => 
-   phi mm_phi [phi1 phi2 phi3].
 
-  (* how treat GT' (for which we can obtain phi) as a subgraph of H'
-  (for which we need to construct the minor ??? *)
-  (* pose phi' (u : H' ) : option K4 := *)
-  (*   if val u \in val @: T' then phi (insubd x0 (val u)) else Some ord0. *)
+  apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
+  
+  pose phi (u : G) : option G' := None. (* TODO *)
+
+  have mm_phi : minor_map phi.
+  { admit. }
+  apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
+
+    
 Admitted.
 
 

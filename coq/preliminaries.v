@@ -27,6 +27,7 @@ Ltac contrab :=
 
 Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
 Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
+Definition ord3 {n : nat} : 'I_n.+4 := Ordinal (isT : 3 < n.+4).
 
 Lemma max_mono (I :Type) (r : seq I) P (F G : I -> nat) :
   (forall x, F x <= G x) -> \max_(i <- r | P i) F i <= \max_(i <- r | P i) G i.
