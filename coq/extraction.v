@@ -189,15 +189,6 @@ Definition is_tree (G : sgraph) :=
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
 
-Definition minor_map (G H : sgraph) (phi : G -> option H) := 
-  [/\ (forall y : H, exists x : G, phi x = Some y),
-     (forall y : H, connected (phi @^-1 Some y)) &
-     (forall x y : H, x -- y -> exists x0 y0 : G,
-      [/\ x0 \in phi @^-1 Some x, y0 \in phi @^-1 Some y & x0 -- y0])].
-
-Fact minor_of_map (G H : sgraph) (phi : G -> option H): 
-  minor_map phi -> minor G H.
-Proof. case => *. exact: (MinorI (phi := phi)). Qed.
 
 Definition C3_rel := [rel x y : 'I_3 | x != y].
 
@@ -700,7 +691,7 @@ Proof.
   { apply/setP => z. rewrite !inE /psi. 
     case: {-}_ / idP => [p|_]; last by case: (z == i).
     have: z != i. admit. case: (phi _) => [b|] /=; admit. }     
-  case: mm_phi => M1 M2 M3. exists psi. 
+  case: mm_phi => M1 M2 M3. exists psi;split.
   - case. 
     + admit.
     + exists i. rewrite /psi. move: Hi. 

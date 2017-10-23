@@ -152,17 +152,23 @@ Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.
 (** H is a minor of G -- The order allows us to write [minor G] for the
 colletion of [G]s minors *)
 
-CoInductive minor (G H : sgraph) : Prop :=
-  MinorI (phi : G -> option H) of 
-    (forall y : H, exists x, phi x = Some y) 
-  & (forall y : H, connected (phi @^-1 Some y)) 
-  & (forall x y : H, x -- y -> 
-     exists x0 y0, [/\ x0 \in phi @^-1 Some x, y0 \in phi @^-1 Some y & x0 -- y0]).
+Definition minor_map (G H : sgraph) (phi : G -> option H) := 
+  [/\ (forall y : H, exists x : G, phi x = Some y),
+     (forall y : H, connected (phi @^-1 Some y)) &
+     (forall x y : H, x -- y -> exists x0 y0 : G,
+      [/\ x0 \in phi @^-1 Some x, y0 \in phi @^-1 Some y & x0 -- y0])].
+
+Definition minor (G H : sgraph) : Prop := exists phi : G -> option H, minor_map phi.
+
+Fact minor_of_map (G H : sgraph) (phi : G -> option H): 
+  minor_map phi -> minor G H.
+Proof. case => *. by exists phi. Qed.
+
 
 Lemma minor_trans : Transitive minor.
 Proof.
-  move => G H I [f f1 f2 f3] [g g1 g2 g3].
-  exists (fun x => obind g (f x)).
+  move => G H I [f [f1 f2 f3]] [g [g1 g2 g3]].
+  exists (fun x => obind g (f x)); split.
   - move => y. case: (g1 y) => y'. case: (f1 y') => x E1 ?.
     exists x. by rewrite E1.
   - move => z x y. rewrite !inE. 
@@ -190,24 +196,27 @@ Proof.
     split => //; reflect_eq; by rewrite (Hx0,Hy0) /= (Hx',Hy'). 
 Qed.
 
-CoInductive strict_minor (G H : sgraph) : Prop :=
-  SMinorI (phi : G -> H) of 
-    (forall y : H, exists x, phi x = y) 
-  & (forall y : H, connected (phi @^-1 y)) 
-  & (forall x y : H, x -- y -> 
-     exists x0 y0, [/\ x0 \in phi @^-1 x, y0 \in phi @^-1 y & x0 -- y0]).
+Definition strict_minor_map (G H : sgraph) (phi : G -> H) := 
+  [/\ (forall y : H, exists x, phi x = y), 
+     (forall y : H, connected (phi @^-1 y)) &
+     (forall x y : H, x -- y -> 
+     exists x0 y0, [/\ x0 \in phi @^-1 x, y0 \in phi @^-1 y & x0 -- y0])].
+
+Definition strict_minor (G H : sgraph) : Prop := 
+  exists phi : G -> H, strict_minor_map phi.
+
+Lemma map_of_strict (G H : sgraph) (phi : G -> H) : 
+  strict_minor_map phi -> minor_map (Some \o phi).
+Proof. case => A B C. split => // y. case: (A y) => x <-. by exists x. Qed.
 
 Lemma strict_is_minor (G H : sgraph) : strict_minor G H -> minor G H.
-Proof.
-  case => phi A B C. exists (Some \o phi) => //= y.
-  case: (A y) => x <-. by exists x.
-Qed.
+Proof. move => [phi A]. exists (Some \o phi). exact: map_of_strict. Qed.
 
 Lemma sub_minor (S G : sgraph) : subgraph S G -> minor G S.
 Proof.
   move => [h inj_h hom_h].
   pose phi x := if @idP (x \in codom h) is ReflectT p then Some (iinv p) else None.
-  exists phi.
+  exists phi; split.
   - move => y. exists (h y). rewrite /phi. 
     case: {-}_ / idP => [p|]; by rewrite ?iinv_f ?codom_f.
   - move => y x0 y0. rewrite !inE {1 2}/phi. 
@@ -239,7 +248,7 @@ subgraph of the range of [phi] seems to be the canonical one. *)
 Lemma minor_split (G H : sgraph) : 
   minor G H -> exists2 S, subgraph S G & strict_minor S H.
 Proof.
-  move => [phi p1 p2 p3].
+  move => [phi [p1 p2 p3]].
   set S := [set x | phi x]. 
   exists (induced S); first exact: induced_sub.
   wlog x0 : / H.
@@ -252,7 +261,7 @@ Abort.
 Lemma width_minor (G H : sgraph) (T : tree) (B : T -> {set G}) : 
   sdecomp T G B -> minor G H -> exists B', sdecomp T H B' /\ width B' <= width B.
 Proof.
-  move => decT [phi p1 p2 p3].
+  move => decT [phi [p1 p2 p3]].
   pose B' t := [set x : H | [exists (x0 | x0 \in B t), phi x0 == Some x]].
   exists B'. split.
   - split. 
