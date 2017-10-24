@@ -181,7 +181,7 @@ Proof.
   by rewrite sg_sym.
 Qed.
 
-(* TODO: tree_axiom still uses upath - should use packaged paths ... *)
+(* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := 
   connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
 
@@ -205,6 +205,32 @@ Definition C3 := SGraph C3_sym C3_irrefl.
 Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
 Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
 
+Section Disjoint3.
+Variables (T : finType) (A B C : mem_pred T).
+
+CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
+| Dis3In1   of x \in A : disjoint3_cases x true false false
+| Dis3In2   of x \in B : disjoint3_cases x false true false
+| Dis3In3   of x \in C : disjoint3_cases x false false true
+| Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
+
+Lemma disjoint3P x : 
+  [&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]] ->
+  disjoint3_cases x (x \in A) (x \in B) (x \in C).
+Proof.
+  case/and3P => D1 D2 D3.
+  case: (boolP (x \in A)) => HA. 
+  { rewrite (disjointFr D1 HA) (disjointFl D3 HA). by constructor. }
+  case: (boolP (x \in B)) => HB. 
+  { rewrite (disjointFr D2 HB). by constructor. }
+  case: (boolP (x \in C)) => ?; by constructor.
+Qed.
+End Disjoint3.
+
+Notation "[ 'disjoint3' A & B & C ]" :=
+  ([&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]])
+  (format "[ 'disjoint3'  A  &  B  &  C ]" ).
+
 Section Checkpoints.
 Variables (G : sgraph).
 
@@ -224,31 +250,7 @@ Proof.
   apply/negP. move/(subsetP A). by rewrite !inE (negbTE B) (negbTE C).
 Qed.
 
-Notation "[ 'disjoint3' A & B & C ]" :=
-  ([&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]])
-  (format "[ 'disjoint3'  A  &  B  &  C ]" ).
 
-Section Disjoint3.
-Variables (T : finType) (A B C : mem_pred T).
-
-
-CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
-| Dis3In1   of x \in A : disjoint3_cases x true false false
-| Dis3In2   of x \in B : disjoint3_cases x false true false
-| Dis3In3   of x \in C : disjoint3_cases x false false true
-| Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
-
-Lemma disjoint3P x : 
-  [disjoint3 A & B & C] -> disjoint3_cases x (x \in A) (x \in B) (x \in C).
-Proof.
-  case/and3P => D1 D2 D3.
-  case: (boolP (x \in A)) => HA. 
-  { rewrite (disjointFr D1 HA) (disjointFl D3 HA). by constructor. }
-  case: (boolP (x \in B)) => HB. 
-  { rewrite (disjointFr D2 HB). by constructor. }
-  case: (boolP (x \in C)) => ?; by constructor.
-Qed.
-End Disjoint3.
 
 Lemma restrict_mono (T : Type) (A B : pred T) (e : rel T) : 
   subpred A B -> subrel (restrict A e) (restrict B e).
@@ -409,6 +411,10 @@ Lemma petalP (U : {set G}) x z :
   reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
 Proof. rewrite inE. exact: (iffP forall_inP). Qed.
 
+Lemma petalPn (U : {set G}) x z : 
+  reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin petal U x).
+Admitted.
+
 Lemma sinterval_sym (x y : G) : sinterval x y = sinterval y x.
 Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
 
@@ -419,6 +425,30 @@ Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
 Proof.
   move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
 Qed.
+
+Lemma srestrict_sym A : connect_sym (restrict A (@sedge G)).
+Admitted.
+
+Lemma connected_petal x (U : {set G}) : x \in CP U -> connected (petal U x).
+Proof.
+  move => cp_x.
+  suff S z : z \in petal U x -> connect (restrict (mem (petal U x)) sedge) x z.
+  { move => u v Hu Hv. apply: connect_trans (S _ Hv). admit. }
+  move/petalP => Hz. case/uPathP : (conn_G z x) => p irr_p. 
+  have sP : p \subset petal U x.
+  { apply/negPn/negP. move/subsetPn => [z' in_p N]. 
+    case/petalPn : (N) => y cp_y. case/cpPn' => q irr_q av_x. 
+    (* split p at z' (which is different from x) and obtain x-avoiding zy-path *)
+    admit. }
+  rewrite srestrict_sym. apply: (connectRI (p := p)). 
+  (* trivial *) admit.
+Admitted.
+
+Lemma connected_interval (x y : link_graph G) : connected (@sinterval G x y).
+Admitted.
+
+Lemma connectedU (S1 S2 : {set G}) x : x \in S1 :&: S2 -> connected (S1 :|: S2).
+Admitted.
 
 Lemma CP_SubK (U : {set G}) x (Px : x \in CP U) :
   x = val (Sub x Px : CP_ U). 
@@ -437,6 +467,7 @@ Lemma CP_clique (U : {set G}) :
  @clique (link_graph G) U -> CP U = U.
 Proof.
   move => clique_U. apply/setP => x. apply/bigcupP/idP. 
+
   - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
     move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
     + rewrite (eqP A) cpxx inE. by move/eqP->.
@@ -664,7 +695,14 @@ Proof.
   - simpl. exact: CP_path_cp.
 Qed.
 
+Lemma petal_dist (U : {set G}) x y : 
+  x \in CP U -> y \in CP U -> x != y -> petal U x != petal U y.
+Admitted. (* follows from disjointness *)
 
+Lemma sintervalEl (x y : G) u : 
+  u \in sinterval x y -> exists2 p : Path G u x, irred p & y \notin p.
+Admitted. (* essentially the definition *)
+  
 
 
 
@@ -846,51 +884,100 @@ Notation val2 x := (val (val x)).
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
+Lemma Sub_eq (T : eqType) (P : pred T) (x y : T) (Px : x \in P) (Py : y \in P) :
+  Sub (s := sig_subType P) x Px == Sub y Py = (x == y).
+Proof. reflexivity. Qed.
 
+Lemma CP_treeI (G : sgraph) (U : {set G}) :
+  (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
+Proof.
+(* - is_tree is decidable, so we can prove the contraposition
+   - if [CP_ U] isn't a tree it contains an irredundant cycle of size at least 3
+   - this cycle is a clique by [link_cycle] *)
+Admitted.
 
+Lemma connected_induced (G : sgraph) (S : {set G}) : 
+  connected S -> forall x y : sgraph.induced S, connect sedge x y.
+Proof.
+Admitted.
 
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
     is written in the paper. Is there a better way to phrase this? *)
 Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
+  (forall x y : sgraph.induced [set~ i], connect sedge x y) -> 
   K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
   is_tree (CP_ U).
 Proof.
   set G := sgraph.induced _ in U *.
-  move => H_K4_free UisN. 
-  suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x].
-  (* CP_ U is a tree if it does not contain a triangle *)
-  { admit. } 
+  move => G_conn H_K4_free UisN. 
+  suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI.
   move => [x] [y] [z] [xy yz zx]. apply: H_K4_free. 
-  have G_conn : forall x y : G, connect sedge x y. 
-  { admit. (* Where exactly does this come from *) }
   move: (CP_triangle G_conn xy yz zx) => 
     [x'] [y'] [z'] [[x_inU y_inU z_inU] [CPxy CPyz CPzx]].
   pose U3 : {set G} := [set val x; val y; val z]. 
   pose X := petal U3 (val x). 
-  pose Y := petal U3 (val y). 
+  pose Y := petal U3 (val y).
   pose Z := petal U3 (val z).
+  (* TOTHINK: why does petal_id not infer G *)
+  have xX : val x \in X by apply: (@petal_id G).  
+  have yY : val y \in Y by apply: (@petal_id G).
+  have zZ : val z \in Z by apply: (@petal_id G).
   pose T := @sinterval G (val x) (val y) :&: 
             @sinterval G (val y) (val z) :&: 
             @sinterval G (val z) (val x). 
   have part1 : pe_partition [set X; Y; Z; T] [set: G].
   { admit. }
   pose T' : {set G} := [set val x; val y; val z] :|: T. 
-  have alt_T' := T' = @interval G (val x) (val y) :&: 
-                      @interval G (val y) (val z) :&: 
-                      @interval G (val z) (val x). 
-  (* TOTHINK:  *)
-  (* pose GT' := @sgraph.induced H (val @: T'). *)
+  have alt_T' : T' = @interval G (val x) (val y) :&: 
+                     @interval G (val y) (val z) :&: 
+                     @interval G (val z) (val x). 
+  
   pose G' := @sgraph.induced G T'.
-  have G'_conn : forall x y : G', connect sedge x y. 
-  { admit. (* This is the union of overlapping intervals *) }
+  
   have xH' : val x \in T' by rewrite /T' [T]lock !inE eqxx. 
   have yH' : val y \in T' by rewrite /T' [T]lock !inE eqxx. 
   have zH' : val z \in T' by rewrite /T' [T]lock !inE eqxx. 
-  have irred_inT x0 y0 (p : Path G x0 y0) : 
-    x0 \in U3 -> y0 \in U3 -> irred p -> {subset p <= T}.
-  { admit. (* assume p contains some node u \notin T *)
-    (* use link_cpL/link_cpR to argue that p is not irredundant *) }
+
+  (* have irred_inT x0 y0 (p : Path G x0 y0) :  *)
+  (*   x0 \in U3 -> y0 \in U3 -> irred p -> {subset p <= T}. *)
+  (* assume p contains some node u \notin T *)
+  (* use link_cpL/link_cpR to argue that p is not irredundant *)
+  
+  (* How to generalize this properly - is there a reasonable lemma? *)
+  have cp_X (u v : G) : u \in X -> v \in T' -> val x \in cp G u v.
+  { move/petalP => inX. rewrite 3!inE !in_set1 -!orbA. case/or4P.
+    - move/eqP->. apply: inX. apply CP_extensive. by rewrite !inE eqxx.
+    - move/eqP->. apply: inX. apply CP_extensive. by rewrite !inE eqxx.
+    - move/eqP->. apply: inX. apply CP_extensive. by rewrite !inE eqxx.
+    - rewrite 2!inE -andbA => /and3P [v1 v2 v3]. 
+      move: (inX (val z)). case/(_ _)/Wrap. apply: CP_extensive. by rewrite !inE eqxx.
+      apply: contraTT. case/(@cpPn' G) => p _ av_x. 
+      case/sintervalEl : v3 => // q _ av_x'. 
+      apply: (cpNI' (p := pcat p q)). by rewrite mem_pcat negb_or av_x. }
+  (* have cp_Y (u v : G) : u \in Y -> v \in T -> val y \in cp G u v. admit. *)
+  (* have cp_Z (u v : G) : u \in Z -> v \in T -> val z \in cp G u v. admit. *)
+
+  have irred_inT u v (p : Path G u v) : 
+      u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
+  { move => Hu Hv irr_p. apply/subsetP. apply: contraTT irr_p. 
+    case/subsetPn => w W1 W2. 
+    have: w \in X :\ val x. admit. (* actually argue the other cases *)
+    rewrite inE in_set1 => /andP[W3 W4]. 
+    case/Path_split : W1 => w1 [w2] def_p. subst. 
+    rewrite irred_cat !negb_and (disjointNI (x := val x)) //. 
+    + move/(@cpP' G) : (cp_X _ _ W4 Hu). move/(_ (prev w1)). 
+      by rewrite mem_prev.
+    + move/(@cpP' G) : (cp_X _ _ W4 Hv). move/(_ w2). 
+      by rewrite mem_path inE eq_sym (negbTE W3). }
+    (* Assume p contains some node w not in T'.
+       Then w is in one of the petals (say X). 
+       Thus, x is a checkpoint between both u and w and w and v *) }
+  
+  have G'_conn : forall x y : G', connect sedge x y. 
+  { apply: connected_induced. 
+    move => u v Hu Hv. case/uPathP : (G_conn u v) => p irr_p. 
+    apply: (connectRI (p := p)). exact: irred_inT irr_p. }
 
   have cp_lift u x0 y0 : (* x,y \in ... *)
     u \in @cp G' x0 y0 -> val u \in @cp G (val x0) (val y0).
@@ -910,12 +997,59 @@ Proof.
 
   apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
   
-  pose phi (u : G) : option G' := None. (* TODO *)
+  pose phi (u : G) : G' := 
+         if u \in X then x0 
+    else if u \in Y then y0
+    else if u \in Z then z0 
+         else (insubd x0 u).
 
-  have mm_phi : minor_map phi.
+  have D3 : [disjoint3 X & Y & Z].
   { admit. }
-  apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
 
+  have inT u : val u \in T -> phi @^-1 u = [set val u].
+  { admit. }
+  have inX u : val u \in X -> phi @^-1 u = X.
+  { admit. }
+  have preim_G' (u : G') : val u \in phi @^-1 u.
+  { rewrite !inE. move: (valP u) => /=. rewrite 4!inE !in_set1 -!orbA. case/or4P. 
+    + move/eqP => E. by rewrite E /phi xX -val_eqE SubK -E.
+    + admit. (* as above *)
+    + admit. 
+    + rewrite /phi. case:(disjoint3P (sval u) D3). admit. admit. admit. 
+      move => _ _ _ Hu. by rewrite -val_eqE insubdK // inE Hu. }
+
+  have mm_phi : minor_map (Some \o phi).
+  { apply map_of_strict. split.
+    - (* sujectivity *)
+      move => v. exists (val v). move: (valP v) => /= Hv. 
+      have: (val v) \notin X :|: Y :|: Z. { admit. }
+      rewrite !in_setU /phi. case: (disjoint3P (val v) D3) => //= _ _ _ _.  
+      by rewrite valKd.
+    - (* connectedness *)
+      move => v. move => u1 u2. rewrite {1 2}/phi in_set [u2 \in _]in_set ![_ \in pred1 _]inE. 
+      (* TOTHINK: What is a smart case analysis here? *)
+      case: (disjoint3P u1 D3) => [Hu1|Hu1|Hu1|? ? ?];
+      case: (disjoint3P u2 D3) => [Hu2|Hu2|Hu2|? ? ?] //. 
+      all: try (move/eqP<-;rewrite Sub_eq val_eqE => /eqP ?;subst; by rewrite ?sg_irrefl in xy yz zx).
+      all: admit. 
+      (* + move/eqP => <- _. rewrite inX. apply: connected_petal => //. *)
+      (*   * apply: CP_extensive. by rewrite !inE eqxx.  *)
+      (*   * admit. *)
+      (* + move/eqP<-. rewrite -val_eqE val_insubd /= ifT.  *)
+      (*   * (* contradiction since val x \in X *) admit. *)
+      (*   * rewrite inE (_ : u2 \in T) //. (* follows since u2 isn't in X,Y,Z *) admit. *)
+    - (* adjacency *)
+      move => u v uv. exists (val u); exists (val v). by rewrite preim_G'.
+  
+  
+  apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
+  move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b.
+  - exists x'. 
+    + rewrite inE in_simpl. (* need to show that x' \in X *) admit.
+    + move/setP/(_ (val x')) : UisN. by rewrite !inE mem_imset // sg_sym. 
+  - admit.
+  - admit.
+done.
     
 Admitted.
 
