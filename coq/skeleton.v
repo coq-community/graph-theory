@@ -148,10 +148,10 @@ Definition igraph (G : graph) (x y : skeleton G) :=
 
 
 Definition petal (G : sgraph) (U : {set G}) (x:G) :=
-  [set z | [forall y in CP U, x \in cp z y]].
+  locked [set z | [forall y in CP U, x \in cp z y]].
 
 Lemma petal_id (G : sgraph) (U : {set G}) x : x \in petal U x.
-Proof. rewrite inE. apply/forall_inP => y _. exact: mem_cpl. Qed.
+Proof. rewrite /petal -lock inE. apply/forall_inP => y _. exact: mem_cpl. Qed.
 
 Definition pgraph (G : graph) (U : {set G}) (x:G) :=
   @point (induced (@petal (skeleton G) U x))

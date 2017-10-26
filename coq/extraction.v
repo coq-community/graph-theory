@@ -39,6 +39,8 @@ Section AddNode.
 End AddNode.
 Arguments add_node : clear implicits.
 
+Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
+Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
 
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
@@ -409,7 +411,7 @@ Admitted.
 
 Lemma petalP (U : {set G}) x z : 
   reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
-Proof. rewrite inE. exact: (iffP forall_inP). Qed.
+Proof. rewrite /petal -lock inE. exact: (iffP forall_inP). Qed.
 
 Lemma petalPn (U : {set G}) x z : 
   reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin petal U x).
@@ -481,7 +483,8 @@ Definition ncp (U : {set G}) (p : G) : {set G} :=
 
 (* TOTHINK: Do we also want to require [irred q] *)
 Lemma ncpP (U : {set G}) (p : G) x : 
-  reflect (x \in CP U /\ exists q : Path _ p x, forall y, y \in CP U -> y \in q -> y = x) (x \in ncp U p).
+  reflect (x \in CP U /\ exists q : Path G p x, forall y, y \in CP U -> y \in q -> y = x) 
+          (x \in ncp U p).
 Proof.
   rewrite inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
   - case: (boolP (p == x)) => [/eqP ?|px]. 
@@ -704,9 +707,88 @@ Lemma sintervalEl (x y : G) u :
 Admitted. (* essentially the definition *)
   
 
+Lemma petal_exit (U : {set G}) x u v : 
+  x \in CP U -> u \in petal U x -> v \notin petal U x -> x \in cp u v.
+Proof.
+  move => cp_x. rewrite [v \in _]ncp_petal // => N1 N2.
+  have [y [Y1 Y2 Y3]] : exists y, [/\ y \in CP U, x != y & y \in ncp U v].
+  { (* [ncp U v] cannot be empy and is different from [set x] *) admit. } 
+  move/petalP : N1 => /(_ _ Y1). 
+  apply: contraTT => /cpPn' [p] irr_p av_x. 
+  case/ncpP : Y3 => _ [q] /(_ _ cp_x) A. 
+  have {A} Hq : x \notin q. { apply/negP => /A ?. subst. by rewrite eqxx in Y2. }
+  apply: (cpNI' (p := pcat p q)). by rewrite mem_pcat negb_or av_x.
+Admitted.
 
+Lemma petal_exit' (U : {set G}) x u v : 
+  x \in CP U -> u \in petal U x -> v \in x |: ~: petal U x -> x \in cp u v.
+Proof. 
+  move => cp_x Hu. case/setU1P => [->|]; first by rewrite cp_sym mem_cpl.
+  rewrite inE. exact: petal_exit Hu.
+Qed.
+
+Lemma ncp_anti (U U' : {set G}) x : 
+  U \subset U' -> ncp U' x \subset ncp U x.
+Admitted.
+
+Lemma petal_extension (U : {set G}) x y : 
+  x \in CP U -> y \notin petal U x -> petal U x = petal (y |: U) x.
+Proof.
+  move => CPx Hy. apply/setP => u. apply/petalP/petalP.
+  - move => A z. 
+    have cp_x : x \in cp u y. { apply: petal_exit Hy => //. exact/petalP. }
+    case/bigcupP => [[v0 v1]] /setXP /= []. 
+    do 2 (case/setU1P => [->|?]). 
+    + by rewrite cpxx inE => /eqP->. 
+    + move => Hz. apply/negPn/negP => B. 
+      (* take irredundant [p : Path y v1] and split at z *)
+      (* have x in the z-v1 part (follows with A) *)
+      (* hence x not in the y-z part *)
+      (* contradicts cp_x *)
+      admit.
+    + (* symmetric *) admit.
+    + move => Hz. apply: A. apply/bigcupP; exists (v0,v1) => //. exact/setXP.
+  - move => A z. admit. (* monotinicity of CP *)
+Admitted.
+
+Lemma pe_partD1 (T : finType) (A D : {set T}) P :  
+  pe_partition (A |: P) D = pe_partition P (D :\: A).
+Admitted.
+
+Lemma pe_partIr (T : finType) (A A' B B' D : {set T}) : 
+  pe_partition [set A; B] D -> pe_partition [set A' ; B'] D -> 
+  pe_partition [set A; A'; B :&: B'] D.
+Admitted.
+
+Lemma pe_part_fuse (T : finType) (A B B' C C' D : {set T}) : 
+  pe_partition [set A; B ; C] D -> 
+  pe_partition [set A; B' ; C'] D -> 
+  [disjoint B & B'] ->
+  pe_partition [set A; B; B'; C :&: C'] D.
+Admitted.
+  
+
+Lemma triangle_partition (x y z : link_graph G) :
+  x -- y -> y -- z -> z -- x -> 
+  let U : {set G} := [set x;y;z] in 
+  pe_partition [set petal U x; petal U y; petal U z; 
+                @sinterval G x y :&: @sinterval G x z ] [set: G].
+Proof.
+  move => xy yz zx /=. set U : {set G} := [set x; y; z].
+  move: (link_part xy) => Pxy. 
+  rewrite sg_sym in zx. move: (link_part zx) => Pxz. 
+  have E1: @petal G [set x; y] x = petal U x. { admit. }
+  have E2: @petal G [set x; y] y = petal U y. { admit. }
+  have E3: @petal G [set x; z] x = petal U x. { admit. }
+  have E4: @petal G [set x; z] z = petal U z. { admit. }
+  rewrite E1 E2 E3 E4 in Pxy Pxz. apply: pe_part_fuse => //. 
+  apply: petal_disj; last by rewrite (sg_edgeNeq yz).
+  - by apply: CP_extensive; rewrite !inE eqxx.
+  - by apply: CP_extensive; rewrite !inE eqxx.
+Admitted.
 
 End Checkpoints.
+
 
 
 Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
@@ -869,7 +951,7 @@ Admitted.
 
 Lemma CP2_part (G : sgraph) x y x' y' : 
   [set x; y] \subset cp x' y' -> 
-  let U := [set x'; y'] in 
+  let U := [set x; y] in 
   pe_partition [set petal U x; petal U y; sinterval x y] [set: G].
 Proof.
   rewrite subUset !sub1set => /andP[A B]. 
@@ -896,10 +978,42 @@ Proof.
    - this cycle is a clique by [link_cycle] *)
 Admitted.
 
+Lemma connected1 (G : sgraph) (x : G) : connected [set x].
+Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
+
 Lemma connected_induced (G : sgraph) (S : {set G}) : 
   connected S -> forall x y : sgraph.induced S, connect sedge x y.
 Proof.
 Admitted.
+
+Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : sgraph.induced S) 
+  (p : Path G (val x) (val y)) : 
+  {subset p <= S} -> exists q : Path (sgraph.induced S) x y, (forall z, z \in q -> val z \in p).
+Admitted.
+
+Lemma Some_eqE (T : eqType) (x y : T) : 
+  (Some x == Some y) = (x == y).
+Admitted.
+
+Lemma CP_triangle_petals (G:sgraph) (G_conn : forall x y : G, connect sedge x y) 
+  (U : {set G}) (x y z : CP_ U) : 
+  x -- y -> y -- z -> z -- x -> 
+  let U3 : {set G} := [set val x; val y; val z] in
+  exists x' y' z' : G, [/\ x' \in U, y' \in U & z' \in U] /\ 
+                  [/\ x' \in petal U3 (val x), y' \in petal U3 (val y) & z' \in petal U3 (val z)].
+Proof.
+  move => xy yz zx.   
+  move: (CP_triangle G_conn xy yz zx) => 
+    [x'] [y'] [z'] [[x_inU y_inU z_inU] [CPxy CPyz CPzx]] U3.
+  pose X := petal U3 (val x). 
+  pose Y := petal U3 (val y).
+  pose Z := petal U3 (val z).
+  have: x' \in X \/ x' \in Y. 
+  { move/(@CP2_part G) : (CPxy) => /= part_xy. set U2 := [set val x; val y] in part_xy.
+    apply/orP. apply: contraTT (CPxy). rewrite negb_or => /andP[A B].
+  
+Admitted.
+  
 
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
@@ -913,13 +1027,12 @@ Proof.
   move => G_conn H_K4_free UisN. 
   suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI.
   move => [x] [y] [z] [xy yz zx]. apply: H_K4_free. 
-  move: (CP_triangle G_conn xy yz zx) => 
-    [x'] [y'] [z'] [[x_inU y_inU z_inU] [CPxy CPyz CPzx]].
-  pose U3 : {set G} := [set val x; val y; val z]. 
+  move: (CP_triangle_petals G_conn xy yz zx) => 
+    [x'] [y'] [z'] [[x_inU y_inU z_inU] [xX' yY' zZ']].
+  set U3 : {set G} := [set val x; val y; val z] in xX' yY' zZ'. 
   pose X := petal U3 (val x). 
   pose Y := petal U3 (val y).
   pose Z := petal U3 (val z).
-  (* TOTHINK: why does petal_id not infer G *)
   have xX : val x \in X by apply: (@petal_id G).  
   have yY : val y \in Y by apply: (@petal_id G).
   have zZ : val z \in Z by apply: (@petal_id G).
@@ -929,15 +1042,17 @@ Proof.
   have part1 : pe_partition [set X; Y; Z; T] [set: G].
   { admit. }
   pose T' : {set G} := [set val x; val y; val z] :|: T. 
+  (* Do we really need this equality ?*)
   have alt_T' : T' = @interval G (val x) (val y) :&: 
                      @interval G (val y) (val z) :&: 
                      @interval G (val z) (val x). 
+  { admit. }
   
   pose G' := @sgraph.induced G T'.
   
-  have xH' : val x \in T' by rewrite /T' [T]lock !inE eqxx. 
-  have yH' : val y \in T' by rewrite /T' [T]lock !inE eqxx. 
-  have zH' : val z \in T' by rewrite /T' [T]lock !inE eqxx. 
+  have xH' : val x \in T' by rewrite !inE eqxx. 
+  have yH' : val y \in T' by rewrite !inE eqxx. 
+  have zH' : val z \in T' by rewrite !inE eqxx. 
 
   (* have irred_inT x0 y0 (p : Path G x0 y0) :  *)
   (*   x0 \in U3 -> y0 \in U3 -> irred p -> {subset p <= T}. *)
@@ -946,23 +1061,20 @@ Proof.
   
   (* How to generalize this properly - is there a reasonable lemma? *)
   have cp_X (u v : G) : u \in X -> v \in T' -> val x \in cp G u v.
-  { move/petalP => inX. rewrite 3!inE !in_set1 -!orbA. case/or4P.
-    - move/eqP->. apply: inX. apply CP_extensive. by rewrite !inE eqxx.
-    - move/eqP->. apply: inX. apply CP_extensive. by rewrite !inE eqxx.
-    - move/eqP->. apply: inX. apply CP_extensive. by rewrite !inE eqxx.
-    - rewrite 2!inE -andbA => /and3P [v1 v2 v3]. 
-      move: (inX (val z)). case/(_ _)/Wrap. apply: CP_extensive. by rewrite !inE eqxx.
-      apply: contraTT. case/(@cpPn' G) => p _ av_x. 
-      case/sintervalEl : v3 => // q _ av_x'. 
-      apply: (cpNI' (p := pcat p q)). by rewrite mem_pcat negb_or av_x. }
-  (* have cp_Y (u v : G) : u \in Y -> v \in T -> val y \in cp G u v. admit. *)
-  (* have cp_Z (u v : G) : u \in Z -> v \in T -> val z \in cp G u v. admit. *)
+  { move => Hu Hv. apply: petal_exit' Hu _ => //.
+    + apply CP_extensive. by rewrite !inE eqxx.
+    + move: Hv. rewrite /T' -/X. 
+      (* disjointness of petals, petal_id, interval boundaries, 
+         partition properties *) admit. }
+  have cp_Y (u v : G) : u \in Y -> v \in T -> val y \in cp G u v. admit.
+  have cp_Z (u v : G) : u \in Z -> v \in T -> val z \in cp G u v. admit.
 
   have irred_inT u v (p : Path G u v) : 
       u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
   { move => Hu Hv irr_p. apply/subsetP. apply: contraTT irr_p. 
     case/subsetPn => w W1 W2. 
-    have: w \in X :\ val x. admit. (* actually argue the other cases *)
+    (* TODO: actually argue the other cases *)
+    have: w \in X :\ val x. admit. 
     rewrite inE in_set1 => /andP[W3 W4]. 
     case/Path_split : W1 => w1 [w2] def_p. subst. 
     rewrite irred_cat !negb_and (disjointNI (x := val x)) //. 
@@ -970,18 +1082,17 @@ Proof.
       by rewrite mem_prev.
     + move/(@cpP' G) : (cp_X _ _ W4 Hv). move/(_ w2). 
       by rewrite mem_path inE eq_sym (negbTE W3). }
-    (* Assume p contains some node w not in T'.
-       Then w is in one of the petals (say X). 
-       Thus, x is a checkpoint between both u and w and w and v *) }
   
   have G'_conn : forall x y : G', connect sedge x y. 
   { apply: connected_induced. 
     move => u v Hu Hv. case/uPathP : (G_conn u v) => p irr_p. 
     apply: (connectRI (p := p)). exact: irred_inT irr_p. }
 
-  have cp_lift u x0 y0 : (* x,y \in ... *)
-    u \in @cp G' x0 y0 -> val u \in @cp G (val x0) (val y0).
-  { apply: contraTT => /cpPn' [p] /irred_inT. admit. }
+  have cp_lift u v w : 
+    w \in @cp G' u v -> val w \in @cp G (val u) (val v).
+  { apply: contraTT => /cpPn' [p] /irred_inT. move/(_ (valP u) (valP v)).
+    case/Path_to_induced => q /(_ w) /implyP A B. 
+    rewrite (negbTE B) implybF in A. exact: (cpNI' (p := q)).  }
 
   pose x0 : G' := Sub (val x) xH'.
   pose y0 : G' := Sub (val y) yH'.
@@ -989,11 +1100,17 @@ Proof.
   pose H' := @add_node G' [set x0;y0;z0].  
 
   have link_xy : @link_rel G' x0 y0.
-  { admit. (* follows with cp_lift *) }
+  { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq xy) /=. apply/subsetP.
+    move => w /cp_lift. case/andP : (xy) => _ /subsetP S /S. 
+    by rewrite !inE !sub_val_eq. }
   have link_yz : @link_rel G' y0 z0.
-  { admit. (* follows with cp_lift *) }
+  { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq yz) /=. apply/subsetP.
+    move => w /cp_lift. case/andP : (yz) => _ /subsetP S /S. 
+    by rewrite !inE !sub_val_eq. }
   have link_zx : @link_rel G' z0 x0.
-  { admit. (* follows with cp_lift *) }
+  { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq zx) /=. apply/subsetP.
+    move => w /cp_lift. case/andP : (zx) => _ /subsetP S /S. 
+    by rewrite !inE !sub_val_eq. }
 
   apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
   
@@ -1004,19 +1121,24 @@ Proof.
          else (insubd x0 u).
 
   have D3 : [disjoint3 X & Y & Z].
-  { admit. }
+  { case/andP : part1 => cov triv.
+    have/trivIsetP T3: trivIset [set X;Y;Z]. { apply: trivIsetS triv. admit. }
+    apply/and3P. 
+    rewrite !T3 // ?inE ?eqxx // petal_dist // ?val_eqE 
+    1?(sg_edgeNeq xy,sg_edgeNeq yz, sg_edgeNeq zx) //; 
+    apply CP_extensive; by rewrite !inE eqxx. }
 
-  have inT u : val u \in T -> phi @^-1 u = [set val u].
+  have inT (u : G') : val u \in T -> phi @^-1 u = [set val u].
   { admit. }
-  have inX u : val u \in X -> phi @^-1 u = X.
+  have pre_x0 : phi @^-1 x0 = X.
   { admit. }
+      
   have preim_G' (u : G') : val u \in phi @^-1 u.
   { rewrite !inE. move: (valP u) => /=. rewrite 4!inE !in_set1 -!orbA. case/or4P. 
     + move/eqP => E. by rewrite E /phi xX -val_eqE SubK -E.
     + admit. (* as above *)
     + admit. 
-    + rewrite /phi. case:(disjoint3P (sval u) D3). admit. admit. admit. 
-      move => _ _ _ Hu. by rewrite -val_eqE insubdK // inE Hu. }
+    + move/inT/setP/(_ (val u)). by rewrite set11 !inE. }
 
   have mm_phi : minor_map (Some \o phi).
   { apply map_of_strict. split.
@@ -1026,31 +1148,25 @@ Proof.
       rewrite !in_setU /phi. case: (disjoint3P (val v) D3) => //= _ _ _ _.  
       by rewrite valKd.
     - (* connectedness *)
-      move => v. move => u1 u2. rewrite {1 2}/phi in_set [u2 \in _]in_set ![_ \in pred1 _]inE. 
-      (* TOTHINK: What is a smart case analysis here? *)
-      case: (disjoint3P u1 D3) => [Hu1|Hu1|Hu1|? ? ?];
-      case: (disjoint3P u2 D3) => [Hu2|Hu2|Hu2|? ? ?] //. 
-      all: try (move/eqP<-;rewrite Sub_eq val_eqE => /eqP ?;subst; by rewrite ?sg_irrefl in xy yz zx).
-      all: admit. 
-      (* + move/eqP => <- _. rewrite inX. apply: connected_petal => //. *)
-      (*   * apply: CP_extensive. by rewrite !inE eqxx.  *)
-      (*   * admit. *)
-      (* + move/eqP<-. rewrite -val_eqE val_insubd /= ifT.  *)
-      (*   * (* contradiction since val x \in X *) admit. *)
-      (*   * rewrite inE (_ : u2 \in T) //. (* follows since u2 isn't in X,Y,Z *) admit. *)
+      move => v. move: (valP v) => /=. rewrite 4!inE !in_set1. 
+      rewrite -!sub_val_eq -/x0 -/y0 -/z0 -!orbA. case/or4P => [/eqP->|/eqP->|/eqP->|].
+      + rewrite pre_x0. apply: connected_petal => //. admit.
+      + admit.
+      + admit.
+      + move => Hv. rewrite (inT _ Hv). exact: connected1. 
     - (* adjacency *)
-      move => u v uv. exists (val u); exists (val v). by rewrite preim_G'.
-  
+      move => u v uv. exists (val u); exists (val v). by rewrite preim_G'. 
+  }  
   
   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b.
   - exists x'. 
-    + rewrite inE in_simpl. (* need to show that x' \in X *) admit.
+    + rewrite inE in_simpl. 
+      suff: x' \in X. by rewrite -pre_x0 /= Some_eqE !inE. 
+      done.
     + move/setP/(_ (val x')) : UisN. by rewrite !inE mem_imset // sg_sym. 
   - admit.
   - admit.
-done.
-    
 Admitted.
 
 
@@ -1066,7 +1182,9 @@ Proof.
   pose o' : G' := Sub o Ho.
   set U' : {set G'} := [set insubd o' x | x in U].
   have tree_CPU' : is_tree (CP_ U').
-  { apply: CP_tree K4F _. admit. }
+  { apply: CP_tree K4F _. 
+    + (* connectivity *) admit.
+    + (* neighbour condition *) admit. }
   have o'_in_U' : o' \in CP U'. 
   { admit. }
   pose N := @neighbours (CP_ U') (Sub o' o'_in_U').
