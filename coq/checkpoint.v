@@ -204,47 +204,7 @@ Section CheckPoints.
     exact: disjointNI.
   Qed.
 
-  
-  (** This is redundant, but a boolean property. See [checkpoint_seq]
-  in extraction.v *)
-  Variables (i o : G).
-  Hypothesis conn_io : connect sedge i o.
 
-  Lemma the_upath_proof : exists p, upath i o p.
-  Proof. case/upathP : conn_io => p Hp. by exists p. Qed.
-                                                                
-  Definition the_upath := xchoose (the_upath_proof).
-
-  Lemma the_upathP x y : upath i o (the_upath).
-  Proof. exact: xchooseP. Qed.
-
-  Definition cpo x y := let p := the_upath in 
-                        index x (i::p) <= index y (i::p).
-
-  Lemma cpo_trans : transitive cpo.
-  Proof. move => ? ? ?. exact: leq_trans. Qed.
-
-  Lemma cpo_total : total cpo.
-  Proof. move => ? ?. exact: leq_total. Qed.
-
-  Lemma cpo_antisym : {in cp i o&,antisymmetric cpo}.
-  Proof. 
-    move => x y Cx Cy. rewrite /cpo -eqn_leq. 
-    have Hx: x \in i :: the_upath. 
-    { move/cpP : Cx => /(_ (the_upath)). 
-      apply. apply upathW. exact: the_upathP. }
-    have Hy: y \in i :: the_upath.
-    { move/cpP : Cy => /(_ (the_upath)). 
-      apply. apply upathW. exact: the_upathP. }
-    by rewrite -{2}[x](nth_index i Hx) -{2}[y](nth_index i Hy) => /eqP->.
-  Qed.
-
-  (** All paths visist all checkpoints in the same order as the canonical upath *)
-  (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
-  Lemma cpo_order (x y : G) p : x \in cp i o -> y \in cp i o -> upath i o p -> 
-    cpo x y = (index x (i::p) <= index y (i::p)).
-    move => cp_x cp_y pth_p. rewrite /cpo. 
-  Admitted.
 
   Variable (U : {set G}).
 
@@ -265,15 +225,17 @@ Section CheckPoints.
       apply: contraTT cp_x. rewrite negb_or => /andP[/cpPn' [s s1 s2] /cpPn' [t t1 t2]].
       apply (cpNI' (p := pcat s (pcat p (prev t)))). 
       by rewrite !mem_pcat !mem_prev (negbTE av_x) (negbTE s2) (negbTE t2). }
-    move: (H _ _ _ _ _ Wy cp_y) => B {H}. rewrite (cp_sym y1 x1) (cp_sym y2 x2) in B. 
+    have {H} B : (y \in cp x1 y1) || (y \in cp x2 y2).
+    { rewrite -(cp_sym y1 x1) -(cp_sym y2 x2). exact: H. }
     wlog {A} /andP [Hx Hy] : x1 x2 y1 y2 A B cp_x cp_y Ux1 Ux2 Uy1 Uy2 Wx Wy
         / (x \in cp x1 y1) && (y \notin cp x1 y1).
     { case: (boolP (y \in cp x1 y1)) A B => A; case: (boolP (x \in cp x1 y1)) => /= B C D W. 
       - by exists x1; exists y1; rewrite subUset !sub1set B. 
-      - case: (boolP (y \in cp x2 y2)) => E. (* TOTHINK: why the second case anlysis in this case? *)
+      - (* TOTHINK: why the second case anlysis in this case? *)
+        case: (boolP (y \in cp x2 y2)) => E. 
         + exists x2; exists y2; by rewrite subUset !sub1set C.
         + move: (W x2 x1 y2 y1). rewrite (cp_sym x2 x1) (cp_sym y2 y1) A C /= orbT. exact.
-      - apply: (W x1 x2 y1 y2) => //. by rewrite B. by rewrite D. (* exact/andP. *)
+      - apply: (W x1 x2 y1 y2) => //. by rewrite B. by rewrite D.
       - exists x2; exists y2; by rewrite subUset !sub1set C D. }
     rewrite (negbTE Hy) /= in B.
     case: (boolP (x \in cp x2 y2)) => [C|Wx']; first by exists x2; exists y2; rewrite subUset !sub1set C.
@@ -281,6 +243,8 @@ Section CheckPoints.
     - apply: contraTT cp_x => C. apply: cpN_cat C _. by rewrite cp_sym.
     - apply: contraTT cp_y. apply: cpN_cat. by rewrite cp_sym.
   Qed.
+
+  
 
   (* END TEST *)
 
@@ -531,6 +495,9 @@ Section CheckPoints.
     case: (three_way_split irr_q x_in_q z_in_q x_before_z) => q1 [q2] [q3] [? ? ?]. subst q.
     rewrite !mem_pcat 2!negb_or in av_y. case/and3P : av_y => q1_y q2_y q3_y.
 
+    (* have _ : (val x) \in cp x' (val y).  *)
+    clear x_before_y y_in_p x_in_p x_before_z z_in_q x_in_q irr_p irr_q.
+
     exists x'. exists y'. exists z'. split; split; rewrite // subUset !sub1set; apply/andP;split.
     - done.
     - done.
@@ -557,3 +524,49 @@ Section CheckPoints.
 
     
 End CheckPoints.
+
+Section CheckpointOrder.
+
+  Variables (G : sgraph) (i o : G).
+  Hypothesis conn_io : connect sedge i o.
+  Implicit Types x y : G.
+
+  (* TODO: This uses upath in a nontrivial way. 
+
+  Lemma the_upath_proof : exists p, upath i o p.
+  Proof. case/upathP : conn_io => p Hp. by exists p. Qed.
+                                                                
+  Definition the_upath := xchoose (the_upath_proof).
+
+  Lemma the_upathP x y : upath i o (the_upath).
+  Proof. exact: xchooseP. Qed.
+
+  Definition cpo x y := let p := the_upath in 
+                        index x (i::p) <= index y (i::p).
+
+  Lemma cpo_trans : transitive cpo.
+  Proof. move => ? ? ?. exact: leq_trans. Qed.
+
+  Lemma cpo_total : total cpo.
+  Proof. move => ? ?. exact: leq_total. Qed.
+
+  Lemma cpo_antisym : {in cp i o&,antisymmetric cpo}.
+  Proof. 
+    move => x y Cx Cy. rewrite /cpo -eqn_leq. 
+    have Hx: x \in i :: the_upath. 
+    { move/cpP : Cx => /(_ (the_upath)). 
+      apply. apply upathW. exact: the_upathP. }
+    have Hy: y \in i :: the_upath.
+    { move/cpP : Cy => /(_ (the_upath)). 
+      apply. apply upathW. exact: the_upathP. }
+    by rewrite -{2}[x](nth_index i Hx) -{2}[y](nth_index i Hy) => /eqP->.
+  Qed.
+
+  (** All paths visist all checkpoints in the same order as the canonical upath *)
+  (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
+  Lemma cpo_order (x y : G) p : x \in cp i o -> y \in cp i o -> upath i o p -> 
+    cpo x y = (index x (i::p) <= index y (i::p)).
+    move => cp_x cp_y pth_p. rewrite /cpo. 
+  Admitted.
+
+End CheckpointOrder.
