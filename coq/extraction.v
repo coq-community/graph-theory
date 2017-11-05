@@ -768,6 +768,8 @@ Lemma pe_part_fuse (T : finType) (A B B' C C' D : {set T}) :
 Admitted.
   
 
+(* TOTHINK: this should not be necessary, if the decomposition in
+[CP_tree] is defined differently *)
 Lemma triangle_partition (x y z : link_graph G) :
   x -- y -> y -- z -> z -- x -> 
   let U : {set G} := [set x;y;z] in 
@@ -995,23 +997,35 @@ Lemma Some_eqE (T : eqType) (x y : T) :
   (Some x == Some y) = (x == y).
 Admitted.
 
+Lemma CP_petals (G : sgraph) (G_conn : forall x y : G, connect sedge x y)
+  (U : {set G}) (x y : G) : 
+  x \in CP U -> y \in CP U -> link_rel G x y ->
+  exists x' y', [/\ x' \in U, y' \in U, x' \in petal [set x;y] x & y' \in petal [set x;y] y].
+Proof.
+  move => CPx CPy xy. move: (CP_base CPx CPy) => [x'] [y'] [Ux Uy CPxy].
+  (* let [p : Path x' y'] be irredundant *)
+  (* wlog x <[p] y , use three_way_split. *)
+  (* [x' \in petal {x,y} x] since it can reach x but not y and there are
+  no other checkpoint to consider *)
+  (* the case for y is symmetric *) 
+Admitted.
+
 Lemma CP_triangle_petals (G:sgraph) (G_conn : forall x y : G, connect sedge x y) 
   (U : {set G}) (x y z : CP_ U) : 
   x -- y -> y -- z -> z -- x -> 
   let U3 : {set G} := [set val x; val y; val z] in
-  exists x' y' z' : G, [/\ x' \in U, y' \in U & z' \in U] /\ 
-                  [/\ x' \in petal U3 (val x), y' \in petal U3 (val y) & z' \in petal U3 (val z)].
-Proof.
-  move => xy yz zx.   
-  move: (CP_triangle G_conn xy yz zx) => 
-    [x'] [y'] [z'] [[x_inU y_inU z_inU] [CPxy CPyz CPzx]] U3.
-  pose X := petal U3 (val x). 
-  pose Y := petal U3 (val y).
-  pose Z := petal U3 (val z).
-  have: x' \in X \/ x' \in Y. 
-  { move/(@CP2_part G) : (CPxy) => /= part_xy. set U2 := [set val x; val y] in part_xy.
-    apply/orP. apply: contraTT (CPxy). rewrite negb_or => /andP[A B].
-  
+  exists x' y' z' : G, 
+    [/\ x' \in U, y' \in U & z' \in U] /\ 
+    [/\ x' \in petal U3 (val x), y' \in petal U3 (val y) & z' \in petal U3 (val z)].
+Proof.  
+  (* TODO: This should replace CP_triangle (as everything is already there in this proof) *)
+
+  (* move => xy yz zx U3.  *)
+  (* case: (CP_petals G_conn (valP y) (valP z)) => // y' [z'] [yU zU Py Pz]. *)
+  (* case: (CP_petals G_conn (valP x) (valP y)) => // x' [y''] [xU yU' Px Py']. *)
+  (* (* have [z \notin petal {x,y} x] since [x \notin cp y z] and symmetric for all other petals *) *)
+  (* exists x'; exists y'; exists z'. split => //. split. *)
+  (* - rewrite /U3 -setUA -petal_extension //.  *)
 Admitted.
   
 
@@ -1036,18 +1050,13 @@ Proof.
   have xX : val x \in X by apply: (@petal_id G).  
   have yY : val y \in Y by apply: (@petal_id G).
   have zZ : val z \in Z by apply: (@petal_id G).
-  pose T := @sinterval G (val x) (val y) :&: 
-            @sinterval G (val y) (val z) :&: 
-            @sinterval G (val z) (val x). 
-  have part1 : pe_partition [set X; Y; Z; T] [set: G].
-  { admit. }
-  pose T' : {set G} := [set val x; val y; val z] :|: T. 
-  (* Do we really need this equality ?*)
-  have alt_T' : T' = @interval G (val x) (val y) :&: 
-                     @interval G (val y) (val z) :&: 
-                     @interval G (val z) (val x). 
-  { admit. }
+  (* TOTHINK : The definition of T is really only used to show hat it's disjoint from X,Y,Z *)
+  (* So we may not even have to use the split-link lemma and the partition lemmas *)  
+  move def_T: (@sinterval G (val x) (val y) :&: @sinterval G (val x) (val z)) => T.
+  have {def_T} part1 : pe_partition [set X; Y; Z; T] [set: G].
+  { rewrite -def_T. exact: triangle_partition. }
   
+  pose T' : {set G} := [set val x; val y; val z] :|: T.   
   pose G' := @sgraph.induced G T'.
   
   have xH' : val x \in T' by rewrite !inE eqxx. 

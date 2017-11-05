@@ -531,7 +531,7 @@ Section CheckpointOrder.
   Hypothesis conn_io : connect sedge i o.
   Implicit Types x y : G.
 
-  (* TODO: This uses upath in a nontrivial way. 
+  (* TODO: This uses upath in a nontrivial way. *)
 
   Lemma the_upath_proof : exists p, upath i o p.
   Proof. case/upathP : conn_io => p Hp. by exists p. Qed.
