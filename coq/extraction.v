@@ -410,14 +410,14 @@ Qed.
 
 (** TOTHINK: have neighbouring checkpoints as {set G} or {set CP_ U} *)
 Definition ncp (U : {set G}) (p : G) : {set G} := 
-  [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
+  locked [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
 
 (* TOTHINK: Do we also want to require [irred q] *)
 Lemma ncpP (U : {set G}) (p : G) x : 
   reflect (x \in CP U /\ exists q : Path G p x, forall y, y \in CP U -> y \in q -> y = x) 
           (x \in ncp U p).
 Proof.
-  rewrite inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
+  rewrite /ncp -lock inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
   - case: (boolP (p == x)) => [/eqP ?|px]. 
     + subst p. exists (idp x) => y _ . by rewrite mem_idp => /eqP.
     + case/(uPathRP px) : A => q irr_q /subsetP sub_q. 
@@ -530,7 +530,7 @@ Proof.
   apply/andP; split.
   - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
     pose N := ncp [set x; y] p. 
-    have: N \subset [set x; y]. by rewrite /N /ncp setIdE CPxy subsetIl.
+    have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
     rewrite subset2 // (ncp0 x) ?in_setU ?set11 //=. case/or3P. 
     + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
       apply: mem_cover. by rewrite !inE eqxx. 
