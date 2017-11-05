@@ -52,6 +52,7 @@ Section CheckPoints.
     + rewrite in_collective nodesE. apply: H. exact: valP. 
     + move: (H (Sub p Hp)). by rewrite in_collective nodesE. 
   Qed.
+  Arguments cpP' [x y z].
 
   Lemma cpPn' x y z : reflect (exists2 p : Path x y, irred p & z \notin p) (z \notin cp x y).
   Proof. 
@@ -180,7 +181,7 @@ Section CheckPoints.
     rewrite /cycle -cat_rcons rcons_cat cat_path last_rcons in C1. 
     case/andP : C1 => /rcons_spath P1 /rcons_spath /spath_rev P2. 
     rewrite srev_rcons in P2. 
-    move/link_seq_cp : P1 => P1. move/link_seq_cp : P2 => P2. 
+    move/link_seq_cp in P1. move/link_seq_cp in P2.
     have D: [disjoint p1 & p2].
     { move: C2 => /= /andP [_]. rewrite cat_uniq -disjoint_has disjoint_cons disjoint_sym.
       by case/and3P => _ /andP [_ ?] _. }
@@ -193,9 +194,6 @@ Section CheckPoints.
   Variable (U : {set G}).
 
   (* Lemma 16 *)
- 
-  (* BEGIN TEST *)
-
   Lemma CP_base x y : x \in CP U -> y \in CP U ->
     exists x' y':G, [/\ x' \in U, y' \in U & [set x;y] \subset cp x' y'].
   Proof.
@@ -228,8 +226,7 @@ Section CheckPoints.
     - apply: contraTT cp_y. apply: cpN_cat. by rewrite cp_sym.
   Qed.
 
-  
-  (* Lemma 16 *)
+  (* TOTHINK: Is it really worthwile to have this as a graph in addition to the set [CP U]? *)
   Definition CP_ := @induced link_graph (CP U).
 
   Lemma index_uniq_inj (T:eqType) (s : seq T) : 
@@ -240,15 +237,11 @@ Section CheckPoints.
     by rewrite -(nth_index x in_s) E nth_index.
   Qed.
 
-    
-
   Lemma CP_base_ (x y : CP_) : 
     exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
   Proof. exact: CP_base  (svalP x) (svalP y). Qed.
 
-
-  Arguments cpP' [x y z].
-
+  
   Definition idx x y (p : Path x y) u := index u (nodes p).
 
   (* TOTHINK: This only parses if the level is at most 10, why? *)
