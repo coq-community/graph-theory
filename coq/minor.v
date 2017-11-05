@@ -40,6 +40,21 @@ Section DecompTheory.
     
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
 
+  Lemma subtree_link (C : {set T}) t0 c0 c p : 
+    subtree C -> t0 \notin C -> c0 \in C -> t0 -- c0 -> c \in C -> upath t0 c p -> c0 \in p.
+  Proof.
+    move => sub_C H1 H2 H3 H4 H5. 
+    have [q Hq] : exists p, upath  c0 c p. 
+    { apply/upathP. apply: (connect_trans (y := t0)). 
+      + apply: connect1. by rewrite sgP.
+      + apply/upathP. by exists p. }
+    have X : upath  t0 c (c0::q). 
+    { rewrite upath_cons H3 Hq /= andbT inE. 
+      apply/orP => [[/eqP X|X]]. by subst; contrab. 
+      move/sub_C : Hq. case/(_ _ _)/Wrap => // /(_ _ X) ?. by contrab. }
+    rewrite (treeP H5 X). exact: mem_head.
+  Qed.
+
   Lemma decomp_clique (S : {set G}) : 
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 
@@ -116,6 +131,18 @@ Section DecompTheory.
       
 End DecompTheory.
 
+(* TODO: use one generic construction for C3 and K4 *)
+
+Definition C3_rel := [rel x y : 'I_3 | x != y].
+
+Fact C3_sym : symmetric C3_rel. 
+Proof. move => x y /=. by rewrite eq_sym. Qed.
+
+Fact C3_irrefl : irreflexive C3_rel. 
+Proof. move => x /=. by rewrite eqxx. Qed.
+
+Definition C3 := SGraph C3_sym C3_irrefl.
+
 Definition K4_rel := [rel x y : 'I_4 | x != y].
 
 Fact K4_sym : symmetric K4_rel. 
@@ -143,9 +170,6 @@ Lemma K4_width (T : tree) (D : T -> {set K4}) :
 Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
 
 (** ** Minors *)
-
-Definition connected (G : sgraph) (S : {set G}) :=
-  {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.  
 
 Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.  
 

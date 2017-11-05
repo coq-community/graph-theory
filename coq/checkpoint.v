@@ -141,7 +141,7 @@ Section CheckPoints.
     by rewrite !mem_pcat !mem_prev (negbTE P1) (negbTE P2) (negbTE Hs).
   Qed.
 
-  (* END TEST *)
+  (** Definition of the link graph *)
 
   Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
 
@@ -155,21 +155,7 @@ Section CheckPoints.
 
   Lemma link_avoid (x y z : G) : 
     z \notin [set x; y] -> link_rel x y -> exists2 p, spath x y p & z \notin (x::p).
-  Admitted.
-  (* Proof. *)
-  (*   move => Hz /andP[l1 l2]. *)
-  (*   suff/cpPn [[p] [? ?]] : z \notin cp x y by exists p. *)
-  (*   apply: contraNN Hz. by move/(subsetP l2).  *)
-  (* Qed. *)
-
-  (* Lemma path_ind y (P : forall x, Path x y -> Prop) :  *)
-  (*   (forall x (p : Path x x), p = [:: x] -> P x p)  *)
-  (*   (forall x y (p : Path x y) *)
-  (*   forall x (p : Path x y) : P x P  *)
-
-  (* Lemma link_seq_cp (y x : G) (p : @Path link_graph x y) :  *)
-  (*   cp x y \subset p. *)
-  (* Proof. *)
+  Abort. (* not acutally used *)
 
   Lemma link_seq_cp (y x : G) p :
     @spath link_graph x y p -> cp x y \subset x :: p.
@@ -203,8 +189,6 @@ Section CheckPoints.
     rewrite !(inE,mem_rcons,negbTE B,negbTE C,mem_rev) /=. 
     exact: disjointNI.
   Qed.
-
-
 
   Variable (U : {set G}).
 
@@ -245,16 +229,8 @@ Section CheckPoints.
   Qed.
 
   
-
-  (* END TEST *)
-
-  Print Assumptions CP_base.
-
   (* Lemma 16 *)
   Definition CP_ := @induced link_graph (CP U).
-
-  Lemma link_sup (x y : CP_) : x -- y -> (val x:G) -- val y.
-  Abort.
 
   Lemma index_uniq_inj (T:eqType) (s : seq T) : 
     {in s, injective (index^~ s)}. 
@@ -264,13 +240,6 @@ Section CheckPoints.
     by rewrite -(nth_index x in_s) E nth_index.
   Qed.
 
-  Lemma mem_catD (T:finType) (x:T) (s1 s2 : seq T) : [disjoint s1 & s2] ->
-      (x \in s1 ++ s2) = (x \in s1) (+) (x \in s2).
-  Proof. 
-    move => D. rewrite mem_cat. case C1 : (x \in s1) => //=. 
-    symmetry. apply/negP. exact: disjointE D _.
-  Qed.
-  Arguments mem_catD [T x s1 s2].
     
 
   Lemma CP_base_ (x y : CP_) : 
@@ -525,6 +494,9 @@ Section CheckPoints.
     
 End CheckPoints.
 
+Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
+Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
+
 Section CheckpointOrder.
 
   Variables (G : sgraph) (i o : G).
@@ -570,3 +542,12 @@ Section CheckpointOrder.
   Admitted.
 
 End CheckpointOrder.
+
+
+Lemma CP_treeI (G : sgraph) (U : {set G}) :
+  (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
+Proof.
+(* - is_tree is decidable, so we can prove the contraposition
+   - if [CP_ U] isn't a tree it contains an irredundant cycle of size at least 3
+   - this cycle is a clique by [link_cycle] *)
+Admitted.

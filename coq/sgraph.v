@@ -292,19 +292,15 @@ Section PathDef.
 
   Record Path := { pval : seq G; _ : spath x y pval }.
 
-  (* Inductive Path := BPath p of spath x y p.   *)
-  (* Definition pval p := let: BPath s _ := p in s.  *)
-
   Canonical Path_subType := [subType for pval].
   Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:]. 
   Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
-  
-
 End PathDef.
 
 Section Primitives.
   Variables (x y z : G) (p : Path x y) (q : Path y z).
 
+  (* TOTHINK: Do we really need locked here or can we get away with nosimpl *)
   Definition nodes := locked (x :: val p).
   Lemma nodesE : nodes = x :: val p. by rewrite /nodes -lock. Qed.
   Definition irred := uniq nodes.
@@ -354,9 +350,19 @@ Qed.
 
 End PathTheory.
 
-(** Providing an injection from (proofs of [x -- y]) to one edge paths
-and then using the monoid structure with [pcat] seems preferable to
-providing a cons operation *)
+Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
+Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
+
+
+
+(** The one-node path *)
+
+Definition idp (u : G) := Build_Path (spathxx u).
+
+Lemma mem_idp (x u : G) : (x \in idp u) = (x == u).
+Proof. by rewrite mem_path !inE. Qed.
+
+(** Paths with a single edge using an injection from (proofs of) [x -- y] *)
 
 Lemma edgep_proof x y (xy : x -- y) : spath x y [:: y]. 
 Proof. by rewrite spath_cons xy spathxx. Qed.
@@ -389,9 +395,6 @@ Proof.
     exists (last x p). exists (Build_Path sP). exists B. 
     apply: val_inj => /=. by rewrite cats1.
 Qed.
-
-Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
-Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 
 Lemma Path_split z x y (p : Path x y) : 
   z \in p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
@@ -490,7 +493,6 @@ Abort.
 (** We define forests to be simple graphs where there exists at most one
 duplicate free path between any two nodes *)
 
-
 Definition tree_axiom (G:sgraph) := forall (x y : G), unique (upath x y).
   
 Record tree := Tree { sgraph_of_tree :> sgraph ; 
@@ -510,7 +512,6 @@ Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
 
 Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') := 
   [fun x => h @: B x].
-
 
 (** ** Disjoint Union *)
 
@@ -613,8 +614,25 @@ Lemma upathWW (G : sgraph) (x y : G) p : upath x y p -> path (@sedge G) x p.
 Proof. by move/upathW/spathW. Qed.
 
 
+Definition connected (G : sgraph) (S : {set G}) :=
+  {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.  
+
+(* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
+Definition is_tree (G : sgraph) := 
+  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
+
 Definition clique (G : sgraph) (S : {set G}) :=
   {in S&S, forall x y, x != y -> x -- y}.
+
+Lemma clique1 (G : sgraph) (x : G) : clique [set x].
+Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
+
+Lemma clique2 (G : sgraph) (x y : G) : x -- y -> clique [set x;y].
+Proof. 
+  move => xy z z'. rewrite !inE. 
+  do 2 case/orP => /eqP-> // ; try by rewrite eqxx. 
+  by rewrite sg_sym.
+Qed.
 
 Definition subtree (T : tree) (A : {set T}) :=
   {in A&A, forall (x y : T) p, upath x y p -> {subset p <= A}}.
@@ -635,22 +653,7 @@ Proof.
   apply/upathPR. by exists p1.
 Qed.
 
-Lemma subtree_link (T : tree) (C : {set T}) t0 c0 c p : 
-  subtree C -> t0 \notin C -> c0 \in C -> t0 -- c0 -> c \in C -> upath t0 c p -> c0 \in p.
-Proof.
-  move => sub_C H1 H2 H3 H4 H5. 
-  have [q Hq] : exists p, upath  c0 c p. 
-  { apply/upathP. apply: (connect_trans (y := t0)). 
-    + apply: connect1. by rewrite sgP.
-    + apply/upathP. by exists p. }
-  have X : upath  t0 c (c0::q). 
-  { rewrite upath_cons H3 Hq /= andbT inE. 
-    apply/orP => [[/eqP X|X]]. by subst; contrab. 
-    move/sub_C : Hq. case/(_ _ _)/Wrap => // /(_ _ X) ?. by contrab. }
-  rewrite (treeP H5 X). exact: mem_head.
-Qed.
-
-(** decidability of cycle agnostic path properties *)
+(** decidability of cycle agnostic path properties - currently not used *)
 Definition short_prop (T:eqType) e (P : T -> seq T -> bool) := 
   forall x p, path e x p -> P x (shorten x p) -> P x p.
 

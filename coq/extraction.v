@@ -130,11 +130,6 @@ Proof.
     case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
 Qed.
 
-Definition idp (G : sgraph) (u : G) := Build_Path (spathxx u).
-
-Lemma mem_idp (G : sgraph) (x u : G) : (x \in idp u) = (x == u).
-Proof. by rewrite mem_path !inE. Qed.
-
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
 
@@ -173,65 +168,11 @@ Lemma connected2 (G : sgraph) (D : {set G}) :
   (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
 Admitted.
 
-Lemma clique1 (G : sgraph) (x : G) : clique [set x].
-Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
-
-Lemma clique2 (G : sgraph) (x y : G) : x -- y -> clique [set x;y].
-Proof. 
-  move => xy z z'. rewrite !inE. 
-  do 2 case/orP => /eqP-> // ; try by rewrite eqxx. 
-  by rewrite sg_sym.
-Qed.
-
-(* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
-Definition is_tree (G : sgraph) := 
-  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
-
-
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
-
-
-
-Definition C3_rel := [rel x y : 'I_3 | x != y].
-
-Fact C3_sym : symmetric C3_rel. 
-Proof. move => x y /=. by rewrite eq_sym. Qed.
-
-Fact C3_irrefl : irreflexive C3_rel. 
-Proof. move => x /=. by rewrite eqxx. Qed.
-
-Definition C3 := SGraph C3_sym C3_irrefl.
 
 (** Additional Checkpoint Properties *)
 
-Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
-Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
 
-Section Disjoint3.
-Variables (T : finType) (A B C : mem_pred T).
-
-CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
-| Dis3In1   of x \in A : disjoint3_cases x true false false
-| Dis3In2   of x \in B : disjoint3_cases x false true false
-| Dis3In3   of x \in C : disjoint3_cases x false false true
-| Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
-
-Lemma disjoint3P x : 
-  [&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]] ->
-  disjoint3_cases x (x \in A) (x \in B) (x \in C).
-Proof.
-  case/and3P => D1 D2 D3.
-  case: (boolP (x \in A)) => HA. 
-  { rewrite (disjointFr D1 HA) (disjointFl D3 HA). by constructor. }
-  case: (boolP (x \in B)) => HB. 
-  { rewrite (disjointFr D2 HB). by constructor. }
-  case: (boolP (x \in C)) => ?; by constructor.
-Qed.
-End Disjoint3.
-
-Notation "[ 'disjoint3' A & B & C ]" :=
-  ([&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]])
-  (format "[ 'disjoint3'  A  &  B  &  C ]" ).
 
 Section Checkpoints.
 Variables (G : sgraph).
@@ -254,20 +195,6 @@ Qed.
 
 
 
-Lemma restrict_mono (T : Type) (A B : pred T) (e : rel T) : 
-  subpred A B -> subrel (restrict A e) (restrict B e).
-Proof. move => H x y /= => /andP [/andP [H1 H2] ->]. by rewrite !unfold_in !H. Qed.
-
-Definition disjoint_transL := disjoint_trans.
-Lemma disjoint_transR (T : finType) (A B C : pred T) :
- A \subset B -> [disjoint C & B] -> [disjoint C & A].
-Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjoint_trans. Qed.
-
-
-Lemma disjoint_sym' (T : finType) (A B : mem_pred T) : 
-  disjoint A B = disjoint B A.
-Admitted.
-
 Lemma eq_disjoint (T : finType) (A A' B : pred T) :
   A =i A' -> [disjoint A & B] = [disjoint A' & B].
 Proof. Admitted.
@@ -284,6 +211,12 @@ Admitted.
   
 
 Arguments Path G x y : clear implicits.
+
+(* TOTHINK/TODO: Lemmas about [disjoint] should be as below, to avoid exposing
+conversions to collective predicates when rewriting *)
+Lemma disjoint_sym' (T : finType) (A B : mem_pred T) : 
+  disjoint A B = disjoint B A.
+Admitted.
 
 Lemma C3_of_triangle (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
@@ -446,8 +379,6 @@ Proof.
   (* trivial *) admit.
 Admitted.
 
-Lemma connected_interval (x y : link_graph G) : connected (@sinterval G x y).
-Admitted.
 
 Lemma connectedU (S1 S2 : {set G}) x : x \in S1 :&: S2 -> connected (S1 :|: S2).
 Admitted.
@@ -972,13 +903,6 @@ Lemma Sub_eq (T : eqType) (P : pred T) (x y : T) (Px : x \in P) (Py : y \in P) :
   Sub (s := sig_subType P) x Px == Sub y Py = (x == y).
 Proof. reflexivity. Qed.
 
-Lemma CP_treeI (G : sgraph) (U : {set G}) :
-  (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
-Proof.
-(* - is_tree is decidable, so we can prove the contraposition
-   - if [CP_ U] isn't a tree it contains an irredundant cycle of size at least 3
-   - this cycle is a clique by [link_cycle] *)
-Admitted.
 
 Lemma connected1 (G : sgraph) (x : G) : connected [set x].
 Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.

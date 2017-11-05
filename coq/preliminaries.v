@@ -128,6 +128,10 @@ Lemma subrel_restrict (T : Type) (e : rel T) (a : pred T) :
   subrel (restrict a e) e.
 Proof. move => x y /=. by do 2 case: (_ \in a). Qed.
 
+Lemma restrict_mono (T : Type) (A B : pred T) (e : rel T) : 
+  subpred A B -> subrel (restrict A e) (restrict B e).
+Proof. move => H x y /= => /andP [/andP [H1 H2] ->]. by rewrite !unfold_in !H. Qed.
+
 Lemma symmetric_restrict (T : Type) (A : pred T) (e : rel T) : 
   symmetric e -> symmetric (restrict A e).
 Proof. move => sym_e x y /=. by rewrite sym_e [(x \in A) && _]andbC. Qed.
@@ -224,6 +228,38 @@ Lemma disjointNI (T : finType) (A B : pred T) (x:T) :
   x \in A -> x \in B -> ~~ [disjoint A & B].
 Proof. move => ? ?. apply/negP => /disjointE. move/(_ x). by apply. Qed.
 
+Definition disjoint_transL := disjoint_trans.
+Lemma disjoint_transR (T : finType) (A B C : pred T) :
+ A \subset B -> [disjoint C & B] -> [disjoint C & A].
+Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjoint_trans. Qed.
+
+Section Disjoint3.
+Variables (T : finType) (A B C : mem_pred T).
+
+CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
+| Dis3In1   of x \in A : disjoint3_cases x true false false
+| Dis3In2   of x \in B : disjoint3_cases x false true false
+| Dis3In3   of x \in C : disjoint3_cases x false false true
+| Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
+
+Lemma disjoint3P x : 
+  [&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]] ->
+  disjoint3_cases x (x \in A) (x \in B) (x \in C).
+Proof.
+  case/and3P => D1 D2 D3.
+  case: (boolP (x \in A)) => HA. 
+  { rewrite (disjointFr D1 HA) (disjointFl D3 HA). by constructor. }
+  case: (boolP (x \in B)) => HB. 
+  { rewrite (disjointFr D2 HB). by constructor. }
+  case: (boolP (x \in C)) => ?; by constructor.
+Qed.
+End Disjoint3.
+
+Notation "[ 'disjoint3' A & B & C ]" :=
+  ([&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]])
+  (format "[ 'disjoint3'  A  &  B  &  C ]" ).
+
+
 
 (** *** Sequences and Paths *)
 
@@ -253,6 +289,14 @@ Lemma subset_seqL (T : finType) (A : pred T) (s : seq T) :
 Proof.
   apply/idP/idP; apply: subset_trans; apply/subsetP => x; by rewrite inE. 
 Qed.
+
+Lemma mem_catD (T:finType) (x:T) (s1 s2 : seq T) : 
+  [disjoint s1 & s2] -> (x \in s1 ++ s2) = (x \in s1) (+) (x \in s2).
+Proof. 
+  move => D. rewrite mem_cat. case C1 : (x \in s1) => //=. 
+  symmetry. apply/negP. exact: disjointE D _.
+Qed.
+Arguments mem_catD [T x s1 s2].
 
 Lemma path_restrict (T : eqType) (e : rel T) (a : pred T) x p : 
   path (restrict a e) x p -> {subset p <= a}.
@@ -295,6 +339,7 @@ Proof.
   case: (codomP S2) => b E. subst. case: (IH _ B S1) => p [] *. 
   exists (b::p) => /=. suff: e a b by move -> ; subst. exact: f_inv.
 Qed.
+
 
 (** Proper Name? *)
 Lemma aux (T:Type) x0 (a : pred T) s n : 
