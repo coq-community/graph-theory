@@ -342,13 +342,6 @@ Proof.
   exists psi. 
 Admitted.
 
-Lemma petalP (U : {set G}) x z : 
-  reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
-Proof. rewrite /petal -lock inE. exact: (iffP forall_inP). Qed.
-
-Lemma petalPn (U : {set G}) x z : 
-  reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin petal U x).
-Admitted.
 
 Lemma sinterval_sym (x y : G) : sinterval x y = sinterval y x.
 Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
@@ -356,10 +349,6 @@ Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
 Lemma CP_connected (U : {set G}) : connected [set: CP_ U].
 Admitted.
 
-Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
-Proof.
-  move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
-Qed.
 
 Lemma srestrict_sym A : connect_sym (restrict A (@sedge G)).
 Admitted.
@@ -383,104 +372,8 @@ Admitted.
 Lemma connectedU (S1 S2 : {set G}) x : x \in S1 :&: S2 -> connected (S1 :|: S2).
 Admitted.
 
-Lemma CP_SubK (U : {set G}) x (Px : x \in CP U) :
-  x = val (Sub x Px : CP_ U). 
-Proof. by rewrite SubK. Qed.
 
-Lemma cp_neighbours (x y : G) z : 
-  x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
-Proof.
-  move => A B. apply/cpP => p. case: p => [|x' p].
-  - move/spath_nil/eqP => ?. by contrab.
-  - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
-    apply/(cpP (y := y)) => //. exact: B. 
-Qed.
 
-Lemma CP_clique (U : {set G}) : 
- @clique (link_graph G) U -> CP U = U.
-Proof.
-  move => clique_U. apply/setP => x. apply/bigcupP/idP. 
-
-  - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
-    move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
-    + rewrite (eqP A) cpxx inE. by move/eqP->.
-    + case/andP: (B erefl) => _ /subsetP => S /S. by case/setUP => /set1P->.
-  - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
-Qed.
-
-(** TOTHINK: have neighbouring checkpoints as {set G} or {set CP_ U} *)
-Definition ncp (U : {set G}) (p : G) : {set G} := 
-  locked [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
-
-(* TOTHINK: Do we also want to require [irred q] *)
-Lemma ncpP (U : {set G}) (p : G) x : 
-  reflect (x \in CP U /\ exists q : Path G p x, forall y, y \in CP U -> y \in q -> y = x) 
-          (x \in ncp U p).
-Proof.
-  rewrite /ncp -lock inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
-  - case: (boolP (p == x)) => [/eqP ?|px]. 
-    + subst p. exists (idp x) => y _ . by rewrite mem_idp => /eqP.
-    + case/(uPathRP px) : A => q irr_q /subsetP sub_q. 
-      exists q => y CPy /sub_q. by rewrite !inE CPy => /eqP.
-  - apply: (connectRI (p := q)) => y y_in_q.
-    rewrite inE. apply/implyP => A. by rewrite [y]Hq.
-Qed.
-
-Lemma ncp_petal (U : {set G}) (p : G) x :
-  x \in CP U -> (p \in petal U x) = (ncp U p == [set x]).
-Proof.
-  move => Ux. apply/petalP/eq_set1P.
-  - move => A. split.
-    + apply/ncpP; split => //.
-      case/uPathP : (conn_G p x) => q irr_q. 
-      case: (boolP [exists y in CP U, y \in [predD1 q & x]]).
-      * case/exists_inP => y /= B. rewrite inE eq_sym => /= /andP [C D]. 
-        case:notF. apply: contraTT (A _ B) => _. apply/cpPn'.
-        case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
-        exists q1 => //. rewrite (disjointFl D12) //. 
-        suff: x \in q2. by rewrite mem_path inE (negbTE C). 
-        by rewrite nodes_end.
-      * rewrite negb_exists_in => /forall_inP B.
-        exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
-        by rewrite inE C.
-    + move => y /ncpP [Uy [q Hq]]. 
-      have Hx : x \in q. { apply/cpP'. exact: A. }
-      apply: esym. exact: Hq. 
-  - case => A B y Hy. apply/cpP' => q.
-    have qy : y \in q by rewrite nodes_end.
-    move: (split_at_first Hy qy) => [x'] [q1] [q2] [def_q cp_x' Hq1]. 
-    suff ?: x' = x. { subst x'. by rewrite def_q mem_pcat nodes_end. }
-    apply: B. apply/ncpP. split => //. exists q1 => z' H1 H2. exact: Hq1.
-Qed.
-
-Lemma petal_disj (U : {set G}) x y :
-  x \in CP U -> y \in CP U -> x != y -> [disjoint petal U x & petal U y].
-Proof.
-  move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
-  rewrite [x](CP_SubK Ux) [y](CP_SubK Uy) !ncp_petal //.
-  by move => /eqP-> /eqP/set1_inj->.
-Qed.
-
-Lemma ncp_CP (U : {set G}) (u : G) :
-  u \in CP U -> ncp U u = [set u].
-Proof. 
-  move => Hu.
-  apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
-  - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
-  - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_idp => /eqP.
-Qed.
-
-Lemma ncp0 (U : {set G}) x p : 
-  x \in U -> ncp U p == set0 = false.
-Proof. 
-  move => Ux'. 
-  case/uPathP : (conn_G p x) => q irr_q. 
-  have Ux: x \in CP U by apply: CP_extensive.
-  case: (split_at_first Ux (nodes_end q)) => y [q1] [q2] [def_q CPy Hy].
-  suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
-  apply/ncpP. split => //. by exists q1. 
-Qed.
-Arguments ncp0 [U] x p.
 
 (** Do we really need the follwing lemma in its full generality *)
 Lemma ncp_sinterval U (x y p : G) :
@@ -490,37 +383,6 @@ Lemma ncp_sinterval U (x y p : G) :
 Proof.
 Abort.
   
-(** NOTE: This looks fairly specific, but it also has a fairly
-straightforward proof *)
-Lemma interval_petal_disj U (x y : G) :
-  y \in CP U -> [disjoint petal U x & sinterval x y].
-Proof.
-  move => Uy. rewrite disjoint_sym disjoints_subset. apply/subsetP => z.
-  rewrite 3!inE negb_or !in_set1 => /and3P [/andP [A1 A2] B C]. 
-  rewrite inE. apply:contraTN C => /petalP/(_ _ Uy). 
-  apply: contraTN. case/uPathRP => // p _ /subsetP sub_p. 
-  apply: (cpNI' (p := p)). apply/negP => /sub_p. by rewrite inE eqxx.
-Qed.
-
-Lemma ncp_interval U (x y p : G) : 
-  x != y -> [set x;y] \subset ncp U p  -> p \in sinterval x y.
-Proof.
-  rewrite subUset !sub1set => xy /andP[Nx Ny]. 
-  rewrite !inE negb_or. 
-  gen have A,Ax : x y xy Nx Ny / p != x.
-  { have Ux : x \in CP U. by case/ncpP : Nx.
-    apply: contraNN xy => /eqP => ?; subst p. apply/eqP.
-    case/ncpP : Ny => Uy [q] /(_ _ Ux). rewrite nodes_start. 
-    by apply. }
-  have Ay: p != y. apply: (A y x) => //. by rewrite eq_sym.
-  rewrite Ax Ay /=. 
-  gen have S,_: x y Nx Ny xy {A Ax Ay} / connect (restrict (predC1 y) sedge) p x.
-  { case/ncpP : Nx => Ux [q Hq]. apply: (connectRI (p := q)).
-    move => z in_q. apply: contraNT xy. rewrite negbK => /eqP ?; subst z.
-    rewrite [y]Hq //. by case/ncpP : Ny. }
-  apply/andP;split; apply: S => //. by rewrite eq_sym.
-Qed.
-
 Lemma link_part (x y : G) : link_rel G x y ->
   pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
 Proof.
@@ -531,7 +393,7 @@ Proof.
   - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
     pose N := ncp [set x; y] p. 
     have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
-    rewrite subset2 // (ncp0 x) ?in_setU ?set11 //=. case/or3P. 
+    rewrite subset2 // {1}/N (ncp0 conn_G x) ?in_setU ?set11 //=. case/or3P. 
     + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
       apply: mem_cover. by rewrite !inE eqxx. 
     + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
@@ -715,7 +577,7 @@ Proof.
   have E3: @petal G [set x; z] x = petal U x. { admit. }
   have E4: @petal G [set x; z] z = petal U z. { admit. }
   rewrite E1 E2 E3 E4 in Pxy Pxz. apply: pe_part_fuse => //. 
-  apply: petal_disj; last by rewrite (sg_edgeNeq yz).
+  apply: petal_disj => // ; last by rewrite (sg_edgeNeq yz).
   - by apply: CP_extensive; rewrite !inE eqxx.
   - by apply: CP_extensive; rewrite !inE eqxx.
 Admitted.
