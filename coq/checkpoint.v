@@ -509,6 +509,18 @@ Section CheckPoints.
       rewrite [y]Hq //. by case/ncpP : Ny. }
     apply/andP;split; apply: S => //. by rewrite eq_sym.
   Qed.
+
+  (* TOTHINK: The following lemma is a strengthening of [CP_triangle]
+  and could be obtained by extending the proof of that lemma. Possible
+  alternative: strenthen [CP_base] and replace rework the proof of
+  [CP_triangle] *)
+  Lemma CP_triangle_petals U (x y z : CP_ U) : 
+    x -- y -> y -- z -> z -- x -> 
+    let U3 : {set G} := [set val x; val y; val z] in
+    exists x' y' z' : G, 
+      [/\ x' \in U, y' \in U & z' \in U] /\ 
+      [/\ x' \in petal U3 (val x), y' \in petal U3 (val y) & z' \in petal U3 (val z)].
+  Admitted.
  
 End CheckPoints.
 

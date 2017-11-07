@@ -796,23 +796,6 @@ Proof.
   (* the case for y is symmetric *) 
 Admitted.
 
-Lemma CP_triangle_petals (G:sgraph) (G_conn : forall x y : G, connect sedge x y) 
-  (U : {set G}) (x y z : CP_ U) : 
-  x -- y -> y -- z -> z -- x -> 
-  let U3 : {set G} := [set val x; val y; val z] in
-  exists x' y' z' : G, 
-    [/\ x' \in U, y' \in U & z' \in U] /\ 
-    [/\ x' \in petal U3 (val x), y' \in petal U3 (val y) & z' \in petal U3 (val z)].
-Proof.  
-  (* TODO: This should replace CP_triangle (as everything is already there in this proof) *)
-
-  (* move => xy yz zx U3.  *)
-  (* case: (CP_petals G_conn (valP y) (valP z)) => // y' [z'] [yU zU Py Pz]. *)
-  (* case: (CP_petals G_conn (valP x) (valP y)) => // x' [y''] [xU yU' Px Py']. *)
-  (* (* have [z \notin petal {x,y} x] since [x \notin cp y z] and symmetric for all other petals *) *)
-  (* exists x'; exists y'; exists z'. split => //. split. *)
-  (* - rewrite /U3 -setUA -petal_extension //.  *)
-Admitted.
   
 
 (** Proposition 21(i) *)
