@@ -101,10 +101,6 @@ Section CheckPoints.
     by rewrite !inE A B.
   Qed.
 
-  Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
-  
-  Unset Printing Implicit Defensive.
-
   Lemma cp_mid (z x y t : G) : t != z -> z \in cp x y ->
    exists (p1 : Path z x) (p2 : Path z y), t \notin p1 \/ t \notin p2.
   Proof. 
@@ -115,6 +111,12 @@ Section CheckPoints.
     case E : (t \in p1) => //=. 
     by rewrite mem_path !inE (negbTE tNz) (disjointFr C E).
   Qed.
+
+  (** ** CP Closure Operator *)
+
+  Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
+  
+  Unset Printing Implicit Defensive.
   
   Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
   Proof.
@@ -147,7 +149,7 @@ Section CheckPoints.
     by rewrite !mem_pcat !mem_prev (negbTE P1) (negbTE P2) (negbTE Hs).
   Qed.
 
-  (** Definition of the link graph *)
+  (** ** Link Graph *)
 
   Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
 
@@ -196,7 +198,7 @@ Section CheckPoints.
     exact: disjointNI.
   Qed.
 
-  (** Intervals and bags/petals *)
+  (** ** Intervals and bags/petals *)
 
   Definition sinterval x y := 
     [set z in ~: [set x; y] | connect (restrict (predC1 y) (@sedge G)) z x && 
@@ -404,8 +406,10 @@ Section CheckPoints.
     - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
   Qed.
 
+  (** ** Neighouring Checkpoints *)
+
   Definition ncp (U : {set G}) (p : G) : {set G} := 
-    locked [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x]. 
+    locked [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x].
 
   Arguments Path : clear implicits.
 
@@ -527,7 +531,7 @@ End CheckPoints.
 Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
 Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
 
-
+(** ** Checkpoint Order *)
 
 Section CheckpointOrder.
 
@@ -577,10 +581,14 @@ End CheckpointOrder.
 
 Arguments ncp0 [G] G_conn [U] x p.
 
-Lemma CP_treeI (G : sgraph) (U : {set G}) :
+Lemma CP_treeI (G : sgraph) (G_conn : forall x y : G, connect sedge x y) (U : {set G}) :
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
 Proof.
 (* - is_tree is decidable, so we can prove the contraposition
-   - if [CP_ U] isn't a tree it contains an irredundant cycle of size at least 3
+   - argue that CP_ U is connected whenever G is
+   - hence there exist nodes x and y and two distinct irredundant xy-paths p and q
+   - let z be the first vertex with different sucessors z1 in p and z2 in q
+   - the z1-y-z2 path avoids z, so removing cycles on that path yields an 
+     irred cycle containing {z, z1, z2}
    - this cycle is a clique by [link_cycle] *)
 Admitted.
