@@ -20,10 +20,6 @@ clean: Makefile.coq
 	rm -f Makefile.coq .*.aux
 
 Makefile.coq: _CoqProject
-ifeq "$(COQVERSION)" "8.6.1"
 	coq_makefile -f _CoqProject -arg -w -arg -notation-overridden >Makefile.coq
-else
-	coq_makefile -f _CoqProject >Makefile.coq
-endif
 
 .PHONY: all html clean
