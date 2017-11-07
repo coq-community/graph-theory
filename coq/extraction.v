@@ -500,49 +500,12 @@ Lemma sintervalEl (x y : G) u :
 Admitted. (* essentially the definition *)
   
 
-Lemma petal_exit (U : {set G}) x u v : 
-  x \in CP U -> u \in petal U x -> v \notin petal U x -> x \in cp u v.
-Proof.
-  move => cp_x. rewrite [v \in _]ncp_petal // => N1 N2.
-  have [y [Y1 Y2 Y3]] : exists y, [/\ y \in CP U, x != y & y \in ncp U v].
-  { (* [ncp U v] cannot be empy and is different from [set x] *) admit. } 
-  move/petalP : N1 => /(_ _ Y1). 
-  apply: contraTT => /cpPn' [p] irr_p av_x. 
-  case/ncpP : Y3 => _ [q] /(_ _ cp_x) A. 
-  have {A} Hq : x \notin q. { apply/negP => /A ?. subst. by rewrite eqxx in Y2. }
-  apply: (cpNI' (p := pcat p q)). by rewrite mem_pcat negb_or av_x.
-Admitted.
-
-Lemma petal_exit' (U : {set G}) x u v : 
-  x \in CP U -> u \in petal U x -> v \in x |: ~: petal U x -> x \in cp u v.
-Proof. 
-  move => cp_x Hu. case/setU1P => [->|]; first by rewrite cp_sym mem_cpl.
-  rewrite inE. exact: petal_exit Hu.
-Qed.
 
 Lemma ncp_anti (U U' : {set G}) x : 
   U \subset U' -> ncp U' x \subset ncp U x.
 Admitted.
 
-Lemma petal_extension (U : {set G}) x y : 
-  x \in CP U -> y \notin petal U x -> petal U x = petal (y |: U) x.
-Proof.
-  move => CPx Hy. apply/setP => u. apply/petalP/petalP.
-  - move => A z. 
-    have cp_x : x \in cp u y. { apply: petal_exit Hy => //. exact/petalP. }
-    case/bigcupP => [[v0 v1]] /setXP /= []. 
-    do 2 (case/setU1P => [->|?]). 
-    + by rewrite cpxx inE => /eqP->. 
-    + move => Hz. apply/negPn/negP => B. 
-      (* take irredundant [p : Path y v1] and split at z *)
-      (* have x in the z-v1 part (follows with A) *)
-      (* hence x not in the y-z part *)
-      (* contradicts cp_x *)
-      admit.
-    + (* symmetric *) admit.
-    + move => Hz. apply: A. apply/bigcupP; exists (v0,v1) => //. exact/setXP.
-  - move => A z. admit. (* monotinicity of CP *)
-Admitted.
+
 
 Lemma pe_partD1 (T : finType) (A D : {set T}) P :  
   pe_partition (A |: P) D = pe_partition P (D :\: A).
