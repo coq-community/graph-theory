@@ -223,6 +223,7 @@ Section CheckPoints.
   Lemma petalP (U : {set G}) x z : 
     reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
   Proof. rewrite /petal -lock inE. exact: (iffP forall_inP). Qed.
+  Arguments petalP [U x z].
 
   Lemma petalPn (U : {set G}) x z : 
     reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin petal U x).
@@ -387,26 +388,24 @@ Section CheckPoints.
   Lemma petal_extension (U : {set G}) x y : 
     x \in CP U -> y \notin petal U x -> petal U x = petal (y |: U) x.
   Proof.
-    move => CPx Hy. apply/setP => u. apply/petalP/petalP.
+    move => CPx Hy. apply/setP => u. apply/idP/petalP.
     - move => A z. 
-      have cp_x : x \in cp u y. { apply: petal_exit Hy => //. exact/petalP. }
+      have cp_x : x \in cp u y by apply: petal_exit Hy.
+      case: (boolP (x == z)) => [/eqP ? _|zx]; first by subst z; apply: (petalP A).
       case/bigcupP => [[v0 v1]] /setXP /= []. 
+      have E v : v \in U -> z \in cp y v -> x \in cp u z.
+      { move => Hv Hz. case: (cp_mid zx Hz) => p1 [p2] [/cpNI'|/cpNI'] C.
+        * apply: contraTT cp_x => ?. exact: cpN_trans C.
+        * apply: contraTT A => ?. apply/petalPn. 
+          exists v; [exact: CP_extensive|exact: cpN_trans C]. }
       do 2 (case/setU1P => [->|?]). 
       + by rewrite cpxx inE => /eqP->. 
-      + move => Hz. apply/negPn/negP => B. 
-        (* take irredundant [p : Path y v1] and split at z *)
-        case/uPathP : (G_conn y v1) => p irr_p. 
-        have z_in_p : z \in p by apply/cpP'.
-        case/(isplitP irr_p) def_p : {1}p / z_in_p => [p1 p2 irr_p1 irr_p2 D].
-        (* have x in the z-v1 part (follows with A) *)
-        (* hence x not in the y-z part *)
-        (* contradicts cp_x *)
-        admit.
-      + (* symmetric *) admit.
-      + move => Hz. apply: A. apply/bigcupP; exists (v0,v1) => //. exact/setXP.
-    - move => A z Hz. apply: A. move: z Hz. apply/subsetP. 
+      + exact: E. 
+      + rewrite cp_sym. exact: E.
+      + move => Hz. apply: (petalP A). apply/bigcupP; exists (v0,v1) => //. exact/setXP.
+    - move => A. apply/petalP => z Hz. apply: A. move: z Hz. apply/subsetP. 
       apply: CP_mono. exact: subsetUr.
-  Admitted.  
+  Qed.
   
   Lemma ncp_CP (U : {set G}) (u : G) :
     u \in CP U -> ncp U u = [set u].
