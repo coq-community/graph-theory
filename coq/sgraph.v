@@ -506,10 +506,11 @@ Admitted. (* follows with path_to_induced *)
 Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
   exists p : Path a b, map f (val p) = val p'.
-Proof. 
-  move => A I S. case: (lift_spath A I (valP p') _). admit.
+Proof.
+  move => A I S. case: (lift_spath A I (valP p') _).
+    move=> x V. apply: S. by rewrite mem_path inE V.
   move => p [p1 p2]. exists (Sub p p1). by rewrite -p2. 
-Abort. 
+Qed.
 
 
 Definition idx (G : sgraph) (x y : G) (p : Path x y) u := index u (nodes p).
