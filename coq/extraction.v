@@ -332,17 +332,6 @@ Proof.
         -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
 Qed.
 
-Lemma K4_of_triangle (x y z : link_graph G) : 
-  x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
-Proof.
-  move => xy yz zx. case: (C3_of_triangle xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
-  pose psi u : option K4 := 
-    if u isn't Some u' then Some ord3 
-    else obind (fun n => Some (widen_ord (isT : 3 <= 4) n)) (phi u').
-  exists psi. 
-Admitted.
-
-
 Lemma sinterval_sym (x y : G) : sinterval x y = sinterval y x.
 Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
 
@@ -503,47 +492,51 @@ Lemma ncp_anti (U U' : {set G}) x :
   U \subset U' -> ncp U' x \subset ncp U x.
 Admitted.
 
-Lemma pe_partD1 (T : finType) (A D : {set T}) P :  
-  pe_partition (A |: P) D = pe_partition P (D :\: A).
-Admitted.
+(* Lemma pe_partD1 (T : finType) (A D : {set T}) P :   *)
+(*   pe_partition (A |: P) D = pe_partition P (D :\: A). *)
+(* Admitted. *)
 
-Lemma pe_partIr (T : finType) (A A' B B' D : {set T}) : 
-  pe_partition [set A; B] D -> pe_partition [set A' ; B'] D -> 
-  pe_partition [set A; A'; B :&: B'] D.
-Admitted.
+(* Lemma pe_partIr (T : finType) (A A' B B' D : {set T}) :  *)
+(*   pe_partition [set A; B] D -> pe_partition [set A' ; B'] D ->  *)
+(*   pe_partition [set A; A'; B :&: B'] D. *)
+(* Admitted. *)
 
-Lemma pe_part_fuse (T : finType) (A B B' C C' D : {set T}) : 
-  pe_partition [set A; B ; C] D -> 
-  pe_partition [set A; B' ; C'] D -> 
-  [disjoint B & B'] ->
-  pe_partition [set A; B; B'; C :&: C'] D.
-Admitted.
+(* Lemma pe_part_fuse (T : finType) (A B B' C C' D : {set T}) :  *)
+(*   pe_partition [set A; B ; C] D ->  *)
+(*   pe_partition [set A; B' ; C'] D ->  *)
+(*   [disjoint B & B'] -> *)
+(*   pe_partition [set A; B; B'; C :&: C'] D. *)
+(* Admitted. *)
   
 
 (* TOTHINK: this should not be necessary, if the decomposition in
 [CP_tree] is defined differently *)
-Lemma triangle_partition (x y z : link_graph G) :
-  x -- y -> y -- z -> z -- x -> 
-  let U : {set G} := [set x;y;z] in 
-  pe_partition [set petal U x; petal U y; petal U z; 
-                @sinterval G x y :&: @sinterval G x z ] [set: G].
-Proof.
-  move => xy yz zx /=. set U : {set G} := [set x; y; z].
-  move: (link_part xy) => Pxy. 
-  rewrite sg_sym in zx. move: (link_part zx) => Pxz. 
-  have E1: @petal G [set x; y] x = petal U x. { admit. }
-  have E2: @petal G [set x; y] y = petal U y. { admit. }
-  have E3: @petal G [set x; z] x = petal U x. { admit. }
-  have E4: @petal G [set x; z] z = petal U z. { admit. }
-  rewrite E1 E2 E3 E4 in Pxy Pxz. apply: pe_part_fuse => //. 
-  apply: petal_disj => // ; last by rewrite (sg_edgeNeq yz).
-  - by apply: CP_extensive; rewrite !inE eqxx.
-  - by apply: CP_extensive; rewrite !inE eqxx.
-Admitted.
+(* Lemma triangle_partition (x y z : link_graph G) : *)
+(*   x -- y -> y -- z -> z -- x ->  *)
+(*   let U : {set G} := [set x;y;z] in  *)
+(*   pe_partition [set petal U x; petal U y; petal U z;  *)
+(*                 @sinterval G x y :&: @sinterval G x z ] [set: G]. *)
+(* Proof. *)
+(*   move => xy yz zx /=. set U : {set G} := [set x; y; z]. *)
+(*   move: (link_part xy) => Pxy.  *)
+(*   rewrite sg_sym in zx. move: (link_part zx) => Pxz.  *)
+(*   have E1: @petal G [set x; y] x = petal U x. { admit. } *)
+(*   have E2: @petal G [set x; y] y = petal U y. { admit. } *)
+(*   have E3: @petal G [set x; z] x = petal U x. { admit. } *)
+(*   have E4: @petal G [set x; z] z = petal U z. { admit. } *)
+(*   rewrite E1 E2 E3 E4 in Pxy Pxz. apply: pe_part_fuse => //.  *)
+(*   apply: petal_disj => // ; last by rewrite (sg_edgeNeq yz). *)
+(*   - by apply: CP_extensive; rewrite !inE eqxx. *)
+(*   - by apply: CP_extensive; rewrite !inE eqxx. *)
+(* Admitted. *)
 
 End Checkpoints.
 
 
+CoInductive sg_iso (G H : sgraph) : Prop := 
+  SgIso (h : G -> H) (g : H -> G) : cancel g h -> cancel h g -> 
+    {homo h : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
+  
 
 Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
   (phi : (sgraph.induced S) -> option G') : 
@@ -578,6 +571,27 @@ Proof.
     + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !mem_imset.
     + admit. (* symmetric *)
 Admitted.
+
+Lemma K4_of_triangle (G:sgraph) (G_conn : forall x y:G, connect sedge x y) (x y z : link_graph G) : 
+  x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
+Proof.
+  move => xy yz zx. case: (C3_of_triangle G_conn xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
+  pose psi u : option K4 := 
+    if u isn't Some u' then Some ord3 
+    else obind (fun n => Some (widen_ord (isT : 3 <= 4) n)) (phi u').
+  exists psi.
+  split.
+  - case. move => [|[|[|[|?]]]] // Hn.
+    + exists (Some x). rewrite /psi phi_x /=. congr Some. exact: val_inj.
+    + exists (Some y). rewrite /psi phi_y /=. congr Some. exact: val_inj.
+    + exists (Some z). rewrite /psi phi_z /=. congr Some. exact: val_inj. 
+    + exists None. rewrite /psi. congr Some. exact: val_inj.
+  - admit.
+  - admit.
+    
+Admitted.
+
+
 
 
 (** * Term Extraction *)
@@ -758,6 +772,9 @@ Proof.
     apply/cpP'. rewrite cp_sym. exact: petal_exit' Pv.
 Qed.
 
+(* This is a bit bespoke, as it only only mentions petals rooted at
+elements of [U] rather than [CP U]. At the point where we use it, U is
+a clique, so [CP U] is [U]. *)
 Lemma petals_in_out (U : {set G}) u v (p : Path G u v) :
   let T' := U :|: (~: \bigcup_(z in U) petal U z) in 
   u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
@@ -769,7 +786,40 @@ End Petals.
 
 Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
   \bigcup_(i in [set i0]) F i = F i0.
-Admitted.
+Proof. by rewrite -big_filter filter_index_enum enum_set1 big_seq1. Qed.
+
+Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
+  (f x == y) = (x \in f @^-1 y).
+Proof. by rewrite !inE. Qed.
+
+(** TOTHINK: this is a bit bespoke, in particular [@clique (link_graph
+G) U] is stronger than necessary *)
+Lemma collapse_petals (G : sgraph) (U : {set G}) u0' (inU : u0' \in U) :
+  @clique (link_graph G) U -> 
+  let T := U :|: ~: \bigcup_(x in U) petal U x in 
+  let G' := sgraph.induced T in 
+  exists phi : G -> G',
+    [/\ strict_minor_map phi, 
+     (forall u : G', val u \in T :\: U -> phi @^-1 u = [set val u]) &
+     (forall u : G', val u \in U -> phi @^-1 u = petal U (val u))].
+Proof.
+  move => clique_U T G'. 
+  have inT0 : u0' \in T by rewrite !inE inU.
+  pose u0 : G' := Sub u0' inT0.  
+  pose phi u := if [pick x in U | u \in petal U x] is Some x 
+                then insubd u0 x else insubd u0 u.
+  exists phi.
+  have phiU (u : G') : val u \in U -> phi @^-1 u = petal U (val u).
+  { admit. }
+  have phiT (u : G') : val u \in T :\: U -> phi @^-1 u = [set val u].
+  { admit. }
+  split => //.
+  - split. 
+    + move => y. case: (boolP (val y \in U)) => x_inU. 
+      * exists (val y). apply/eqP. by rewrite mem_preim phiU // petal_id. 
+      * exists (val y). apply/eqP. rewrite mem_preim phiT inE // x_inU. exact: valP.
+Admitted.     
+Arguments collapse_petals [G] U u0' _.
 
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
@@ -794,8 +844,8 @@ Proof.
   have zZ : val z \in Z by apply: (@petal_id G).
   move def_T: (~: (X :|: Y :|: Z)) => T.
   (* do we acttually want to packaging as partition property ??? *)
-  have part1 : pe_partition [set T; X; Y; Z] [set: G].
-  { admit. }
+  (* have part1 : pe_partition [set T; X; Y; Z] [set: G]. *)
+  (* { admit. } *)
   
   pose T' : {set G} := U3 :|: T.
   pose G' := @sgraph.induced G T'.
@@ -806,6 +856,13 @@ Proof.
 
   have def_T' : T' = U3 :|: ~: (\bigcup_(v in U3) petal U3 v).
   { by rewrite {2}/U3 !bigcup_setU !bigcup_set1 /T' -def_T. }
+
+  have clique_xyz : @clique (link_graph G) U3.
+  { move => u v. rewrite !inE -!orbA. 
+    do 2 (case/or3P => /eqP->); by rewrite ?eqxx // sg_sym. }
+  case: (collapse_petals U3 (val x) _ clique_xyz); first by rewrite !inE eqxx.
+  rewrite -def_T' -/G' => phi [mm_phi P1 P2].
+
   have irred_inT u v (p : Path G u v) : 
       u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
   { rewrite def_T'. exact: petals_in_out. }
@@ -852,8 +909,9 @@ Proof.
     by rewrite !inE !sub_val_eq. }
 
   apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
-  move => {link_xy link_yz link_zx}.
-  
+  idtac => {link_xy link_yz link_zx}.
+  move/map_of_strict in mm_phi.
+  (*   
   pose phi (u : G) : G' := 
          if u \in X then x0 
     else if u \in Y then y0
@@ -877,6 +935,9 @@ Proof.
       apply: val_inj. by rewrite insubdK // !inE -def_T !inE !negb_or A B C. }
       
   have pre_x0 : phi @^-1 x0 = X.
+  { apply/setP => u. rewrite !inE /phi. 
+    case: (disjoint3P u D3); first by rewrite eqxx. 
+    rewrite -val_eqE !SubK val_eqE. 
   { admit. }
       
   have preim_G' (u : G') : val u \in phi @^-1 u.
@@ -901,17 +962,20 @@ Proof.
     - (* adjacency *)
       move => u v uv. exists (val u); exists (val v). by rewrite preim_G'. 
   }
-  
+
+  *)
   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b.
   - exists x'. 
-    + rewrite inE in_simpl. 
-      suff: x' \in X. by rewrite -pre_x0 /= Some_eqE !inE. 
-      done.
+    + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx.
     + move/setP/(_ (val x')) : UisN. by rewrite !inE mem_imset // sg_sym. 
-  - admit.
-  - admit.
-Admitted.
+  - exists y'. 
+    + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx.
+    + move/setP/(_ (val y')) : UisN. by rewrite !inE mem_imset // sg_sym.
+  - exists z'. 
+    + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx.
+    + move/setP/(_ (val z')) : UisN. by rewrite !inE mem_imset // sg_sym.
+Qed.
 
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
