@@ -243,7 +243,8 @@ Section CheckPoints.
     case: (boolP (y \in cp x1 x2)) => [C|Wy]; first by exists x1; exists x2; rewrite subUset !sub1set C.
     gen have H,A: x x1 x2 y1 y2 {Ux1 Ux2 Uy1 Uy2 Wy cp_y} Wx cp_x /
       (x \in cp x1 y1) || (x \in cp x2 y2).
-    { case/cpPn' : Wx => p irr_p av_x. 
+    { (* TODO: use transitivity *)
+      case/cpPn' : Wx => p irr_p av_x. 
       apply: contraTT cp_x. rewrite negb_or => /andP[/cpPn' [s s1 s2] /cpPn' [t t1 t2]].
       apply (cpNI' (p := pcat s (pcat p (prev t)))). 
       by rewrite !mem_pcat !mem_prev (negbTE av_x) (negbTE s2) (negbTE t2). }
@@ -485,10 +486,6 @@ Section CheckPoints.
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
-  (* TOTHINK: The following lemma is a strengthening of [CP_triangle]
-  and could be obtained by extending the proof of that lemma. Possible
-  alternative: strenthen [CP_base] and replace rework the proof of
-  [CP_triangle] *)
   Lemma CP_triangle_petals U (x y z : CP_ U) : 
     x -- y -> y -- z -> z -- x -> 
     let U3 : {set G} := [set val x; val y; val z] in
