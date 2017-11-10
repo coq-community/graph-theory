@@ -42,10 +42,6 @@ Arguments add_node : clear implicits.
 Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
 Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
 
-Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
-  (u == Sub x Px) = (val u == x).
-Proof. by case: (SubP u) => {u} u Pu. Qed.
-
 Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
   List.In b s -> F b <= \sum_(a <- s) F a.
 Proof. 
@@ -132,26 +128,7 @@ Qed.
 
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
-
-Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
-  connected [set z in p].
-Proof. 
-  move => u v. rewrite 2!inE => A B. 
-  case: (Path_split A) => {A} p1 [p2 def_p]. subst p.
-  rewrite mem_pcat in B. case/orP: B. 
-  - case/Path_split => p11 [p12 def_p1]. 
-    apply: (connectRI (p := (prev p12))) => z. 
-    by rewrite mem_prev !inE def_p1 !mem_pcat => ->.
-  - case/Path_split => p21 [p22 def_p2]. 
-    apply: (connectRI (p := p21)) => z. 
-    by rewrite !inE def_p2 !mem_pcat => ->.
-Qed.
   
-
-
-Lemma sedge_equiv (G : sgraph) (A : {set G}) : 
-  equivalence_rel (connect (restrict (mem A) sedge)). 
-Proof. apply: equivalence_rel_of_sym.  apply: symmetric_restrict. exact:sg_sym. Qed.
 
 Lemma connectedTE (G : sgraph) (x y : G) : 
   connected [set: G] -> connect sedge x y. 
@@ -1019,7 +996,7 @@ Lemma split_K4_nontrivial (G : graph2) :
   1 < size (split_par G).
 Proof.
   move => A B C D E. rewrite /split_par size_map -cardE. apply/equivalence_partition_gt1P. 
-  - move => x y z _ _ _.  exact: (sedge_equiv (G := skeleton G)).
+  - move => x y z _ _ _.  exact: (sedge_in_equiv (G := skeleton G)).
   - set H := sinterval _ _. apply/(@connected2 (skeleton G)). 
     apply: ssplit_K4_nontrivial => //. 
     + by rewrite -adjacentE A.

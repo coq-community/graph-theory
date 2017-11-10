@@ -26,6 +26,17 @@ Notation "x -- y" := (sedge x y) (at level 30).
 Definition sgP := (sg_sym,sg_irrefl).
 Prenex Implicits sedge.
 
+Lemma sedge_equiv (G : sgraph) : 
+  equivalence_rel (connect (@sedge G)).
+Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
+
+Lemma sedge_in_equiv (G : sgraph) (A : {set G}) : 
+  equivalence_rel (connect (restrict (mem A) sedge)). 
+Proof. 
+  apply: equivalence_rel_of_sym.  
+  apply: symmetric_restrict. exact:sg_sym. 
+Qed.
+
 (** ** Homomorphisms *)
 
 Definition hom_s (G1 G2 : sgraph) (h : G1 -> G2) := 
@@ -65,6 +76,8 @@ Proof. move => irr_e x /=. by rewrite irr_e. Qed.
 Definition srestrict (G : sgraph) (A : pred G) :=
   Eval hnf in SGraph (symmetric_restrict A (@sg_sym G))
                      (irreflexive_restrict A (@sg_irrefl G)).
+
+
 
 
 (** ** Paths through simple graphs *)
@@ -755,6 +768,20 @@ Proof. by move/upathW/spathW. Qed.
 
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.  
+
+Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
+  connected [set z in p].
+Proof. 
+  move => u v. rewrite 2!inE => A B. 
+  case: (Path_split A) => {A} p1 [p2 def_p]. subst p.
+  rewrite mem_pcat in B. case/orP: B. 
+  - case/Path_split => p11 [p12 def_p1]. 
+    apply: (connectRI (p := (prev p12))) => z. 
+    by rewrite mem_prev !inE def_p1 !mem_pcat => ->.
+  - case/Path_split => p21 [p22 def_p2]. 
+    apply: (connectRI (p := p21)) => z. 
+    by rewrite !inE def_p2 !mem_pcat => ->.
+Qed.
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := 
