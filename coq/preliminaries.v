@@ -398,6 +398,13 @@ Lemma sub_restrict_connect (T : finType) (e : rel T) (a : pred T) :
   subrel (connect (restrict a e)) (connect e).
 Proof. apply: connect_mono. exact: subrel_restrict. Qed.
 
+Lemma restrictE (T : finType) (e : rel T) (A : pred T) : 
+  A =i predT -> connect (restrict A e) =2 connect e.
+Proof. 
+  move => H x y. rewrite (eq_connect (e' := e)) //. 
+  move => {x y} x y /=. by rewrite !H.
+Qed.
+
 Lemma connect_symI (T : finType) (e : rel T) : symmetric e -> connect_sym e.
 Proof.
   move => sym_e. 

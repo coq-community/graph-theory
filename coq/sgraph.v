@@ -366,8 +366,6 @@ End PathTheory.
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 
-
-
 (** The one-node path *)
 
 Definition idp (u : G) := Build_Path (spathxx u).
@@ -491,6 +489,18 @@ Proof.
 Qed.
 
 End Pack.
+
+(** Lifting paths to induced subgraphs *)
+Lemma path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) p' : 
+  @spath G (val x) (val y) p' -> {subset p' <= S} -> 
+  exists2 p, spath x y p & p' = map val p.
+Admitted. (* should follow with lift_spath *) 
+
+Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) 
+  (p : Path (val x) (val y)) : 
+  {subset p <= S} -> exists q : Path x y, (forall z, (z \in q) = (val z \in p)).
+Admitted. (* follows with path_to_induced *)
+
 
 (* TOTHINK: What do we do about the forest constructions, to we move to packaged paths? *)
 Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
@@ -767,7 +777,22 @@ Proof. by move/upathW/spathW. Qed.
 
 
 Definition connected (G : sgraph) (S : {set G}) :=
-  {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.  
+  {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.
+
+Lemma connectedTE (G : sgraph) : 
+  connected [set: G] -> forall x y : G, connect sedge x y. 
+Proof. 
+  move => A x y. move: (A x y). 
+  rewrite !inE !restrictE; first by apply. by move => ?; rewrite !inE.
+Qed.
+
+Lemma connectedTI (G : sgraph) : 
+  (forall x y : G, connect sedge x y) -> connected [set: G].
+Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
+
+
+Lemma connected1 (G : sgraph) (x : G) : connected [set x].
+Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
 
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
   connected [set z in p].
@@ -782,6 +807,13 @@ Proof.
     apply: (connectRI (p := p21)) => z. 
     by rewrite !inE def_p2 !mem_pcat => ->.
 Qed.
+
+Lemma connected_induced (G : sgraph) (S : {set G}) : 
+  connected S -> connected [set: induced S].
+Proof.
+  move => conn_S. apply: connectedTI.
+Admitted.
+
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := 

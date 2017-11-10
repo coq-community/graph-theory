@@ -86,12 +86,6 @@ Proof.
   do 2 (case/or3P => /eqP->); try by rewrite ?eqxx // 1?disjoint_sym. 
 Qed.
 
-Lemma restrictE (T : finType) (e : rel T) (A : pred T) : 
-  A =i predT -> connect (restrict A e) =2 connect e.
-Proof. 
-  move => H x y. rewrite (eq_connect (e' := e)) //. 
-  move => {x y} x y /=. by rewrite !H.
-Qed.
 
 (** Graph preliminaries *)
 
@@ -130,16 +124,6 @@ Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
   
 
-Lemma connectedTE (G : sgraph) (x y : G) : 
-  connected [set: G] -> connect sedge x y. 
-Proof. 
-  move => A. move: (A x y). rewrite !restrictE; last by move => ?; rewrite inE.
-  apply; by rewrite inE. 
-Qed.
-
-Lemma connectedTI (G : sgraph) : 
-  (forall x y : G, connect sedge x y) -> connected [set: G].
-Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 
 Lemma connected2 (G : sgraph) (D : {set G}) : 
   (~ connected D) <-> exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
@@ -711,27 +695,17 @@ Notation val2 x := (val (val x)).
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
-Lemma Sub_eq (T : eqType) (P : pred T) (x y : T) (Px : x \in P) (Py : y \in P) :
-  Sub (s := sig_subType P) x Px == Sub y Py = (x == y).
-Proof. reflexivity. Qed.
+(* Lemma Sub_eq (T : eqType) (P : pred T) (x y : T) (Px : x \in P) (Py : y \in P) : *)
+(*   Sub (s := sig_subType P) x Px == Sub y Py = (x == y). *)
+(* Proof. reflexivity. Qed. *)
 
 
-Lemma connected1 (G : sgraph) (x : G) : connected [set x].
-Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
 
-Lemma connected_induced (G : sgraph) (S : {set G}) : 
-  connected S -> forall x y : sgraph.induced S, connect sedge x y.
-Proof.
-Admitted.
-
-Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : sgraph.induced S) 
-  (p : Path G (val x) (val y)) : 
-  {subset p <= S} -> exists q : Path (sgraph.induced S) x y, (forall z, z \in q -> val z \in p).
-Admitted.
 
 Lemma Some_eqE (T : eqType) (x y : T) : 
   (Some x == Some y) = (x == y).
-Admitted.
+Proof. by apply/eqP/eqP => [[//]|->]. Qed.
+
 
 Section Petals.
 Variables (G : sgraph) (G_conn : forall x y : G, connect sedge x y).
@@ -857,15 +831,14 @@ Proof.
    *)
     
   have G'_conn : forall x y : G', connect sedge x y. 
-  { apply: connected_induced. 
+  { apply: connectedTE. apply: connected_induced. 
     move => u v Hu Hv. case/uPathP : (G_conn u v) => p irr_p. 
     apply: (connectRI (p := p)). exact: irred_inT irr_p. }
 
   have cp_lift u v w : 
     w \in @cp G' u v -> val w \in @cp G (val u) (val v).
   { apply: contraTT => /cpPn' [p] /irred_inT. move/(_ (valP u) (valP v)).
-    case/Path_to_induced => q /(_ w) /implyP A B. 
-    rewrite (negbTE B) implybF in A. exact: (cpNI' (p := q)).  }
+    case/Path_to_induced => q /(_ w) <-. exact: cpNI'. }
 
   pose x0 : G' := Sub (val x) xH'.
   pose y0 : G' := Sub (val y) yH'.
