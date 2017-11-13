@@ -197,6 +197,9 @@ Proof. by case/andP. Qed.
 Lemma upath_uniq x y p : upath x y p -> uniq (x::p).
 Proof. by case/andP. Qed.
 
+Lemma upath_size x y p : upath x y p -> size p < #|G|.
+Proof. move=> /upath_uniq/card_uniqP/= <-. exact: max_card. Qed.
+
 Lemma rev_upath x y p : upath x y p -> upath y x (srev x p).
 Proof. 
   case/andP => A B. apply/andP; split; last exact: spath_rev.
