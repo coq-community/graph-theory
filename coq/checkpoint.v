@@ -570,11 +570,35 @@ Arguments ncp0 [G] G_conn [U] x p.
 Lemma CP_treeI (G : sgraph) (G_conn : forall x y : G, connect sedge x y) (U : {set G}) :
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
 Proof.
-(* - is_tree is decidable, so we can prove the contraposition
-   - argue that CP_ U is connected whenever G is
-   - hence there exist nodes x and y and two distinct irredundant xy-paths p and q
-   - let z be the first vertex with different sucessors z1 in p and z2 in q
-   - the z1-y-z2 path avoids z, so removing cycles on that path yields an 
+  (* Since is_tree is decidable, prove the contraposition:
+   *    if CP_U is not a tree then it has a triangle. *)
+  case: (boolP (is_tree _)) => // CP_not_tree.
+  match goal with | [ |- (~ ?Goal) -> _ ] => suff H : Goal by [] end.
+  (* CP_ U is connected because G is. *)
+  have CP_conn : forall x y : CP_ U, connect sedge x y.
+    give_up (* TODO *).
+  (* There are two distinct parallel paths in CP_ U ... *)
+  move: connected_not_tree => /(_ _ CP_conn CP_not_tree) [x [y [p' [q' []]]]].
+  (* ... and their first edge is different. *)
+  wlog [z1 [z2 [p [q [-> -> z1Nz2]]]]] : x y p' q'
+    / exists z1 z2 p q, [/\ p' = z1 :: p, q' = z2 :: q & z1 != z2].
+    move=> base_case.
+    elim: p' x y q' => [|z1 p IHp'] x y q'.
+    (* If one is empty then x = y and so is the other. Contradiction ! *)
+      by move=> /upathW/spath_nil<- /upath_nil->.
+    case: q' => [|z2 q] Uzp.
+      by move=> /upathW/spath_nil pq; move: Uzp; rewrite pq => /upath_nil.
+    move=> Uzq.
+    (* If z1 != z2, the goal is done. *)
+    case: (altP (z1 =P z2)) => [eq_z | z1Nz2]; last first.
+      by apply: base_case Uzp Uzq; do 4 eexists.
+    (* Otherwise, use the induction hypothesis. *)
+    move: eq_z Uzp Uzq => <- /upath_consE[_ _ Up] /upath_consE[_ _ Uq].
+    rewrite eqseq_cons eqxx [~~ _]/=.
+    exact: IHp' z1 y q Up Uq.
+  move=> {p' q'} /upath_consE[x_z1 ? /upathW Up] /upath_consE[z2_x ? /upathW Uq] _.
+  rewrite sg_sym in z2_x; do 3 eexists; split; try eassumption.
+(* - the z1-y-z2 path avoids z, so removing cycles on that path yields an 
      irred cycle containing {z, z1, z2}
    - this cycle is a clique by [link_cycle] *)
 Admitted.
