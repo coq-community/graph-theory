@@ -309,8 +309,39 @@ Section PathDef.
   Record Path := { pval : seq G; _ : spath x y pval }.
 
   Canonical Path_subType := [subType for pval].
-  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:]. 
+  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:].
   Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
+
+
+  Record UPath := { uval : seq G; _ : upath x y uval }.
+
+  Canonical UPath_subType := [subType for uval].
+  Definition UPath_eqMixin := Eval hnf in [eqMixin of UPath by <:].
+  Canonical UPath_eqType := Eval hnf in EqType UPath UPath_eqMixin.
+  Definition UPath_choiceMixin := Eval hnf in [choiceMixin of UPath by <:].
+  Canonical UPath_choiceType := Eval hnf in ChoiceType UPath UPath_choiceMixin.
+  Definition UPath_countMixin := Eval hnf in [countMixin of UPath by <:].
+  Canonical UPath_countType := Eval hnf in CountType UPath UPath_countMixin.
+
+  Definition UPath_tuple (up : UPath) : {n : 'I_#|G| & n.-tuple G} :=
+    let (p, Up) := up in existT _ (Ordinal (upath_size Up)) (in_tuple p).
+  Definition tuple_UPath (s : {n : 'I_#|G| & n.-tuple G}) : option UPath :=
+    let (_, p) := s in match boolP (upath x y p) with
+      | AltTrue Up => Some (Sub (val p) Up)
+      | AltFalse _ => None
+    end.
+  Lemma UPath_tupleK : pcancel UPath_tuple tuple_UPath.
+  Proof.
+    move=> [/= p Up].
+    case: {-}_ / boolP; last by rewrite Up.
+    by move=> Up'; rewrite (bool_irrelevance Up' Up).
+  Qed.
+
+  Definition UPath_finMixin := Eval hnf in PcanFinMixin UPath_tupleK.
+  Canonical UPath_finType := Eval hnf in FinType UPath UPath_finMixin.
+
+  Definition UPathW (up : UPath) : Path := let (p, Up) := up in Sub p (upathW Up).
+  Coercion UPathW : UPath >-> Path.
 End PathDef.
 
 Section Primitives.
