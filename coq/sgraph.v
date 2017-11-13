@@ -313,7 +313,7 @@ Section PathDef.
   Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
 
 
-  Record UPath := { uval : seq G; _ : upath x y uval }.
+  Record UPath : predArgType := { uval : seq G; _ : upath x y uval }.
 
   Canonical UPath_subType := [subType for uval].
   Definition UPath_eqMixin := Eval hnf in [eqMixin of UPath by <:].
@@ -851,8 +851,23 @@ Admitted.
 
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
-Definition is_tree (G : sgraph) := 
-  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
+Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
+
+Lemma connected_not_tree (G : sgraph) (G_conn : forall x y : G, connect sedge x y) :
+  ~~ is_tree G -> exists (x y : G) p q, [/\ upath x y p, upath x y q & p != q].
+Proof.
+  rewrite /is_tree negb_forall => /existsP[x].
+  rewrite negb_forall => /existsP[y UxyN1].
+  exists x; exists y.
+  suff : 1 < #|UPath x y|.
+    move=> /card_gt1P[[p Up] [[q Uq]  [_ _ pNq]]].
+    by exists p; exists q; split.
+  rewrite ltn_neqAle eq_sym {}UxyN1 /=.
+  move: G_conn => /(_ x y) /upathP [p Up].
+  apply/card_gt0P => /=.
+  by have up : UPath x y by [exists p]; exists up.
+Qed.
+
 
 Definition clique (G : sgraph) (S : {set G}) :=
   {in S&S, forall x y, x != y -> x -- y}.
