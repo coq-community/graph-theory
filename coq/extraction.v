@@ -110,24 +110,6 @@ Definition remove_edges (G : graph2) (E : {set edge G}) :=
 
 (** SGraph preliminaries *)
 
-(* TOTHINK: is this the best way to transfer path from induced subgraphs *)
-Lemma induced_path (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path x y) : 
-  @spath G (val x) (val y) (map val (val p)).
-Proof.
-  case: p => p pth_p /=. elim: p x pth_p => /= [|z p IH] x pth_p.
-  - by rewrite (spath_nil pth_p) spathxx.
-  - rewrite !spath_cons in pth_p *. 
-    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
-Qed.
-
-Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path x y) : 
-  exists2 q : Path (val x) (val y), {subset q <= S} & forall z : sgraph.induced S, (val z \in q) = (z \in p).
-Proof. 
-  exists (Build_Path (induced_path p)) => z. 
-  - rewrite !mem_path /= in_cons => /predU1P [->|]; first exact: valP.
-    case/mapP => z' _ ->. exact: valP.
-  - rewrite !mem_path /= in_cons mem_map //. exact: val_inj.
-Qed.
 
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
@@ -419,12 +401,8 @@ Qed.
 Lemma CP_path_cp (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
   val z \in @cp G (val x) (val y) -> z \in p.
 Proof. 
-  move/link_path_cp. 
-  suff P : @spath (link_graph G) (val x) (val y) (map val (val p)).
-  { move/(_ (Build_Path P)). 
-    (* TOTHINK: Why do we need in_collective BEFORE mem_path??? *)
-    rewrite !in_collective !mem_path -map_cons mem_map //. exact: val_inj. }
-  exact: induced_path.
+  move/link_path_cp => H. 
+  case: (Path_from_induced p) => p0 P1 P2. by rewrite -P2. 
 Qed.
 
 (* TOTHINK: What is the right formulation here? *)
