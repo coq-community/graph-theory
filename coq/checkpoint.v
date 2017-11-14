@@ -596,9 +596,37 @@ Proof.
     move: eq_z Uzp Uzq => <- /upath_consE[_ _ Up] /upath_consE[_ _ Uq].
     rewrite eqseq_cons eqxx [~~ _]/=.
     exact: IHp' z1 y q Up Uq.
-  move=> {p' q'} /upath_consE[x_z1 ? /upathW Up] /upath_consE[z2_x ? /upathW Uq] _.
+  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious. *)
+  move=> {p' q'} /upath_consE[x_z1 xNzp /upathW ps] /upath_consE[z2_x xNzq /upathW qs] _.
   rewrite sg_sym in z2_x; do 3 eexists; split; try eassumption.
-(* - the z1-y-z2 path avoids z, so removing cycles on that path yields an 
-     irred cycle containing {z, z1, z2}
-   - this cycle is a clique by [link_cycle] *)
+  (* Both p and q avoid x. Package them... *)
+  move: xNzp xNzq.
+  rewrite -(mem_path (Sub p ps)) -(mem_path (Sub q qs)).
+  move: (Sub p ps) (Sub q qs); rewrite ![sub_sort _]/= => {p q ps qs} p q xNp xNq.
+  (* ...and concatenate them into a path avoiding x. *)
+  have {p q xNp xNq} [p /negP xNp] : exists p : Path z1 z2, x \notin p.
+    by exists (pcat p (prev q)); rewrite mem_pcat negb_or mem_prev.
+  (* Remove the cycles in that path, to get an irredundant path from z1 to z2
+   * avoiding x. *)
+  have {p xNp} [p Ip xNp] : exists2 p : Path z1 z2, irred p & x \notin p.
+    have [q qSp Iq] := uncycle p; exists q => //.
+    by apply/negP => /qSp.
+  (* Using the z2 -- x -- z1 path, build an irredundant cycle from these paths
+   * which are irredundant, parallel and essentially disjoint. *)
+  have [||c /induced_ucycle ucy [_ z12_c]] :=
+    @parallel_ucycle _ z1 z2 p (pcat (edgep z2_x) (edgep x_z1)) Ip _ _.
+    - rewrite irred_cat 2!irred_edge /=.
+      rewrite /tail/= disjoint_sym disjoint_cons eq_disjoint0 //= andbT.
+      rewrite /in_nodes/= nodesE !inE negb_or z1Nz2/=.
+      move: x_z1. apply/contraTneq => ->. by rewrite sg_irrefl.
+    - rewrite /= disjoint_sym 2!disjoint_cons eq_disjoint0 // andbT.
+      apply/andP; split.
+        by move: xNp; apply/contraNN; exact: tailW.
+      move: Ip; apply/contraTN.
+      by rewrite irredE cons_uniq negb_and negbK => ->.
+  (* By construction, z1 and z2 are in that cycle. *)
+- have {z12_c} [z1_c z2_c] : z1 \in c /\ z2 \in c.
+    by split; apply: z12_c; rewrite mem_pcat 2!mem_edgep eqxx.
+  (* The cycle is actually a clique because it is irredundant in the link graph. *)
+  apply: (link_cycle ucy) z1Nz2; rewrite inE /val/=; exact: map_f.
 Admitted.

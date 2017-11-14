@@ -301,6 +301,19 @@ Proof.
     case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
 Qed.
 
+Lemma induced_cycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
+  cycle sedge p -> cycle (@sedge G) (map val p).
+Proof. Admitted.
+
+Lemma induced_ucycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
+  ucycle sedge p -> ucycle (@sedge G) (map val p).
+Proof.
+  rewrite /ucycle => /andP[cyc unq].
+  apply/andP; split; first exact: induced_cycle.
+  rewrite map_inj_in_uniq // /prop_in2 => x y _ _.
+  exact: val_inj.
+Qed.
+
 Ltac spath_tac :=
   repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
   eauto using spath_concat, spath_rev.
@@ -426,6 +439,13 @@ Lemma mem_edgep x y z (xy : x -- y) :
   z \in edgep xy = (z == x) || (z == y).
 Proof. by rewrite mem_path !inE. Qed.
 
+Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
+Proof.
+  rewrite irredE /= andbT inE.
+  move: xy; apply/contraTneq => ->.
+  by rewrite sg_irrefl.
+Qed.
+
 Lemma splitL x y (p : Path x y) : 
   x != y -> exists z xz (p' : Path z y), p = pcat (edgep xz) p' /\ p' =i tail p.
 Proof.
@@ -529,6 +549,12 @@ Proof.
   + subst p. exact: val_inj.
   + move => ?. rewrite mem_path. exact: A2.
 Qed.
+
+Lemma parallel_ucycle x y (p : Path x y) (q : Path y x):
+  irred p -> irred q -> [disjoint tail p & tail q] ->
+  exists2 c, ucycle sedge c & {subset p <= c} /\ {subset q <= c}.
+Proof.
+Admitted.
 
 End Pack.
 
