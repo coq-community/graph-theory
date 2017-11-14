@@ -110,15 +110,6 @@ Definition remove_edges (G : graph2) (E : {set edge G}) :=
 
 (** SGraph preliminaries *)
 
-(* TOTHINK: is this the best way to transfer path from induced subgraphs *)
-Lemma induced_path (G : sgraph) (S : {set G}) (x y : sgraph.induced S) (p : Path x y) : 
-  @spath G (val x) (val y) (map val (val p)).
-Proof.
-  case: p => p pth_p /=. elim: p x pth_p => /= [|z p IH] x pth_p.
-  - by rewrite (spath_nil pth_p) spathxx.
-  - rewrite !spath_cons in pth_p *. 
-    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
-Qed.
 
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
@@ -410,12 +401,8 @@ Qed.
 Lemma CP_path_cp (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
   val z \in @cp G (val x) (val y) -> z \in p.
 Proof. 
-  move/link_path_cp. 
-  suff P : @spath (link_graph G) (val x) (val y) (map val (val p)).
-  { move/(_ (Build_Path P)). 
-    (* TOTHINK: Why do we need in_collective BEFORE mem_path??? *)
-    rewrite !in_collective !mem_path -map_cons mem_map //. exact: val_inj. }
-  exact: induced_path.
+  move/link_path_cp => H. 
+  case: (Path_from_induced p) => p0 P1 P2. by rewrite -P2. 
 Qed.
 
 (* TOTHINK: What is the right formulation here? *)
@@ -497,7 +484,22 @@ End Checkpoints.
 CoInductive sg_iso (G H : sgraph) : Prop := 
   SgIso (h : G -> H) (g : H -> G) : cancel g h -> cancel h g -> 
     {homo h : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
-  
+
+Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
+  (f x == y) = (x \in f @^-1 y).
+Proof. by rewrite !inE. Qed.
+
+Lemma connected_subgraph (G : sgraph) (S : {set G}) (A : {set sgraph.induced S}) : 
+  connected A -> connected [set val x | x in A].
+Proof.
+  move => conn_A ? ? /imsetP [/= x xA ->] /imsetP [/= y yA ->].
+  case: (boolP (x == y)) => [/eqP->|Hxy]; first exact: connect0.
+  move: (conn_A _ _ xA yA) => /uPathRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
+  case: (Path_from_induced p) => q sub_S Hq. apply: (connectRI (p := q)) => z z_on_q. 
+  have zS: (z \in S) by apply: sub_S.
+  rewrite (_ : z = val (Sub z zS : sgraph.induced S)) ?mem_imset ?SubK //. 
+  apply: subA. by rewrite -Hq.
+Qed.
 
 Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
   (phi : (sgraph.induced S) -> option G') : 
@@ -514,24 +516,30 @@ Proof.
     end.
   (* NOTE: use (* case: {-}_ / idP *) to analyze psi *)
   have psi_G' (a : G') : psi @^-1 (Some (Some a)) = val @: (phi @^-1 (Some a)).
-  { admit. }
+  { apply/setP => x. rewrite !inE. apply/eqP/imsetP.
+    + rewrite /psi. case: {-}_ / idP => p; last by case: ifP. 
+      case E : (phi _) => [b|//] /= [<-]. exists (Sub x p) => //. by rewrite !inE E.
+    + move => [[/= b Hb] Pb] ->. rewrite /psi. case: {-}_ / idP => //= Hb'. 
+      rewrite !inE (bool_irrelevance Hb Hb') in Pb. by rewrite (eqP Pb). }
   have psi_None : psi @^-1 (Some None) = [set i].
   { apply/setP => z. rewrite !inE /psi. 
-    case: {-}_ / idP => [p|_]; last by case: (z == i).
-    have: z != i. admit. case: (phi _) => [b|] /=; admit. }     
+    case: {-}_ / idP => [p|_]; last by case: ifP.
+    have Hz : z != i. { apply: contraNN Hi. by move/eqP <-. }
+    case: (phi _) => [b|]; by rewrite (negbTE Hz). }
   case: mm_phi => M1 M2 M3. exists psi;split.
   - case. 
-    + admit.
+    + move => a. case: (M1 a) => x E. exists (val x). apply/eqP. 
+      rewrite mem_preim psi_G' mem_imset //. by rewrite !inE E. 
     + exists i. rewrite /psi. move: Hi. 
       case: {-}_ / idP => [? ?|_ _]; by [contrab|rewrite eqxx].
   - case. 
-    + move => y. move: (M2 y). rewrite psi_G'. admit.
-    + rewrite psi_None. (* singletons are connected *) admit.
+    + move => y. move: (M2 y). rewrite psi_G'. exact: connected_subgraph.
+    + rewrite psi_None. exact: connected1.
   - move => [a|] [b|]; last by rewrite sg_irrefl.
     + move => /= /M3 [x0] [y0] [? ? ?]. exists (val x0). exists (val y0). by rewrite !psi_G' !mem_imset.
     + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !mem_imset.
-    + admit. (* symmetric *)
-Admitted.
+    + move => /= /Hphi [x0] ? ?.  exists i;exists (val x0). by rewrite sg_sym psi_None set11 !psi_G' !mem_imset.
+Qed.
 
 Lemma K4_of_triangle (G:sgraph) (G_conn : forall x y:G, connect sedge x y) (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
@@ -739,9 +747,6 @@ Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
   \bigcup_(i in [set i0]) F i = F i0.
 Proof. by rewrite -big_filter filter_index_enum enum_set1 big_seq1. Qed.
 
-Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
-  (f x == y) = (x \in f @^-1 y).
-Proof. by rewrite !inE. Qed.
 
 (** TOTHINK: this is a bit bespoke, in particular [@clique (link_graph
 G) U] is stronger than necessary *)

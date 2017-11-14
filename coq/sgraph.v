@@ -291,7 +291,15 @@ Proof.
   exists p. split => //. apply/andP. split => //. by rewrite -(map_inj_uniq B) /= p2.
 Qed.
 
-
+(* TOTHINK: is this the best way to transfer path from induced subgraphs *)
+Lemma induced_path (G : sgraph) (S : {set G}) (x y : induced S) (p : seq (induced S)) : 
+  spath x y p -> @spath G (val x) (val y) (map val p).
+Proof.
+  elim: p x => /= [|z p IH] x pth_p.
+  - by rewrite (spath_nil pth_p) spathxx.
+  - rewrite !spath_cons in pth_p *. 
+    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
+Qed.
 
 Ltac spath_tac :=
   repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
@@ -534,6 +542,16 @@ Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S)
   (p : Path (val x) (val y)) : 
   {subset p <= S} -> exists q : Path x y, (forall z, (z \in q) = (val z \in p)).
 Admitted. (* follows with path_to_induced *)
+
+
+Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
+  exists2 q : Path (val x) (val y), {subset q <= S} & forall z : induced S, (val z \in q) = (z \in p).
+Proof. 
+  case: p => p pth_p. exists (Build_Path (induced_path pth_p)) => z. 
+  - rewrite !mem_path /= in_cons => /predU1P [->|]; first exact: valP.
+    case/mapP => z' _ ->. exact: valP.
+  - rewrite !mem_path /= in_cons mem_map //. exact: val_inj.
+Qed.
 
 
 (* TOTHINK: What do we do about the forest constructions, to we move to packaged paths? *)
