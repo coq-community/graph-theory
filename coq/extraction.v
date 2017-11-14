@@ -18,27 +18,6 @@ Local Notation link_rel := checkpoint.link_rel.
 
 (** Preliminaries *)
 
-Section AddNode.
-  Variables (G : sgraph) (N : {set G}).
-  
-  Definition add_node_rel (x y : option G) := 
-    match x,y with 
-    | None, Some y => y \in N
-    | Some x, None => x \in N
-    | Some x,Some y => x -- y
-    | None, None => false
-    end.
-
-  Lemma add_node_sym : symmetric add_node_rel.
-  Admitted.
-
-  Lemma add_node_irrefl : irreflexive add_node_rel.
-  Admitted.
-
-  Definition add_node := SGraph add_node_sym add_node_irrefl.
-End AddNode.
-Arguments add_node : clear implicits.
-
 Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
 Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
 
@@ -449,45 +428,6 @@ CoInductive sg_iso (G H : sgraph) : Prop :=
 
 
 
-Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
-  (phi : (sgraph.induced S) -> option G') : 
-  i \notin S -> 
-  (forall y, y \in N -> exists2 x , x \in phi @^-1 (Some y) & val x -- i) ->
-  @minor_map (sgraph.induced S) G' phi -> 
-  minor H (add_node G' N).
-Proof.
-  move => Hi Hphi mm_phi.
-  pose psi (u:H) : option (add_node G' N) := 
-    match @idP (u \in S) with 
-    | ReflectT p => obind (fun x => Some (Some x)) (phi (Sub u p))
-    | ReflectF _ => if u == i then Some None else None
-    end.
-  (* NOTE: use (* case: {-}_ / idP *) to analyze psi *)
-  have psi_G' (a : G') : psi @^-1 (Some (Some a)) = val @: (phi @^-1 (Some a)).
-  { apply/setP => x. rewrite !inE. apply/eqP/imsetP.
-    + rewrite /psi. case: {-}_ / idP => p; last by case: ifP. 
-      case E : (phi _) => [b|//] /= [<-]. exists (Sub x p) => //. by rewrite !inE E.
-    + move => [[/= b Hb] Pb] ->. rewrite /psi. case: {-}_ / idP => //= Hb'. 
-      rewrite !inE (bool_irrelevance Hb Hb') in Pb. by rewrite (eqP Pb). }
-  have psi_None : psi @^-1 (Some None) = [set i].
-  { apply/setP => z. rewrite !inE /psi. 
-    case: {-}_ / idP => [p|_]; last by case: ifP.
-    have Hz : z != i. { apply: contraNN Hi. by move/eqP <-. }
-    case: (phi _) => [b|]; by rewrite (negbTE Hz). }
-  case: mm_phi => M1 M2 M3. exists psi;split.
-  - case. 
-    + move => a. case: (M1 a) => x E. exists (val x). apply/eqP. 
-      rewrite mem_preim psi_G' mem_imset //. by rewrite !inE E. 
-    + exists i. rewrite /psi. move: Hi. 
-      case: {-}_ / idP => [? ?|_ _]; by [contrab|rewrite eqxx].
-  - case. 
-    + move => y. move: (M2 y). rewrite psi_G'. exact: connected_in_subgraph.
-    + rewrite psi_None. exact: connected1.
-  - move => [a|] [b|]; last by rewrite sg_irrefl.
-    + move => /= /M3 [x0] [y0] [? ? ?]. exists (val x0). exists (val y0). by rewrite !psi_G' !mem_imset.
-    + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !mem_imset.
-    + move => /= /Hphi [x0] ? ?.  exists i;exists (val x0). by rewrite sg_sym psi_None set11 !psi_G' !mem_imset.
-Qed.
 
 Lemma K4_of_triangle (G:sgraph) (G_conn : forall x y:G, connect sedge x y) (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
