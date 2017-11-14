@@ -30,6 +30,10 @@ Lemma sedge_equiv (G : sgraph) :
   equivalence_rel (connect (@sedge G)).
 Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
 
+Lemma srestrict_sym (G : sgraph) (A : pred G) : 
+  connect_sym (restrict A sedge).
+Proof. apply: connect_symI. apply: symmetric_restrict. exact: sg_sym. Qed.
+
 Lemma sedge_in_equiv (G : sgraph) (A : {set G}) : 
   equivalence_rel (connect (restrict (mem A) sedge)). 
 Proof. 
@@ -349,6 +353,9 @@ Proof. by rewrite in_collective /nodes -lock. Qed.
 
 Section PathTheory.
 Variables (x y z : G) (p : Path x y) (q : Path y z).
+
+Lemma in_tail : z != x -> z \in p -> z \in tail p.
+Proof. move => A. by rewrite mem_path inE (negbTE A). Qed.
 
 Lemma nodes_end : y \in p. 
 Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
@@ -824,6 +831,19 @@ Proof.
   - case/Path_split => p21 [p22 def_p2]. 
     apply: (connectRI (p := p21)) => z. 
     by rewrite !inE def_p2 !mem_pcat => ->.
+Qed.
+
+Lemma connected_in_subgraph (G : sgraph) (S : {set G}) (A : {set induced S}) : 
+  connected A -> connected [set val x | x in A].
+Proof.
+  move => conn_A ? ? /imsetP [/= x xA ->] /imsetP [/= y yA ->].
+  case: (boolP (x == y)) => [/eqP->|Hxy]; first exact: connect0.
+  move: (conn_A _ _ xA yA) => /uPathRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
+  case: (Path_from_induced p) => q sub_S Hq. 
+  apply: (connectRI (p := q)) => z z_on_q. 
+  have zS: (z \in S) by apply: sub_S.
+  rewrite (_ : z = val (Sub z zS : induced S)) ?mem_imset ?SubK //. 
+  apply: subA. by rewrite -Hq.
 Qed.
 
 Lemma connected_induced (G : sgraph) (S : {set G}) : 

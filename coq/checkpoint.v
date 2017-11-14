@@ -185,6 +185,13 @@ Section CheckPoints.
       + apply: subset_trans C _. by rewrite set_cons subset_seqL subsetUr.
   Qed.
 
+  Lemma link_path_cp (x y : G) (p : @Path link_graph x y) : 
+    {subset cp x y <= p}.
+  Proof. 
+    apply/subsetP. rewrite /in_nodes nodesE. apply: link_seq_cp.
+    exact: (valP p). 
+  Qed.
+
   (* Lemma 10 *)
   Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
   Proof. 
@@ -211,6 +218,10 @@ Section CheckPoints.
   Definition sinterval x y := 
     [set z in ~: [set x; y] | connect (restrict (predC1 y) (@sedge G)) z x && 
                               connect (restrict (predC1 x) (@sedge G)) z y ].
+
+  Lemma sinterval_sym x y : sinterval x y = sinterval y x.
+  Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
+
 
   Definition interval x y := [set x;y] :|: sinterval x y.
 
@@ -384,6 +395,23 @@ Section CheckPoints.
   Proof. 
     move => cp_x Hu. case/setU1P => [->|]; first by rewrite cp_sym mem_cpl.
     rewrite inE. exact: petal_exit Hu.
+  Qed.
+
+  Lemma connected_petal x (U : {set G}) : x \in CP U -> connected (petal U x).
+  Proof.
+    move => cp_x.
+    suff S z : z \in petal U x -> connect (restrict (mem (petal U x)) sedge) x z.
+    { move => u v Hu Hv. apply: connect_trans (S _ Hv). 
+      rewrite srestrict_sym. exact: S. }
+    move => Hz. case/uPathP : (G_conn z x) => p irr_p. 
+    suff/subsetP sP : p \subset petal U x.
+    { rewrite srestrict_sym. exact: (connectRI (p := p)). }
+    apply/negPn/negP. move/subsetPn => [z' in_p N]. 
+    case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D]. 
+    suff : x \in tail p2. 
+    { rewrite (disjointFr D) //. apply/cpP'. exact: petal_exit N. }
+    apply: in_tail => [|]; last exact: nodes_end.
+    apply: contraNN N => /eqP<-. by rewrite petal_id.
   Qed.
 
   Lemma petal_extension (U : {set G}) x y : 

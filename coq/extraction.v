@@ -284,38 +284,6 @@ Proof.
         -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
 Qed.
 
-Lemma sinterval_sym (x y : G) : sinterval x y = sinterval y x.
-Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
-
-Lemma CP_connected (U : {set G}) : connected [set: CP_ U].
-Admitted.
-
-
-Lemma srestrict_sym A : connect_sym (restrict A (@sedge G)).
-Admitted.
-
-Lemma connected_petal x (U : {set G}) : x \in CP U -> connected (petal U x).
-Proof.
-  move => cp_x.
-  suff S z : z \in petal U x -> connect (restrict (mem (petal U x)) sedge) x z.
-  { move => u v Hu Hv. apply: connect_trans (S _ Hv). admit. }
-  move/petalP => Hz. case/uPathP : (conn_G z x) => p irr_p. 
-  have sP : p \subset petal U x.
-  { apply/negPn/negP. move/subsetPn => [z' in_p N]. 
-    case/petalPn : (N) => y cp_y. case/cpPn' => q irr_q av_x. 
-    (* split p at z' (which is different from x) and obtain x-avoiding zy-path *)
-    admit. }
-  rewrite srestrict_sym. apply: (connectRI (p := p)). 
-  (* trivial *) admit.
-Admitted.
-
-
-Lemma connectedU (S1 S2 : {set G}) x : x \in S1 :&: S2 -> connected (S1 :|: S2).
-Admitted.
-
-
-
-
 (** Do we really need the follwing lemma in its full generality *)
 Lemma ncp_sinterval U (x y p : G) :
   [set x;y] \subset CP U ->
@@ -391,12 +359,6 @@ Abort.
 (* Admitted. *)
 
 
-Lemma link_path_cp (x y : G) (p : Path (link_graph G) x y) : 
-  {subset cp x y <= p}.
-Proof. 
-  apply/subsetP. rewrite /in_nodes nodesE. apply: link_seq_cp.
-  exact: (valP p). 
-Qed.
 
 Lemma CP_path_cp (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
   val z \in @cp G (val x) (val y) -> z \in p.
@@ -485,21 +447,7 @@ CoInductive sg_iso (G H : sgraph) : Prop :=
   SgIso (h : G -> H) (g : H -> G) : cancel g h -> cancel h g -> 
     {homo h : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
 
-Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
-  (f x == y) = (x \in f @^-1 y).
-Proof. by rewrite !inE. Qed.
 
-Lemma connected_subgraph (G : sgraph) (S : {set G}) (A : {set sgraph.induced S}) : 
-  connected A -> connected [set val x | x in A].
-Proof.
-  move => conn_A ? ? /imsetP [/= x xA ->] /imsetP [/= y yA ->].
-  case: (boolP (x == y)) => [/eqP->|Hxy]; first exact: connect0.
-  move: (conn_A _ _ xA yA) => /uPathRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
-  case: (Path_from_induced p) => q sub_S Hq. apply: (connectRI (p := q)) => z z_on_q. 
-  have zS: (z \in S) by apply: sub_S.
-  rewrite (_ : z = val (Sub z zS : sgraph.induced S)) ?mem_imset ?SubK //. 
-  apply: subA. by rewrite -Hq.
-Qed.
 
 Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
   (phi : (sgraph.induced S) -> option G') : 
@@ -533,7 +481,7 @@ Proof.
     + exists i. rewrite /psi. move: Hi. 
       case: {-}_ / idP => [? ?|_ _]; by [contrab|rewrite eqxx].
   - case. 
-    + move => y. move: (M2 y). rewrite psi_G'. exact: connected_subgraph.
+    + move => y. move: (M2 y). rewrite psi_G'. exact: connected_in_subgraph.
     + rewrite psi_None. exact: connected1.
   - move => [a|] [b|]; last by rewrite sg_irrefl.
     + move => /= /M3 [x0] [y0] [? ? ?]. exists (val x0). exists (val y0). by rewrite !psi_G' !mem_imset.
@@ -706,13 +654,6 @@ Arguments Path : clear implicits.
 (* Lemma Sub_eq (T : eqType) (P : pred T) (x y : T) (Px : x \in P) (Py : y \in P) : *)
 (*   Sub (s := sig_subType P) x Px == Sub y Py = (x == y). *)
 (* Proof. reflexivity. Qed. *)
-
-
-
-
-Lemma Some_eqE (T : eqType) (x y : T) : 
-  (Some x == Some y) = (x == y).
-Proof. by apply/eqP/eqP => [[//]|->]. Qed.
 
 
 Section Petals.

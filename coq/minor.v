@@ -173,6 +173,10 @@ Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
 
 Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.  
 
+Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
+  (f x == y) = (x \in f @^-1 y).
+Proof. by rewrite !inE. Qed.
+
 (** H is a minor of G -- The order allows us to write [minor G] for the
 colletion of [G]s minors *)
 

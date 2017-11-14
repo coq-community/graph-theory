@@ -30,6 +30,10 @@ Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) 
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
 
+Lemma Some_eqE (T : eqType) (x y : T) : 
+  (Some x == Some y) = (x == y).
+Proof. by apply/eqP/eqP => [[//]|->]. Qed.
+
 Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
 Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
 Definition ord3 {n : nat} : 'I_n.+4 := Ordinal (isT : 3 < n.+4).
