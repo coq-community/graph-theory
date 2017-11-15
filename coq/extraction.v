@@ -18,9 +18,6 @@ Local Notation link_rel := checkpoint.link_rel.
 
 (** Preliminaries *)
 
-Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
-Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
-
 Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
   List.In b s -> F b <= \sum_(a <- s) F a.
 Proof. 
@@ -361,11 +358,11 @@ Admitted.
 Lemma CP_subtree1 (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
   is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in @cp G (val x) (val y)).
 Proof.
-  move => tree_U irr_p. split.
+  move => /tree_unique_Path tree_U irr_p. split.
   - move => z_in_p. apply/negPn. apply/negP => /=. 
     case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
     have zr : z \notin r. { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
-    case: tree_U => _ /(_ x y p r). case/(_ _ _)/Wrap => // ?. subst. by contrab.
+    have := tree_U x y p r. case/(_ _ _)/Wrap => // ?. subst. by contrab.
   - simpl. exact: CP_path_cp.
 Qed.
 

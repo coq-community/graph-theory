@@ -598,11 +598,63 @@ Arguments ncp0 [G] G_conn [U] x p.
 Lemma CP_treeI (G : sgraph) (G_conn : forall x y : G, connect sedge x y) (U : {set G}) :
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
 Proof.
-(* - is_tree is decidable, so we can prove the contraposition
-   - argue that CP_ U is connected whenever G is
-   - hence there exist nodes x and y and two distinct irredundant xy-paths p and q
-   - let z be the first vertex with different sucessors z1 in p and z2 in q
-   - the z1-y-z2 path avoids z, so removing cycles on that path yields an 
-     irred cycle containing {z, z1, z2}
-   - this cycle is a clique by [link_cycle] *)
+  (* Since is_tree is decidable, prove the contraposition:
+   *    if CP_U is not a tree then it has a triangle. *)
+  case: (boolP (is_tree _)) => // CP_not_tree H; exfalso; apply: H.
+  (* CP_ U is connected because G is. *)
+  have CP_conn : forall x y : CP_ U, connect sedge x y.
+    give_up (* TODO *).
+  (* There are two distinct parallel paths in CP_ U ... *)
+  move: connected_not_tree => /(_ _ CP_conn CP_not_tree) [x [y [p' [q' []]]]].
+  (* ... and their first edge is different. *)
+  wlog [z1 [z2 [p [q [-> -> z1Nz2]]]]] : x y p' q'
+    / exists z1 z2 p q, [/\ p' = z1 :: p, q' = z2 :: q & z1 != z2].
+    move=> base_case.
+    elim: p' x y q' => [|z1 p IHp'] x y q'.
+    (* If one is empty then x = y and so is the other. Contradiction ! *)
+      by move=> /upathW/spath_nil<- /upath_nil->.
+    case: q' => [|z2 q] Uzp.
+      by move=> /upathW/spath_nil pq; move: Uzp; rewrite pq => /upath_nil.
+    move=> Uzq.
+    (* If z1 != z2, the goal is done. *)
+    case: (altP (z1 =P z2)) => [eq_z | z1Nz2]; last first.
+      by apply: base_case Uzp Uzq; do 4 eexists.
+    (* Otherwise, use the induction hypothesis. *)
+    move: eq_z Uzp Uzq => <- /upath_consE[_ _ Up] /upath_consE[_ _ Uq].
+    rewrite eqseq_cons eqxx [~~ _]/=.
+    exact: IHp' z1 y q Up Uq.
+  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious. *)
+  move=> {p' q'} /upath_consE[x_z1 xNzp /upathW ps] /upath_consE[z2_x xNzq /upathW qs] _.
+  rewrite sg_sym in z2_x; do 3 eexists; split; try eassumption.
+  (* Both p and q avoid x. Package them... *)
+  move: xNzp xNzq.
+  rewrite -(mem_path (Sub p ps)) -(mem_path (Sub q qs)).
+  move: (Sub p ps) (Sub q qs); rewrite ![sub_sort _]/= => {p q ps qs} p q xNp xNq.
+  (* ...and concatenate them into a path avoiding x. *)
+  have {p q xNp xNq} [p /negP xNp] : exists p : Path z1 z2, x \notin p.
+    by exists (pcat p (prev q)); rewrite mem_pcat negb_or mem_prev.
+  (* Remove the cycles in that path, to get an irredundant path from z1 to z2
+   * avoiding x. *)
+  have {p xNp} [p Ip xNp] : exists2 p : Path z1 z2, irred p & x \notin p.
+    have [q qSp Iq] := uncycle p; exists q => //.
+    by apply/negP => /qSp.
+  (* Unpack it. *)
+  case: p Ip xNp => p pz12.
+  rewrite /irred in_collective nodesE [negb _]/= [uniq _]/= inE negb_or.
+  move=> /andP[z1Np Up] /andP[_ xNp].
+  have {pz12 Up} Up : upath z1 z2 p by rewrite /upath cons_uniq.
+  (* The z2 -- x -- z1 path is irredundant as well... *)
+  have Uzxz : upath z2 z1 [:: x; z1].
+    rewrite upath_cons z2_x !inE negb_or [_ == z1]eq_sym z1Nz2 andbT /=.
+    rewrite upath_cons x_z1 !inE upath_refl andbT /=.
+    by move: z2_x x_z1 => /sg_edgeNeq-> /sg_edgeNeq->.
+  (* ...and does not cross p. *)
+  have : [disjoint [:: x; z1] & p].
+    by rewrite disjoint_cons xNp disjoint_cons z1Np eq_disjoint0.
+  (* Therefore, they form an irredundant cycle hence a clique in the link graph
+   * and contains z1 and z2. *)
+  move=> {Uzxz} /(parallel_ucycle Uzxz Up) /induced_ucycle /link_cycle.
+  move=> /(_ _ _ _ _ z1Nz2). apply; rewrite inE; apply: map_f.
+    by rewrite !inE eqxx.
+  by rewrite !inE (spath_endD _ z1Nz2) //; exact: upathW.
 Admitted.

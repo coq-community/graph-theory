@@ -26,6 +26,9 @@ Notation "x -- y" := (sedge x y) (at level 30).
 Definition sgP := (sg_sym,sg_irrefl).
 Prenex Implicits sedge.
 
+Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
+Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
+
 Lemma sedge_equiv (G : sgraph) : 
   equivalence_rel (connect (@sedge G)).
 Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
@@ -201,6 +204,9 @@ Proof. by case/andP. Qed.
 Lemma upath_uniq x y p : upath x y p -> uniq (x::p).
 Proof. by case/andP. Qed.
 
+Lemma upath_size x y p : upath x y p -> size p < #|G|.
+Proof. move=> /upath_uniq/card_uniqP/= <-. exact: max_card. Qed.
+
 Lemma rev_upath x y p : upath x y p -> upath y x (srev x p).
 Proof. 
   case/andP => A B. apply/andP; split; last exact: spath_rev.
@@ -267,6 +273,10 @@ Proof.
   case/upathP => p /upathW ?. by exists p.
 Qed.
 
+Lemma parallel_ucycle x y p q :
+  upath x y p -> upath y x q -> [disjoint p & q] -> ucycle sedge (p ++ q).
+Admitted.
+
 End Upath.
 
 Lemma restrict_upath (G:sgraph) (x y:G) (A : pred G) (p : seq G) : 
@@ -302,6 +312,19 @@ Proof.
     case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
 Qed.
 
+Lemma induced_cycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
+  cycle sedge p -> cycle (@sedge G) (map val p).
+Proof. Admitted.
+
+Lemma induced_ucycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
+  ucycle sedge p -> ucycle (@sedge G) (map val p).
+Proof.
+  rewrite /ucycle => /andP[cyc unq].
+  apply/andP; split; first exact: induced_cycle.
+  rewrite map_inj_in_uniq // /prop_in2 => x y _ _.
+  exact: val_inj.
+Qed.
+
 Ltac spath_tac :=
   repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
   eauto using spath_concat, spath_rev.
@@ -318,8 +341,39 @@ Section PathDef.
   Record Path := { pval : seq G; _ : spath x y pval }.
 
   Canonical Path_subType := [subType for pval].
-  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:]. 
+  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:].
   Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
+
+
+  Record UPath : predArgType := { uval : seq G; _ : upath x y uval }.
+
+  Canonical UPath_subType := [subType for uval].
+  Definition UPath_eqMixin := Eval hnf in [eqMixin of UPath by <:].
+  Canonical UPath_eqType := Eval hnf in EqType UPath UPath_eqMixin.
+  Definition UPath_choiceMixin := Eval hnf in [choiceMixin of UPath by <:].
+  Canonical UPath_choiceType := Eval hnf in ChoiceType UPath UPath_choiceMixin.
+  Definition UPath_countMixin := Eval hnf in [countMixin of UPath by <:].
+  Canonical UPath_countType := Eval hnf in CountType UPath UPath_countMixin.
+
+  Definition UPath_tuple (up : UPath) : {n : 'I_#|G| & n.-tuple G} :=
+    let (p, Up) := up in existT _ (Ordinal (upath_size Up)) (in_tuple p).
+  Definition tuple_UPath (s : {n : 'I_#|G| & n.-tuple G}) : option UPath :=
+    let (_, p) := s in match boolP (upath x y p) with
+      | AltTrue Up => Some (Sub (val p) Up)
+      | AltFalse _ => None
+    end.
+  Lemma UPath_tupleK : pcancel UPath_tuple tuple_UPath.
+  Proof.
+    move=> [/= p Up].
+    case: {-}_ / boolP; last by rewrite Up.
+    by move=> Up'; rewrite (bool_irrelevance Up' Up).
+  Qed.
+
+  Definition UPath_finMixin := Eval hnf in PcanFinMixin UPath_tupleK.
+  Canonical UPath_finType := Eval hnf in FinType UPath UPath_finMixin.
+
+  Definition UPathW (up : UPath) : Path := let (p, Up) := up in Sub p (upathW Up).
+  Coercion UPathW : UPath >-> Path.
 End PathDef.
 
 Section Primitives.
@@ -398,6 +452,9 @@ Definition edgep x y (xy : x -- y) := Build_Path (edgep_proof xy).
 Lemma mem_edgep x y z (xy : x -- y) :
   z \in edgep xy = (z == x) || (z == y).
 Proof. by rewrite mem_path !inE. Qed.
+
+Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
+Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
 
 Lemma splitL x y (p : Path x y) : 
   x != y -> exists z xz (p' : Path z y), p = pcat (edgep xz) p' /\ p' =i tail p.
@@ -503,6 +560,14 @@ Proof.
   + move => ?. rewrite mem_path. exact: A2.
 Qed.
 
+Lemma UPath_from_irred x y (p : Path x y) : irred p ->
+  exists q : UPath x y, val p = val q.
+Proof.
+  case: p => p pth. rewrite irredE [_ :: _]/= => Up /=.
+  have {pth Up} Up : upath x y p by rewrite /upath; apply/andP; split.
+  by exists (Sub p Up).
+Qed.
+
 End Pack.
 
 (** Lifting paths to induced subgraphs *)
@@ -531,10 +596,11 @@ Qed.
 Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
   exists p : Path a b, map f (val p) = val p'.
-Proof. 
-  move => A I S. case: (lift_spath A I (valP p') _). admit.
+Proof.
+  move => A I S. case: (lift_spath A I (valP p') _).
+    move=> x V. apply: S. by rewrite mem_path inE V.
   move => p [p1 p2]. exists (Sub p p1). by rewrite -p2. 
-Abort. 
+Qed.
 
 
 Definition idx (G : sgraph) (x y : G) (p : Path x y) u := index u (nodes p).
@@ -854,8 +920,32 @@ Admitted.
 
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
-Definition is_tree (G : sgraph) := 
-  connected [set: G] /\ forall x y : G, unique (fun p : Path x y => irred p).
+Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
+
+Lemma tree_unique_Path (G : sgraph) (G_tree : is_tree G) (x y : G) :
+  unique (fun p : Path x y => irred p).
+Proof.
+  move: G_tree => /forallP/(_ x) /forallP/(_ y).
+  move=> /eqP card1 ? ? /UPath_from_irred [p eq_p] /UPath_from_irred [q eq_q].
+  apply: val_inj. rewrite {}eq_p {}eq_q. apply: (congr1 val).
+  by apply: (@card_le1 _ (UPath x y) p q); rewrite // card1.
+Qed.
+
+Lemma connected_not_tree (G : sgraph) (G_conn : forall x y : G, connect sedge x y) :
+  ~~ is_tree G -> exists (x y : G) p q, [/\ upath x y p, upath x y q & p != q].
+Proof.
+  rewrite /is_tree negb_forall => /existsP[x].
+  rewrite negb_forall => /existsP[y UxyN1].
+  exists x; exists y.
+  suff : 1 < #|UPath x y|.
+    move=> /card_gt1P[[p Up] [[q Uq]  [_ _ pNq]]].
+    by exists p; exists q; split.
+  rewrite ltn_neqAle eq_sym {}UxyN1 /=.
+  move: G_conn => /(_ x y) /upathP [p Up].
+  apply/card_gt0P => /=.
+  by have up : UPath x y by [exists p]; exists up.
+Qed.
+
 
 Definition clique (G : sgraph) (S : {set G}) :=
   {in S&S, forall x y, x != y -> x -- y}.
