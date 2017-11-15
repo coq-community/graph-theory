@@ -273,10 +273,6 @@ Proof.
   case/upathP => p /upathW ?. by exists p.
 Qed.
 
-Lemma parallel_ucycle x y p q :
-  upath x y p -> upath y x q -> [disjoint p & q] -> ucycle sedge (p ++ q).
-Admitted.
-
 End Upath.
 
 Lemma restrict_upath (G:sgraph) (x y:G) (A : pred G) (p : seq G) : 

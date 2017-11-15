@@ -640,21 +640,17 @@ Proof.
     by apply/negP => /qSp.
   (* Unpack it. *)
   case: p Ip xNp => p pz12.
-  rewrite /irred in_collective nodesE [negb _]/= [uniq _]/= inE negb_or.
-  move=> /andP[z1Np Up] /andP[_ xNp].
-  have {pz12 Up} Up : upath z1 z2 p by rewrite /upath cons_uniq.
-  (* The z2 -- x -- z1 path is irredundant as well... *)
-  have Uzxz : upath z2 z1 [:: x; z1].
-    rewrite upath_cons z2_x !inE negb_or [_ == z1]eq_sym z1Nz2 andbT /=.
-    rewrite upath_cons x_z1 !inE upath_refl andbT /=.
-    by move: z2_x x_z1 => /sg_edgeNeq-> /sg_edgeNeq->.
-  (* ...and does not cross p. *)
-  have : [disjoint [:: x; z1] & p].
-    by rewrite disjoint_cons xNp disjoint_cons z1Np eq_disjoint0.
-  (* Therefore, they form an irredundant cycle hence a clique in the link graph
-   * and contains z1 and z2. *)
-  move=> {Uzxz} /(parallel_ucycle Uzxz Up) /induced_ucycle /link_cycle.
+  rewrite /irred in_collective nodesE [negb _]/= [_ :: _]/=.
+  move: pz12 => /andP[pth /eqP pz2] Uzp xNzp.
+  (* To get an irredundant cycle, prepend x and z1. *)
+  have {Uzp xNzp} Uxzp : uniq (x :: z1 :: p).
+    by move: xNzp Uzp => /= -> /=.
+  have {pth Uxzp} /induced_ucycle /link_cycle : ucycle sedge [:: x, z1 & p].
+    rewrite /ucycle {}Uxzp andbT (cycle_path z2).
+    set sedge := sedge (* prevent /= from expanding (@sedge (CP_ U)) *).
+    by rewrite /= {}/sedge x_z1 pth pz2 z2_x.
+  (* In the link graph, that cycle gives a clique which contains z1 and z2. *)
   move=> /(_ _ _ _ _ z1Nz2). apply; rewrite inE; apply: map_f.
     by rewrite !inE eqxx.
-  by rewrite !inE (spath_endD _ z1Nz2) //; exact: upathW.
+  by rewrite inE -pz2 mem_last.
 Admitted.
