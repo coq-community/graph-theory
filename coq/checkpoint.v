@@ -572,8 +572,7 @@ Lemma CP_treeI (G : sgraph) (G_conn : forall x y : G, connect sedge x y) (U : {s
 Proof.
   (* Since is_tree is decidable, prove the contraposition:
    *    if CP_U is not a tree then it has a triangle. *)
-  case: (boolP (is_tree _)) => // CP_not_tree.
-  match goal with | [ |- (~ ?Goal) -> _ ] => suff H : Goal by [] end.
+  case: (boolP (is_tree _)) => // CP_not_tree H; exfalso; apply: H.
   (* CP_ U is connected because G is. *)
   have CP_conn : forall x y : CP_ U, connect sedge x y.
     give_up (* TODO *).
@@ -611,22 +610,23 @@ Proof.
   have {p xNp} [p Ip xNp] : exists2 p : Path z1 z2, irred p & x \notin p.
     have [q qSp Iq] := uncycle p; exists q => //.
     by apply/negP => /qSp.
-  (* Using the z2 -- x -- z1 path, build an irredundant cycle from these paths
-   * which are irredundant, parallel and essentially disjoint. *)
-  have [||c /induced_ucycle ucy [_ z12_c]] :=
-    @parallel_ucycle _ z1 z2 p (pcat (edgep z2_x) (edgep x_z1)) Ip _ _.
-    - rewrite irred_cat 2!irred_edge /=.
-      rewrite /tail/= disjoint_sym disjoint_cons eq_disjoint0 //= andbT.
-      rewrite /in_nodes/= nodesE !inE negb_or z1Nz2/=.
-      move: x_z1. apply/contraTneq => ->. by rewrite sg_irrefl.
-    - rewrite /= disjoint_sym 2!disjoint_cons eq_disjoint0 // andbT.
-      apply/andP; split.
-        by move: xNp; apply/contraNN; exact: tailW.
-      move: Ip; apply/contraTN.
-      by rewrite irredE cons_uniq negb_and negbK => ->.
-  (* By construction, z1 and z2 are in that cycle. *)
-- have {z12_c} [z1_c z2_c] : z1 \in c /\ z2 \in c.
-    by split; apply: z12_c; rewrite mem_pcat 2!mem_edgep eqxx.
-  (* The cycle is actually a clique because it is irredundant in the link graph. *)
-  apply: (link_cycle ucy) z1Nz2; rewrite inE /val/=; exact: map_f.
+  (* Unpack it. *)
+  case: p Ip xNp => p pz12.
+  rewrite /irred in_collective nodesE [negb _]/= [uniq _]/= inE negb_or.
+  move=> /andP[z1Np Up] /andP[_ xNp].
+  have {pz12 Up} Up : upath z1 z2 p by rewrite /upath cons_uniq.
+  (* The z2 -- x -- z1 path is irredundant as well... *)
+  have Uzxz : upath z2 z1 [:: x; z1].
+    rewrite upath_cons z2_x !inE negb_or [_ == z1]eq_sym z1Nz2 andbT /=.
+    rewrite upath_cons x_z1 !inE upath_refl andbT /=.
+    by move: z2_x x_z1 => /sg_edgeNeq-> /sg_edgeNeq->.
+  (* ...and does not cross p. *)
+  have : [disjoint [:: x; z1] & p].
+    by rewrite disjoint_cons xNp disjoint_cons z1Np eq_disjoint0.
+  (* Therefore, they form an irredundant cycle hence a clique in the link graph
+   * and contains z1 and z2. *)
+  move=> {Uzxz} /(parallel_ucycle Uzxz Up) /induced_ucycle /link_cycle.
+  move=> /(_ _ _ _ _ z1Nz2). apply; rewrite inE; apply: map_f.
+    by rewrite !inE eqxx.
+  by rewrite !inE (spath_endD _ z1Nz2) //; exact: upathW.
 Admitted.

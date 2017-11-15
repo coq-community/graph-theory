@@ -39,9 +39,6 @@ Section AddNode.
 End AddNode.
 Arguments add_node : clear implicits.
 
-Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
-Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
-
 Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
   List.In b s -> F b <= \sum_(a <- s) F a.
 Proof. 

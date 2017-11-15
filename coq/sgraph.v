@@ -26,6 +26,9 @@ Notation "x -- y" := (sedge x y) (at level 30).
 Definition sgP := (sg_sym,sg_irrefl).
 Prenex Implicits sedge.
 
+Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
+Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
+
 Lemma sedge_equiv (G : sgraph) : 
   equivalence_rel (connect (@sedge G)).
 Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
@@ -266,6 +269,10 @@ Proof.
   case/upathP => p /upathW ?. by exists p.
 Qed.
 
+Lemma parallel_ucycle x y p q :
+  upath x y p -> upath y x q -> [disjoint p & q] -> ucycle sedge (p ++ q).
+Admitted.
+
 End Upath.
 
 Lemma restrict_upath (G:sgraph) (x y:G) (A : pred G) (p : seq G) : 
@@ -440,11 +447,7 @@ Lemma mem_edgep x y z (xy : x -- y) :
 Proof. by rewrite mem_path !inE. Qed.
 
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
-Proof.
-  rewrite irredE /= andbT inE.
-  move: xy; apply/contraTneq => ->.
-  by rewrite sg_irrefl.
-Qed.
+Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
 
 Lemma splitL x y (p : Path x y) : 
   x != y -> exists z xz (p' : Path z y), p = pcat (edgep xz) p' /\ p' =i tail p.
@@ -549,12 +552,6 @@ Proof.
   + subst p. exact: val_inj.
   + move => ?. rewrite mem_path. exact: A2.
 Qed.
-
-Lemma parallel_ucycle x y (p : Path x y) (q : Path y x):
-  irred p -> irred q -> [disjoint tail p & tail q] ->
-  exists2 c, ucycle sedge c & {subset p <= c} /\ {subset q <= c}.
-Proof.
-Admitted.
 
 End Pack.
 
