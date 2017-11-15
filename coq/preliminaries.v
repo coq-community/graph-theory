@@ -118,6 +118,9 @@ Lemma cardsCT (T : finType) (A : {set T}) :
   (#|~:A| < #|T|) = (0 < #|A|).
 Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
 
+Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
+  \bigcup_(i in [set i0]) F i = F i0.
+Proof. by rewrite -big_filter filter_index_enum enum_set1 big_seq1. Qed.
 
 Lemma wf_leq X (f : X -> nat) : well_founded (fun x y => f x < f y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ f) => x y /ltP. Qed.

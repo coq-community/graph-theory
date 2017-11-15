@@ -354,7 +354,8 @@ Lemma CP_path (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) :
 Admitted.
 
 
-(** NOTE: If [CP_ U] is a tree, then there exists exactly one irredundant xy-path. *)
+(**: If [CP_ U] is a tree, the uniqe path bewteen any two nodes
+contains exactly the checkpoints bewteen these nodes *)
 Lemma CP_subtree1 (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
   is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in @cp G (val x) (val y)).
 Proof.
@@ -588,54 +589,7 @@ Notation val2 x := (val (val x)).
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
-(* Lemma Sub_eq (T : eqType) (P : pred T) (x y : T) (Px : x \in P) (Py : y \in P) : *)
-(*   Sub (s := sig_subType P) x Px == Sub y Py = (x == y). *)
-(* Proof. reflexivity. Qed. *)
 
-
-Section Petals.
-Variables (G : sgraph) (G_conn : forall x y : G, connect sedge x y).
-
-Lemma petal_in_out (U : {set G}) x u v (p : Path G u v) :
-  x \in CP U -> u \in x |: ~: petal U x -> v \in x |: ~: petal U x -> irred p -> 
-  p \subset x |: ~: petal U x.
-Proof.
-  move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
-  rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
-  case/Path_split : in_p => w1 [w2] def_p. subst. 
-  rewrite irred_cat !negb_and (disjointNI (x := x)) //.
-  + apply/cpP'. rewrite cp_sym. exact: petal_exit' Pu.
-  + suff: x \in prev w2 by rewrite mem_prev mem_path inE eq_sym (negbTE W1). 
-    apply/cpP'. rewrite cp_sym. exact: petal_exit' Pv.
-Qed.
-
-(* This is a bit bespoke, as it only only mentions petals rooted at
-elements of [U] rather than [CP U]. At the point where we use it, U is
-a clique, so [CP U] is [U]. *)
-Lemma petals_in_out (U : {set G}) u v (p : Path G u v) :
-  let T' := U :|: (~: \bigcup_(z in U) petal U z) in 
-  u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
-Proof. 
-  move => T' uT vT irr_p. apply/subsetP/negPn/negP.  
-  case/subsetPn => z zp. rewrite !inE negb_or negbK => /andP [zU].
-  case/bigcupP => x xU zPx. 
-  suff HT': {subset T' <= x |: ~: petal U x}. 
-  { move/HT' in uT. move/HT' in vT. 
-    move/subsetP : (petal_in_out (CP_extensive xU) uT vT irr_p) => sub.
-    move/sub : zp. rewrite !inE zPx /= orbF => /eqP ?. by subst z;contrab. }
-  move => w. case/setUP => [wU|H].
-  + case: (altP (x =P w)) => [->|E]; rewrite !inE ?eqxx // 1?eq_sym.
-    rewrite (negbTE E) /=. apply/petalPn; exists w; first exact: CP_extensive.
-    by rewrite cpxx inE. 
-  + apply/setUP;right. rewrite !inE in H *. apply: contraNN H => wP. 
-    apply/bigcupP. by exists x.
-Qed.
-
-End Petals.
-
-Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
-  \bigcup_(i in [set i0]) F i = F i0.
-Proof. by rewrite -big_filter filter_index_enum enum_set1 big_seq1. Qed.
 
 
 (** TOTHINK: this is a bit bespoke, in particular [@clique (link_graph
