@@ -618,9 +618,21 @@ a clique, so [CP U] is [U]. *)
 Lemma petals_in_out (U : {set G}) u v (p : Path G u v) :
   let T' := U :|: (~: \bigcup_(z in U) petal U z) in 
   u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
-Proof.
-  (* Should follow with [petal_in_out] *)
-Admitted.
+Proof. 
+  move => T' uT vT irr_p. apply/subsetP/negPn/negP.  
+  case/subsetPn => z zp. rewrite !inE negb_or negbK => /andP [zU].
+  case/bigcupP => x xU zPx. 
+  suff HT': {subset T' <= x |: ~: petal U x}. 
+  { move/HT' in uT. move/HT' in vT. 
+    move/subsetP : (petal_in_out (CP_extensive xU) uT vT irr_p) => sub.
+    move/sub : zp. rewrite !inE zPx /= orbF => /eqP ?. by subst z;contrab. }
+  move => w. case/setUP => [wU|H].
+  + case: (altP (x =P w)) => [->|E]; rewrite !inE ?eqxx // 1?eq_sym.
+    rewrite (negbTE E) /=. apply/petalPn; exists w; first exact: CP_extensive.
+    by rewrite cpxx inE. 
+  + apply/setUP;right. rewrite !inE in H *. apply: contraNN H => wP. 
+    apply/bigcupP. by exists x.
+Qed.
 
 End Petals.
 
@@ -631,7 +643,8 @@ Proof. by rewrite -big_filter filter_index_enum enum_set1 big_seq1. Qed.
 
 (** TOTHINK: this is a bit bespoke, in particular [@clique (link_graph
 G) U] is stronger than necessary *)
-Lemma collapse_petals (G : sgraph) (U : {set G}) u0' (inU : u0' \in U) :
+Lemma collapse_petals (G : sgraph) (G_conn : forall x y : G, connect sedge x y)
+  (U : {set G}) u0' (inU : u0' \in U) :
   @clique (link_graph G) U -> 
   let T := U :|: ~: \bigcup_(x in U) petal U x in 
   let G' := sgraph.induced T in 
@@ -647,16 +660,44 @@ Proof.
                 then insubd u0 x else insubd u0 u.
   exists phi.
   have phiU (u : G') : val u \in U -> phi @^-1 u = petal U (val u).
-  { admit. }
+  { move => uU. apply/setP => z. rewrite !inE /phi.
+    case: pickP => [x /andP [X1 X2]|H]. 
+    - rewrite -val_eqE insubdK ?inE ?X1 //. apply/eqP/idP => [<-//|].
+      apply: contraTeq => C. 
+      suff S: [disjoint petal U x & petal U (val u)] by rewrite (disjointFr S).
+      apply: petal_disj => //; exact: CP_extensive. 
+    - move: (H (val u)). rewrite uU /= => ->. 
+      have zU : z \notin U. { move: (H z). by rewrite petal_id andbT => ->. }
+      have zT : z \in T.
+      { rewrite !inE (negbTE zU) /=. apply/negP => /bigcupP [x xU xP].
+        move: (H x). by rewrite xU xP. }
+      rewrite -val_eqE insubdK //. by apply: contraNF zU => /eqP->. }
   have phiT (u : G') : val u \in T :\: U -> phi @^-1 u = [set val u].
-  { admit. }
+  { move/setDP => [uT uU]. apply/setP => z. rewrite !inE /phi. 
+    case: pickP => [x /andP [xU xP]|H]. 
+    - rewrite -val_eqE insubdK ?inE ?xU // (_ : z == val u = false). 
+      + by apply: contraNF uU => /eqP <-.
+      + apply: contraTF uT => /eqP ?. subst. 
+        rewrite inE (negbTE uU) /= inE negbK. by apply/bigcupP; exists x. 
+    - have zU : z \notin U. { move: (H z). by rewrite petal_id andbT => ->. }
+      have zT : z \in T.
+      { rewrite !inE (negbTE zU) /=. apply/negP => /bigcupP [x xU xP].
+        move: (H x). by rewrite xU xP. }
+      by rewrite -val_eqE insubdK. }
+  have preim_G' (u : G') : val u \in phi @^-1 u.
+  { case: (boolP (val u \in U)) => H; first by rewrite phiU // petal_id. 
+    rewrite phiT ?set11 // inE H. exact: valP. }
   split => //.
   - split. 
-    + move => y. case: (boolP (val y \in U)) => x_inU. 
-      * exists (val y). apply/eqP. by rewrite mem_preim phiU // petal_id. 
-      * exists (val y). apply/eqP. rewrite mem_preim phiT inE // x_inU. exact: valP.
-Admitted.     
-Arguments collapse_petals [G] U u0' _.
+    + move => y. exists (val y). apply/eqP. case: (boolP (val y \in U)) => x_inU. 
+      * by rewrite mem_preim phiU // petal_id. 
+      * rewrite mem_preim phiT inE // x_inU. exact: valP.
+    + move => y. case: (boolP (val y \in U)) => xU.
+      * rewrite phiU //. apply: connected_petal => //. exact: CP_extensive.
+      * rewrite phiT; first exact: connected1. rewrite inE xU. exact: valP.
+    + move => x y xy. exists (val x); exists (val y). by rewrite !preim_G'. 
+Qed.
+Arguments collapse_petals [G] G_conn U u0' _.
 
 (** Proposition 21(i) *)
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
@@ -680,9 +721,6 @@ Proof.
   have yY : val y \in Y by apply: (@petal_id G).
   have zZ : val z \in Z by apply: (@petal_id G).
   move def_T: (~: (X :|: Y :|: Z)) => T.
-  (* do we acttually want to packaging as partition property ??? *)
-  (* have part1 : pe_partition [set T; X; Y; Z] [set: G]. *)
-  (* { admit. } *)
   
   pose T' : {set G} := U3 :|: T.
   pose G' := @sgraph.induced G T'.
@@ -697,25 +735,14 @@ Proof.
   have clique_xyz : @clique (link_graph G) U3.
   { move => u v. rewrite !inE -!orbA. 
     do 2 (case/or3P => /eqP->); by rewrite ?eqxx // sg_sym. }
-  case: (collapse_petals U3 (val x) _ clique_xyz); first by rewrite !inE eqxx.
+  case: (collapse_petals _ U3 (val x) _ clique_xyz) => //.
+  { by rewrite !inE eqxx. }
   rewrite -def_T' -/G' => phi [mm_phi P1 P2].
 
   have irred_inT u v (p : Path G u v) : 
       u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
   { rewrite def_T'. exact: petals_in_out. }
-  (* 
-  { move => Hu Hv irr_p. apply/subsetP. 
-    have Px : p \subset val x |: ~: X. 
-    { apply: petal_in_out => //. 
-      - apply: CP_extensive. by rewrite !inE eqxx.
-      - move: Hu. rewrite /T' -/X. 
-        (* disjointness of petals, petal_id, partition properties *) admit. 
-      - admit. }
-    have Py : p \subset val y |: ~: Y. admit.
-    have Pz : p \subset val z |: ~: Z. admit.
-    admit. }
-   *)
-    
+ 
   have G'_conn : forall x y : G', connect sedge x y. 
   { apply: connectedTE. apply: connected_induced. 
     move => u v Hu Hv. case/uPathP : (G_conn u v) => p irr_p. 
@@ -747,59 +774,6 @@ Proof.
   apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
   idtac => {link_xy link_yz link_zx}.
   move/map_of_strict in mm_phi.
-  (*   
-  pose phi (u : G) : G' := 
-         if u \in X then x0 
-    else if u \in Y then y0
-    else if u \in Z then z0 
-         else (insubd x0 u).
-
-  have D3 : [disjoint3 X & Y & Z].
-  { case/andP : part1 => cov triv.
-    have/trivIsetP T3: trivIset [set X;Y;Z]. { apply: trivIsetS triv. admit. }
-    apply/and3P. 
-    rewrite !T3 // ?inE ?eqxx // petal_dist // ?val_eqE 
-    1?(sg_edgeNeq xy,sg_edgeNeq yz, sg_edgeNeq zx) //; 
-    apply CP_extensive; by rewrite !inE eqxx. }
-
-  have inT (u : G') : val u \in T -> phi @^-1 u = [set val u].
-  { rewrite -def_T !inE !negb_or -andbA => /and3P [A B C]. 
-    apply/setP => w. rewrite !inE. apply/eqP/eqP. 
-    - rewrite /phi. case: (disjoint3P w D3); try by move => ? ?; subst; contrab.
-      move => W1 W2 W3 <-. by rewrite insubdK // !inE -def_T !inE !negb_or W1 W2 W3. 
-    - move => -> {w}. rewrite /phi (negbTE A) (negbTE B) (negbTE C). 
-      apply: val_inj. by rewrite insubdK // !inE -def_T !inE !negb_or A B C. }
-      
-  have pre_x0 : phi @^-1 x0 = X.
-  { apply/setP => u. rewrite !inE /phi. 
-    case: (disjoint3P u D3); first by rewrite eqxx. 
-    rewrite -val_eqE !SubK val_eqE. 
-  { admit. }
-      
-  have preim_G' (u : G') : val u \in phi @^-1 u.
-  { rewrite !inE. move: (valP u) => /=. rewrite !inE -!orbA. case/or4P. 
-    + move/eqP => E. by rewrite E /phi xX -val_eqE SubK -E.
-    + admit. (* as above *)
-    + admit. 
-    + move/inT/setP/(_ (val u)). by rewrite set11 !inE. }
-
-  have mm_phi : minor_map (Some \o phi).
-  { apply map_of_strict. split.
-    - (* sujectivity *)
-      move => v. exists (val v). move: (preim_G' v). by rewrite !inE => /eqP->. 
-    - (* connectedness *)
-      move => v. move: (valP v) => /=. rewrite 4!inE !in_set1. 
-      rewrite -!sub_val_eq -/x0 -/y0 -/z0 -!orbA. case/or4P => [/eqP->|/eqP->|/eqP->|].
-      + rewrite pre_x0. apply: connected_petal => //. 
-        apply: CP_extensive; by rewrite !inE eqxx.
-      + admit.
-      + admit.
-      + move => Hv. rewrite (inT _ Hv). exact: connected1. 
-    - (* adjacency *)
-      move => u v uv. exists (val u); exists (val v). by rewrite preim_G'. 
-  }
-
-  *)
   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b.
   - exists x'. 
