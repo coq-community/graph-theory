@@ -553,6 +553,14 @@ Proof.
   + move => ?. rewrite mem_path. exact: A2.
 Qed.
 
+Lemma UPath_from_irred x y (p : Path x y) : irred p ->
+  exists q : UPath x y, val p = val q.
+Proof.
+  case: p => p pth. rewrite irredE [_ :: _]/= => Up /=.
+  have {pth Up} Up : upath x y p by rewrite /upath; apply/andP; split.
+  by exists (Sub p Up).
+Qed.
+
 End Pack.
 
 (** Lifting paths to induced subgraphs *)
@@ -893,6 +901,15 @@ Admitted.
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
+
+Lemma tree_unique_Path (G : sgraph) (G_tree : is_tree G) (x y : G) :
+  unique (fun p : Path x y => irred p).
+Proof.
+  move: G_tree => /forallP/(_ x) /forallP/(_ y).
+  move=> /eqP card1 ? ? /UPath_from_irred [p eq_p] /UPath_from_irred [q eq_q].
+  apply: val_inj. rewrite {}eq_p {}eq_q. apply: (congr1 val).
+  by apply: (@card_le1 _ (UPath x y) p q); rewrite // card1.
+Qed.
 
 Lemma connected_not_tree (G : sgraph) (G_conn : forall x y : G, connect sedge x y) :
   ~~ is_tree G -> exists (x y : G) p q, [/\ upath x y p, upath x y q & p != q].
