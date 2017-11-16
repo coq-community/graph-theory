@@ -281,11 +281,38 @@ Section CheckPoints.
   (* TOTHINK: Is it really worthwile to have this as a graph in addition to the set [CP U]? *)
   Definition CP_ U := @induced link_graph (CP U).
   Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
-    
 
-  Lemma CP_SubK (U : {set G}) x (Px : x \in CP U) :
-    x = val (Sub x Px : CP_ U). 
-  Proof. by rewrite SubK. Qed.
+  (* TOTHINK: Is this really the right lemma to prove *)
+  Lemma CP_path_aux (U : {set G}) (x y : G) (p : seq G) :
+    x \in CP U -> y \in CP U -> @spath G x y p -> uniq (x :: p) ->
+                   @spath link_graph x y [seq z <- p | z \in CP U].
+  Admitted.
+
+  Lemma CP_path (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) : 
+    irred p -> 
+    exists2 q : @Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
+  Admitted.
+
+  Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
+    val z \in cp (val x) (val y) -> z \in p.
+  Proof. 
+    move/link_path_cp => H. 
+    case: (Path_from_induced p) => p0 P1 P2. by rewrite -P2. 
+  Qed.
+
+  (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
+  two nodes contains exactly the checkpoints bewteen these nodes *)
+  Lemma CP_tree_paths (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
+    is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in cp (val x) (val y)).
+  Proof.
+    move => /tree_unique_Path tree_U irr_p. split.
+    - move => z_in_p. apply/negPn. apply/negP => /=. 
+      case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
+      have zr : z \notin r. 
+      { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
+      have := tree_U x y p r. case/(_ _ _)/Wrap => // ?. subst. by contrab.
+    - simpl. exact: CP_path_cp.
+  Qed.
 
   Lemma index_uniq_inj (T:eqType) (s : seq T) : 
     {in s, injective (index^~ s)}. 
@@ -371,8 +398,7 @@ Section CheckPoints.
     x \in CP U -> y \in CP U -> x != y -> [disjoint petal U x & petal U y].
   Proof.
     move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
-    rewrite [x](CP_SubK Ux) [y](CP_SubK Uy) !ncp_petal //.
-    by move => /eqP-> /eqP/set1_inj->.
+    rewrite !ncp_petal //. by move => /eqP-> /eqP/set1_inj->.
   Qed.
 
   (** the root of a petal is a checkpoint separating the petal from

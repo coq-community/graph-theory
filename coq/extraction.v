@@ -336,36 +336,6 @@ Abort.
 
 
 
-Lemma CP_path_cp (U : {set G}) (x y : CP_ U) (p : Path _ x y) z : 
-  val z \in @cp G (val x) (val y) -> z \in p.
-Proof. 
-  move/link_path_cp => H. 
-  case: (Path_from_induced p) => p0 P1 P2. by rewrite -P2. 
-Qed.
-
-(* TOTHINK: What is the right formulation here? *)
-Lemma CP_path_aux (U : {set G}) (x y : G) (p : seq G) :
-  x \in CP U -> y \in CP U -> @spath G x y p -> uniq (x :: p) ->
-  @spath (link_graph G) x y [seq z <- p | z \in CP U].
-Admitted.
-
-Lemma CP_path (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) : 
-  irred p -> exists2 q : @Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
-Admitted.
-
-
-(**: If [CP_ U] is a tree, the uniqe path bewteen any two nodes
-contains exactly the checkpoints bewteen these nodes *)
-Lemma CP_subtree1 (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
-  is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in @cp G (val x) (val y)).
-Proof.
-  move => /tree_unique_Path tree_U irr_p. split.
-  - move => z_in_p. apply/negPn. apply/negP => /=. 
-    case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
-    have zr : z \notin r. { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
-    have := tree_U x y p r. case/(_ _ _)/Wrap => // ?. subst. by contrab.
-  - simpl. exact: CP_path_cp.
-Qed.
 
 Lemma petal_dist (U : {set G}) x y : 
   x \in CP U -> y \in CP U -> x != y -> petal U x != petal U y.
