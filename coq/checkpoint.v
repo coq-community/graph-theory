@@ -167,7 +167,7 @@ Section CheckPoints.
 
   Definition link_graph := SGraph link_sym link_irrefl.
 
-  Local Notation "x ⋄ y" := (@sedge (link_graph _) x y) (at level 30).
+  Local Notation "x ⋄ y" := (@sedge link_graph x y) (at level 30).
 
   Lemma link_avoid (x y z : G) : 
     z \notin [set x; y] -> link_rel x y -> exists2 p, spath x y p & z \notin (x::p).
@@ -281,19 +281,99 @@ Section CheckPoints.
   (* TOTHINK: Is it really worthwile to have this as a graph in addition to the set [CP U]? *)
   Definition CP_ U := @induced link_graph (CP U).
   Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
+  Arguments Path : clear implicits.
+  Arguments spath : clear implicits.
 
-  (* TOTHINK: Is this really the right lemma to prove *)
-  Lemma CP_path_aux (U : {set G}) (x y : G) (p : seq G) :
-    x \in CP U -> y \in CP U -> @spath G x y p -> uniq (x :: p) ->
-                   @spath link_graph x y [seq z <- p | z \in CP U].
-  Admitted.
-
-  Lemma CP_path (U : {set G}) (x y : CP_ U) (p : @Path G (val x) (val y)) : 
+  (* Lemma 14 *)
+  Lemma CP_path (U : {set G}) (x y : CP_ U) (p : Path G (val x) (val y)) :
     irred p -> 
-    exists2 q : @Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
-  Admitted.
+    exists2 q : Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
+  Proof.
+    (* The proof goes by strong induction on the size of p. *)
+    move: {2}#|p|.+1 (ltnSn #|p|) => n.
+    elim: n x y p => [//|n IHn] x y p.
+    rewrite ltnS leq_eqVlt => /orP[/eqP size_p Ip|]; last exact: IHn.
+    case: (x =P y) => [x_y | /eqP xNy].
+      (* When x = y, the empty path works. (Actually, p is empty too.) *)
+      move: x_y p size_p Ip => {y}<- [p p_pth] _ _.
+      exists (idp x); first by rewrite irredE.
+      rewrite sub_imset_pre. apply/subsetP => z.
+      rewrite /preimset inE /in_nodes !in_collective !nodesE /= !inE.
+      by move=> /eqP->; rewrite eqxx.
+    (* When x != y, split the path and apply the induction hypothesis. To avoid
+     * getting a useless decomposition, x is excluded from the predicate. *)
+    pose C := CP U :\ val x.
+    (* TOTHINK: Can all_C and all_CP be factored out ? Is it worth ? *)
+    have all_CP (P : G -> Prop) :
+        {in C, forall z, P z} -> forall z : CP_ U, z != x -> P (val z).
+    { move=> H z zNx. apply: H.
+      rewrite /C !inE (inj_eq val_inj) zNx /=.
+      exact: svalP z. }
+    have all_C (P : G -> Prop) :
+        (forall z : CP_ U, z != x -> P (val z)) -> {in C, forall z, P z}.
+    { move=> H z. rewrite /C in_setD1 => /andP[zNx z_cpu].
+      apply: (H (Sub z z_cpu)). apply: contraNN zNx.
+      by rewrite -(inj_eq val_inj). }
+    (* Use y as a witness of the existence of a splitting point. *)
+    have {xNy} : val y \in C.
+      move: xNy. rewrite eq_sym. exact: (all_CP (fun z => z \in C)).
+    move=> /(fun H => split_at_first H (nodes_end p)).
+    (* Let z be the first element in CP(U) after x on p. Call p1 and p2 the
+     * parts of p respectively before and after z. *)
+    case=> [z [p1 [p2 [eq_p z_C]]]].
+    move: z z_C p1 p2 eq_p. apply: (all_C).
+    move=> z zNx p1 p2 eq_p /all_CP z_1st.
+    move: (eq_p) (Ip) => ->.
+    rewrite irred_cat => /andP[Ip1 /andP[Ip2 p1_p2]].
+    (* Apply the induction hypothesis to get an irreducible path q using only
+     * vertices in p2. *)
+    have /IHn /(_ Ip2) [q Iq /subsetP qSp2] : #|p2| < n. {
+      (* The size decreases because x cannot be a splitting point. *)
+      rewrite -size_p. apply: proper_card. apply/properP. split; last exists (val x).
+      - by apply/subsetP => a; rewrite eq_p mem_pcat => ->.
+      - exact: nodes_start.
+      - have {zNx p1_p2} /andP := conj zNx p1_p2. apply/contraTN.
+        rewrite negb_and negbK in_collective nodesE inE.
+        case/orP => [/eqP/val_inj x_z | x_p2].
+        * by apply/orP; left; apply/eqP.
+        * apply/orP; right. apply: disjointNI x_p2. exact: nodes_start.
+    }
+    (* All checkpoints for (x, z) are in p1 (by definition of a checkpoint) and
+     * in CP(U) (by closure). Finally, z is by definition the only vertex on p1
+     * and in CP(U) that isn't x. *)
+    have xz : @sedge (CP_ U) x z. {
+      rewrite /= (inj_eq val_inj) eq_sym zNx /=. apply/subsetP => a a_cp.
+      rewrite !inE -implyNb. apply/implyP => aNx. apply/eqP.
+      suff a_c : a \in C.
+        move: {aNx} a a_c a_cp. apply: all_C => a aNx /cpP'/(_ p1).
+        exact: z_1st a aNx.
+      rewrite /C !inE {}aNx /=.
+      have x_cpu : sval x \in CP U by exact: svalP x.
+      have z_cpu : sval z \in CP U by exact: svalP z.
+      by have /subsetP/(_ a a_cp) := CP_closed x_cpu z_cpu.
+    }
+    (* Thus there is an x -- z edge in CP(U) that can be prepended to q.
+     * That's the path that was looked for. *)
+    exists (pcat (edgep xz) q); last first.
+    + apply/subsetP => /= ? /imsetP[a].
+      rewrite in_collective !mem_pcat in_collective nodesE /= !inE.
+      move=> /orP[/orP[]/eqP->-> | /(mem_imset val)/qSp2 a_q->].
+      - by rewrite nodes_start.
+      - by rewrite nodes_end.
+      - by rewrite a_q.
+    + rewrite irred_cat irred_edge Iq /=.
+      have /eq_disjoint-> : edgep xz =i [:: x; z].
+        by move=> a; rewrite in_collective nodesE /=.
+      rewrite !disjoint_cons eq_disjoint0 // andbT.
+      apply/andP; split; last first.
+        by move: Iq; rewrite /tail irredE /= => /andP[].
+      apply/negP => /tailW/(mem_imset val)/qSp2.
+      rewrite in_collective nodesE inE (inj_eq val_inj) eq_sym (negbTE zNx) /=.
+      have := nodes_start p1.
+      exact: disjointE.
+  Qed.
 
-  Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
+  Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
     val z \in cp (val x) (val y) -> z \in p.
   Proof. 
     move/link_path_cp => H. 
@@ -302,7 +382,7 @@ Section CheckPoints.
 
   (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
   two nodes contains exactly the checkpoints bewteen these nodes *)
-  Lemma CP_tree_paths (U : {set G}) (x y z : CP_ U) (p : @Path (CP_ U) x y) : 
+  Lemma CP_tree_paths (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
     is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in cp (val x) (val y)).
   Proof.
     move => /tree_unique_Path tree_U irr_p. split.
@@ -350,8 +430,6 @@ Section CheckPoints.
 
   Definition ncp (U : {set G}) (p : G) : {set G} := 
     locked [set x in CP U | connect (restrict [pred z | (z \in CP U) ==> (z == x)] sedge) p x].
-
-  Arguments Path : clear implicits.
 
   (* TOTHINK: Do we also want to require [irred q] *)
   Lemma ncpP (U : {set G}) (p : G) x : 
