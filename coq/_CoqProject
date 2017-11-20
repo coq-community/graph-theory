@@ -6,6 +6,7 @@ preliminaries.v
 sgraph.v
 minor.v
 checkpoint.v
+cp_minor.v
 multigraph.v
 subalgebra.v
 skeleton.v

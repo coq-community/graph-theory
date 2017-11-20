@@ -169,6 +169,13 @@ Section CheckPoints.
 
   Local Notation "x ⋄ y" := (@sedge link_graph x y) (at level 30).
 
+  Lemma link_cpN (x y z : G) : 
+    (x : link_graph) -- y -> z != x -> z != y -> z \notin cp x y.
+  Proof.
+    move => /= /andP [_ /subsetP A] B C. apply/negP => /A. 
+    by rewrite !inE (negbTE B) (negbTE C).
+  Qed.
+
   Lemma link_avoid (x y z : G) : 
     z \notin [set x; y] -> link_rel x y -> exists2 p, spath x y p & z \notin (x::p).
   Abort. (* not acutally used *)
