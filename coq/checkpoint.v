@@ -373,6 +373,12 @@ Section CheckPoints.
       exact: disjointE.
   Qed.
 
+  Lemma CP_connected (U : {set G}) (x y : CP_ U) : connect sedge x y.
+  Proof.
+    have /uPathP[? /CP_path[q Iq _]] := G_conn (val x) (val y).
+    by apply/uPathP; exists q.
+  Qed.
+
   Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
     val z \in cp (val x) (val y) -> z \in p.
   Proof. 
@@ -737,12 +743,11 @@ Arguments ncp0 [G] G_conn [U] x p.
 Lemma CP_treeI (G : sgraph) (G_conn : forall x y : G, connect sedge x y) (U : {set G}) :
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
 Proof.
+  (* CP_ U is connected because G is. *)
+  move: G_conn => /CP_connected/(_ U) CP_conn.
   (* Since is_tree is decidable, prove the contraposition:
    *    if CP_U is not a tree then it has a triangle. *)
   case: (boolP (is_tree _)) => // CP_not_tree H; exfalso; apply: H.
-  (* CP_ U is connected because G is. *)
-  have CP_conn : forall x y : CP_ U, connect sedge x y.
-    give_up (* TODO *).
   (* There are two distinct parallel paths in CP_ U ... *)
   move: connected_not_tree => /(_ _ CP_conn CP_not_tree) [x [y [p' [q' []]]]].
   (* ... and their first edge is different. *)
@@ -792,4 +797,4 @@ Proof.
   move=> /(_ _ _ _ _ z1Nz2). apply; rewrite inE; apply: map_f.
     by rewrite !inE eqxx.
   by rewrite inE -pz2 mem_last.
-Admitted.
+Qed.
