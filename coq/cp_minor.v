@@ -174,7 +174,7 @@ Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :
   let T := U :|: ~: \bigcup_(x in U) petal U x in 
   let G' := sgraph.induced T in 
   exists phi : G -> G',
-    [/\ strict_minor_map phi, 
+    [/\ total_minor_map phi,
      (forall u : G', val u \in T :\: U -> phi @^-1 u = [set val u]) &
      (forall u : G', val u \in U -> phi @^-1 u = petal U (val u))].
 Proof.
@@ -299,7 +299,7 @@ Proof.
 
   apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
   idtac => {link_xy link_yz link_zx}.
-  move/map_of_strict in mm_phi.
+  move/map_of_total in mm_phi.
   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b.
   - exists x'. 

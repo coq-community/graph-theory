@@ -224,21 +224,21 @@ Proof.
     split => //; reflect_eq; by rewrite (Hx0,Hy0) /= (Hx',Hy'). 
 Qed.
 
-Definition strict_minor_map (G H : sgraph) (phi : G -> H) := 
+Definition total_minor_map (G H : sgraph) (phi : G -> H) :=
   [/\ (forall y : H, exists x, phi x = y), 
      (forall y : H, connected (phi @^-1 y)) &
      (forall x y : H, x -- y -> 
      exists x0 y0, [/\ x0 \in phi @^-1 x, y0 \in phi @^-1 y & x0 -- y0])].
 
 Definition strict_minor (G H : sgraph) : Prop := 
-  exists phi : G -> H, strict_minor_map phi.
+  exists phi : G -> H, total_minor_map phi.
 
-Lemma map_of_strict (G H : sgraph) (phi : G -> H) : 
-  strict_minor_map phi -> minor_map (Some \o phi).
+Lemma map_of_total (G H : sgraph) (phi : G -> H) :
+  total_minor_map phi -> minor_map (Some \o phi).
 Proof. case => A B C. split => // y. case: (A y) => x <-. by exists x. Qed.
 
 Lemma strict_is_minor (G H : sgraph) : strict_minor G H -> minor G H.
-Proof. move => [phi A]. exists (Some \o phi). exact: map_of_strict. Qed.
+Proof. move => [phi A]. exists (Some \o phi). exact: map_of_total. Qed.
 
 Lemma sub_minor (S G : sgraph) : subgraph S G -> minor G S.
 Proof.
