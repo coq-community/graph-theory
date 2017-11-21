@@ -170,10 +170,7 @@ Proof.
   - admit.
 Admitted.
 
-(** TOTHINK: this is a bit bespoke, in particular [@clique (link_graph
-G) U] is stronger than necessary *)
 Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :
-  @clique (link_graph G) U -> 
   let T := U :|: ~: \bigcup_(x in U) petal U x in 
   let G' := sgraph.induced T in 
   exists phi : G -> G',
@@ -181,7 +178,7 @@ Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :
      (forall u : G', val u \in T :\: U -> phi @^-1 u = [set val u]) &
      (forall u : G', val u \in U -> phi @^-1 u = petal U (val u))].
 Proof.
-  move => clique_U T G'. 
+  move => T G'.
   have inT0 : u0' \in T by rewrite !inE inU.
   pose u0 : G' := Sub u0' inT0.  
   pose phi u := if [pick x in U | u \in petal U x] is Some x 
@@ -264,10 +261,7 @@ Proof.
   have def_T' : T' = U3 :|: ~: (\bigcup_(v in U3) petal U3 v).
   { by rewrite {2}/U3 !bigcup_setU !bigcup_set1 /T' -def_T. }
 
-  have clique_xyz : @clique (link_graph G) U3.
-  { move => u v. rewrite !inE -!orbA. 
-    do 2 (case/or3P => /eqP->); by rewrite ?eqxx // sg_sym. }
-  case: (collapse_petals _ U3 (val x) _ clique_xyz) => //.
+  case: (collapse_petals _ U3 (val x) _) => //.
   { by rewrite !inE eqxx. }
   rewrite -def_T' -/G' => phi [mm_phi P1 P2].
 
