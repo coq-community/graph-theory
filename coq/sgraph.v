@@ -84,6 +84,34 @@ Definition srestrict (G : sgraph) (A : pred G) :=
   Eval hnf in SGraph (symmetric_restrict A (@sg_sym G))
                      (irreflexive_restrict A (@sg_irrefl G)).
 
+(** Isomorphism of graphs *)
+(* TOTHINK: Will it be needed to assert that certain maps are graph isomorphisms ? *)
+CoInductive sg_iso (G H : sgraph) : Prop :=
+  SgIso (g : H -> G) (h : G -> H) : cancel g h -> cancel h g ->
+    {homo g : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
+
+Lemma sg_iso_refl (G : sgraph) : sg_iso G G.
+Proof. by exists id id. Qed.
+
+Lemma sg_iso_sym (G H : sgraph) : sg_iso G H -> sg_iso H G.
+Proof. by case=> g h ? ? ? ?; exists h g. Qed.
+
+Lemma sg_iso_trans (G H K : sgraph) : sg_iso G H -> sg_iso H K -> sg_iso G K.
+Proof.
+  case=> gh1 gh2 ghK1 ghK2 ghH1 ghH2.
+  case=> hk1 hk2 hkK1 hkK2 hkH1 hkH2.
+  exists (gh1 \o hk1) (hk2 \o gh2).
+    + by move=> x /=; rewrite ghK1 hkK1.
+    + by move=> x /=; rewrite hkK2 ghK2.
+    + by move=> x y /hkH1 /ghH1.
+    + by move=> x y /ghH2 /hkH2.
+Qed.
+
+Lemma iso_subgraph (G H : sgraph) : sg_iso G H -> subgraph G H.
+Proof.
+  case=> g h _ hK _ hH.
+  exists h; by [exact: can_inj hK | move=> x y /hH->; right].
+Qed.
 
 
 

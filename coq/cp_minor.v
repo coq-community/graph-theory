@@ -154,20 +154,24 @@ Qed.
 Lemma K4_of_triangle (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
 Proof.
-  move => xy yz zx. 
+  move => xy yz zx.
+  (* Rewrite K4 to match the conclusion of the [minor_with] lemma. *)
+  apply: (@minor_trans _ (add_node C3 setT)); last first. admit.
+  (* By [C3_of_triangle], there is a minor map [phi : G -> option C3]. *)
   case: (C3_of_triangle xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
-  pose psi u : option K4 := 
-    if u isn't Some u' then Some ord3 
-    else obind (fun n => Some (widen_ord (isT : 3 <= 4) n)) (phi u').
-  exists psi.
-  split.
-  - case. move => [|[|[|[|?]]]] // Hn.
-    + exists (Some x). rewrite /psi phi_x /=. congr Some. exact: val_inj.
-    + exists (Some y). rewrite /psi phi_y /=. congr Some. exact: val_inj.
-    + exists (Some z). rewrite /psi phi_z /=. congr Some. exact: val_inj. 
-    + exists None. rewrite /psi. congr Some. exact: val_inj.
-  - admit.
-  - admit.
+  (* Before apply [minor_with], [G] must be rewritten to something of the form
+   * [induced _] and precompose [phi] with a (total) minor map. *)
+  have : @minor_map (induced [set~ None : add_node G [set x; y; z]]) C3
+            (obind phi \o val).
+    admit (* TODO: extract from minor_trans. *).
+  apply: (minor_with (i := None : add_node _ _)); first by rewrite !inE.
+  move=> u _.
+  have : exists2 v, phi v = Some u & v \in [set x; y; z].
+    admit (* TODO: boring case analysis + [bool_irrelevance]. *).
+  case=> v eq_v v_in3.
+  have sv_in : Some v \in [set~ None] by rewrite !inE.
+  exists (Sub (Some v) sv_in) => //.
+  by rewrite -mem_preim /= eq_v.
 Admitted.
 
 Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :

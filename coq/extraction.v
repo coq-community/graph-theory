@@ -244,11 +244,6 @@ Admitted.
 End Checkpoints.
 
 
-CoInductive sg_iso (G H : sgraph) : Prop := 
-  SgIso (h : G -> H) (g : H -> G) : cancel g h -> cancel h g -> 
-    {homo h : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
-
-
 
 
 

@@ -258,6 +258,18 @@ Proof.
     by do 2 case: {-}_ / idP => [?|]; rewrite ?codom_f ?iinv_f ?eqxx //.
 Qed.
 
+Lemma iso_strict_minor (G H : sgraph) : sg_iso G H -> strict_minor H G.
+Proof.
+  case=> g h ghK hgK gH hH.
+  have in_preim_g x y : (y \in g @^-1 x) = (y == h x).
+    rewrite -mem_preim; exact: can2_eq.
+  exists g; split.
+  + by move=> y; exists (h y); rewrite hgK.
+  + move=> y x1 x2. rewrite !in_preim_g => /eqP-> /eqP->. exact: connect0.
+  + move=> x y xy. exists (h x); exists (h y). rewrite !in_preim_g.
+    split=> //. exact: hH.
+Qed.
+
 Lemma induced_minor (G : sgraph) (S : {set G}) : minor G (induced S).
 Proof. apply: sub_minor. exact: induced_sub. Qed.
 
@@ -347,6 +359,50 @@ Section AddNode.
   Proof. move => [a|] //=. by rewrite sgP. Qed.
 
   Definition add_node := SGraph add_node_sym add_node_irrefl.
+
+  (* TODO: theory for [induced [set~ : None : add_node]] *)
+
+  (** Adding a node creates a supergraph of the original one. *)
+  Lemma subgraph_add_node : subgraph G add_node.
+  Proof.
+    exists Some; first exact: Some_inj.
+    by move=> x y /= ->; right.
+  Qed.
+
+  Lemma minor_induced_add_node : @minor_map (induced [set~ None : add_node]) G val.
+  Proof.
+  have inNoneD (a : G) : Some a \in [set~ None] by rewrite !inE. split.
+    + move=> y. by exists (Sub (Some y) (inNoneD y)).
+    + move=> y x1 x2. rewrite -!mem_preim =>/eqP<- /eqP/val_inj->. exact: connect0.
+    + move=> x y xy. exists (Sub (Some x) (inNoneD x)).
+      exists (Sub (Some y) (inNoneD y)). by split; rewrite -?mem_preim.
+  Qed.
+
+  Lemma subgraph_induced_add_node : subgraph G (induced [set~ (None: add_node)]).
+  Proof.
+    have @f (x : G) : induced [set~ None : add_node].
+      by exists (Some x); rewrite !inE.
+    exists f.
+    + move=> x y. rewrite /f/=. by case.
+    + move=> x y xy. right. by rewrite /f/=.
+  Qed.
+
+  (* The previous lemma is weaker than this one, and should suffice.
+   * TOTHINK: Is this one worth keeping ? *)
+  Lemma iso_induced_add_node : sg_iso G (induced [set x in add_node | x]).
+  Proof.
+    have @g (x : induced [set x in add_node | x]) : G.
+      refine (match x with exist y pf => _ end).
+      refine (match y return (mem _) y -> G with Some z => fun _ => z | None => _ end pf).
+      by rewrite /= inE.
+    have @h (x : G) : induced [set x in add_node | x].
+      exists (Some x). by rewrite /= inE.
+    exists g h => //.
+    + move=> [] [x|] /= p; last by have := p; rewrite {1}inE.
+      rewrite /h; f_equal; exact: bool_irrelevance.
+    + move=> [] [x _|p] /=; last by have := p; rewrite /= {1}inE.
+      move=> [] [y|p] //=. by have := p; rewrite {1}inE.
+  Qed.
 End AddNode.
 Arguments add_node : clear implicits.
 
