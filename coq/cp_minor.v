@@ -156,7 +156,8 @@ Lemma K4_of_triangle (x y z : link_graph G) :
 Proof.
   move => xy yz zx.
   (* Rewrite K4 to match the conclusion of the [minor_with] lemma. *)
-  apply: (@minor_trans _ (add_node C3 setT)); last first. admit.
+  apply: (@minor_trans _ (add_node C3 setT)); last first.
+    by apply: strict_is_minor; apply: iso_strict_minor; exact: add_node_complete.
   (* By [C3_of_triangle], there is a minor map [phi : G -> option C3]. *)
   case: (C3_of_triangle xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
   (* Before apply [minor_with], [G] must be rewritten to something of the form

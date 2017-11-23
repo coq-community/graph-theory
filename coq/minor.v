@@ -131,27 +131,19 @@ Section DecompTheory.
       
 End DecompTheory.
 
-(* TODO: use one generic construction for C3 and K4 *)
 
-Definition C3_rel := [rel x y : 'I_3 | x != y].
-
-Fact C3_sym : symmetric C3_rel. 
+(** Complete graphs *)
+Definition complete_rel n := [rel x y : 'I_n | x != y].
+Fact complete_sym n : symmetric (complete_rel n).
 Proof. move => x y /=. by rewrite eq_sym. Qed.
-
-Fact C3_irrefl : irreflexive C3_rel. 
+Fact complete_irrefl n : irreflexive (complete_rel n).
 Proof. move => x /=. by rewrite eqxx. Qed.
+Definition complete n := SGraph (@complete_sym n) (@complete_irrefl n).
+Notation "''K_' n" := (complete n)
+  (at level 8, n at level 2, format "''K_' n").
 
-Definition C3 := SGraph C3_sym C3_irrefl.
-
-Definition K4_rel := [rel x y : 'I_4 | x != y].
-
-Fact K4_sym : symmetric K4_rel. 
-Proof. move => x y /=. by rewrite eq_sym. Qed.
-
-Fact K4_irrefl : irreflexive K4_rel. 
-Proof. move => x /=. by rewrite eqxx. Qed.
-
-Definition K4 := SGraph K4_sym K4_irrefl.
+Definition C3 := 'K_3.
+Definition K4 := 'K_4.
 
 Lemma K4_bag (T : tree) (D : T -> {set K4}) : 
   sdecomp T K4 D -> exists t, 4 <= #|D t|.
@@ -411,6 +403,18 @@ Section AddNode.
 End AddNode.
 Arguments add_node : clear implicits.
 
+Lemma add_node_complete n : sg_iso 'K_n.+1 (add_node 'K_n setT).
+Proof.
+  pose g : add_node 'K_n setT -> 'K_n.+1 := oapp (lift ord_max) ord_max.
+  pose h : 'K_n.+1 -> add_node 'K_n setT := unlift ord_max.
+  exists g h; rewrite /g/h/=.
+  + move=> [x|] /=; [by rewrite liftK | by rewrite unlift_none].
+  + by move=> x; case: unliftP.
+  + move=> [x|] [y|] //=; rewrite ?[_ == ord_max]eq_sym ?neq_lift //.
+    by rewrite (inj_eq (@lift_inj _ ord_max)).
+  + move=> x y /=; do 2 case: unliftP => /= [?|]-> //; last by rewrite eqxx.
+    by rewrite (inj_eq (@lift_inj _ ord_max)).
+Qed.
 
 Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
   (phi : (sgraph.induced S) -> option G') : 
