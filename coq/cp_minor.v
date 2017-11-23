@@ -161,9 +161,7 @@ Proof.
   case: (C3_of_triangle xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
   (* Before apply [minor_with], [G] must be rewritten to something of the form
    * [induced _] and precompose [phi] with a (total) minor map. *)
-  have : @minor_map (induced [set~ None : add_node G [set x; y; z]]) C3
-            (obind phi \o val).
-    admit (* TODO: extract from minor_trans. *).
+  have := minor_map_comp (@minor_induced_add_node G [set x; y; z]) mm_phi.
   apply: (minor_with (i := None : add_node _ _)); first by rewrite !inE.
   move=> u _.
   have : exists2 v, phi v = Some u & v \in [set x; y; z].

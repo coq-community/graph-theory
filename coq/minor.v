@@ -192,11 +192,10 @@ Fact minor_of_map (G H : sgraph) (phi : G -> option H):
   minor_map phi -> minor G H.
 Proof. case => *. by exists phi. Qed.
 
-
-Lemma minor_trans : Transitive minor.
+Lemma minor_map_comp (G H K : sgraph) (f : G -> option H) (g : H -> option K) :
+  minor_map f -> minor_map g -> minor_map (obind g \o f).
 Proof.
-  move => G H I [f [f1 f2 f3]] [g [g1 g2 g3]].
-  exists (fun x => obind g (f x)); split.
+  move=> [f1 f2 f3] [g1 g2 g3]; rewrite /funcomp; split.
   - move => y. case: (g1 y) => y'. case: (f1 y') => x E1 ?.
     exists x. by rewrite E1.
   - move => z x y. rewrite !inE. 
@@ -222,6 +221,12 @@ Proof.
   - move => x y /g3 [x'] [y'] [Hx' Hy'] /f3 [x0] [y0] [Hx0 Hy0 ?].
     exists x0. exists y0. rewrite !inE in Hx' Hy' Hx0 Hy0 *. 
     split => //; reflect_eq; by rewrite (Hx0,Hy0) /= (Hx',Hy'). 
+Qed.
+
+Lemma minor_trans : Transitive minor.
+Proof.
+  move => G H I [f mm_f] [g mm_g]. eexists.
+  exact: minor_map_comp mm_f mm_g.
 Qed.
 
 Definition total_minor_map (G H : sgraph) (phi : G -> H) :=
