@@ -160,18 +160,24 @@ Proof.
     by apply: strict_is_minor; apply: iso_strict_minor; exact: add_node_complete.
   (* By [C3_of_triangle], there is a minor map [phi : G -> option C3]. *)
   case: (C3_of_triangle xy yz zx) => phi mm_phi [phi_x phi_y phi_z].
-  (* Before apply [minor_with], [G] must be rewritten to something of the form
-   * [induced _] and precompose [phi] with a (total) minor map. *)
+  (* Precomposing [phi] with [val] makes it a minor map from [induced _] to C3
+   * so that it fits the premiss of [minor_with]. *)
   have := minor_map_comp (@minor_induced_add_node G [set x; y; z]) mm_phi.
   apply: (minor_with (i := None : add_node _ _)); first by rewrite !inE.
   move=> u _.
+  (* Rewrite the conclusion of [C3_of_triangle] in a more uniform way. *)
+  (* TODO? change the statement of that lemma? *)
   have : exists2 v, phi v = Some u & v \in [set x; y; z].
-    admit (* TODO: boring case analysis + [bool_irrelevance]. *).
+    case: u; case=> [| [| [| // ] ] ] lt3;
+    [exists x | exists y | exists z];
+    rewrite ?phi_x ?phi_y ?phi_z ?inE ?eqxx // /ord0 /ord1 /ord2;
+    do 2 f_equal; exact: bool_irrelevance.
+  (* The remaining side-condition of [minor_with] then follows. *)
   case=> v eq_v v_in3.
   have sv_in : Some v \in [set~ None] by rewrite !inE.
   exists (Sub (Some v) sv_in) => //.
   by rewrite -mem_preim /= eq_v.
-Admitted.
+Qed.
 
 Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :
   let T := U :|: ~: \bigcup_(x in U) petal U x in 
@@ -300,7 +306,7 @@ Proof.
     move => w /cp_lift. case/andP : (zx) => _ /subsetP S /S. 
     by rewrite !inE !sub_val_eq. }
 
-  apply: minor_trans (K4_of_triangle G'_conn link_xy link_yz link_zx).
+  apply: minor_trans (K4_of_triangle link_xy link_yz link_zx).
   idtac => {link_xy link_yz link_zx}.
   move/map_of_total in mm_phi.
   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
