@@ -332,6 +332,87 @@ Proof.
 Qed.
 
 
+(** Proposition 21(ii) *)
+Definition igraph (G : sgraph) (x y : G) : sgraph     := induced (interval  x y).
+Definition istart (G : sgraph) (x y : G) : igraph x y := Sub  x  (intervalL x y).
+Definition iend   (G : sgraph) (x y : G) : igraph x y := Sub  y  (intervalR x y).
+
+Arguments add_edge : clear implicits.
+Arguments igraph : clear implicits.
+Arguments istart {G x y}.
+Arguments iend {G x y}.
+
+Lemma K4F_intvl_CPedge (G : sgraph) (U : {set G}) :
+  (forall x y : G, connect sedge x y) ->
+  forall H, minor H (add_node G U) -> K4_free H ->
+  forall x y : CP_ U, x -- y ->
+  K4_free (add_edge (igraph G (val x) (val y)) istart iend).
+Proof.
+  move=> G_conn H H_min_GU H_K4F.
+  have {H H_min_GU H_K4F} : K4_free (add_node G U).
+    by exact: minor_K4_free H_K4F.
+  set H := add_node G U => H_K4F x y xy.
+  apply: minor_K4_free H_K4F.
+  apply: strict_is_minor.
+
+  pose phi (a : H) :=
+    match a with None => istart | Some b =>
+      match boolP (b \in @interval G (val x) (val y)) with
+        | AltTrue b_ixy => Sub b b_ixy
+        | AltFalse _ => istart
+      end
+    end : add_edge (igraph G (val x) (val y)) istart iend.
+  have preimzz z : Some (val z) \in phi @^-1 z.
+    rewrite -mem_preim /=; apply/eqP; apply: val_inj.
+    case: z => /= z z_ixy; case:{-}_/boolP => //.
+    by rewrite z_ixy.
+  have preimNx z : z != istart -> phi @^-1 z =i [set Some (val z)].
+    rewrite eq_sym => /negbTE zNx a.
+    case: a => [a|]; rewrite -mem_preim inE /= ?zNx //.
+    case: {-}_/boolP; rewrite (inj_eq Some_inj) => a_ixy.
+      by rewrite -(inj_eq val_inj).
+    rewrite zNx; apply: esym; apply/contraNF: a_ixy => /eqP->.
+    exact: (svalP z).
+  have preim_x :
+      phi @^-1 istart =i ~: [set Some a | a in @interval G (val x) (val y) :\ (val x)].
+    case=> [a|]; rewrite -mem_preim inE /= ?eqxx; last first.
+      by apply: esym; apply/negP => /imsetP[? _].
+    case: {-}_/boolP => a_ixy; last first.
+      rewrite eqxx; apply: esym.
+      apply/contraNN: a_ixy =>/imsetP[?].
+      by rewrite inE => /andP[_ ?] []->.
+    rewrite -(inj_eq val_inj) /=; apply: esym.
+    case: (altP eqP) => [->|aNx].
+      by apply/negP => /imsetP[?]; rewrite 2!inE eq_sym =>/andP[/eqP? _] [].
+    apply: negbF; apply: mem_imset.
+    by rewrite inE a_ixy inE aNx.
+
+  exists phi; split.
+  + by move=> z; exists (Some (val z)); apply/eqP; rewrite mem_preim preimzz.
+  + move=> z. case: (altP (z =P istart)) => [->|zNx]; last first.
+      move: zNx => /preimNx preim_z a b.
+      by rewrite !preim_z !inE => /eqP-> /eqP->.
+    admit (* TODO: The preimage of x is connected. *).
+  + move=> a b /= /orP[ab|].
+      exists (Some (val a)); exists (Some (val b)).
+      by split => //=; exact: preimzz.
+    have neq_ends : @istart G (val x) (val y) != iend by move: xy => /andP[].
+    wlog: a b / a = istart /\ b = iend. {
+      move=> Hyp /orP[|] /andP[_] /andP[/eqP-> /eqP->].
+      - case: (Hyp istart iend) => //; first by rewrite !eqxx neq_ends.
+        by move=> u [v] [] ? ? ?; exists u; exists v; split.
+      - case: (Hyp istart iend) => //; first by rewrite !eqxx neq_ends.
+        move=> u [v] [] ? ? ?. exists v; exists u; split=> //.
+        by rewrite add_node_sym. }
+    case=> -> -> _.
+    (* TODO: Find a [z] connected to [Some (val y)] in [H] and not in [[x; y]]. *)
+Admitted.
+
+Arguments add_edge : default implicits.
+Arguments istart : default implicits.
+Arguments iend : default implicits.
+
+
 Lemma connected2 (G : sgraph) (D : {set G}) : 
   (~ connected D) <-> 
   exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
