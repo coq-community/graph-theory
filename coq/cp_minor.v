@@ -150,7 +150,6 @@ Proof.
 Qed.
 
 
-(* TOTHINK: Do we want to prove this directly or using isomorphim properties and the minor_with lemma? *)
 Lemma K4_of_triangle (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> minor (add_node G [set x;y;z]) K4.
 Proof.
@@ -238,6 +237,16 @@ Arguments collapse_petals [G] conn_G U u0' _.
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
 (** Proposition 21(i) *)
+(* TOTHINK: Is this statement better than the one below? *)
+Lemma CP_tree (G : sgraph) (U : {set G}) (G_conn : forall x y : G, connect sedge x y) :
+  forall H, minor H (add_node G U) -> K4_free H -> is_tree (CP_ U).
+Proof.
+  move=> H H_min_GU H_K4F.
+  have {H H_min_GU H_K4F} : K4_free (add_node G U).
+    by exact: minor_K4_free H_K4F.
+  set H := add_node G U => H_K4_free.
+Abort.
+
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
     is written in the paper. Is there a better way to phrase this? *)
 Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
