@@ -355,6 +355,8 @@ Proof.
   apply: minor_K4_free H_K4F.
   apply: strict_is_minor.
 
+  (* FIXME: This definition cannot work: it sends all elements of [petal U y]
+   * but [y] to [x], so the preimage of [x] is often disconnected. *)
   pose phi (a : H) :=
     match a with None => istart | Some b =>
       match boolP (b \in @interval G (val x) (val y)) with
