@@ -351,63 +351,73 @@ Proof.
   move=> G_conn H H_min_GU H_K4F.
   have {H H_min_GU H_K4F} : K4_free (add_node G U).
     by exact: minor_K4_free H_K4F.
-  set H := add_node G U => H_K4F x y xy.
+  set H := add_node G U => H_K4F x' y' xy.
   apply: minor_K4_free H_K4F.
   apply: strict_is_minor.
 
-  (* FIXME: This definition cannot work: it sends all elements of [petal U y]
-   * but [y] to [x], so the preimage of [x] is often disconnected. *)
-  pose phi (a : H) :=
-    match a with None => istart | Some b =>
-      match boolP (b \in @interval G (val x) (val y)) with
-        | AltTrue b_ixy => Sub b b_ixy
-        | AltFalse _ => istart
-      end
-    end : add_edge (igraph G (val x) (val y)) istart iend.
+  set x : G := val x'. set y : G := val y'.
+  set U2 : {set G} := [set x; y].
+  have xNy : x != y by move: xy => /andP[].
+  pose phi0 (u : H) := if u is Some v then
+      if x \in ncp U2 v then if y \in ncp U2 v then v else x else y
+    else x (* or [y], arbitrary *).
+  have phi' u : phi0 u \in interval x y.
+  { case: u => [v|] /=; last exact: intervalL.
+    case: ifP => x_ncp; last exact: intervalR.
+    case: ifP => y_ncp; last exact: intervalL.
+    suff : v \in sinterval x y by rewrite /interval [v \in _ :|: _]inE => ->.
+    apply: (@ncp_interval _ U2) => //.
+    by rewrite subUset !sub1set x_ncp y_ncp. }
+  set phi : H -> add_edge _ istart iend := fun u => Sub (phi0 u) (phi' u).
+
   have preimzz z : Some (val z) \in phi @^-1 z.
-    rewrite -mem_preim /=; apply/eqP; apply: val_inj.
-    case: z => /= z z_ixy; case:{-}_/boolP => //.
-    by rewrite z_ixy.
-  have preimNx z : z != istart -> phi @^-1 z =i [set Some (val z)].
-    rewrite eq_sym => /negbTE zNx a.
-    case: a => [a|]; rewrite -mem_preim inE /= ?zNx //.
-    case: {-}_/boolP; rewrite (inj_eq Some_inj) => a_ixy.
-      by rewrite -(inj_eq val_inj).
-    rewrite zNx; apply: esym; apply/contraNF: a_ixy => /eqP->.
-    exact: (svalP z).
-  have preim_x :
-      phi @^-1 istart =i ~: [set Some a | a in @interval G (val x) (val y) :\ (val x)].
-    case=> [a|]; rewrite -mem_preim inE /= ?eqxx; last first.
-      by apply: esym; apply/negP => /imsetP[? _].
-    case: {-}_/boolP => a_ixy; last first.
-      rewrite eqxx; apply: esym.
-      apply/contraNN: a_ixy =>/imsetP[?].
-      by rewrite inE => /andP[_ ?] []->.
-    rewrite -(inj_eq val_inj) /=; apply: esym.
-    case: (altP eqP) => [->|aNx].
-      by apply/negP => /imsetP[?]; rewrite 2!inE eq_sym =>/andP[/eqP? _] [].
-    apply: negbF; apply: mem_imset.
-    by rewrite inE a_ixy inE aNx.
+  { rewrite -mem_preim /=; apply/eqP; apply: val_inj.
+    case: z => /= z; rewrite inE ![in X in orb X]inE.
+    move=> /orP[/orP[]/eqP->|?];
+      try by rewrite ncp_CP ?CP_extensive // !inE eqxx ?if_same.
+    have ncp_z : ncp U2 z = [set x; y].
+      admit (* Should be easier than the general case. *).
+    by rewrite ncp_z !inE !eqxx orbT. }
+  have preimNx z : z != istart -> z != iend -> phi @^-1 z =i [set Some (val z)].
+  { rewrite -!(inj_eq val_inj) /=. move=> /negbTE zNx /negbTE zNy.
+    case=> [v|]; rewrite -mem_preim inE -(inj_eq val_inj) /=; last first.
+      by rewrite eq_sym.
+    rewrite (inj_eq Some_inj) eq_sym.
+    (repeat case: ifP) => //; rewrite ?zNx ?zNy. admit. admit. }
+  have preim_y : phi @^-1 iend = [set Some v | v in petal U2 x].
+  { apply/setP => -[v|]; rewrite -mem_preim -(inj_eq val_inj) /=; last first.
+      admit (* x != y and None not in the direct image of Some *).
+    rewrite Imset.imsetE inE (mem_image Some_inj) /=.
+    repeat case: ifP => /=; admit. }
+  have preim_x : phi @^-1 istart = None |: [set Some v | v in petal U2 y].
+  { apply/setP => -[v|]; rewrite -mem_preim !inE /=; last exact: eqxx.
+    rewrite Imset.imsetE inE (mem_image Some_inj) -(inj_eq val_inj) /=.
+    repeat case: ifP => /=; admit. }
 
   exists phi; split.
   + by move=> z; exists (Some (val z)); apply/eqP; rewrite mem_preim preimzz.
-  + move=> z. case: (altP (z =P istart)) => [->|zNx]; last first.
-      move: zNx => /preimNx preim_z a b.
-      by rewrite !preim_z !inE => /eqP-> /eqP->.
-    admit (* TODO: The preimage of x is connected. *).
-  + move=> a b /= /orP[ab|].
+  + case=> /= z z_ixy a b.
+    rewrite -!mem_preim -!(inj_eq val_inj) ![val _ == _]/=.
+    move=> /eqP phi_a /eqP phi_b.
+    case: (altP (a =P b)) => [<- | aNb]; first exact: connect0.
+    have := z_ixy. rewrite inE ![in X in orb X]inE.
+    move=> /orP[/orP[]/eqP eq_z | z_sixy]; set z' := exist _ z z_ixy.
+    - have -> : z' = istart by exact: val_inj.
+      rewrite preim_x. apply/uPathRP => //. admit.
+    - have -> : z' = iend by exact: val_inj.
+      rewrite preim_y. apply/uPathRP => //. admit.
+    - admit.
+  + move=> a b /orP[ab|].
       exists (Some (val a)); exists (Some (val b)).
       by split => //=; exact: preimzz.
-    have neq_ends : @istart G (val x) (val y) != iend by move: xy => /andP[].
-    wlog: a b / a = istart /\ b = iend. {
-      move=> Hyp /orP[|] /andP[_] /andP[/eqP-> /eqP->].
-      - case: (Hyp istart iend) => //; first by rewrite !eqxx neq_ends.
+    wlog: a b / a = istart /\ b = iend.
+    { move=> Hyp /orP[|] /andP[_] /andP[/eqP-> /eqP->].
+      - case: (Hyp istart iend) => //; first by rewrite /= !eqxx xNy.
         by move=> u [v] [] ? ? ?; exists u; exists v; split.
-      - case: (Hyp istart iend) => //; first by rewrite !eqxx neq_ends.
+      - case: (Hyp istart iend) => //; first by rewrite /= !eqxx xNy.
         move=> u [v] [] ? ? ?. exists v; exists u; split=> //.
-        by rewrite add_node_sym. }
-    case=> -> -> _.
-    (* TODO: Find a [z] connected to [Some (val y)] in [H] and not in [[x; y]]. *)
+        by rewrite sg_sym. }
+    case=> -> -> _. admit.
 Admitted.
 
 Arguments add_edge : default implicits.
