@@ -353,71 +353,33 @@ Proof.
     by exact: minor_K4_free H_K4F.
   set H := add_node G U => H_K4F x' y' xy.
   apply: minor_K4_free H_K4F.
-  apply: strict_is_minor.
 
   set x : G := val x'. set y : G := val y'.
-  set U2 : {set G} := [set x; y].
   have xNy : x != y by move: xy => /andP[].
-  pose phi0 (u : H) := if u is Some v then
-      if x \in ncp U2 v then if y \in ncp U2 v then v else x else y
-    else x (* or [y], arbitrary *).
-  have phi' u : phi0 u \in interval x y.
-  { case: u => [v|] /=; last exact: intervalL.
-    case: ifP => x_ncp; last exact: intervalR.
-    case: ifP => y_ncp; last exact: intervalL.
-    suff : v \in sinterval x y by rewrite /interval [v \in _ :|: _]inE => ->.
-    apply: (@ncp_interval _ U2) => //.
-    by rewrite subUset !sub1set x_ncp y_ncp. }
-  set phi : H -> add_edge _ istart iend := fun u => Sub (phi0 u) (phi' u).
-
-  have preimzz z : Some (val z) \in phi @^-1 z.
-  { rewrite -mem_preim /=; apply/eqP; apply: val_inj.
-    case: z => /= z; rewrite inE ![in X in orb X]inE.
-    move=> /orP[/orP[]/eqP->|?];
-      try by rewrite ncp_CP ?CP_extensive // !inE eqxx ?if_same.
-    have ncp_z : ncp U2 z = [set x; y].
-      admit (* Should be easier than the general case. *).
-    by rewrite ncp_z !inE !eqxx orbT. }
-  have preimNx z : z != istart -> z != iend -> phi @^-1 z =i [set Some (val z)].
-  { rewrite -!(inj_eq val_inj) /=. move=> /negbTE zNx /negbTE zNy.
-    case=> [v|]; rewrite -mem_preim inE -(inj_eq val_inj) /=; last first.
-      by rewrite eq_sym.
-    rewrite (inj_eq Some_inj) eq_sym.
-    (repeat case: ifP) => //; rewrite ?zNx ?zNy. admit. admit. }
-  have preim_y : phi @^-1 iend = [set Some v | v in petal U2 x].
-  { apply/setP => -[v|]; rewrite -mem_preim -(inj_eq val_inj) /=; last first.
-      admit (* x != y and None not in the direct image of Some *).
-    rewrite Imset.imsetE inE (mem_image Some_inj) /=.
-    repeat case: ifP => /=; admit. }
-  have preim_x : phi @^-1 istart = None |: [set Some v | v in petal U2 y].
-  { apply/setP => -[v|]; rewrite -mem_preim !inE /=; last exact: eqxx.
-    rewrite Imset.imsetE inE (mem_image Some_inj) -(inj_eq val_inj) /=.
-    repeat case: ifP => /=; admit. }
-
-  exists phi; split.
-  + by move=> z; exists (Some (val z)); apply/eqP; rewrite mem_preim preimzz.
-  + case=> /= z z_ixy a b.
-    rewrite -!mem_preim -!(inj_eq val_inj) ![val _ == _]/=.
-    move=> /eqP phi_a /eqP phi_b.
-    case: (altP (a =P b)) => [<- | aNb]; first exact: connect0.
-    have := z_ixy. rewrite inE ![in X in orb X]inE.
-    move=> /orP[/orP[]/eqP eq_z | z_sixy]; set z' := exist _ z z_ixy.
-    - have -> : z' = istart by exact: val_inj.
-      rewrite preim_x. apply/uPathRP => //. admit.
-    - have -> : z' = iend by exact: val_inj.
-      rewrite preim_y. apply/uPathRP => //. admit.
-    - admit.
-  + move=> a b /orP[ab|].
-      exists (Some (val a)); exists (Some (val b)).
-      by split => //=; exact: preimzz.
-    wlog: a b / a = istart /\ b = iend.
-    { move=> Hyp /orP[|] /andP[_] /andP[/eqP-> /eqP->].
-      - case: (Hyp istart iend) => //; first by rewrite /= !eqxx xNy.
-        by move=> u [v] [] ? ? ?; exists u; exists v; split.
-      - case: (Hyp istart iend) => //; first by rewrite /= !eqxx xNy.
-        move=> u [v] [] ? ? ?. exists v; exists u; split=> //.
-        by rewrite sg_sym. }
-    case=> -> -> _. admit.
+  case: (CP_base_ x' y') => [x0][y0][] x0_U y0_U.
+  rewrite subUset !sub1set -/x -/y =>/andP[x_cp0 y_cp0].
+  case/uPathP: (G_conn x0 y0) => [p] Ip.
+  have [x_p y_p] : x \in p /\ y \in p by split; apply/cpP': {Ip} p.
+  wlog x_before_y : x0 y0 x0_U y0_U x_cp0 y_cp0 p Ip x_p y_p / x <[p] y.
+  { move=> Hyp.
+    case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
+    - move=> /(idx_swap y_p x_p Ip).
+      by apply: Hyp; rewrite 1?cp_sym ?mem_prev; last 3 [exact: prev_irred].
+    - move=> /idx_inj-/(_ x_p) x_y.
+      by exfalso; move: x_y xNy => ->; rewrite eqxx. }
+  case: (three_way_split Ip x_p y_p x_before_y) => [p1] [p2] [p3] [] eq_p xNp3 yNp1.
+(* Next steps:
+      1. Lift [p1] and [p3] to [H].
+      2. Build [p0 : Path H y0 x0], going through the added_node
+      3. Concat them to [q : Path H y x]
+      4. Using [splitL], strip the first edge off [q].
+   TOTHINK: How to justify that [q] does not cross ]]x; y[[?
+   Definition of [phi0 : H -> option G]:
+      if [u \in map Some (interval x y)] then [Some u]
+      else if [u \in q'] then [x]
+      else None
+   so that the preimage of [Some x] is [q'].
+*)
 Admitted.
 
 Arguments add_edge : default implicits.
