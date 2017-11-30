@@ -229,6 +229,28 @@ Section CheckPoints.
   Lemma sinterval_sym x y : sinterval x y = sinterval y x.
   Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
 
+  Lemma sinterval_exit x y u v : u \in sinterval x y -> v \notin sinterval x y ->
+    x \in cp u v \/ y \in cp u v.
+  Proof.
+    rewrite inE ![in _ && _]inE negb_or => /andP[]/andP[uNx uNy].
+    case/andP => /(uPathRP uNx)[p1 Ip1 yNp1] /(uPathRP uNy)[p2 Ip2 xNp2].
+    have {yNp1 xNp2} [yNp1 xNp2] : y \notin p1 /\ x \notin p2.
+      by split; rewrite -disjoint1 disjoint_sym disjoint_subset.
+    move=> v_Ixy; apply/orP. apply: contraNT v_Ixy.
+    rewrite negb_or =>/andP[] /cpPn'[q1 Iq1 xNq1] /cpPn'[q2 Iq2 yNq2].
+    have vNx : v != x by apply: contraNN xNq1 => /eqP<-; exact: nodes_end.
+    have vNy : v != y by apply: contraNN yNq2 => /eqP<-; exact: nodes_end.
+    rewrite !inE negb_or. apply/andP; split; first by rewrite vNx vNy.
+    apply/andP; split.
+    + apply/PathRP => //. exists (pcat (prev q2) p1).
+      apply/subsetP => z. rewrite mem_pcat mem_prev inE.
+      apply: contraTN =>/eqP->. by rewrite negb_or yNp1 yNq2.
+    + apply/PathRP => //. exists (pcat (prev q1) p2).
+      apply/subsetP => z. rewrite mem_pcat mem_prev inE.
+      apply: contraTN =>/eqP->. by rewrite negb_or xNp2 xNq1.
+  Qed.
+
+
 
   Definition interval x y := [set x;y] :|: sinterval x y.
 

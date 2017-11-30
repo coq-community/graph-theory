@@ -879,6 +879,15 @@ Proof.
     apply: restrict_path => //. exact/subsetP.
 Qed.
 
+Lemma PathRP (G : sgraph) {A : pred G} x y : x != y ->
+  reflect (exists p: Path x y, p \subset A)
+          (connect (restrict A sedge) x y).
+Proof.
+  move=> xNy; apply: (iffP (uPathRP xNy)); first by firstorder.
+  move=> [p] p_sub_A. case: (uncycle p) => [q] /subsetP q_sub_p Iq.
+  by exists q; last apply: subset_trans p_sub_A.
+Qed.
+
 Lemma connectRI (G : sgraph) (A : pred G) x y (p : Path x y) :
   {subset p <= A} -> connect (restrict A sedge) x y.
 Proof. 
