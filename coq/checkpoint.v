@@ -250,6 +250,23 @@ Section CheckPoints.
       apply: contraTN =>/eqP->. by rewrite negb_or xNp2 xNq1.
   Qed.
 
+  Lemma sinterval_outside x y u : u \notin sinterval x y ->
+    forall (p : Path u x), irred p -> y \notin p -> [disjoint p & sinterval x y].
+  Proof.
+    move=> uNIxy p Ip yNp.
+    rewrite disjoint_subset; apply/subsetP => v.
+    rewrite inE /= -[mem (in_nodes p)]/(mem p) => v_p.
+    apply/negP => v_Ixy.
+    case: (Path_split v_p) => [p1] [p2] eq_p.
+    case: (sinterval_exit uNIxy v_Ixy) => /cpP'/(_ p1); last first.
+    + apply/negP; apply: contraNN yNp.
+      by rewrite eq_p mem_pcat => ->.
+    + move=> x_p1. have : x \in p2 := nodes_end p2.
+      rewrite in_collective nodesE inE => /orP[].
+        by apply/negP; move: v_Ixy; rewrite !inE negb_or eq_sym => /andP[]/andP[].
+      move: x_p1; suff : [disjoint p1 & tail p2] by apply: disjointE.
+      by move: Ip; rewrite eq_p irred_cat => /andP[_]/andP[_].
+  Qed.
 
 
   Definition interval x y := [set x;y] :|: sinterval x y.
