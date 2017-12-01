@@ -229,6 +229,10 @@ Section CheckPoints.
   Lemma sinterval_sym x y : sinterval x y = sinterval y x.
   Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
 
+  Lemma sinterval_bounds x y : (x \in sinterval x y = false) * 
+                               (y \in sinterval x y = false).
+  Proof. by rewrite !inE !eqxx. Qed.
+
   Lemma sinterval_exit x y u v : u \notin sinterval x y -> v \in sinterval x y ->
     x \in cp u v \/ y \in cp u v.
   Proof.
@@ -257,15 +261,13 @@ Section CheckPoints.
     rewrite disjoint_subset; apply/subsetP => v.
     rewrite inE /= -[mem (in_nodes p)]/(mem p) => v_p.
     apply/negP => v_Ixy.
-    case: (Path_split v_p) => [p1] [p2] eq_p.
+    case/(isplitP Ip) eq_p : {-}p / v_p => [p1 p2 _ _ D]. 
     case: (sinterval_exit uNIxy v_Ixy) => /cpP'/(_ p1); last first.
     + apply/negP; apply: contraNN yNp.
       by rewrite eq_p mem_pcat => ->.
-    + move=> x_p1. have : x \in p2 := nodes_end p2.
-      rewrite in_collective nodesE inE => /orP[].
-        by apply/negP; move: v_Ixy; rewrite !inE negb_or eq_sym => /andP[]/andP[].
-      move: x_p1; suff : [disjoint p1 & tail p2] by apply: disjointE.
-      by move: Ip; rewrite eq_p irred_cat => /andP[_]/andP[_].
+    + suff S: x \in tail p2 by rewrite (disjointFl D S).
+      have:= nodes_end p2. rewrite mem_path inE => /predU1P [E|//].
+      subst v. by rewrite sinterval_bounds in v_Ixy.
   Qed.
 
 
