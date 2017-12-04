@@ -357,6 +357,18 @@ Section AddNode.
 
   Definition add_node := SGraph add_node_sym add_node_irrefl.
 
+  Lemma add_node_lift_Path (x y : G) (p : Path x y) :
+    exists q : @Path add_node (Some x) (Some y), nodes q = map Some (nodes p).
+  Proof.
+    case: p => p0 p'.
+    set q0 : seq add_node := map Some p0.
+    have q' : @spath add_node (Some x) (Some y) q0.
+      move: p'; rewrite /spath/= last_map (inj_eq Some_inj).
+      move=> /andP[p' ->]; rewrite andbT.
+      exact: project_path p'.
+    by exists (Sub _ q'); rewrite !nodesE /=.
+  Qed.
+
   (* TODO: theory for [induced [set~ : None : add_node]] *)
   Lemma minor_induced_add_node : @minor_map (induced [set~ None : add_node]) G val.
   Proof.

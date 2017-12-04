@@ -355,6 +355,7 @@ Proof.
   apply: minor_K4_free H_K4F.
 
   set x : G := val x'. set y : G := val y'.
+  set I := add_edge _ _ _.
   have xNy : x != y by move: xy => /andP[].
   case: (CP_base_ x' y') => [x0][y0][] x0_U y0_U.
   rewrite subUset !sub1set -/x -/y =>/andP[x_cp0 y_cp0].
@@ -368,18 +369,88 @@ Proof.
     - move=> /idx_inj-/(_ x_p) x_y.
       by exfalso; move: x_y xNy => ->; rewrite eqxx. }
   case: (three_way_split Ip x_p y_p x_before_y) => [p1] [p2] [p3] [] eq_p xNp3 yNp1.
-(* Next steps:
-      1. Lift [p1] and [p3] to [H].
-      2. Build [p0 : Path H y0 x0], going through the added_node
-      3. Concat them to [q : Path H y x]
-      4. Using [splitL], strip the first edge off [q].
-   TOTHINK: How to justify that [q] does not cross ]]x; y[[?
-   Definition of [phi0 : H -> option G]:
-      if [u \in map Some (interval x y)] then [Some u]
-      else if [u \in q'] then [x]
-      else None
-   so that the preimage of [Some x] is [q'].
-*)
+  have [q1 eq_q1] : exists q1 : Path H _ _, _ := add_node_lift_Path _ p1.
+  have [q3 eq_q3] : exists q3 : Path H _ _, _ := add_node_lift_Path _ p3.
+  have [i_x0 y0_i] : (None : H) -- Some x0 /\ (Some y0 : H) -- None by split.
+  pose q2 := (pcat (edgep y0_i) (edgep i_x0)).
+  pose q := pcat q3 (pcat q2 q1).
+  case: (splitL q _) => [ | y1 [yy1] [q'] [eq_q eq_q']]; first by rewrite eq_sym.
+
+  pose phi (u : H) :=
+    if u \in q' then Some (istart : I)
+    else if u is Some v then
+      match boolP (v \in interval x y) with
+        | AltTrue v_I => Some (Sub v v_I)
+        | AltFalse _ => None
+      end
+    else None.
+  pose phi0 (u : H) :=
+    if u \in q' then Some x
+    else if u is Some v then
+      if v \in interval x y then Some v else None
+    else None.
+  have phi_val : phi0 =1 omap val \o phi.
+  { move=> u; rewrite /phi/phi0/=; case: ifP => // _.
+    case: u => // u. by case: {-}_/boolP => /= [|/negbTE]->. }
+  have phi_eq (u : H) (v : option I) : (phi u == v) = (phi0 u == omap val v).
+  { apply/eqP/eqP; first move=> <-; rewrite phi_val//=.
+    suff {u v} : forall f, injective f -> injective (omap f).
+      by move=> /(_ _ _ _ val_inj); apply.
+    admit (* general theorem, proved for seq *). }
+  have preim_phi (u : I) :
+      phi @^-1 (Some u) = if val u == x then [set z in q'] else [set Some (val u)].
+  { apply/setP=> z; rewrite -mem_preim phi_eq/=. case: u => u /= u_I.
+    case: ifP => [/eqP{u u_I}->|uNx]; rewrite inE /phi0; last (case: ifP; last first).
+    + apply/eqP/idP; last by move=>->.
+      apply: contra_eqT => zNq'; rewrite (negbTE zNq').
+      case: z zNq' => // z; case: ifP => // _ /memPnC.
+      by apply; exact: nodes_end.
+    + case: z => // z _; case: ifP => // zNI.
+      by apply: esym; apply: contraFF zNI =>/eqP[]->.
+    + move: u_I; rewrite inE ![in orb _]inE [LHS]eq_sym [in LHS]eqE/= uNx/=.
+      move=> u_sIy z_q'; apply: esym.
+      (* At this point the goal is essentially:
+       *    [disjoint q' & [set Some u | u in y |: sinterval x y]].
+       * TOTHINK: Is there a better (shorter?) proof? *)
+      apply: contraTF z_q' => /eqP{z}->.
+      apply: contraTN u_sIy; rewrite negb_or.
+      rewrite eq_q'/q/tail/= -[pval]/tail mem_cat inE/= -(nodesE q1).
+      rewrite eq_q1 (mem_map Some_inj).
+      have : nodes q3 = map Some (nodes p3) := eq_q3.
+      rewrite 2!nodesE/= -[pval]/tail => -[]->; rewrite (mem_map Some_inj).
+      move: Ip; rewrite eq_p !irred_cat =>/andP[Ip1]/andP[]/andP[_]/andP[Ip3] _ _.
+      case/orP => [u_p3' | u_p1]; apply/andP; split.
+      - by apply: contraTN u_p3' => /eqP->; move: Ip3; rewrite irredE/= =>/andP[].
+      - suff disj : [disjoint p3 & sinterval x y].
+          by rewrite (disjointFr disj (tailW u_p3')).
+        have /eq_disjoint-> : p3 =i prev p3
+          by move=> ?; apply: esym; exact: mem_prev.
+        rewrite sinterval_sym.
+        apply: sinterval_outside; rewrite ?mem_prev// ?prev_irred//.
+        admit (*???*).
+      - by apply: contraTN u_p1 =>/eqP->.
+      - suff disj : [disjoint p1 & sinterval x y].
+          by rewrite (disjointFr disj u_p1).
+        apply: sinterval_outside => //.
+        admit (*???*). }
+  (* TODO: for the last two [admit]s use [CP_tree], [CP_extensive] and [CP_path]
+   * to prove that [disjoint [set x0; y0] & sinterval x y]. *)
+  have preim_phixx (u : I) : Some (val u) \in phi @^-1 (Some u).
+    by rewrite preim_phi; case: ifP => [/eqP->|]; rewrite inE ?nodes_end.
+
+  exists phi; split.
+  + by move=> u; exists (Some (val u)); apply/eqP; rewrite mem_preim.
+  + move=> u; rewrite preim_phi.
+    case: ifP => _; by [apply: connected_path | apply: connected1].
+  + move=> u1 u2 /orP[];
+      first by exists (Some (val u1)); exists (Some (val u2)); split.
+    have preim_iend : Some y \in phi @^-1 Some iend := preim_phixx iend.
+    have preim_y1 : y1 \in phi @^-1 Some istart.
+      by rewrite preim_phi eqxx inE nodes_start.
+    have ? : y1 -- Some y by rewrite sg_sym.
+    case/orP =>/andP[_]/andP[]/eqP->/eqP->;
+      [ exists y1; exists (Some y) | exists (Some y); exists y1];
+      by split.
 Admitted.
 
 Arguments add_edge : default implicits.
