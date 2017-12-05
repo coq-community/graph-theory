@@ -314,10 +314,10 @@ Definition lens (G : graph2) :=
     - i != o and no (nontrivial) petals on i and o
     - TOTHINK: Can we use the same construction for i=0 
       (i.e., using H := ~: [set g_in;g_out])  *)
-Definition split_par (G : graph2) : seq graph2 := 
-  let H := @sinterval (skeleton G) g_in g_out in 
-  let P := equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H in 
-  [seq parcomp A | A <- enum P].
+(* Definition split_par (G : graph2) : seq graph2 :=  *)
+(*   let H := @sinterval (skeleton G) g_in g_out in  *)
+(*   let P := equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H in  *)
+(*   [seq parcomp A | A <- enum P]. *)
 
 Definition edges (G : graph) (x y : G) := 
   [set e : edge G | (source e == x) && (target e == y)].
@@ -333,13 +333,13 @@ Proof.
   - move => /= [Hxy]. 
 Admitted.
 
-Lemma split_iso (G : graph2) :
-  lens G -> ~~ @adjacent G g_in g_out -> 
-  \big[par2/top2]_(H <- split_par G) H ≈ G.
-Admitted.
+(* Lemma split_iso (G : graph2) : *)
+(*   lens G -> ~~ @adjacent G g_in g_out ->  *)
+(*   \big[par2/top2]_(H <- split_par G) H ≈ G. *)
+(* Admitted. *)
 
-Lemma split_inhab (G : graph2) : 0 < size (split_par G).
-Abort.
+(* Lemma split_inhab (G : graph2) : 0 < size (split_par G). *)
+(* Abort. *)
 (* Proof. *)
 (*   rewrite /split_par. case: ifP => //. *)
 (*   move/negbT. by rewrite -ltnNge size_map -cardE => /ltnW.  *)
@@ -347,29 +347,29 @@ Abort.
 
 (* WARN: we do not have decidable equality on graphs, this might
 become problematic? *)
-Lemma split_nontrivial (G H : graph2) : 
-  connected [set: skeleton G] -> lens G -> ~~ @adjacent G g_in g_out -> 
-  List.In H (split_par G) -> 0 < #|edge H|.
-Admitted.
+(* Lemma split_nontrivial (G H : graph2) :  *)
+(*   connected [set: skeleton G] -> lens G -> ~~ @adjacent G g_in g_out ->  *)
+(*   List.In H (split_par G) -> 0 < #|edge H|. *)
+(* Admitted. *)
 
-Lemma split_subgraph (G H : graph2) : 
-  List.In H (split_par G) -> subgraph H G.
-Admitted.
+(* Lemma split_subgraph (G H : graph2) :  *)
+(*   List.In H (split_par G) -> subgraph H G. *)
+(* Admitted. *)
 
-Lemma split_connected (G H : graph2) :
-  lens G -> 
-  List.In H (split_par G) -> connected [set: skeleton H].
-Admitted.
+(* Lemma split_connected (G H : graph2) : *)
+(*   lens G ->  *)
+(*   List.In H (split_par G) -> connected [set: skeleton H]. *)
+(* Admitted. *)
 
-Lemma split_K4_free (G H : graph2) :
-  lens G -> K4_free (sskeleton G) ->
-  List.In H (split_par G) -> K4_free (sskeleton H).
-Admitted.
+(* Lemma split_K4_free (G H : graph2) : *)
+(*   lens G -> K4_free (sskeleton G) -> *)
+(*   List.In H (split_par G) -> K4_free (sskeleton H). *)
+(* Admitted. *)
 
-Lemma split_edges (G : graph2) : 
-  lens G -> ~~ @adjacent G g_in g_out -> 
-  \sum_(H <- split_par G) #|edge H| = #|edge G|.
-Admitted.
+(* Lemma split_edges (G : graph2) :  *)
+(*   lens G -> ~~ @adjacent G g_in g_out ->  *)
+(*   \sum_(H <- split_par G) #|edge H| = #|edge G|. *)
+(* Admitted. *)
 
 (* TOTHINK: What is the most natural formulation of "has at least two components"? *)
 
@@ -390,27 +390,23 @@ Notation val2 x := (val (val x)).
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
-
-
-
-
-
-
+Definition components (G : graph) (H : {set G}) : {set {set G}} := 
+  equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H.
 
 (** This is one fundamental property underlying the term extraction *)
 Lemma split_K4_nontrivial (G : graph2) : 
   g_in != g_out :> G -> lens G -> ~~ @adjacent G g_in g_out -> K4_free (sskeleton G) -> 
   connected [set: skeleton G] -> 
-  1 < size (split_par G).
+  1 < #|components (@sinterval (skeleton G) g_in g_out)|.
 Proof.
-  move => A B C D E. rewrite /split_par size_map -cardE. apply/equivalence_partition_gt1P. 
-  - move => x y z _ _ _.  exact: (sedge_in_equiv (G := skeleton G)).
-  - set H := sinterval _ _. apply/(@connected2 (skeleton G)). 
-    apply: ssplit_K4_nontrivial => //. 
-    + by rewrite -adjacentE A.
-    + by case/and3P : B. 
-Qed.
-
+  move => A B C D E. 
+  (* rewrite /split_par size_map -cardE. apply/equivalence_partition_gt1P.  *)
+  (* - move => x y z _ _ _.  exact: (sedge_in_equiv (G := skeleton G)). *)
+  (* - set H := sinterval _ _. apply/(@connected2 (skeleton G)).  *)
+  (*   apply: ssplit_K4_nontrivial => //.  *)
+  (*   + by rewrite -adjacentE A. *)
+  (*   + by case/and3P : B.  *)
+Admitted.
 
 (* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
 parts do not have non-trivial splits *)
@@ -439,38 +435,47 @@ Definition check_point_wf (F1 F2 : graph2 -> term) (G : graph2) (x y : G) :
   check_point_term F1 x y = check_point_term F2 x y.
 Admitted.
 
-(* NOTE: we assume the input to be connected *)
+
+
+Notation "u :||: v" := (tmI u v) (at level 35).
+Notation "u :o: v" := (tmS u v) (at level 33).
+
+Definition remove_io (G : graph2) : graph2.
+Admitted.
+
+Definition redirect_to (G : graph2) (H : {set G}) (o:G) : graph2.
+Admitted.
+
+(** subgraph induced by [i |: H] without i-selfloops and with [o] set
+to some neighbor of [i] in H *)
+Definition redirect (G : graph2) (H : {set G}) : graph2.
+Admitted.
+
+Definition big_tmI : seq term -> term.
+Admitted.
+
+(* graph induced by [{i,o} ∪ H] without io-edges *) 
+Definition component (G : graph2) (H : {set G}) : graph2.
+Admitted.
+
+Definition tmEs (G : graph2) : seq term := 
+  [seq tmA (label e) | e in @edges G g_in g_out] ++
+  [seq tmC (tmA (label e)) | e in @edges G g_out g_in].
+
+(* NOTE: we assume the input to be connected and K4-free *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
-    let E := [set e : edge G | (source e == g_in) && (target e == g_in)] in
-    if 0 < #|E| 
-    then (* there are self loops) *)
-      tmI (\big[tmI/tmT]_(e in E) tmA (label e)) 
-          (term_of (remove_edges E))
-    else (* only proper petals *)
-      (* split into parallel components/petals *)
-      let H := split_par G in
-      if H isn't [:: H0]       
-      then \big[tmI/tm1]_(G' <- H) term_of G' (* use tmT or tmI as identity? *)
-      else if pick [pred x | @sedge (skeleton H0) g_in x] is Some x
-           then dom (term_of (point g_in x)) (* have H0 ≈ G? G0 = G *)
-           else tm1 
+    let P := @components G [set~ g_in] in
+    (\big[tmS/tm1]_(e in @edges G g_in g_in) tm1 :||: tmA (label e)) :o:
+    (\big[tmS/tm1]_(C in P) dom (term_of (redirect C)))
   else (* distinct input and output *)
     if lens G
     then (* no checkpoints and no petals on i and o *)
-      if @adjacent G g_in g_out 
-      then (* i and o are adjacent an we can remove some direct edges *)
-        tmI (tmI (\big[tmI/tmT]_(e in @edges G g_in g_out) tmA (label e))
-                 (\big[tmI/tmT]_(e in @edges G g_out g_in) tmC (tmA (label e))))
-            (* FIXME: this graph could be g(tmT) *)
-            (term_of (remove_edges (@edges G g_in g_out :|: edges g_out g_in)))
-      else (* i and o not adjacent - no progress unless G is K4-free *)
-        \big[tmI/tmT]_(H <- split_par G) term_of H
+      let P := components (@sinterval (skeleton G) g_in g_out) in
+      big_tmI ([seq term_of (component C) | C in P] ++ tmEs G)
     else (* at least one nontrivial petal or checkpoint *)
-      @check_point_term term_of G g_in g_out
-.
-
+      @check_point_term term_of G g_in g_out.
 
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
@@ -484,24 +489,22 @@ Proof.
   apply: (Fix_eq P) => // {con_G free_G G} f g G [con_G free_G] Efg.
   rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
-  - (* input equals output *)
-    case: (posnP #|[set e | source e == g_in & target e == g_in]|) => E.
-    + admit.
-    + rewrite Efg // /P; first split.
-      ** admit. (*need: removing self loops does not change skeletons - does this force up to ISO? *)
-      ** admit.
-      ** apply: measure_card. by rewrite card_sig cardsI cardsCT.
+  - congr tmS. 
+    apply: eq_big => // C. 
+    ** admit.
+  (* ** apply: measure_card. by rewrite card_sig cardsI cardsCT. *)
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
-    + case: (boolP (adjacent g_in g_out)) => adj_io.
-      * congr tmI. admit. 
-      * apply: eq_big_seq_In => H in_parG. apply: Efg.
-        -- split. 
-          ** exact: split_connected in_parG.
-          ** exact: split_K4_free in_parG.
-        -- apply: measure_card. rewrite -[X in _ < X]split_edges //.
-           apply: sum_gt0 => // [{H in_parG} H|].
-           ** exact: split_nontrivial.
-           ** exact: split_K4_nontrivial.
+    + admit.
+    (* + case: (boolP (adjacent g_in g_out)) => adj_io. *)
+    (*   * congr tmI. admit.  *)
+    (*   * apply: eq_big_seq_In => H in_parG. apply: Efg. *)
+    (*     -- split.  *)
+    (*       ** exact: split_connected in_parG. *)
+    (*       ** exact: split_K4_free in_parG. *)
+    (*     -- apply: measure_card. rewrite -[X in _ < X]split_edges //. *)
+    (*        apply: sum_gt0 => // [{H in_parG} H|]. *)
+    (*        ** exact: split_nontrivial. *)
+    (*        ** exact: split_K4_nontrivial. *)
     + exact: check_point_wf.
 Admitted.
 
