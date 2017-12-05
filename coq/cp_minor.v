@@ -374,7 +374,28 @@ Proof.
   have [i_x0 y0_i] : (None : H) -- Some x0 /\ (Some y0 : H) -- None by split.
   pose q2 := (pcat (edgep y0_i) (edgep i_x0)).
   pose q := pcat q3 (pcat q2 q1).
-  case: (splitL q _) => [ | y1 [yy1] [q'] [eq_q eq_q']]; first by rewrite eq_sym.
+  case: (splitL q _) => [ | y1 [yy1] [q'] [_ eq_q']]; first by rewrite eq_sym.
+
+  have qI : [set z in q] :&: (Some @: interval x y) = [set Some x; Some y].
+    admit.
+  have {qI} qI : [set z in q'] :&: (Some @: interval x y) = [set Some x].
+  { move: qI =>/(congr1 (fun A => A :\ Some y)).
+    rewrite setDUl setDv setU0. set A := [set _] :\ _.
+    have {A}-> : A = [set Some x].
+    { rewrite/A; apply/setDidPl.
+      by rewrite (eq_disjoint1 (x:=Some x)); last move=> ?; rewrite !inE. }
+    move=> <-; rewrite ![_ :&: Some @: _]setIC -setIDA.
+    congr (setI (Some @: _)).
+    apply/setP=>/= u; rewrite !inE; apply/idP/idP; last first.
+    + case/andP => /negbTE uNy.
+      by rewrite eq_q' in_collective nodesE inE uNy.
+    + rewrite eq_q' => u_q'; rewrite [_ \in _]tailW // andbT.
+      apply: contraTN u_q' =>/eqP{u}->.
+      rewrite /q/tail/= mem_cat inE /= -(nodesE q1) negb_or.
+      move: eq_q3; rewrite 2!nodesE /= => -[]->.
+      rewrite eq_q1 !(mem_map Some_inj) yNp1 andbT.
+      move: Ip; rewrite eq_p !irred_cat =>/andP[_]/andP[]/andP[_]/andP[].
+      by rewrite irredE/= =>/andP[]. }
 
   pose phi (u : H) :=
     if u \in q' then Some (istart : I)
@@ -386,55 +407,30 @@ Proof.
     else None.
   pose phi0 (u : H) :=
     if u \in q' then Some x
-    else if u is Some v then
-      if v \in interval x y then Some v else None
+    else if u \in Some @: interval x y then u
     else None.
   have phi_val : phi0 =1 omap val \o phi.
   { move=> u; rewrite /phi/phi0/=; case: ifP => // _.
-    case: u => // u. by case: {-}_/boolP => /= [|/negbTE]->. }
+    case: u => [u|/=]; last by rewrite if_same.
+    rewrite inj_imset; last exact: Some_inj.
+    by case: {-}_/boolP => /= [|/negbTE]->. }
   have phi_eq (u : H) (v : option I) : (phi u == v) = (phi0 u == omap val v).
   { apply/eqP/eqP; first move=> <-; rewrite phi_val//=.
-    suff {u v} : forall f, injective f -> injective (omap f).
-      by move=> /(_ _ _ _ val_inj); apply.
-    admit (* general theorem, proved for seq *). }
+    exact: (inj_omap val_inj). }
   have preim_phi (u : I) :
       phi @^-1 (Some u) = if val u == x then [set z in q'] else [set Some (val u)].
   { apply/setP=> z; rewrite -mem_preim phi_eq/=. case: u => u /= u_I.
-    case: ifP => [/eqP{u u_I}->|uNx]; rewrite inE /phi0; last (case: ifP; last first).
+    case: ifP => [/eqP{u u_I}->|uNx]; rewrite inE /phi0; last case: ifP.
     + apply/eqP/idP; last by move=>->.
       apply: contra_eqT => zNq'; rewrite (negbTE zNq').
-      case: z zNq' => // z; case: ifP => // _ /memPnC.
-      by apply; exact: nodes_end.
-    + case: z => // z _; case: ifP => // zNI.
-      by apply: esym; apply: contraFF zNI =>/eqP[]->.
-    + move: u_I; rewrite inE ![in orb _]inE [LHS]eq_sym [in LHS]eqE/= uNx/=.
-      move=> u_sIy z_q'; apply: esym.
-      (* At this point the goal is essentially:
-       *    [disjoint q' & [set Some u | u in y |: sinterval x y]].
-       * TOTHINK: Is there a better (shorter?) proof? *)
-      apply: contraTF z_q' => /eqP{z}->.
-      apply: contraTN u_sIy; rewrite negb_or.
-      rewrite eq_q'/q/tail/= -[pval]/tail mem_cat inE/= -(nodesE q1).
-      rewrite eq_q1 (mem_map Some_inj).
-      have : nodes q3 = map Some (nodes p3) := eq_q3.
-      rewrite 2!nodesE/= -[pval]/tail => -[]->; rewrite (mem_map Some_inj).
-      move: Ip; rewrite eq_p !irred_cat =>/andP[Ip1]/andP[]/andP[_]/andP[Ip3] _ _.
-      case/orP => [u_p3' | u_p1]; apply/andP; split.
-      - by apply: contraTN u_p3' => /eqP->; move: Ip3; rewrite irredE/= =>/andP[].
-      - suff disj : [disjoint p3 & sinterval x y].
-          by rewrite (disjointFr disj (tailW u_p3')).
-        have /eq_disjoint-> : p3 =i prev p3
-          by move=> ?; apply: esym; exact: mem_prev.
-        rewrite sinterval_sym.
-        apply: sinterval_outside; rewrite ?mem_prev// ?prev_irred//.
-        admit (*???*).
-      - by apply: contraTN u_p1 =>/eqP->.
-      - suff disj : [disjoint p1 & sinterval x y].
-          by rewrite (disjointFr disj u_p1).
-        apply: sinterval_outside => //.
-        admit (*???*). }
-  (* TODO: for the last two [admit]s use [CP_tree], [CP_extensive] and [CP_path]
-   * to prove that [disjoint [set x0; y0] & sinterval x y]. *)
+      case: z zNq' => // z; case: ifP => // _ /memPnC; apply.
+      exact: nodes_end.
+    + move=> z_q'; rewrite eq_sym eqE/= uNx; apply: esym.
+      apply: contraFF uNx => /eqP eq_z.
+      suff : Some u \in [set Some x] by rewrite inE.
+      by rewrite -qI !inE mem_imset // -eq_z z_q'.
+    + move=> _. apply/eqP/eqP; first by case: ifP.
+      by move=>->; rewrite mem_imset. }
   have preim_phixx (u : I) : Some (val u) \in phi @^-1 (Some u).
     by rewrite preim_phi; case: ifP => [/eqP->|]; rewrite inE ?nodes_end.
 
