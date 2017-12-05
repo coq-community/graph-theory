@@ -369,6 +369,7 @@ Proof.
     - move=> /idx_inj-/(_ x_p) x_y.
       by exfalso; move: x_y xNy => ->; rewrite eqxx. }
   case: (three_way_split Ip x_p y_p x_before_y) => [p1] [p2] [p3] [] eq_p xNp3 yNp1.
+  move: Ip; rewrite eq_p !irred_cat => /andP[Ip1]/andP[]/andP[_]/andP[Ip3] _ _.
   have [q1 eq_q1] : exists q1 : Path H _ _, _ := add_node_lift_Path _ p1.
   have [q3 eq_q3] : exists q3 : Path H _ _, _ := add_node_lift_Path _ p3.
   have [i_x0 y0_i] : (None : H) -- Some x0 /\ (Some y0 : H) -- None by split.
@@ -377,7 +378,28 @@ Proof.
   case: (splitL q _) => [ | y1 [yy1] [q'] [_ eq_q']]; first by rewrite eq_sym.
 
   have qI : [set z in q] :&: (Some @: interval x y) = [set Some x; Some y].
-    admit.
+  { apply/setP=> u; rewrite !inE; apply/idP/idP; last by
+      case/orP=>/eqP->; apply/andP; split;
+      rewrite ?nodes_start ?nodes_end // mem_imset // ?intervalL ?intervalR.
+    case/andP=> u_q /imsetP[v] v_I eq_u.
+    move: u_q; rewrite {u}eq_u !eqE/= => v_q.
+    apply: contraTT v_I; rewrite negb_or =>/andP[vNx vNy].
+    rewrite inE ![in orb _]inE !negb_or {}vNx {}vNy /=.
+    have disj1sI : [disjoint p1 & sinterval x y].
+      apply: sinterval_outside => //. admit.
+    have : [disjoint (prev p3) & sinterval y x].
+      apply: sinterval_outside; rewrite ?mem_prev ?prev_irred //.
+      admit.
+    rewrite sinterval_sym (eq_disjoint (mem_prev p3)) => disj3sI.
+    apply/negbT; suff : (v \in p1) || (v \in p3).
+      by case/orP; [ move: disj1sI | move: disj3sI ]; apply: disjointFr.
+    move: v_q; rewrite /q (mem_pcat q3) mem_pcat.
+    rewrite [_ \in q2]in_collective nodesE/q2/= !inE/=.
+    rewrite !eqE/= !in_collective eq_q1 eq_q3 !(mem_map Some_inj) => v_q.
+    case/orP: v_q => [->//|]; case/orP=> [|->//].
+    by case/orP=>/eqP->; rewrite ?nodes_start ?nodes_end. }
+  (* TODO: for the last two [admit]s use [CP_tree], [CP_extensive] and [CP_path]
+   * to prove that [disjoint CP U & sinterval x y]. *)
   have {qI} qI : [set z in q'] :&: (Some @: interval x y) = [set Some x].
   { move: qI =>/(congr1 (fun A => A :\ Some y)).
     rewrite setDUl setDv setU0. set A := [set _] :\ _.
@@ -394,8 +416,7 @@ Proof.
       rewrite /q/tail/= mem_cat inE /= -(nodesE q1) negb_or.
       move: eq_q3; rewrite 2!nodesE /= => -[]->.
       rewrite eq_q1 !(mem_map Some_inj) yNp1 andbT.
-      move: Ip; rewrite eq_p !irred_cat =>/andP[_]/andP[]/andP[_]/andP[].
-      by rewrite irredE/= =>/andP[]. }
+      by move: Ip3; rewrite irredE/= =>/andP[]. }
 
   pose phi (u : H) :=
     if u \in q' then Some (istart : I)
