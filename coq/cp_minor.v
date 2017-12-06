@@ -352,6 +352,9 @@ Proof.
   have {H H_min_GU H_K4F} : K4_free (add_node G U).
     by exact: minor_K4_free H_K4F.
   set H := add_node G U => H_K4F x' y' xy.
+  have CP_tree : is_tree (CP_ U).
+    (* TODO: apply CP_tree. Either change its statement, this lemma's or do the
+     * translation. *) admit.
   apply: minor_K4_free H_K4F.
 
   set x : G := val x'. set y : G := val y'.
@@ -386,10 +389,13 @@ Proof.
     apply: contraTT v_I; rewrite negb_or =>/andP[vNx vNy].
     rewrite inE ![in orb _]inE !negb_or {}vNx {}vNy /=.
     have disj1sI : [disjoint p1 & sinterval x y].
-      apply: sinterval_outside => //. admit.
+    { apply: sinterval_outside => //.
+      rewrite (disjointFr _ (CP_extensive x0_U)) //.
+      exact: CP_tree_sinterval. }
     have : [disjoint (prev p3) & sinterval y x].
-      apply: sinterval_outside; rewrite ?mem_prev ?prev_irred //.
-      admit.
+    { apply: sinterval_outside; rewrite ?mem_prev ?prev_irred //.
+      rewrite sinterval_sym (disjointFr _ (CP_extensive y0_U)) //.
+      exact: CP_tree_sinterval. }
     rewrite sinterval_sym (eq_disjoint (mem_prev p3)) => disj3sI.
     apply/negbT; suff : (v \in p1) || (v \in p3).
       by case/orP; [ move: disj1sI | move: disj3sI ]; apply: disjointFr.
@@ -398,8 +404,6 @@ Proof.
     rewrite !eqE/= !in_collective eq_q1 eq_q3 !(mem_map Some_inj) => v_q.
     case/orP: v_q => [->//|]; case/orP=> [|->//].
     by case/orP=>/eqP->; rewrite ?nodes_start ?nodes_end. }
-  (* TODO: for the last two [admit]s use [CP_tree], [CP_extensive] and [CP_path]
-   * to prove that [disjoint CP U & sinterval x y]. *)
   have {qI} qI : [set z in q'] :&: (Some @: interval x y) = [set Some x].
   { move: qI =>/(congr1 (fun A => A :\ Some y)).
     rewrite setDUl setDv setU0. set A := [set _] :\ _.

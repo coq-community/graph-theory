@@ -233,6 +233,25 @@ Section CheckPoints.
                                (y \in sinterval x y = false).
   Proof. by rewrite !inE !eqxx. Qed.
 
+  Lemma sintervalP2 x y u :
+    reflect ((exists2 p : Path u x, irred p & y \notin p) /\
+             (exists2 q : Path u y, irred q & x \notin q))    (u \in sinterval x y).
+  Proof.
+    apply/(iffP idP).
+    + rewrite !inE negb_or => /andP[/andP[uNx uNy]] /andP[].
+      case/(uPathRP uNx) => [p] Ip /subsetP/memPn yNp.
+      case/(uPathRP uNy) => [q] Iq /subsetP/memPn xNq.
+      split; by [exists p | exists q].
+    + case=>- [p] Ip yNp [q] Iq xNq.
+      rewrite !inE negb_or.
+      apply/andP; split.
+      - by apply/andP; split; [move: xNq | move: yNp];
+        apply: contraNN =>/eqP<-; exact: nodes_start.
+      - apply/andP; split; move: connectRI => /(_ G _ u);
+        [ move=>/(_ _ x p) | move=>/(_ _ y q) ]; apply=> v; rewrite inE;
+        by apply: contraTN =>/eqP->.
+  Qed.
+
   Lemma sinterval_exit x y u v : u \notin sinterval x y -> v \in sinterval x y ->
     x \in cp u v \/ y \in cp u v.
   Proof.
@@ -446,6 +465,29 @@ Section CheckPoints.
       { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
       have := tree_U x y p r. case/(_ _ _)/Wrap => // ?. subst. by contrab.
     - simpl. exact: CP_path_cp.
+  Qed.
+
+  (** A small part of Proposition 20. *)
+  Lemma CP_tree_sinterval (U : {set G}) (x y : CP_ U) :
+    is_tree (CP_ U) -> x -- y -> [disjoint CP U & sinterval (val x) (val y)].
+  Proof.
+    move=> CP_tree xy.
+    rewrite -setI_eq0 -subset0; apply/subsetP => u.
+    rewrite inE [u \in set0]inE =>/andP[u_CP].
+    set u_ := Sub u u_CP : CP_ U; rewrite -[u]/(val u_).
+    move: {u u_CP} u_ => u /sintervalP2[] -[p] Ip yNp [q] Iq xNq.
+    case: (CP_path Ip) => p_ Ip_ /subsetP/(_ (val y)) p_p.
+    case: (CP_path Iq) => q_ Iq_ /subsetP/(_ (val x)) q_q.
+    have {p Ip yNp p_p} yNp_ : y \notin p_.
+      by apply: contraNN yNp => ?; apply: p_p; exact: mem_imset.
+    have {q Iq xNq q_q} xNq_ : x \notin q_.
+      by apply: contraNN xNq => ?; apply: q_q; exact: mem_imset.
+    have Ip_xy : irred (pcat p_ (edgep xy)).
+      by [rewrite irred_cat Ip_ irred_edge /tail/=;
+          rewrite disjoint_sym disjoint_cons eq_disjoint0].
+    have eq_ : q_ = pcat p_ (edgep xy) := tree_unique_Path CP_tree Iq_ Ip_xy.
+    apply: contraNT xNq_ => _.
+    by rewrite eq_ mem_pcat !in_collective !nodesE/= !inE eqxx.
   Qed.
 
   Lemma index_uniq_inj (T:eqType) (s : seq T) : 
