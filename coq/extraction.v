@@ -80,19 +80,17 @@ Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
 Proof. by []. Qed.
 Arguments consistentT [G] E.
 
-Definition remove_edges (G : graph2) (E : {set edge G}) :=
+Definition remove_edges (G : graph) (E : {set edge G}) := 
+  {| vertex := G;
+     edge := [finType of { e : edge G | e \notin E }];
+     source e := source (val e);
+     target e := target (val e);
+     label e := label (val e) |}.                
+
+Definition remove_edges2 (G : graph2) (E : {set edge G}) :=
   @point (subgraph_for (consistentT (~:E))) 
          (Sub g_in (in_setT _)) 
          (Sub g_in (in_setT _)).
-
-(** SGraph preliminaries *)
-
-
-
-
-(** Additional Checkpoint Properties *)
-
-
 
 Section Checkpoints.
 Variables (G : sgraph).
@@ -284,40 +282,11 @@ Qed.
 
 (** ** Subroutines *)
 
-(** Splitting intro parallel components *)
-
-Fact split_proof1 (T : finType) (A : {set T}) x y : x \in A :|: [set x; y].
-Proof. by rewrite !inE eqxx ?orbT. Qed.
-
-Fact split_proof2 (T : finType) (A : {set T}) x y : y \in A :|: [set x; y].
-Proof. by rewrite !inE eqxx ?orbT. Qed.
-
-
-(** The graph induced by "{i,o} ∪ H" 
-    (with H being a component of "G\{i,o}" and G a lens *)
-
-Definition parcomp (G : graph2) (A : {set G}) := 
-  @point (induced (A :|: [set g_in; g_out]))
-         (Sub g_in (split_proof1 A g_in g_out))
-         (Sub g_in (split_proof1 A g_in g_out)).
-
 Definition lens (G : graph2) := 
   [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
       #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
       @link_rel (skeleton G) g_in g_out].
 (** alternative condition on i/o: [petal [set g_in;g_out] g_in  = [set g_in]] *)
-
-
-(** NOTE: This only does the right thing if 
-    - G is connected
-    - there is no direct edge between i and o
-    - i != o and no (nontrivial) petals on i and o
-    - TOTHINK: Can we use the same construction for i=0 
-      (i.e., using H := ~: [set g_in;g_out])  *)
-(* Definition split_par (G : graph2) : seq graph2 :=  *)
-(*   let H := @sinterval (skeleton G) g_in g_out in  *)
-(*   let P := equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H in  *)
-(*   [seq parcomp A | A <- enum P]. *)
 
 Definition edges (G : graph) (x y : G) := 
   [set e : edge G | (source e == x) && (target e == y)].
@@ -333,46 +302,6 @@ Proof.
   - move => /= [Hxy]. 
 Admitted.
 
-(* Lemma split_iso (G : graph2) : *)
-(*   lens G -> ~~ @adjacent G g_in g_out ->  *)
-(*   \big[par2/top2]_(H <- split_par G) H ≈ G. *)
-(* Admitted. *)
-
-(* Lemma split_inhab (G : graph2) : 0 < size (split_par G). *)
-(* Abort. *)
-(* Proof. *)
-(*   rewrite /split_par. case: ifP => //. *)
-(*   move/negbT. by rewrite -ltnNge size_map -cardE => /ltnW.  *)
-(* Qed. *)
-
-(* WARN: we do not have decidable equality on graphs, this might
-become problematic? *)
-(* Lemma split_nontrivial (G H : graph2) :  *)
-(*   connected [set: skeleton G] -> lens G -> ~~ @adjacent G g_in g_out ->  *)
-(*   List.In H (split_par G) -> 0 < #|edge H|. *)
-(* Admitted. *)
-
-(* Lemma split_subgraph (G H : graph2) :  *)
-(*   List.In H (split_par G) -> subgraph H G. *)
-(* Admitted. *)
-
-(* Lemma split_connected (G H : graph2) : *)
-(*   lens G ->  *)
-(*   List.In H (split_par G) -> connected [set: skeleton H]. *)
-(* Admitted. *)
-
-(* Lemma split_K4_free (G H : graph2) : *)
-(*   lens G -> K4_free (sskeleton G) -> *)
-(*   List.In H (split_par G) -> K4_free (sskeleton H). *)
-(* Admitted. *)
-
-(* Lemma split_edges (G : graph2) :  *)
-(*   lens G -> ~~ @adjacent G g_in g_out ->  *)
-(*   \sum_(H <- split_par G) #|edge H| = #|edge G|. *)
-(* Admitted. *)
-
-(* TOTHINK: What is the most natural formulation of "has at least two components"? *)
-
 Lemma CP2_part (G : sgraph) x y x' y' : 
   [set x; y] \subset cp x' y' -> 
   let U := [set x; y] in 
@@ -385,8 +314,6 @@ Admitted.
     Is this really the formulation needed for Prop 21(i)?
     What is the right formulation for the edges? *)
 
-
-Notation val2 x := (val (val x)).
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
@@ -443,13 +370,27 @@ Notation "u :o: v" := (tmS u v) (at level 33).
 Definition remove_io (G : graph2) : graph2.
 Admitted.
 
-Definition redirect_to (G : graph2) (H : {set G}) (o:G) : graph2.
+(** subgraph induced by [i |: H] without i-selfloops and with outpur set
+to [o] *)
+Fact redirect_proof1 (T : finType) x (A : {set T}) : x \in x |: A. 
+Proof. by rewrite !inE eqxx. Qed.
+Arguments redirect_proof1 [T x A].
+
+Fact redirect_proof2 (T : finType) x y (B : {set T}) : x \in y |: (x |: B). 
 Admitted.
+Arguments redirect_proof2 [T x y B].
+
+Definition redirect_to (G : graph2) (H : {set G}) (o:G) :=
+  @point (@induced (@remove_edges G (edges g_in g_in)) (g_in |: (o |: H)))
+         (Sub g_in (setU11 _ _))
+         (Sub o redirect_proof2).
 
 (** subgraph induced by [i |: H] without i-selfloops and with [o] set
 to some neighbor of [i] in H *)
-Definition redirect (G : graph2) (H : {set G}) : graph2.
-Admitted.
+
+Definition redirect (G : graph2) (H : {set G}) : graph2 :=
+  if [pick z in H | adjacent g_in z] isn't Some z then one2 
+  else redirect_to H z.
 
 Definition big_tmI : seq term -> term.
 Admitted.
@@ -480,33 +421,56 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
-Lemma term_of_eq (G : graph2) : 
-  connected [set: skeleton G] -> K4_free (sskeleton G) ->
-  term_of G = term_of_rec term_of G.
+Definition CK4F (G : graph2) := 
+  connected [set: skeleton G] /\ K4_free (sskeleton G).
+
+Lemma CK4F_redirect (G : graph2) C : 
+  CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
+  CK4F (redirect C).
+Admitted. (* Follows with proposition 21(iii) *)
+
+Lemma measure_redirect (G : graph2) C : 
+  CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
+  measure (redirect C) < measure G.
 Proof.
-  move => con_G free_G. 
-  pose P (H:graph2) := connected [set: skeleton H] /\ K4_free (sskeleton H).
-  apply: (Fix_eq P) => // {con_G free_G G} f g G [con_G free_G] Efg.
-  rewrite /term_of_rec. 
+  (* Since G is connected and C nonempty, there must be a neighbor of i.
+  Hence, [redirect C] has distinct input an ouutput and no more edges than G. *)
+Admitted. 
+
+Lemma CK4F_lens (G : graph2) C : 
+  lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+  CK4F (component C).
+Proof.
+  (* Follows since all components are subgraphs of G (with same input and output *)
+Admitted. 
+
+Lemma measure_lens (G : graph2) C : 
+  lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+  measure (component C) < measure G.
+Proof. 
+  (* By case distinction on [#|P|] where [P := components _]
+  - #|P| = 0: trivial
+  - #|P| = 1: Since G is K4-free, there must be a direct io-edge e by Prop. 22(i)
+    e is not an edge of [component C].
+  - #|P| > 1: Every component in P has at least one node (distinct from i and o) 
+    and therefore at least one edge. *)     
+Admitted. 
+
+Lemma term_of_eq (G : graph2) : 
+  CK4F G -> term_of G = term_of_rec term_of G.
+Proof.
+  apply: Fix_eq => // {G} f g G CK4F_G Efg. rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
-  - congr tmS. 
-    apply: eq_big => // C. 
-    ** admit.
-  (* ** apply: measure_card. by rewrite card_sig cardsI cardsCT. *)
+  - congr tmS. apply: eq_big => // C HC. rewrite Efg //.
+    + exact: CK4F_redirect.
+    + exact: measure_redirect.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
-    + admit.
-    (* + case: (boolP (adjacent g_in g_out)) => adj_io. *)
-    (*   * congr tmI. admit.  *)
-    (*   * apply: eq_big_seq_In => H in_parG. apply: Efg. *)
-    (*     -- split.  *)
-    (*       ** exact: split_connected in_parG. *)
-    (*       ** exact: split_K4_free in_parG. *)
-    (*     -- apply: measure_card. rewrite -[X in _ < X]split_edges //. *)
-    (*        apply: sum_gt0 => // [{H in_parG} H|]. *)
-    (*        ** exact: split_nontrivial. *)
-    (*        ** exact: split_K4_nontrivial. *)
+    + congr big_tmI. congr cat. apply eq_in_map => C. 
+      rewrite mem_enum => HC. apply: Efg.
+      * exact: CK4F_lens.
+      * exact: measure_lens. 
     + exact: check_point_wf.
-Admitted.
+Qed.
 
 Theorem term_of_iso (G : graph2) : 
   connected [set: skeleton G] ->  
