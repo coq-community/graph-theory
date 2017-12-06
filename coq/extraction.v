@@ -17,55 +17,6 @@ Definition dom t := tmI (tmS t tmT) tm1.
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.
 
-(** Preliminaries *)
-
-Lemma sum_ge_In (T : Type) (s : seq T) (F : T -> nat) b : 
-  List.In b s -> F b <= \sum_(a <- s) F a.
-Proof. 
-  elim: s b => //= a s IH b [<-|A]; rewrite big_cons ?leq_addr //.
-  apply: leq_trans (IH _ A) _. exact: leq_addl.
-Qed.
-
-Lemma sum_gt0 (T : Type) (s : seq T) (F : T -> nat) : 
-  (forall a, List.In a s -> 0 < F a) -> 1 < size s ->
-  forall b, List.In b s -> F b < \sum_(a <- s) F a.
-Proof.
-  move => A B a a_in_s. apply/negPn. apply/negP => C. rewrite -leqNgt in C.
-  destruct s as [|b [|c s']] => //= {B}. rewrite !big_cons in C. 
-  rewrite /= in a_in_s.
-  (* should work even if we don't have decidable equality on elements of T *)
-Admitted.
-
-Lemma eq_big_seq_In (R : Type) (idx : R) (op : R -> R -> R) I (r : seq I) (F1 F2 : I -> R) :
-  (forall x, List.In x r -> F1 x = F2 x) ->
-  \big[op/idx]_(i <- r) F1 i = \big[op/idx]_(i <- r) F2 i.
-Proof.
-  elim: r => [|a r IH] eqF; rewrite ?big_nil // !big_cons eqF ?IH //; last by left.
-  move => x Hx. apply: eqF. by right.
-Qed.
-
-Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
-  (A \subset [set x;y]) = [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
-Proof.
-  case: (boolP (x == y)) => [/eqP ?|xy].
-  - subst y. rewrite setUid subset1. by do 2  case (A == _).
-Admitted.
-
-(** Partitions possibly including the empty equivalence class *)
-Definition pe_partition (T : finType) (P : {set {set T}}) (D : {set T}) :=
-  (cover P == D) && (trivIset P).
-
-Lemma trivIset3 (T : finType) (A B C : {set T}) : 
-  [disjoint A & B] -> [disjoint B & C] -> [disjoint A & C] -> 
-  trivIset [set A;B;C].
-Proof. 
-  move => D1 D2 D3. apply/trivIsetP => X Y. rewrite !inE -!orbA.
-  do 2 (case/or3P => /eqP->); try by rewrite ?eqxx // 1?disjoint_sym. 
-Qed.
-
-
-(** Graph preliminaries *)
-
 (* Isomorphim of graphs *)
 
 Definition bijective2 (G1 G2 : graph) (h : h_ty G1 G2) := 
@@ -85,173 +36,20 @@ Definition remove_edges (G : graph) (E : {set edge G}) :=
      edge := [finType of { e : edge G | e \notin E }];
      source e := source (val e);
      target e := target (val e);
-     label e := label (val e) |}.                
+     label e := label (val e) |}.
 
+(* not used - should not change vertex type *)
 Definition remove_edges2 (G : graph2) (E : {set edge G}) :=
   @point (subgraph_for (consistentT (~:E))) 
          (Sub g_in (in_setT _)) 
          (Sub g_in (in_setT _)).
 
-Section Checkpoints.
-Variables (G : sgraph).
-
-Hypothesis (conn_G : forall x y :G, connect sedge x y).
-
-
-Lemma eq_disjoint (T : finType) (A A' B : pred T) :
-  A =i A' -> [disjoint A & B] = [disjoint A' & B].
-Proof. Admitted.
-Arguments eq_disjoint [T A] A' [B].  
-
-
-
-(* TOTHINK/TODO: Lemmas about [disjoint] should be as below, to avoid exposing
-conversions to collective predicates when rewriting *)
-Lemma disjoint_sym' (T : finType) (A B : mem_pred T) : 
-  disjoint A B = disjoint B A.
-Admitted.
-
-
-(** Do we really need the follwing lemma in its full generality *)
-Lemma ncp_sinterval U (x y p : G) :
-  [set x;y] \subset CP U ->
-  link_rel G x y -> 
-  (p \in sinterval x y) = (ncp U p == [set x; y]).
-Proof.
-Abort.
-  
-Lemma link_part (x y : G) : link_rel G x y ->
-  pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
-Proof.
-  move => /= /andP [xy cp_xy]. 
-  have CPxy : CP [set x; y] = [set x; y].
-  { apply: CP_clique. exact: clique2. }
-  apply/andP; split.
-  - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
-    pose N := ncp [set x; y] p. 
-    have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
-    rewrite subset2 // {1}/N (ncp0 conn_G x) ?in_setU ?set11 //=. case/or3P. 
-    + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-      apply: mem_cover. by rewrite !inE eqxx. 
-    + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-      apply: mem_cover. by rewrite !inE eqxx. 
-    + rewrite /N. rewrite eqEsubset => /andP [_ /(ncp_interval xy)].
-      apply: mem_cover. by rewrite !inE eqxx. 
-  - apply: trivIset3. 
-    + by apply: petal_disj => //; rewrite CPxy !inE eqxx.
-    + by rewrite sinterval_sym interval_petal_disj // CPxy !inE eqxx.
-    + by rewrite interval_petal_disj // CPxy !inE eqxx.
-Qed.
-
-Lemma link_cpL (x y u v : G) : link_rel G x y -> 
-  u \in petal [set x; y] x -> v \in petal [set x;y] y -> x \in cp u v.
-Proof.
-  move => /= /andP[xy CPxy]. rewrite !ncp_petal ?CP_extensive ?inE ?eqxx //. 
-  move => Nu Nv. apply: contraTT Nu. 
-  case/cpPn' => [p irr_p av_x]. 
-  have/ncpP [CPy [q Hq]]: y \in ncp [set x;y] v by rewrite (eqP Nv) set11.
-  rewrite eqEsubset negb_and. apply/orP;left. 
-  apply/subsetPn; exists y; last by rewrite !inE eq_sym.
-  apply/ncpP; split => //. exists (pcat p q) => z. 
-  have ? : @clique (link_graph G) [set x; y] by apply: clique2.
-  rewrite CP_clique // mem_pcat 3!inE => /orP[]/eqP-> //. 
-  rewrite (negbTE av_x) /=. apply: Hq. by rewrite CP_clique // inE set11.
-Qed.
-
-Lemma link_cpR (x y u v : G) : link_rel G x y -> 
-  u \in petal [set x; y] x -> v \in petal [set x;y] y -> y \in cp u v.
-Proof. rewrite link_sym setUC cp_sym => *. exact: (@link_cpL y x v u). Qed.
-
-
-(* The following lemma looks a bit strange if [ncp : {set G}] *)
-(* But do we really need this? *)
-Lemma ncp_clique (U : {set G}) (u : G) : 
-  @clique (CP_ U) [set x | val x \in (ncp U u)].
-Abort. 
-(* Proof.  *)
-(*   case: (boolP (u \in CP U)) => Hu; first by rewrite (ncp_CP Hu); exact: clique1. *)
-(*   move => x y. rewrite !inE => Hx Hy xy. *)
-(*   gen have H, A : x y Hx Hy xy / u != val x.  *)
-(*   { apply: contraNN Hu => /eqP->. exact: valP. } *)
-(*   have {H} B : u != val y by apply: (H y x) => //; by rewrite eq_sym. *)
-(*   case/(uPathRP A) : Hx => p irr_p /subsetP p_cp.  *)
-(*   case/(uPathRP B) : Hy => q irr_q /subsetP q_cp.  *)
-(*   rewrite /=. apply/andP;split. *)
-(*   - apply: contraNN xy. by move/eqP/val_inj->. *)
-(*   - set r := pcat (prev p) q. *)
-(*     apply/subsetP => z cp_z.  *)
-(*     have Hz : z \in CP U.  *)
-(*     { admit. (* Follows with CP_closed when G is connected *) } *)
-(*     move/cpP' : cp_z => /(_ r). rewrite mem_pcat mem_prev.  *)
-(*     case/orP => [/p_cp|/q_cp]; rewrite inE Hz /= => /eqP->; by rewrite !inE eqxx ?orbT. *)
-(* Admitted. *)
-
-
-
-
-Lemma petal_dist (U : {set G}) x y : 
-  x \in CP U -> y \in CP U -> x != y -> petal U x != petal U y.
-Admitted. (* follows from disjointness *)
-
-Lemma sintervalEl (x y : G) u : 
-  u \in sinterval x y -> exists2 p : Path G u x, irred p & y \notin p.
-Admitted. (* essentially the definition *)
-
-Lemma ncp_anti (U U' : {set G}) x : 
-  U \subset U' -> ncp U' x \subset ncp U x.
-Admitted.
-
-(* Lemma pe_partD1 (T : finType) (A D : {set T}) P :   *)
-(*   pe_partition (A |: P) D = pe_partition P (D :\: A). *)
-(* Admitted. *)
-
-(* Lemma pe_partIr (T : finType) (A A' B B' D : {set T}) :  *)
-(*   pe_partition [set A; B] D -> pe_partition [set A' ; B'] D ->  *)
-(*   pe_partition [set A; A'; B :&: B'] D. *)
-(* Admitted. *)
-
-(* Lemma pe_part_fuse (T : finType) (A B B' C C' D : {set T}) :  *)
-(*   pe_partition [set A; B ; C] D ->  *)
-(*   pe_partition [set A; B' ; C'] D ->  *)
-(*   [disjoint B & B'] -> *)
-(*   pe_partition [set A; B; B'; C :&: C'] D. *)
-(* Admitted. *)
-  
-
-(* TOTHINK: this should not be necessary, if the decomposition in
-[CP_tree] is defined differently *)
-(* Lemma triangle_partition (x y z : link_graph G) : *)
-(*   x -- y -> y -- z -> z -- x ->  *)
-(*   let U : {set G} := [set x;y;z] in  *)
-(*   pe_partition [set petal U x; petal U y; petal U z;  *)
-(*                 @sinterval G x y :&: @sinterval G x z ] [set: G]. *)
-(* Proof. *)
-(*   move => xy yz zx /=. set U : {set G} := [set x; y; z]. *)
-(*   move: (link_part xy) => Pxy.  *)
-(*   rewrite sg_sym in zx. move: (link_part zx) => Pxz.  *)
-(*   have E1: @petal G [set x; y] x = petal U x. { admit. } *)
-(*   have E2: @petal G [set x; y] y = petal U y. { admit. } *)
-(*   have E3: @petal G [set x; z] x = petal U x. { admit. } *)
-(*   have E4: @petal G [set x; z] z = petal U z. { admit. } *)
-(*   rewrite E1 E2 E3 E4 in Pxy Pxz. apply: pe_part_fuse => //.  *)
-(*   apply: petal_disj => // ; last by rewrite (sg_edgeNeq yz). *)
-(*   - by apply: CP_extensive; rewrite !inE eqxx. *)
-(*   - by apply: CP_extensive; rewrite !inE eqxx. *)
-(* Admitted. *)
-
-End Checkpoints.
-
-
-
-
-
-
-
 
 (** * Term Extraction *)
 
 
-(** Termination Metric *)
+(** ** Termination Metric *)
+
 Definition term_of_measure (G : graph2) :=
   (g_in == g_out :> G) + 2*#|edge G|.
 
@@ -302,17 +100,6 @@ Proof.
   - move => /= [Hxy]. 
 Admitted.
 
-Lemma CP2_part (G : sgraph) x y x' y' : 
-  [set x; y] \subset cp x' y' -> 
-  let U := [set x; y] in 
-  pe_partition [set petal U x; petal U y; sinterval x y] [set: G].
-Proof.
-  rewrite subUset !sub1set => /andP[A B]. 
-Admitted.
-(** TOTHINK: 
-    Does the lemma above have a direct proof without going through Prop. 20?
-    Is this really the formulation needed for Prop 21(i)?
-    What is the right formulation for the edges? *)
 
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
