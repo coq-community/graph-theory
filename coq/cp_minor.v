@@ -395,9 +395,10 @@ Admitted.
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> link_rel G i o -> K4_free (add_edge i o) -> 
+  petal [set i;o] i = [set i] ->
   connected [set: G] -> ~ connected (sinterval i o).
 Proof.
-  move => /= io1 /andP [io2 io3] K4F conn_G. 
+  move => /= io1 /andP [io2 io3] K4F petal_i conn_G. 
   pose G' := @sgraph.induced (add_edge i o) [set~ i].
   set H := add_edge i o in K4F *.
   set U := o |: neighbours i.
@@ -406,17 +407,32 @@ Proof.
   set U' : {set G'} := [set insubd o' x | x in U].
   have tree_CPU' : is_tree (CP_ U').
   { apply: CP_tree K4F _. 
-    + (* connectivity *) admit.
-    + (* neighbour condition *) admit. }
+    - suff S: forall x, connect sedge x o'.
+      { move => x y. apply: (connect_trans (y := o')) => //.
+        rewrite connect_symI //. exact: sg_sym. }
+      move => x.
+      (* if i were a checkpoint between x and o, then 
+         x would be in [petal  [set i; o] i] - contradiction *)
+      admit.
+    - apply/setP => x. rewrite inE. apply/imsetP/idP => [[x']|].
+      + case/imsetP => x0 inU -> ->. 
+        case/setU1P : (inU) => [->|]. 
+        * rewrite insubdK /= ?eqxx ?(negbTE io2) //.
+        * rewrite inE insubdK /= => [-> //|]. rewrite !inE. 
+          (* x0 is o or a neighbor *) admit. 
+      + (* follows with irreflexivity *) admit. }
   have o'_in_U' : o' \in CP U'. 
   { admit. }
   pose N := @neighbours (CP_ U') (Sub o' o'_in_U').
   have Ngt1: 1 < #|N|.
-  { suff: 0 < #|N| /\ #|N| != 1. admit.
-    split.
-    - admit.
+  { suff: 0 < #|N| /\ #|N| != 1. 
+    { case: (#|N|) => [|[|]] //; rewrite ?ltnn ?eqxx; by case. }
+    split. 
+    - (* i must have a neighbor (that is not o) and CP(U') is connected *)
+      admit.
     - apply/negP. case/cards1P => z E. 
-      (* need that the unique oi-path in CP(U) passes through {z}. Hence, z is a checkpoint *)
+      (* for every neighbor x of i, [z \in cp x o].
+         hence [z \in cp i o] (and different from both). Contradiction. *)
       admit.
   }
   case/card_gt1P : Ngt1 => x [y] [Nx Ny xy]. 
@@ -424,5 +440,6 @@ Proof.
   apply/connected2. exists (val (val x)). exists (val (val y)). split.
   - admit. (* whats the argument that the neighbours are in ]]i;o[[ *)
   - admit.
-  - admit. (* argue that o, which is not in ]]i;o[[, is a checkpoint beween x an y *)
+  - (* o, which is not in ]]i;o[[, is a checkpoint beween x and y *)
+    admit. 
 Admitted.
