@@ -117,6 +117,24 @@ Proof.
   exact: sub_minor (skel_sub _).  
 Qed.
 
+(** Bridging Lemmas *)
+
+Definition edges (G : graph) (x y : G) := 
+  [set e : edge G | (source e == x) && (target e == y)].
+
+Definition adjacent (G : graph) (x y : G) := 
+  [exists e, e \in edges x y] || [exists e, e \in edges y x].
+
+Lemma adjacentE (G : graph) (x y : skeleton G) : 
+  (x != y) && adjacent x y = x -- y.
+Proof.
+  apply/andP/idP.
+  - move => /= [Hxy]. rewrite /sk_rel /= Hxy eq_sym Hxy /=.
+    rewrite /adjacent. 
+Admitted.
+
+
+
 (** ** Intervals and Petals *)
 
 (** TOTHINK: define intervals and petals on graph or sgraph, i.e.,
@@ -139,9 +157,6 @@ Definition remove_edges (G : graph) (E : {set edge G}) :=
      source e := source (val e);
      target e := target (val e);
      label e := label (val e) |}.
-
-Definition edges (G : graph) (x y : G) := 
-  [set e : edge G | (source e == x) && (target e == y)].
 
 Coercion skeleton : graph >-> sgraph.
 
@@ -180,3 +195,34 @@ Admitted.
 Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
   #|val @: A| = #|A|.
 Proof. rewrite card_imset //. exact: val_inj. Qed.
+
+(* lifting connectedness from the skeleton *)
+Lemma connected_skeleton (G : graph) V E (con : @consistent G V E) : 
+  @connected (skeleton G) V -> 
+  (forall e, e \in edge_set V -> source e != target e -> e \in E) ->
+  connected [set: skeleton (subgraph_for con)].
+Proof.
+  move => conn_V all_edges. 
+  move => x y xV yV. move: (conn_V _ _ (valP x) (valP y)). 
+  (* ... *)
+Admitted.
+
+Lemma connected_pgraph (G : graph2) (U : {set G}) (x : G) : 
+  connected [set: skeleton G] -> x \in @CP G U -> 
+  connected [set: skeleton (pgraph U x)].
+Proof.
+  move/connectedTE => conn_G cp_x.
+  apply: connected_skeleton => //. exact: connected_petal.
+Qed.
+
+Lemma connected_igraph (G : graph2) (x y: G) : 
+  connected [set: skeleton G] -> 
+  connected [set: skeleton (igraph x y)].
+Proof.
+  move/connectedTE => conn_G.
+  apply: connected_skeleton => //. 
+  + admit. (* intervals are connected *)
+  + move => e E1 E2. rewrite 4!inE E1 andbT negb_or. apply/andP;split.
+    * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
+    * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
+Admitted.

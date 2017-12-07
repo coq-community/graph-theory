@@ -96,24 +96,11 @@ Admitted.
 
 Notation IO := ([set g_in; g_out]).
 
-Definition edges (G : graph) (x y : G) := 
-  [set e : edge G | (source e == x) && (target e == y)].
-
-Definition adjacent (G : graph) (x y : G) := 
-  [exists e, e \in edges x y] || [exists e, e \in edges y x].
 
 Definition lens (G : graph2) := 
   [&& @petal G IO g_in  == [set g_in ],
       @petal G IO g_out == [set g_out]&
       @link_rel G g_in g_out].
-
-Lemma adjacentE (G : graph) (x y : skeleton G) : 
-  (x != y) && adjacent x y = x -- y.
-Proof.
-  apply/andP/idP.
-  - move => /= [Hxy]. rewrite /sk_rel /= Hxy eq_sym Hxy /=.
-    rewrite /adjacent. 
-Admitted.
 
 
 Arguments cp : clear implicits.
@@ -178,16 +165,22 @@ Fact redirect_proof1 (T : finType) x (A : {set T}) : x \in x |: A.
 Proof. by rewrite !inE eqxx. Qed.
 Arguments redirect_proof1 [T x A].
 
-Fact redirect_proof2 (T : finType) x y (B : {set T}) : x \in y |: (x |: B). 
-Admitted.
-Arguments redirect_proof2 [T x y B].
 
 (** subgraph induced by [i |: H] without i-selfloops and with output set
 to [o] *)
+Lemma redirect_consistent (G : graph2) (H : {set G}) (o : G) : 
+  let H' := g_in |: (o |: H) in 
+  consistent H' (edge_set H' :\: edges g_in g_in).
+Admitted.
+
+Fact redirect_output_proof (T : finType) x y (B : {set T}) : x \in y |: (x |: B). 
+Proof. by rewrite !inE eqxx. Qed.
+Arguments redirect_output_proof [T x y B].
+
 Definition redirect_to (G : graph2) (H : {set G}) (o:G) :=
-  @point (@induced (@remove_edges G (edges g_in g_in)) (g_in |: (o |: H)))
+  @point (subgraph_for (@redirect_consistent G H o))
          (Sub g_in (setU11 _ _))
-         (Sub o redirect_proof2).
+         (Sub o redirect_output_proof).
 
 (** subgraph induced by [i |: H] without i-selfloops and with [o] set
 to some neighbor of [i] in H *)
@@ -249,6 +242,10 @@ Admitted.
 Lemma CK4F_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   CK4F (redirect C).
+Proof.
+  split. 
+  - rewrite /redirect. case: pickP. 
+
 Admitted. (* Follows with proposition 21(iii) *)
 
 Lemma measure_redirect (G : graph2) C : 
