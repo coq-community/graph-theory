@@ -31,12 +31,7 @@ Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
 Proof. by []. Qed.
 Arguments consistentT [G] E.
 
-Definition remove_edges (G : graph) (E : {set edge G}) := 
-  {| vertex := G;
-     edge := [finType of { e : edge G | e \notin E }];
-     source e := source (val e);
-     target e := target (val e);
-     label e := label (val e) |}.
+
 
 (* not used - should not change vertex type *)
 Definition remove_edges2 (G : graph2) (E : {set edge G}) :=
@@ -78,87 +73,107 @@ Proof.
   do 2 case: (g_in == g_out) => //=; somega.
 Qed.
 
+(* TODO: proper name? *)
+Lemma measure_subgraph (G : graph2) V E (con : @consistent G V E) x y e : 
+  e \notin E -> measure (@point (subgraph_for con) x y) < measure G.
+Proof.
+  (* [subgraph_for] does not invent edges *)
+Admitted.
+
+Lemma measure_node (G : graph2) V E (con : @consistent G V E) v x y : 
+  connected [set: skeleton G] -> 
+  v \notin V -> measure (@point (subgraph_for con) x y) < measure G.
+Proof.
+  (* v is a node in a connected graph different from x (and y)
+     Hence, v has some adjacent edge that cannot be in the (V,E) subgraph 
+     use previous lemma *)
+Admitted.
+
+
+  
+
 (** ** Subroutines *)
 
-Definition lens (G : graph2) := 
-  [&& #|edge (@pgraph G [set g_in;g_out] g_in )| == 0,
-      #|edge (@pgraph G [set g_in;g_out] g_out)| == 0&
-      @link_rel (skeleton G) g_in g_out].
-(** alternative condition on i/o: [petal [set g_in;g_out] g_in  = [set g_in]] *)
+Notation IO := ([set g_in; g_out]).
 
 Definition edges (G : graph) (x y : G) := 
   [set e : edge G | (source e == x) && (target e == y)].
 
-(* alternative: [exists e, e \in edges x y] || [exists e \in edges y x] *)
 Definition adjacent (G : graph) (x y : G) := 
-  0 < #|edges x y :|: edges y x|.
+  [exists e, e \in edges x y] || [exists e, e \in edges y x].
+
+Definition lens (G : graph2) := 
+  [&& @petal G IO g_in  == [set g_in ],
+      @petal G IO g_out == [set g_out]&
+      @link_rel G g_in g_out].
 
 Lemma adjacentE (G : graph) (x y : skeleton G) : 
   (x != y) && adjacent x y = x -- y.
 Proof.
-  apply/andP/orP. 
-  - move => /= [Hxy]. 
+  apply/andP/idP.
+  - move => /= [Hxy]. rewrite /sk_rel /= Hxy eq_sym Hxy /=.
+    rewrite /adjacent. 
 Admitted.
 
 
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
+Definition CK4F (G : graph2) := 
+  connected [set: skeleton G] /\ K4_free (sskeleton G).
+
 Definition components (G : graph) (H : {set G}) : {set {set G}} := 
   equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H.
 
 (** This is one fundamental property underlying the term extraction *)
 Lemma split_K4_nontrivial (G : graph2) : 
-  g_in != g_out :> G -> lens G -> ~~ @adjacent G g_in g_out -> K4_free (sskeleton G) -> 
-  connected [set: skeleton G] -> 
+  g_in != g_out :> G -> 
+  lens G -> 
+  ~~ @adjacent G g_in g_out -> 
+  CK4F G ->
   1 < #|components (@sinterval (skeleton G) g_in g_out)|.
 Proof.
-  move => A B C D E. 
-  (* rewrite /split_par size_map -cardE. apply/equivalence_partition_gt1P.  *)
-  (* - move => x y z _ _ _.  exact: (sedge_in_equiv (G := skeleton G)). *)
-  (* - set H := sinterval _ _. apply/(@connected2 (skeleton G)).  *)
-  (*   apply: ssplit_K4_nontrivial => //.  *)
-  (*   + by rewrite -adjacentE A. *)
-  (*   + by case/and3P : B.  *)
-Admitted.
+  move => A B C [D E]. 
+  apply/equivalence_partition_gt1P.
+  - move => x y z _ _ _.  exact: (sedge_in_equiv (G := skeleton G)).
+  - set H := sinterval _ _. apply/(@connected2 (skeleton G)).
+    apply: ssplit_K4_nontrivial => //.
+    + by rewrite -adjacentE A.
+    + by case/and3P : B.
+    + apply/eqP. by  case/and3P : B.
+Qed.
 
 (* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
 parts do not have non-trivial splits *)
 
-Fixpoint pairs (T : Type) (x : T) (s : seq T) := 
-  if s is y::s' then (x,y) :: pairs y s' else nil.
+Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) := 
+  if s isn't x::s' then [::] 
+  else if s' is y :: s'' then (x,y):: pairs s' else [::].
+
+Eval simpl in pairs [:: 1].
+Eval simpl in pairs [:: 1;2].
+Eval simpl in pairs [:: 1;2;3].
+Eval simpl in pairs [:: 1;2;3;4].
+
+(* Fixpoint pairs (T : Type) (x : T) (s : seq T) :=  *)
+(*   if s is y::s' then (x,y) :: pairs y s' else nil. *)
 
 (** list of checkpoint bewteen x and y (excluding x) *)
 (* NOTE: see insub in eqtype.v *)
+(* TOTHINK: this actually does include both x and y *)
 Definition checkpoint_seq (G : graph) (x y : G) := 
   if @idP (connect (@sedge (skeleton G)) x y) isn't ReflectT con_xy then [::]
   else sort (cpo con_xy) (enum (@cp (skeleton G) x y)).
 
-Notation IO := ([set g_in; g_out]).
-
-Definition check_point_term (t : graph2 -> term) (G : graph2) (x y : G) :=
-  let c := checkpoint_seq x y in
-  tmS (t (pgraph IO x)) 
-      (\big[tmS/tm1]_(p <- pairs x c) tmS (t(igraph p.1 p.2)) (t(pgraph IO p.2))).
-
-Definition check_point_wf (F1 F2 : graph2 -> term) (G : graph2) (x y : G) : 
-  g_in != g_out :> G ->
-  ~~ lens G -> 
-  (forall H : graph2, connected [set: skeleton H] /\ K4_free (sskeleton H) -> 
-        measure H < measure G -> F1 H = F2 H) -> 
-  check_point_term F1 x y = check_point_term F2 x y.
-Admitted.
-
-
-
 Notation "u :||: v" := (tmI u v) (at level 35).
 Notation "u :o: v" := (tmS u v) (at level 33).
 
-Definition remove_io (G : graph2) : graph2.
-Admitted.
+Definition check_point_term (t : graph2 -> term) (G : graph2) :=
+  let (i,o) := (g_in : G, g_out : G) in
+  let c := checkpoint_seq i o in
+  t (pgraph IO i) :o: 
+  \big[tmS/tm1]_(p <- pairs c) (t(igraph p.1 p.2) :o: t(pgraph IO p.2)).
 
-(** subgraph induced by [i |: H] without i-selfloops and with outpur set
-to [o] *)
 Fact redirect_proof1 (T : finType) x (A : {set T}) : x \in x |: A. 
 Proof. by rewrite !inE eqxx. Qed.
 Arguments redirect_proof1 [T x A].
@@ -167,6 +182,8 @@ Fact redirect_proof2 (T : finType) x y (B : {set T}) : x \in y |: (x |: B).
 Admitted.
 Arguments redirect_proof2 [T x y B].
 
+(** subgraph induced by [i |: H] without i-selfloops and with output set
+to [o] *)
 Definition redirect_to (G : graph2) (H : {set G}) (o:G) :=
   @point (@induced (@remove_edges G (edges g_in g_in)) (g_in |: (o |: H)))
          (Sub g_in (setU11 _ _))
@@ -174,7 +191,6 @@ Definition redirect_to (G : graph2) (H : {set G}) (o:G) :=
 
 (** subgraph induced by [i |: H] without i-selfloops and with [o] set
 to some neighbor of [i] in H *)
-
 Definition redirect (G : graph2) (H : {set G}) : graph2 :=
   if [pick z in H | adjacent g_in z] isn't Some z then one2 
   else redirect_to H z.
@@ -203,13 +219,32 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let P := components (@sinterval (skeleton G) g_in g_out) in
       big_tmI ([seq term_of (component C) | C in P] ++ tmEs G)
     else (* at least one nontrivial petal or checkpoint *)
-      @check_point_term term_of G g_in g_out.
+      @check_point_term term_of G.
 
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
-Definition CK4F (G : graph2) := 
-  connected [set: skeleton G] /\ K4_free (sskeleton G).
+Definition check_point_wf (f g : graph2 -> term) (G : graph2) : 
+  CK4F G -> 
+  g_in != g_out :> G ->
+  ~~ lens G -> 
+  (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) -> 
+  check_point_term f G = check_point_term g G.
+Proof. 
+  move => [G_conn G_K4F] Dio not_lens Efg.
+  congr tmS.
+  - apply: Efg.
+    + admit.
+    + apply: (measure_node (v := g_out)) => //. admit.
+  - (* All pairs are edges in CP({i,o}), so all involved subgraphs are CK4F.
+       All petals are smaller since none can contain both i and o.
+       For the measure there are two cases: 
+       - z first proper checkpoint between x and y:
+         Then y is not in the first interval and x is in none of the others:
+       - no proper checkpoints between x and y:
+         then one of the two petals contains a node z other than i or o.
+         z is not in the interval. *)
+Admitted.
 
 Lemma CK4F_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->

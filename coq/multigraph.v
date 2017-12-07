@@ -134,9 +134,8 @@ Definition edge_set (G:graph) (S : {set G}) :=
 Definition induced_proof (G:graph) (S : {set G}) : consistent S (edge_set S).
 Proof. move => e. by rewrite inE => /andP. Qed.
 
-(* TOTHINK: Normalize or not? *)
 Definition induced (G:graph) (S : {set G}) := 
-  Eval hnf in subgraph_for (@induced_proof G S).
+  subgraph_for (@induced_proof G S).
 
 Lemma induced_sub (G:graph) (S : {set G}) : subgraph (induced S) G.
 Proof. exact: subgraph_sub. Qed.

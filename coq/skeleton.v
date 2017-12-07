@@ -133,14 +133,50 @@ Fact intervalR (G : sgraph) (x y : G) :
   y \in interval x y.
 Proof. by rewrite !inE eqxx !orbT. Qed.
 
-Definition igraph (G : graph) (x y : skeleton G) := 
-  @point (induced (interval x y)) 
-         (Sub x (intervalL x y)) 
+Definition remove_edges (G : graph) (E : {set edge G}) := 
+  {| vertex := G;
+     edge := [finType of { e : edge G | e \notin E }];
+     source e := source (val e);
+     target e := target (val e);
+     label e := label (val e) |}.
+
+Definition edges (G : graph) (x y : G) := 
+  [set e : edge G | (source e == x) && (target e == y)].
+
+Coercion skeleton : graph >-> sgraph.
+
+Lemma igraph_proof (G : graph) (x y : skeleton G) :
+  consistent (interval x y) 
+             (edge_set (interval x y) :\: (edges x x :|: edges y y)).
+Admitted.
+
+Definition igraph (G : graph) (x y : skeleton G) :=
+  @point (subgraph_for (@igraph_proof G x y))
+         (Sub x (intervalL x y))
          (Sub y (intervalR x y)).
-
-
 
 Definition pgraph (G : graph) (U : {set G}) (x:G) :=
   @point (induced (@petal (skeleton G) U x))
          (Sub x (@petal_id (skeleton G) U x))
          (Sub x (@petal_id (skeleton G) U x)).
+
+Lemma edge_part (G : graph) (U : {set skeleton G}) (x y z : skeleton G) :
+  x \in CP U -> y \in CP U -> z \in CP U -> checkpoint.link_rel _ x y ->
+  [disjoint val @: [set: edge (pgraph U z)] & 
+            val @: [set: edge (igraph x y)]].
+Proof.
+  move => cp_x cp_y cp_z xy.
+  (* Assume e is some edge in G[x,y] and G[z]. Then, both [source e]
+     and [target e] are in [[x,y]] ∩ [[z]]_U. Thus z is either x or y
+     and e is either an xx-edge or an yy-edge. This contradicts that e
+     is an G[x,y] edge. *)
+Admitted.
+
+Lemma has_edge (G : graph) (x y : G) : 
+  connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
+Admitted.
+
+(* Is this the most general type? *)
+Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
+  #|val @: A| = #|A|.
+Proof. rewrite card_imset //. exact: val_inj. Qed.
