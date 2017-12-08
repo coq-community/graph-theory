@@ -1,6 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries sgraph minor checkpoint skeleton. 
+(* TODO: This file should not depend on skeleton.v - move relevant lemmas *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.

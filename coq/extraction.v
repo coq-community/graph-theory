@@ -96,7 +96,6 @@ Admitted.
 
 Notation IO := ([set g_in; g_out]).
 
-
 Definition lens (G : graph2) := 
   [&& @petal G IO g_in  == [set g_in ],
       @petal G IO g_out == [set g_out]&
@@ -130,17 +129,23 @@ Proof.
     + apply/eqP. by  case/and3P : B.
 Qed.
 
-(* TOTHINK: do we need [split_par] to be maximal, i.e., such that the
-parts do not have non-trivial splits *)
-
 Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) := 
   if s isn't x::s' then [::] 
   else if s' is y :: s'' then (x,y):: pairs s' else [::].
 
 Eval simpl in pairs [:: 1].
 Eval simpl in pairs [:: 1;2].
-Eval simpl in pairs [:: 1;2;3].
 Eval simpl in pairs [:: 1;2;3;4].
+
+Lemma pairs_cons (T : Type) a b (s : seq T) : 
+  pairs [:: a, b & s] = (a,b) :: pairs (b :: s).
+Proof. done. Qed.
+
+(* TOTHINK: this does not look easy to used *)
+Lemma pairs_cat (T : Type) a1 a2 (s1 s2 : seq T) : 
+  pairs (rcons s1 a1 ++ a2 :: s2) = 
+  pairs (rcons s1 a1) ++ (a1,a2) :: pairs (a2 :: s2).
+Admitted.
 
 (* Fixpoint pairs (T : Type) (x : T) (s : seq T) :=  *)
 (*   if s is y::s' then (x,y) :: pairs y s' else nil. *)
@@ -165,13 +170,12 @@ Fact redirect_proof1 (T : finType) x (A : {set T}) : x \in x |: A.
 Proof. by rewrite !inE eqxx. Qed.
 Arguments redirect_proof1 [T x A].
 
-
 (** subgraph induced by [i |: H] without i-selfloops and with output set
 to [o] *)
 Lemma redirect_consistent (G : graph2) (H : {set G}) (o : G) : 
   let H' := g_in |: (o |: H) in 
   consistent H' (edge_set H' :\: edges g_in g_in).
-Admitted.
+Proof. apply: consistent_setD. exact: induced_proof. Qed.
 
 Fact redirect_output_proof (T : finType) x y (B : {set T}) : x \in y |: (x |: B). 
 Proof. by rewrite !inE eqxx. Qed.
@@ -216,6 +220,13 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
 
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
+
+(** All pairs in the checkpoint sequence are adjacent in CP({i,o}) *)
+Lemma cp_pairs_edge (G : graph) (i o x y : G) : 
+  (x,y) \in pairs (checkpoint_seq i o) -> 
+  exists (px : x \in @CP G [set i;o]) (py : y \in @CP G [set i;o]), 
+    (Sub x px : @CP_ G [set i;o]) -- (Sub y py).
+Admitted.
 
 Definition check_point_wf (f g : graph2 -> term) (G : graph2) : 
   CK4F G -> 

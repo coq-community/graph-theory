@@ -187,9 +187,24 @@ Proof.
      is an G[x,y] edge. *)
 Admitted.
 
+(** ** Connecting Multigraphs and their Skeletons *)
+
+Lemma connected_interval (G : sgraph) (x y : G) : 
+  connected [set: G] -> connected (interval x y).
+Admitted.
+
 Lemma has_edge (G : graph) (x y : G) : 
   connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
-Admitted.
+Proof.
+  move/connectedTE/(_ x y). case/uPathP => p _ xy. 
+  case: (splitL p xy) => x' [/= xx'] _. 
+  apply/card_gt0P. rewrite /sk_rel /= in xx'. 
+  case/orP : xx' => /andP [_ /existsP [e _]]; by exists e. 
+Qed.
+
+Lemma consistent_setD (G : graph) V E E' : 
+  @consistent G V E -> consistent V (E :\: E').
+Proof. move => con_E e /setDP [? _]. exact: con_E. Qed.
 
 (* Is this the most general type? *)
 Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
@@ -219,10 +234,10 @@ Lemma connected_igraph (G : graph2) (x y: G) :
   connected [set: skeleton G] -> 
   connected [set: skeleton (igraph x y)].
 Proof.
-  move/connectedTE => conn_G.
-  apply: connected_skeleton => //. 
-  + admit. (* intervals are connected *)
+  move => conn_G.
+  apply: connected_skeleton.
+  + exact: connected_interval.
   + move => e E1 E2. rewrite 4!inE E1 andbT negb_or. apply/andP;split.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
-Admitted.
+Qed.
