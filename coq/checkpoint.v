@@ -270,8 +270,27 @@ Section CheckPoints.
       subst v. by rewrite sinterval_bounds in v_Ixy.
   Qed.
 
-
   Definition interval x y := [set x;y] :|: sinterval x y.
+
+  (* TODO: This should be done earlier *)
+  Lemma symmetric_resrict_sedge (A : pred G) : 
+    symmetric (restrict A sedge).
+  Proof. apply: symmetric_restrict. exact: sg_sym. Qed.
+  Hint Resolve symmetric_resrict_sedge.
+
+  Lemma connected_interval (x y : G) : 
+    connected (interval x y).
+  Proof.
+    suff conn_y z : 
+      z \in interval x y -> connect (restrict (mem (interval x y)) sedge) z y.
+    { move => u v /conn_y Hu /conn_y Hv. 
+      apply: connect_trans Hu _. by rewrite connect_symI. }
+    (* if z != x, take an x-avoiding zy-path. 
+       this path cannot leave ]]x;y[[ by [sinterval_exit]
+       if z = x, take any irredundant path. 
+       After splitting off [x], we're in the previous case *)
+  Admitted.
+
 
   Definition petal (U : {set G}) x :=
     locked [set z | [forall y in CP U, x \in cp z y]].

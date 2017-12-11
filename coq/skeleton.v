@@ -117,6 +117,24 @@ Proof.
   exact: sub_minor (skel_sub _).  
 Qed.
 
+(** Bridging Lemmas *)
+
+Definition edges (G : graph) (x y : G) := 
+  [set e : edge G | (source e == x) && (target e == y)].
+
+Definition adjacent (G : graph) (x y : G) := 
+  [exists e, e \in edges x y] || [exists e, e \in edges y x].
+
+Lemma adjacentE (G : graph) (x y : skeleton G) : 
+  (x != y) && adjacent x y = x -- y.
+Proof.
+  apply/andP/idP.
+  - move => /= [Hxy]. rewrite /sk_rel /= Hxy eq_sym Hxy /=.
+    rewrite /adjacent. 
+Admitted.
+
+
+
 (** ** Intervals and Petals *)
 
 (** TOTHINK: define intervals and petals on graph or sgraph, i.e.,
@@ -133,14 +151,89 @@ Fact intervalR (G : sgraph) (x y : G) :
   y \in interval x y.
 Proof. by rewrite !inE eqxx !orbT. Qed.
 
-Definition igraph (G : graph) (x y : skeleton G) := 
-  @point (induced (interval x y)) 
-         (Sub x (intervalL x y)) 
+Definition remove_edges (G : graph) (E : {set edge G}) := 
+  {| vertex := G;
+     edge := [finType of { e : edge G | e \notin E }];
+     source e := source (val e);
+     target e := target (val e);
+     label e := label (val e) |}.
+
+Coercion skeleton : graph >-> sgraph.
+
+Lemma igraph_proof (G : graph) (x y : skeleton G) :
+  consistent (interval x y) 
+             (edge_set (interval x y) :\: (edges x x :|: edges y y)).
+Admitted.
+
+Definition igraph (G : graph) (x y : skeleton G) :=
+  @point (subgraph_for (@igraph_proof G x y))
+         (Sub x (intervalL x y))
          (Sub y (intervalR x y)).
-
-
 
 Definition pgraph (G : graph) (U : {set G}) (x:G) :=
   @point (induced (@petal (skeleton G) U x))
          (Sub x (@petal_id (skeleton G) U x))
          (Sub x (@petal_id (skeleton G) U x)).
+
+Lemma edge_part (G : graph) (U : {set skeleton G}) (x y z : skeleton G) :
+  x \in CP U -> y \in CP U -> z \in CP U -> checkpoint.link_rel _ x y ->
+  [disjoint val @: [set: edge (pgraph U z)] & 
+            val @: [set: edge (igraph x y)]].
+Proof.
+  move => cp_x cp_y cp_z xy.
+  (* Assume e is some edge in G[x,y] and G[z]. Then, both [source e]
+     and [target e] are in [[x,y]] ∩ [[z]]_U. Thus z is either x or y
+     and e is either an xx-edge or an yy-edge. This contradicts that e
+     is an G[x,y] edge. *)
+Admitted.
+
+(** ** Connecting Multigraphs and their Skeletons *)
+
+Lemma has_edge (G : graph) (x y : G) : 
+  connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
+Proof.
+  move/connectedTE/(_ x y). case/uPathP => p _ xy. 
+  case: (splitL p xy) => x' [/= xx'] _. 
+  apply/card_gt0P. rewrite /sk_rel /= in xx'. 
+  case/orP : xx' => /andP [_ /existsP [e _]]; by exists e. 
+Qed.
+
+Lemma consistent_setD (G : graph) V E E' : 
+  @consistent G V E -> consistent V (E :\: E').
+Proof. move => con_E e /setDP [? _]. exact: con_E. Qed.
+
+(* Is this the most general type? *)
+Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
+  #|val @: A| = #|A|.
+Proof. rewrite card_imset //. exact: val_inj. Qed.
+
+(* lifting connectedness from the skeleton *)
+Lemma connected_skeleton (G : graph) V E (con : @consistent G V E) : 
+  @connected (skeleton G) V -> 
+  (forall e, e \in edge_set V -> source e != target e -> e \in E) ->
+  connected [set: skeleton (subgraph_for con)].
+Proof.
+  move => conn_V all_edges. 
+  move => x y xV yV. move: (conn_V _ _ (valP x) (valP y)). 
+  (* ... *)
+Admitted.
+
+Lemma connected_pgraph (G : graph2) (U : {set G}) (x : G) : 
+  connected [set: skeleton G] -> x \in @CP G U -> 
+  connected [set: skeleton (pgraph U x)].
+Proof.
+  move/connectedTE => conn_G cp_x.
+  apply: connected_skeleton => //. exact: connected_petal.
+Qed.
+
+Lemma connected_igraph (G : graph2) (x y: G) : 
+  connected [set: skeleton G] -> 
+  connected [set: skeleton (igraph x y)].
+Proof.
+  move => /connectedTE conn_G.
+  apply: connected_skeleton.
+  + exact: connected_interval.
+  + move => e E1 E2. rewrite 4!inE E1 andbT negb_or. apply/andP;split.
+    * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
+    * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
+Qed.
