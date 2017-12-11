@@ -189,10 +189,6 @@ Admitted.
 
 (** ** Connecting Multigraphs and their Skeletons *)
 
-Lemma connected_interval (G : sgraph) (x y : G) : 
-  connected [set: G] -> connected (interval x y).
-Admitted.
-
 Lemma has_edge (G : graph) (x y : G) : 
   connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
 Proof.
@@ -234,7 +230,7 @@ Lemma connected_igraph (G : graph2) (x y: G) :
   connected [set: skeleton G] -> 
   connected [set: skeleton (igraph x y)].
 Proof.
-  move => conn_G.
+  move => /connectedTE conn_G.
   apply: connected_skeleton.
   + exact: connected_interval.
   + move => e E1 E2. rewrite 4!inE E1 andbT negb_or. apply/andP;split.
