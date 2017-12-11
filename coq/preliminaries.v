@@ -34,6 +34,9 @@ Lemma Some_eqE (T : eqType) (x y : T) :
   (Some x == Some y) = (x == y).
 Proof. by apply/eqP/eqP => [[//]|->]. Qed.
 
+Lemma inj_omap T1 T2 (f : T1 -> T2) : injective f -> injective (omap f).
+Proof. by move=> f_inj [x1|] [x2|] //= []/f_inj->. Qed.
+
 Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
 Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
 Definition ord3 {n : nat} : 'I_n.+4 := Ordinal (isT : 3 < n.+4).
@@ -437,6 +440,14 @@ Proof.
 Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj.
+
+(** *** Set image *)
+Lemma inj_imset (aT rT : finType) (f : aT -> rT) (A : {set aT}) (x : aT) :
+  injective f -> (f x \in f @: A) = (x \in A).
+Proof.
+  move=> f_inj; apply/imsetP/idP;
+  [by case=> [y] ? /f_inj-> | by move=> ?; exists x].
+Qed.
 
 (** *** Replacement for partial functions *)
 
