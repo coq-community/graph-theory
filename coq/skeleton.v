@@ -219,7 +219,7 @@ Proof.
 Admitted.
 
 Lemma connected_pgraph (G : graph2) (U : {set G}) (x : G) : 
-  connected [set: skeleton G] -> x \in @CP G U -> 
+  connected [set: skeleton G] -> x \in @CP (skeleton G) U -> 
   connected [set: skeleton (pgraph U x)].
 Proof.
   move/connectedTE => conn_G cp_x.

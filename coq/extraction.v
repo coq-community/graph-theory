@@ -31,17 +31,7 @@ Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
 Proof. by []. Qed.
 Arguments consistentT [G] E.
 
-
-
-(* not used - should not change vertex type *)
-Definition remove_edges2 (G : graph2) (E : {set edge G}) :=
-  @point (subgraph_for (consistentT (~:E))) 
-         (Sub g_in (in_setT _)) 
-         (Sub g_in (in_setT _)).
-
-
 (** * Term Extraction *)
-
 
 (** ** Termination Metric *)
 
@@ -73,24 +63,29 @@ Proof.
   do 2 case: (g_in == g_out) => //=; somega.
 Qed.
 
-(* TODO: proper name? *)
 Lemma measure_subgraph (G : graph2) V E (con : @consistent G V E) x y e : 
   e \notin E -> measure (@point (subgraph_for con) x y) < measure G.
-Proof.
-  (* [subgraph_for] does not invent edges *)
-Admitted.
+Proof. 
+  move => He. apply: measure_card. rewrite card_sig. 
+  apply: proper_card. apply/properP. split; by [exact/subsetP| exists e].
+Qed.
 
 Lemma measure_node (G : graph2) V E (con : @consistent G V E) v x y : 
   connected [set: skeleton G] -> 
   v \notin V -> measure (@point (subgraph_for con) x y) < measure G.
 Proof.
-  (* v is a node in a connected graph different from x (and y)
-     Hence, v has some adjacent edge that cannot be in the (V,E) subgraph 
-     use previous lemma *)
-Admitted.
-
-
-  
+  move => /connectedTE conn_G Hv. 
+  case/uPathP : (conn_G v (val x)) => p _. 
+  have vx: v != val x. { apply: contraNN Hv => /eqP->. exact: valP. }
+  case: (splitL p vx) => u [vu] _ {p vx}. rewrite -adjacentE in vu.
+  case/andP: vu => _ /orP[] [/existsP [e He]].
+  - refine (@measure_subgraph _ _ _ _ _ _ e _). 
+    apply: contraNN Hv. move/con => [Hs Ht]. 
+    move: He. by rewrite inE => /andP[/eqP<- _].
+  - refine (@measure_subgraph _ _ _ _ _ _ e _). 
+    apply: contraNN Hv. move/con => [Hs Ht]. 
+    move: He. by rewrite inE => /andP[_ /eqP<-].
+Qed.
 
 (** ** Subroutines *)
 
@@ -99,8 +94,7 @@ Notation IO := ([set g_in; g_out]).
 Definition lens (G : graph2) := 
   [&& @petal G IO g_in  == [set g_in ],
       @petal G IO g_out == [set g_out]&
-      @link_rel G g_in g_out].
-
+      @link_rel (skeleton G) g_in g_out].
 
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
@@ -111,7 +105,8 @@ Definition CK4F (G : graph2) :=
 Definition components (G : graph) (H : {set G}) : {set {set G}} := 
   equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H.
 
-(** This is one fundamental property underlying the term extraction *)
+(** If G is a lens with non non-adjacent input and output, then it has
+at least two parallel components *)
 Lemma split_K4_nontrivial (G : graph2) : 
   g_in != g_out :> G -> 
   lens G -> 
@@ -121,12 +116,12 @@ Lemma split_K4_nontrivial (G : graph2) :
 Proof.
   move => A B C [D E]. 
   apply/equivalence_partition_gt1P.
-  - move => x y z _ _ _.  exact: (sedge_in_equiv (G := skeleton G)).
+  - move => x y z _ _ _. exact: (sedge_in_equiv (G := skeleton G)).
   - set H := sinterval _ _. apply/(@connected2 (skeleton G)).
     apply: ssplit_K4_nontrivial => //.
     + by rewrite -adjacentE A.
     + by case/and3P : B.
-    + apply/eqP. by  case/and3P : B.
+    + apply/eqP. by case/and3P : B => ? _ _.
 Qed.
 
 Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) := 
@@ -193,12 +188,21 @@ Definition redirect (G : graph2) (H : {set G}) : graph2 :=
   else redirect_to H z.
 
 Definition big_tmI : seq term -> term.
+Admitted. (* TODO: use folrd1 and prove the right lemmas about it *)
+
+Lemma component_consistent (G : graph2) (H : {set G}) : 
+  @consistent G (g_in |: (g_out |: H)) 
+                (edge_set H :\: edges g_in g_out :\: edges g_out g_in).
 Admitted.
 
-(* graph induced by [{i,o} ∪ H] without io-edges *) 
-Definition component (G : graph2) (H : {set G}) : graph2.
-Admitted.
+Definition component (G : graph2) (H : {set G}) : graph2 := 
+  @point (subgraph_for (@component_consistent G H))
+         (Sub g_in (setU11 _ _))
+         (Sub g_out (redirect_output_proof)).
 
+(** Possibly empty sequence of (trivial) terms corresponding to direct
+i-o edges. Yields nonempty parallel composition when concatenated with
+the terms for the i-o components *)
 Definition tmEs (G : graph2) : seq term := 
   [seq tmA (label e) | e in @edges G g_in g_out] ++
   [seq tmC (tmA (label e)) | e in @edges G g_out g_in].
@@ -218,7 +222,6 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
     else (* at least one nontrivial petal or checkpoint *)
       @check_point_term term_of G.
 
-
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
 (** All pairs in the checkpoint sequence are adjacent in CP({i,o}) *)
@@ -228,6 +231,42 @@ Lemma cp_pairs_edge (G : graph) (i o x y : G) :
     (Sub x px : @CP_ G [set i;o]) -- (Sub y py).
 Admitted.
 
+Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) : 
+  CK4F G -> x -- y -> CK4F (igraph (val x) (val y)).
+Admitted.
+
+Lemma rec_petal (G : graph2) (x : G) : 
+  CK4F G -> x \in @CP (skeleton G) IO -> 
+  CK4F (pgraph IO x) /\ measure (pgraph IO x) < measure G.
+Proof.
+  move => cp_x. split.
+  - (* the (strong) skeleton of [pgraph IO x] is a subgraph 
+       of the (strong) skeleton of G - how to resolve "(strong)" *) admit.
+  - (* either [g_in] or [g_out] is not in [pgraph IO x] *)
+    (* apply: (measure_node (v := g_out)) => //. *) admit. 
+Admitted.
+
+Lemma cp_pairs_measure (G : graph2) x y :
+  CK4F G -> ~~ lens G -> (x,y) \in pairs (@checkpoint_seq G g_in g_out) ->
+  measure (igraph x y) < measure G.
+Proof.
+  move => CK4F_G no_lens pair_xy. 
+  suff [z Hz] : exists z, z \notin interval x y. 
+  { apply: measure_node Hz. by apply CK4F_G. }
+  (* Either there exists a third checkpoint (that is not in the
+  interval) or one of the petals is nontrivial since G is not a
+  lens *)
+Admitted.
+
+Lemma cp_pairs_CK4G (G : graph2) (x y : G) :
+  CK4F G -> ~~ lens G -> (x,y) \in pairs (@checkpoint_seq G g_in g_out) ->
+  CK4F (igraph x y).
+Proof.
+  move => [G_conn G_K4F] ? Hxy.
+  move/cp_pairs_edge : (Hxy) => [px] [py] link_xy. 
+  exact: CK4F_link link_xy. 
+Qed.
+                           
 Definition check_point_wf (f g : graph2 -> term) (G : graph2) : 
   CK4F G -> 
   g_in != g_out :> G ->
@@ -236,19 +275,12 @@ Definition check_point_wf (f g : graph2 -> term) (G : graph2) :
   check_point_term f G = check_point_term g G.
 Proof. 
   move => [G_conn G_K4F] Dio not_lens Efg.
-  congr tmS.
-  - apply: Efg.
-    + admit.
-    + apply: (measure_node (v := g_out)) => //. admit.
-  - (* All pairs are edges in CP({i,o}), so all involved subgraphs are CK4F.
-       All petals are smaller since none can contain both i and o.
-       For the measure there are two cases: 
-       - z first proper checkpoint between x and y:
-         Then y is not in the first interval and x is in none of the others:
-       - no proper checkpoints between x and y:
-         then one of the two petals contains a node z other than i or o.
-         z is not in the interval. *)
-Admitted.
+  congr tmS. 
+  - apply: Efg; apply rec_petal => // ; apply: CP_extensive; by rewrite !inE eqxx.
+  - apply: eq_big_seq => [[x y] Hxy /=]. congr tmS. 
+    + apply: Efg; by [apply: cp_pairs_CK4G|apply: cp_pairs_measure].
+    + move/cp_pairs_edge : Hxy => [px] [py] _. by apply: Efg; apply rec_petal.
+Qed.
 
 Lemma CK4F_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
@@ -256,7 +288,6 @@ Lemma CK4F_redirect (G : graph2) C :
 Proof.
   split. 
   - rewrite /redirect. case: pickP. 
-
 Admitted. (* Follows with proposition 21(iii) *)
 
 Lemma measure_redirect (G : graph2) C : 
@@ -268,14 +299,14 @@ Proof.
 Admitted. 
 
 Lemma CK4F_lens (G : graph2) C : 
-  lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
   CK4F (component C).
 Proof.
   (* Follows since all components are subgraphs of G (with same input and output *)
-Admitted. 
+Admitted.
 
 Lemma measure_lens (G : graph2) C : 
-  lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
   measure (component C) < measure G.
 Proof. 
   (* By case distinction on [#|P|] where [P := components _]
