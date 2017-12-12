@@ -112,6 +112,18 @@ Section CheckPoints.
     by rewrite mem_path !inE (negbTE tNz) (disjointFr C E).
   Qed.
 
+  Lemma cp_widenR (x y u v : G) :
+    u \in cp x y -> v \in cp x u -> v \in cp x y.
+  Abort.
+
+  Lemma cp_widen (i o x y z : G) :
+    x \in cp i o -> y \in cp i o -> z \in cp x y -> z \in cp i o.
+  Proof.
+    move => A B C. 
+  (* TOTHINK: is there a simpler proof than splitting an io-path at x
+  and y? *)
+  Admitted.
+
   (** ** CP Closure Operator *)
 
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
@@ -843,6 +855,10 @@ Section CheckpointOrder.
   Lemma cpo_order (x y : G) p : x \in cp i o -> y \in cp i o -> upath i o p -> 
     cpo x y = (index x (i::p) <= index y (i::p)).
     move => cp_x cp_y pth_p. rewrite /cpo. 
+  Admitted.
+
+  Lemma cpo_cp x y z : 
+    x \in cp i o -> y \in cp i o -> z \in cp x y = cpo x z && cpo z y.  
   Admitted.
 
 End CheckpointOrder.
