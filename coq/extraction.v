@@ -12,6 +12,8 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs". 
 
+Arguments point : clear implicits.
+
 Definition dom t := tmI (tmS t tmT) tm1.
 
 (* TODO: resolve this name clash *)
@@ -261,19 +263,79 @@ Proof.
   - rewrite restrictE // in conn_io'. by move => u;rewrite !inE.
 Qed.
 
-Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) : 
-  CK4F G -> x -- y -> CK4F (igraph (val x) (val y)).
+Lemma connected_interval (G : sgraph) (x y : G) :
+      connected [set: G] -> connected (interval x y).
 Admitted.
 
+Notation sigraph := cp_minor.igraph.
+Lemma sskeleton_add (G : graph) (x y : G) : 
+  minor (add_edge (sigraph G x y) istart iend)
+        (sskeleton (igraph x y)).
+Proof.
+  apply: strict_is_minor. exists id. split. 
+  - by move => u; exists u. 
+  - move => u. admit.
+  - move => u v uv. exists u; exists v. split; rewrite ?inE ?eqxx //.
+    move: uv => /=. admit. (* what exactly is going on here? *)
+Admitted.
+
+Lemma sigraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
+  K4_free (add_edge G i o) -> x -- y ->
+  K4_free (add_edge (sigraph G (val x) (val y)) istart iend).  
+Admitted.
+
+Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) : 
+  CK4F G -> x -- y -> CK4F (igraph (val x) (val y)).
+Proof.
+  move => [conn_G K4F_G] xy. 
+  split; first exact: connected_igraph.
+  apply: minor_K4_free (sskeleton_add _ _) _.
+  exact: sigraph_K4_free. 
+Qed.
+
+Lemma minor_pointxx (G : graph) (V : {set G})  x :
+  minor (skeleton (induced V))
+        (sskeleton (point (induced V) x x)).
+Proof.
+Admitted.
+
+Lemma minor_skeleton (G : graph2) :
+  minor (sskeleton G) (skeleton G).
+Admitted.
+
+
+Lemma CK4F_sub (G : graph2) (V : {set G})  x : 
+  @connected G V -> CK4F G -> CK4F (point (induced V) x x).
+Proof. 
+  move => conV CK4F_G. split. 
+  - rewrite /=. (* Lemma ? *) admit.
+  - apply: minor_K4_free (minor_pointxx _) _.
+    apply: (@minor_K4_free (sskeleton G)); last apply CK4F_G.
+    apply: minor_trans (minor_skeleton _) _.
+    apply: sub_minor. (* Lemma *) admit.
+Admitted.
+
+Lemma petal_cp (G : sgraph) (U : {set G}) x y : 
+  connected [set: G] ->
+  x \in CP U -> y \in CP U -> x \in petal U y = (x == y).
+Proof. 
+  move => conn_G cp_x cp_y. 
+  apply/idP/idP => [|/eqP <-]; last exact: petal_id.
+  apply: contraTT => xy. 
+Admitted.
+  
+
 Lemma rec_petal (G : graph2) (x : G) : 
-  CK4F G -> x \in @CP (skeleton G) IO -> 
+  CK4F G -> x \in @CP (skeleton G) IO -> g_in != g_out :> G ->
   CK4F (pgraph IO x) /\ measure (pgraph IO x) < measure G.
 Proof.
-  move => cp_x. split.
-  - (* the (strong) skeleton of [pgraph IO x] is a subgraph 
-       of the (strong) skeleton of G - how to resolve "(strong)" *) admit.
-  - (* either [g_in] or [g_out] is not in [pgraph IO x] *)
-    (* apply: (measure_node (v := g_out)) => //. *) admit. 
+  move => [conn_G K4F_G] cp_x Dio. split. 
+  - apply: CK4F_sub => //. apply: connected_petal => //. admit.
+  - suff: (g_in \notin @petal G IO x) || (g_out \notin @petal G IO x).
+    { by case/orP; exact: measure_node. }
+    rewrite -negb_and. apply:contraNN Dio => /andP[].
+    rewrite !(petal_cp conn_G) // => [/eqP-> /eqP-> //||]; 
+      by apply CP_extensive; rewrite !inE eqxx.
 Admitted.
 
 Lemma cp_pairs_measure (G : graph2) x y :

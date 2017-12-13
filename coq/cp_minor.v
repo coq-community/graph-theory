@@ -526,10 +526,6 @@ Proof.
     by split; rewrite // -mem_preim.
 Admitted.
 
-Arguments add_edge : default implicits.
-Arguments istart : default implicits.
-Arguments iend : default implicits.
-
 
 Lemma connected2 (G : sgraph) (D : {set G}) : 
   (~ connected D) <-> 
@@ -538,13 +534,13 @@ Admitted.
 
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
-  ~~ i -- o -> link_rel G i o -> K4_free (add_edge i o) -> 
+  ~~ i -- o -> link_rel G i o -> K4_free (add_edge G i o) -> 
   petal [set i;o] i = [set i] ->
   connected [set: G] -> ~ connected (sinterval i o).
 Proof.
   move => /= io1 /andP [io2 io3] K4F petal_i conn_G. 
-  pose G' := @sgraph.induced (add_edge i o) [set~ i].
-  set H := add_edge i o in K4F *.
+  pose G' := @sgraph.induced (add_edge G i o) [set~ i].
+  set H := add_edge G i o in K4F *.
   set U := o |: neighbours i.
   have Ho : o \in [set~ i] by rewrite !inE eq_sym.
   pose o' : G' := Sub o Ho.
