@@ -343,136 +343,187 @@ Arguments igraph : clear implicits.
 Arguments istart {G x y}.
 Arguments iend {G x y}.
 
-Lemma K4F_intvl_CPedge (G : sgraph) (U : {set G}) :
+Lemma igraph_K4F (G : sgraph) (i o x y : G) :
   (forall x y : G, connect sedge x y) ->
-  forall H, minor H (add_node G U) -> K4_free H ->
-  forall x y : CP_ U, x -- y ->
-  K4_free (add_edge (igraph G (val x) (val y)) istart iend).
+  x \in cp i o -> y \in cp i o -> (x : link_graph G) -- y ->
+  K4_free (add_edge G i o) ->
+  K4_free (add_edge (igraph G x y) istart iend).
 Proof.
-  move=> G_conn H H_min_GU H_K4F.
-  have {H H_min_GU H_K4F} : K4_free (add_node G U).
-    by exact: minor_K4_free H_K4F.
-  set H := add_node G U => H_K4F x' y' xy.
-  have CP_tree : is_tree (CP_ U).
-    (* TODO: apply CP_tree. Either change its statement, this lemma's or do the
-     * translation. *) admit.
-  apply: minor_K4_free H_K4F.
-
-  set x : G := val x'. set y : G := val y'.
+  set H := add_edge G i o.
   set I := add_edge _ _ _.
-  have xNy : x != y by move: xy => /andP[].
-  case: (CP_base_ x' y') => [x0][y0][] x0_U y0_U.
-  rewrite subUset !sub1set -/x -/y =>/andP[x_cp0 y_cp0].
-  case/uPathP: (G_conn x0 y0) => [p] Ip.
+  move=> G_conn x_cpio y_cpio xy; apply: minor_K4_free.
+  have xNy : x != y by case/andP: xy.
+
+  (* Since G is connected, it has a path p from i to o which must contain
+     the checkpoints x and y. Then split p in three at those nodes. *)
+  case/uPathP: (G_conn i o) => [p] Ip.
   have [x_p y_p] : x \in p /\ y \in p by split; apply/cpP': {Ip} p.
-  wlog x_before_y : x0 y0 x0_U y0_U x_cp0 y_cp0 p Ip x_p y_p / x <[p] y.
+  wlog x_before_y : i o @H x_cpio y_cpio p Ip x_p y_p / x <[p] y.
   { move=> Hyp.
     case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
     - move=> /(idx_swap y_p x_p Ip).
+      have -> : H = add_edge G o i. { admit. }
       by apply: Hyp; rewrite 1?cp_sym ?mem_prev; last 3 [exact: prev_irred].
     - move=> /idx_inj-/(_ x_p) x_y.
       by exfalso; move: x_y xNy => ->; rewrite eqxx. }
   case: (three_way_split Ip x_p y_p x_before_y) => [p1] [p2] [p3] [] eq_p xNp3 yNp1.
-  move: Ip; rewrite eq_p !irred_cat => /andP[Ip1]/andP[]/andP[_]/andP[Ip3] _ _.
-  have [q1 eq_q1] : exists q1 : Path H _ _, _ := add_node_lift_Path _ p1.
-  have [q3 eq_q3] : exists q3 : Path H _ _, _ := add_node_lift_Path _ p3.
-  have [i_x0 y0_i] : (None : H) -- Some x0 /\ (Some y0 : H) -- None by split.
-  pose q2 := (pcat (edgep y0_i) (edgep i_x0)).
-  pose q := pcat q3 (pcat q2 q1).
+  move: Ip; rewrite {}eq_p !irred_cat;
+    move=> /andP[Ip1]/andP[]/andP[_]/andP[Ip3] _ _ {p2}.
+
+  (* The paths trivially lift to H, in which i and o are adjacent. *)
+  have [q1 eq_q1] : exists q : Path H i x, nodes q = nodes p1. { admit. }
+  have [q3 eq_q3] : exists q : Path H y o, nodes q = nodes p3. { admit. }
+  have oi : (o : H) -- (i : H). { admit. }
+  pose q := pcat q3 (pcat (edgep oi) q1).
   case: (splitL q _) => [ | y1 [yy1] [q'] [_ eq_q']]; first by rewrite eq_sym.
 
-  have qI : [set z in q] :&: (Some @: interval x y) = [set Some x; Some y].
-  { apply/setP=> u; rewrite !inE; apply/idP/idP; last by
-      case/orP=>/eqP->; apply/andP; split;
-      rewrite ?nodes_start ?nodes_end // mem_imset // ?intervalL ?intervalR.
-    case/andP=> u_q /imsetP[v] v_I eq_u.
-    move: u_q; rewrite {u}eq_u !eqE/= => v_q.
-    apply: contraTT v_I; rewrite negb_or =>/andP[vNx vNy].
-    rewrite inE ![in orb _]inE !negb_or {}vNx {}vNy /=.
+  have qI : [set z in q] :&: interval x y = [set x; y].
+  { apply/setP=> u; rewrite 2!inE ![in RHS]inE; apply/idP/idP; last first.
+    { case/orP=>/eqP->.
+      - by rewrite nodes_end /= intervalL.
+      - by rewrite nodes_start /= intervalR. }
+    case/andP=> u_q. apply: contraTT; rewrite negb_or =>/andP[uNx uNy].
+    rewrite inE ![in orb _]inE !negb_or {}uNx {}uNy /=.
     have disj1sI : [disjoint p1 & sinterval x y].
-    { apply: sinterval_outside => //.
-      rewrite (disjointFr _ (CP_extensive x0_U)) //.
-      exact: CP_tree_sinterval. }
+    { apply: sinterval_outside => //. apply: contraTN x_cpio.
+      rewrite !inE negb_or => /andP[]/andP[_ iNy]/andP[_].
+      case/(uPathRP iNy)=> p12 Ip12 /subsetP/memPn xNp12.
+      apply/cpP'=>/(_ (pcat p12 p3)); apply/negP.
+      by rewrite mem_pcat negb_or xNp12 xNp3. }
     have : [disjoint (prev p3) & sinterval y x].
     { apply: sinterval_outside; rewrite ?mem_prev ?prev_irred //.
-      rewrite sinterval_sym (disjointFr _ (CP_extensive y0_U)) //.
-      exact: CP_tree_sinterval. }
+      apply: contraTN y_cpio.
+      rewrite !inE negb_or [o == x]eq_sym => /andP[]/andP[_ xNo]/andP[_].
+      rewrite srestrict_sym.
+      case/(uPathRP xNo)=> p23 Ip23 /subsetP/memPn yNp23.
+      apply/cpP'=>/(_ (pcat p1 p23)); apply/negP.
+      by rewrite mem_pcat negb_or yNp1 yNp23. }
     rewrite sinterval_sym (eq_disjoint (mem_prev p3)) => disj3sI.
-    apply/negbT; suff : (v \in p1) || (v \in p3).
+    apply/negbT; suff : (u \in p1) || (u \in p3).
       by case/orP; [ move: disj1sI | move: disj3sI ]; apply: disjointFr.
-    move: v_q; rewrite /q (mem_pcat q3) mem_pcat.
-    rewrite [_ \in q2]in_collective nodesE/q2/= !inE/=.
-    rewrite !eqE/= !in_collective eq_q1 eq_q3 !(mem_map Some_inj) => v_q.
-    case/orP: v_q => [->//|]; case/orP=> [|->//].
+    move: u_q; rewrite /q (mem_pcat q3) mem_pcat.
+    rewrite [u \in edgep oi]in_collective nodesE/= !inE/=.
+    rewrite !in_collective eq_q1 eq_q3 => u_q.
+    case/orP: u_q => [->//|]; case/orP=> [|->//].
     by case/orP=>/eqP->; rewrite ?nodes_start ?nodes_end. }
-  have {qI} qI : [set z in q'] :&: (Some @: interval x y) = [set Some x].
-  { move: qI =>/(congr1 (fun A => A :\ Some y)).
-    rewrite setDUl setDv setU0. set A := [set _] :\ _.
-    have {A}-> : A = [set Some x].
-    { rewrite/A; apply/setDidPl.
-      by rewrite (eq_disjoint1 (x:=Some x)); last move=> ?; rewrite !inE. }
-    move=> <-; rewrite ![_ :&: Some @: _]setIC -setIDA.
-    congr (setI (Some @: _)).
+
+  have {qI} qI : [set z in q'] :&: (interval x y) = [set x].
+  { move: qI =>/(congr1 (fun A => A :\ y)).
+    rewrite setDUl setDv setU0.
+    have -> : [set x] :\ y = [set x].
+    { by apply/setDidPl; rewrite (@eq_disjoint1 _ x); last move=> ?; rewrite !inE. }
+    move=> <-. rewrite ![_ :&: interval x y]setIC -setIDA. congr (setI _).
     apply/setP=>/= u; rewrite !inE; apply/idP/idP; last first.
     + case/andP => /negbTE uNy.
       by rewrite eq_q' in_collective nodesE inE uNy.
     + rewrite eq_q' => u_q'; rewrite [_ \in _]tailW // andbT.
       apply: contraTN u_q' =>/eqP{u}->.
-      rewrite /q/tail/= mem_cat inE /= -(nodesE q1) negb_or.
+      rewrite /q/tail/= mem_cat -(nodesE q1) negb_or eq_q1 yNp1 andbT.
       move: eq_q3; rewrite 2!nodesE /= => -[]->.
-      rewrite eq_q1 !(mem_map Some_inj) yNp1 andbT.
       by move: Ip3; rewrite irredE/= =>/andP[]. }
 
   pose phi (u : H) :=
     if u \in q' then Some (istart : I)
-    else if u is Some v then
-      match boolP (v \in interval x y) with
-        | AltTrue v_I => Some (Sub v v_I)
+    else match boolP (u \in interval x y) with
+        | AltTrue u_I => Some (Sub u u_I)
         | AltFalse _ => None
-      end
-    else None.
+      end.
   pose phi0 (u : H) :=
     if u \in q' then Some x
-    else if u \in Some @: interval x y then u
+    else if u \in interval x y then Some u
     else None.
+
   have phi_val : phi0 =1 omap val \o phi.
   { move=> u; rewrite /phi/phi0/=; case: ifP => // _.
-    case: u => [u|/=]; last by rewrite if_same.
-    rewrite inj_imset; last exact: Some_inj.
     by case: {-}_/boolP => /= [|/negbTE]->. }
   have phi_eq (u : H) (v : option I) : (phi u == v) = (phi0 u == omap val v).
   { apply/eqP/eqP; first move=> <-; rewrite phi_val//=.
     exact: (inj_omap val_inj). }
+
   have preim_phi (u : I) :
-      phi @^-1 (Some u) = if val u == x then [set z in q'] else [set Some (val u)].
+      phi @^-1 (Some u) = if val u == x then [set z in q'] else [set val u].
   { apply/setP=> z; rewrite -mem_preim phi_eq/=. case: u => u /= u_I.
     case: ifP => [/eqP{u u_I}->|uNx]; rewrite inE /phi0; last case: ifP.
     + apply/eqP/idP; last by move=>->.
       apply: contra_eqT => zNq'; rewrite (negbTE zNq').
-      case: z zNq' => // z; case: ifP => // _ /memPnC; apply.
+      case: ifP => // _. apply: contraNN zNq' =>/eqP[]->.
       exact: nodes_end.
     + move=> z_q'; rewrite eq_sym eqE/= uNx; apply: esym.
       apply: contraFF uNx => /eqP eq_z.
-      suff : Some u \in [set Some x] by rewrite inE.
-      by rewrite -qI !inE mem_imset // -eq_z z_q'.
-    + move=> _. apply/eqP/eqP; first by case: ifP.
-      by move=>->; rewrite mem_imset. }
-  have preim_phixx (u : I) : Some (val u) \in phi @^-1 (Some u).
+      suff : u \in [set x] by rewrite inE.
+      by rewrite -qI 2!inE // -{1}eq_z z_q' u_I.
+    + move=> _. apply/eqP/eqP; first by case: ifP => // _ [].
+      by move=>->; rewrite u_I. }
+  have preim_phixx (u : I) : val u \in phi @^-1 (Some u).
     by rewrite preim_phi; case: ifP => [/eqP->|]; rewrite inE ?nodes_end.
 
   exists phi; split.
-  + by move=> u; exists (Some (val u)); apply/eqP; rewrite mem_preim.
+  + by move=> u; exists (val u); apply/eqP; rewrite mem_preim.
   + move=> u; rewrite preim_phi.
     case: ifP => _; by [apply: connected_path | apply: connected1].
-  + move=> u1 u2 /orP[];
-      first by exists (Some (val u1)); exists (Some (val u2)); split.
-    have preim_iend : Some y \in phi @^-1 Some iend := preim_phixx iend.
+  + move=> u1 u2 /orP[/=|].
+    { by move=> u12; exists (val u1); exists (val u2); split; rewrite // u12. }
+    have preim_iend : y \in phi @^-1 Some iend := preim_phixx iend.
     have preim_y1 : y1 \in phi @^-1 Some istart.
       by rewrite preim_phi eqxx inE nodes_start.
-    have ? : y1 -- Some y by rewrite sg_sym.
+    have ? : y1 -- y by rewrite sg_sym.
     case/orP =>/andP[_]/andP[]/eqP->/eqP->;
-      [ exists y1; exists (Some y) | exists (Some y); exists y1];
+      [ exists y1; exists y | exists y; exists y1];
       by split.
+Admitted.
+
+Lemma igraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
+  (forall x y : G, connect sedge x y) ->
+  K4_free (add_edge G i o) -> x -- y ->
+  K4_free (add_edge (igraph G (val x) (val y)) istart iend).
+Proof.
+  move=> G_conn H_K4F xy.
+  set x0 : G := val x; set y0 : G := val y.
+  have xy0 : (x0 : link_graph G) -- y0 by exact: xy.
+  have [u[]v[]] : exists u v : G, [/\ _, _ & [set x0; y0] \subset cp u v]
+    := CP_base_ x y.
+  wlog /andP[/eqP{u}-> /eqP{v}-> _ _] : u v / (u == i) && (v == o).
+  { move=> /(_ i o); rewrite !inE !eqxx orbT /=.
+    move=> /(_ isT isT isT)Hyp /orP[]/eqP->/orP[]/eqP->;
+    last 2 [rewrite cp_sym]; [ | exact: Hyp .. | ];
+    rewrite cpxx subUset !sub1set !inE => /andP[/eqP x0_i /eqP y0_i];
+    apply: Hyp; rewrite {}x0_i {}y0_i setUid sub1set;
+    last rewrite cp_sym; by rewrite mem_cpl. }
+  rewrite subUset !sub1set =>/andP[??].
+  exact: igraph_K4F H_K4F.
+Qed.
+
+Lemma igraph_K4F_add_node (G : sgraph) (U : {set G})
+  (G_conn : forall x y : G, connect sedge x y) :
+  forall x y : CP_ U, x -- y -> K4_free (add_node G U) ->
+  K4_free (add_edge (igraph G (val x) (val y)) istart iend).
+Proof.
+  set H := add_node G U => x' y' xy H_K4F.
+  set x : G := val x'. set y : G := val y'.
+  set I := add_edge _ _ _.
+
+  case: (CP_base_ x' y') => [i][o][] i_U o_U.
+  rewrite subUset !sub1set -/x -/y =>/andP[x_cpio y_cpio].
+  suff : K4_free (add_edge G i o) by exact: igraph_K4F => //.
+  set K := add_edge G i o.
+  apply: minor_K4_free H_K4F. apply: strict_is_minor.
+
+  set phi : H -> K := odflt i.
+  have preim_phi u :
+    phi @^-1 u = Some u |: if u == i then [set None] else set0.
+  { by apply/setP=> v; case: ifP => u_i; rewrite -mem_preim !inE ?orbF;
+    case: v => [v|] //=; rewrite eq_sym. }
+  have preim_phixx u : Some u \in phi @^-1 u by rewrite -mem_preim.
+
+  exists phi; split.
+  + by move=> /= u; exists (Some u).
+  + move=> /= u; rewrite preim_phi.
+    case: ifP => [/eqP{u}->|_]; last by rewrite setU0; exact: connected1.
+    admit.
+  + move=> u v /orP[]; first by [ exists (Some u); exists (Some v); split ].
+    move=> /orP[]/andP[_]/andP[/eqP->/eqP->];
+    [ exists None; exists (Some o) | exists (Some o); exists None ];
+    by split; rewrite // -mem_preim.
 Admitted.
 
 Arguments add_edge : default implicits.
