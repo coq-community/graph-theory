@@ -608,6 +608,16 @@ Section CheckPoints.
     rewrite !ncp_petal //. by move => /eqP-> /eqP/set1_inj->.
   Qed.
 
+  Lemma petal_cp (U : {set G}) x y : 
+    x \in CP U -> y \in CP U -> x \in petal U y = (x == y).
+  Proof. 
+    move => cp_x cp_y. 
+    apply/idP/idP => [|/eqP <-]; last exact: petal_id.
+    apply: contraTT => xy. 
+    have D: [disjoint petal U x & petal U y] by apply : petal_disj.
+      by rewrite (disjointFr D) // petal_id.
+  Qed.
+
   (** the root of a petal is a checkpoint separating the petal from
   the rest of the graph *)
   Lemma petal_exit (U : {set G}) x u v : 

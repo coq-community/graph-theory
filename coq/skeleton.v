@@ -103,13 +103,9 @@ Qed.
 
 Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
 Proof.
-  (* FIXME: This is really obsucre due to the abbiguity of [x -- y] *)
+  (* Note: This is really obsucre due to the abbiguity of [x -- y] *)
   exists id => //= x y H. right. exact: subrelUl. 
 Qed.
-
-Lemma minor_K4_free (G H : sgraph) : 
-  minor G H -> K4_free G -> K4_free H.
-Proof. move => M F C. apply: F. exact: minor_trans C. Qed.
 
 Lemma skel_K4_free (u : term) : K4_free (skeleton (graph_of_term u)).
 Proof. 
@@ -236,3 +232,26 @@ Proof.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
 Qed.
+
+Lemma sub_pointxx (G : graph) (x:G) :
+  sgraph.subgraph (sskeleton (point x x))
+                  (skeleton G).
+Proof.
+  exists id => // u v /=. 
+  case/or3P; solve [by right| by case/and3P => _ /eqP-> /eqP->; left].
+Qed.
+
+(* The subgraph relation lifts to skeletons *)
+Lemma sub_sub (G H : graph) : 
+  subgraph G H -> sgraph.subgraph G H.
+Proof.
+  move => [[hv he]] [/= hom_h lab_h] [/= inj_hv inj_he]. 
+  exists hv => // x y. rewrite -!adjacentE => /andP[E adj]. right.
+  apply/andP;split; first by apply: contraNN E => /eqP/inj_hv->.
+  case/orP : adj => /existsP[e]. 
+  - rewrite inE => /andP[/eqP<- /eqP<-]. rewrite !hom_h.
+    apply/orP; left. apply/existsP; exists (he e). by rewrite !inE !eqxx.
+  - rewrite inE => /andP[/eqP<- /eqP<-]. rewrite !hom_h.
+    apply/orP; right. apply/existsP; exists (he e). by rewrite !inE !eqxx.
+Qed.
+

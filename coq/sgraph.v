@@ -533,6 +533,9 @@ Proof.
   + exists (val p). apply/andP;split; by [rewrite /irred nodesE in I| exact: valP].
 Qed.
 
+Lemma Path_connect x y (p : Path x y) : connect sedge x y.
+Proof. apply/spathP. exists (val p). exact: valP. Qed.
+
 CoInductive isplit z x y : Path x y -> Prop := 
   ISplit (p1 : Path x z) (p2 : Path z y) : 
     irred p1 -> irred p2 -> [disjoint p1 & tail p2] -> isplit z (pcat p1 p2).
@@ -948,9 +951,13 @@ Qed.
 Lemma connected_induced (G : sgraph) (S : {set G}) : 
   connected S -> connected [set: induced S].
 Proof.
-  move => conn_S. apply: connectedTI.
-Admitted.
-
+  move => conn_S x y _ _. 
+  rewrite restrictE => [|u]; last by rewrite inE.
+  have/uPathRP := conn_S _ _ (valP x) (valP y).
+  case: (boolP (val x == val y)) => [|E /(_ isT) [p] _ /subsetP sub_S].
+  - rewrite val_eqE => /eqP-> _. exact: connect0.
+  - case: (Path_to_induced sub_S) => q _. exact: Path_connect q.
+Qed.
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].

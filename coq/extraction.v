@@ -193,9 +193,9 @@ Definition big_tmI : seq term -> term.
 Admitted. (* TODO: use folrd1 and prove the right lemmas about it *)
 
 Lemma component_consistent (G : graph2) (H : {set G}) : 
-  @consistent G (g_in |: (g_out |: H)) 
-                (edge_set H :\: edges g_in g_out :\: edges g_out g_in).
-Admitted.
+  let H' := g_in |: (g_out |: H) in 
+  @consistent G H' (edge_set H' :\: edges g_in g_out :\: edges g_out g_in).
+Proof. do 2 apply: consistent_setD. exact: induced_proof. Qed.
 
 Definition component (G : graph2) (H : {set G}) : graph2 := 
   @point (subgraph_for (@component_consistent G H))
@@ -226,8 +226,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
-
-Lemma mem_pairs (T : eqType) e x y (s : seq T) : 
+Lemma mem_pairs_sort (T : eqType) e x y (s : seq T) : 
   uniq s -> total e -> (x,y) \in pairs (sort e s) -> 
   [/\ x \in s, y \in s, x != y & forall z, z \in s -> e z x || e y z].
 Admitted.
@@ -241,7 +240,7 @@ Lemma cp_pairs_edge (G : graph) (i o x y : G) :
 Proof.
   move => conn_G. move/(_ i o) : (conn_G) => conn_io'.
   rewrite /checkpoint_seq. case: {-}_ / idP => [conn_io|].
-  - move/mem_pairs. case/(_ _ _)/Wrap => [||[P1 P2 P3 P4]].
+  - move/mem_pairs_sort. case/(_ _ _)/Wrap => [||[P1 P2 P3 P4]].
     + exact: enum_uniq. 
     + exact: (@cpo_total (skeleton G)).
     + rewrite !mem_enum in P1,P2.
@@ -263,22 +262,12 @@ Proof.
   - rewrite restrictE // in conn_io'. by move => u;rewrite !inE.
 Qed.
 
-
 Notation sigraph := cp_minor.igraph.
 Lemma sskeleton_add (G : graph) (x y : G) : 
-  minor (add_edge (sigraph G x y) istart iend)
-        (sskeleton (igraph x y)).
+  sgraph.subgraph (sskeleton (igraph x y))
+                  (add_edge (sigraph G x y) istart iend).
 Proof.
-  apply: strict_is_minor. exists id. split. 
-  - by move => u; exists u. 
-  - move => u. admit.
-  - move => u v uv. exists u; exists v. split; rewrite ?inE ?eqxx //.
-    move: uv => /=. admit. (* what exactly is going on here? *)
-Admitted.
-
-Lemma sigraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
-  K4_free (add_edge G i o) -> x -- y ->
-  K4_free (add_edge (sigraph G (val x) (val y)) istart iend).  
+  rewrite /igraph /sigraph /sskeleton -/istart -/iend. 
 Admitted.
 
 Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) : 
@@ -286,41 +275,36 @@ Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) :
 Proof.
   move => [conn_G K4F_G] xy. 
   split; first exact: connected_igraph.
-  apply: minor_K4_free (sskeleton_add _ _) _.
-  exact: sigraph_K4_free. 
+  apply: subgraph_K4_free (sskeleton_add _ _) _.
+  exact: igraph_K4_free. 
 Qed.
 
-Lemma minor_pointxx (G : graph) (V : {set G})  x :
-  minor (skeleton (induced V))
-        (sskeleton (point (induced V) x x)).
+(* TOTHINK: how to align induced subgraphs for simple graphs and
+induced subgraphs for multigraphs *)
+Lemma connected_induced (G : graph) (V : {set skeleton G}) : 
+  connected V -> connected [set: skeleton (induced V)].
+Proof. 
+Admitted.
+
+Lemma induced_K4_free (G : graph2) (V : {set G}) : 
+  K4_free (sskeleton G) -> K4_free (induced V).
 Proof.
-Admitted.
-
-Lemma minor_skeleton (G : graph2) :
-  minor (sskeleton G) (skeleton G).
-Admitted.
-
+  apply: minor_K4_free. 
+  apply: (minor_trans (y := skeleton G)).
+  apply: sub_minor. apply: skel_sub. 
+  (* NOTE: this is a relation on the respecive skeletons *)
+  apply: sub_minor. apply: sub_sub. exact: induced_sub.
+Qed.
 
 Lemma CK4F_sub (G : graph2) (V : {set G})  x : 
   @connected G V -> CK4F G -> CK4F (point (induced V) x x).
 Proof. 
   move => conV CK4F_G. split. 
-  - rewrite /=. (* Lemma ? *) admit.
-  - apply: minor_K4_free (minor_pointxx _) _.
-    apply: (@minor_K4_free (sskeleton G)); last apply CK4F_G.
-    apply: minor_trans (minor_skeleton _) _.
-    apply: sub_minor. (* Lemma *) admit.
-Admitted.
+  - exact: connected_induced.
+  - apply: subgraph_K4_free (sub_pointxx _) _.
+    apply: induced_K4_free. apply CK4F_G.
+Qed.
 
-Lemma petal_cp (G : sgraph) (U : {set G}) x y : 
-  connected [set: G] ->
-  x \in CP U -> y \in CP U -> x \in petal U y = (x == y).
-Proof. 
-  move => conn_G cp_x cp_y. 
-  apply/idP/idP => [|/eqP <-]; last exact: petal_id.
-  apply: contraTT => xy. 
-Admitted.
-  
 
 Lemma rec_petal (G : graph2) (x : G) : 
   CK4F G -> x \in @CP (skeleton G) IO -> g_in != g_out :> G ->

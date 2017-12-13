@@ -330,6 +330,14 @@ Qed.
 
 Definition K4_free (G : sgraph) := ~ minor G K4.
 
+Lemma minor_K4_free (G H : sgraph) : 
+  minor G H -> K4_free G -> K4_free H.
+Proof. move => M F C. apply: F. exact: minor_trans C. Qed.
+
+Lemma subgraph_K4_free (G H : sgraph) : 
+  subgraph H G -> K4_free G -> K4_free H.
+Proof. move/sub_minor. exact: minor_K4_free. Qed.
+
 Lemma TW2_K4_free (G : sgraph) (T : tree) (B : T -> {set G}) : 
   sdecomp T G B -> width B <= 3 -> K4_free G.
 Proof.
