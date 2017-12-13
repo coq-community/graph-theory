@@ -222,7 +222,7 @@ Lemma connected_pgraph (G : graph2) (U : {set G}) (x : G) :
   connected [set: skeleton G] -> x \in @CP (skeleton G) U -> 
   connected [set: skeleton (pgraph U x)].
 Proof.
-  move/connectedTE => conn_G cp_x.
+  move => conn_G cp_x.
   apply: connected_skeleton => //. exact: connected_petal.
 Qed.
 
@@ -230,8 +230,7 @@ Lemma connected_igraph (G : graph2) (x y: G) :
   connected [set: skeleton G] -> 
   connected [set: skeleton (igraph x y)].
 Proof.
-  move => /connectedTE conn_G.
-  apply: connected_skeleton.
+  move => conn_G. apply: connected_skeleton.
   + exact: connected_interval.
   + move => e E1 E2. rewrite 4!inE E1 andbT negb_or. apply/andP;split.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.

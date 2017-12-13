@@ -30,7 +30,7 @@ Arguments Path G x y : clear implicits.
 
 Section CheckpointsAndMinors.
 Variables (G : sgraph).
-Hypothesis (conn_G : forall x y :G, connect sedge x y).
+Hypothesis (conn_G : connected [set: G]).
 
 
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
@@ -251,7 +251,7 @@ Abort.
 (** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
     is written in the paper. Is there a better way to phrase this? *)
 Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
-  (forall x y : sgraph.induced [set~ i], connect sedge x y) -> 
+  connected [set: sgraph.induced [set~ i]] -> 
   K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
   is_tree (CP_ U).
 Proof.
@@ -290,7 +290,7 @@ Proof.
  
   have G'_conn : forall x y : G', connect sedge x y. 
   { apply: connectedTE. apply: connected_induced. 
-    move => u v Hu Hv. case/uPathP : (G_conn u v) => p irr_p. 
+    move => u v Hu Hv. case/uPathP : (connectedTE G_conn u v) => p irr_p. 
     apply: (connectRI (p := p)). exact: irred_inT irr_p. }
 
   have cp_lift u v w : 
@@ -344,7 +344,7 @@ Arguments istart {G x y}.
 Arguments iend {G x y}.
 
 Lemma igraph_K4F (G : sgraph) (i o x y : G) :
-  (forall x y : G, connect sedge x y) ->
+  connected [set: G] -> 
   x \in cp i o -> y \in cp i o -> (x : link_graph G) -- y ->
   K4_free (add_edge G i o) ->
   K4_free (add_edge (igraph G x y) istart iend).
@@ -356,7 +356,7 @@ Proof.
 
   (* Since G is connected, it has a path p from i to o which must contain
      the checkpoints x and y. Then split p in three at those nodes. *)
-  case/uPathP: (G_conn i o) => [p] Ip.
+  case/uPathP: (connectedTE G_conn i o) => [p] Ip.
   have [x_p y_p] : x \in p /\ y \in p by split; apply/cpP': {Ip} p.
   wlog x_before_y : i o @H x_cpio y_cpio p Ip x_p y_p / x <[p] y.
   { move=> Hyp.
@@ -473,7 +473,7 @@ Proof.
 Admitted.
 
 Lemma igraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
-  (forall x y : G, connect sedge x y) ->
+  connected [set: G] ->
   K4_free (add_edge G i o) -> x -- y ->
   K4_free (add_edge (igraph G (val x) (val y)) istart iend).
 Proof.
@@ -493,12 +493,12 @@ Proof.
   exact: igraph_K4F H_K4F.
 Qed.
 
-Lemma igraph_K4F_add_node (G : sgraph) (U : {set G})
-  (G_conn : forall x y : G, connect sedge x y) :
+Lemma igraph_K4F_add_node (G : sgraph) (U : {set G}) :
+  connected [set: G] ->
   forall x y : CP_ U, x -- y -> K4_free (add_node G U) ->
   K4_free (add_edge (igraph G (val x) (val y)) istart iend).
 Proof.
-  set H := add_node G U => x' y' xy H_K4F.
+  set H := add_node G U => G_conn x' y' xy H_K4F.
   set x : G := val x'. set y : G := val y'.
   set I := add_edge _ _ _.
 
@@ -548,7 +548,8 @@ Proof.
   have tree_CPU' : is_tree (CP_ U').
   { apply: CP_tree K4F _. 
     - suff S: forall x, connect sedge x o'.
-      { move => x y. apply: (connect_trans (y := o')) => //.
+      { apply: connectedTI => x y.
+        apply: (connect_trans (y := o')) => //.
         rewrite connect_symI //. exact: sg_sym. }
       move => x.
       (* if i were a checkpoint between x and o, then 

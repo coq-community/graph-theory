@@ -65,7 +65,9 @@ Section CheckPoints.
   Lemma cpNI' x y (p : Path x y) z : z \notin p -> z \notin cp x y.
   Proof. by apply: contraNN => /cpP'. Qed.
 
-  Hypothesis G_conn : forall x y:G, connect sedge x y.
+  Hypothesis G_conn' : connected [set: G].
+  Let G_conn : forall x y:G, connect sedge x y.
+  Proof. exact: connectedTE. Qed.
 
   Lemma cp_sym x y : cp x y = cp y x.
   Proof.
@@ -863,13 +865,14 @@ Section CheckpointOrder.
 
 End CheckpointOrder.
 
-Arguments ncp0 [G] G_conn [U] x p.
+Arguments ncp0 [G] G_conn [U] x p : rename.
 
-Lemma CP_treeI (G : sgraph) (G_conn : forall x y : G, connect sedge x y) (U : {set G}) :
+Lemma CP_treeI (G : sgraph) (U : {set G}) :
+  connected [set: G] ->
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
 Proof.
   (* CP_ U is connected because G is. *)
-  move: G_conn => /CP_connected/(_ U) CP_conn.
+  move/CP_connected => /(_ U) CP_conn.
   (* Since is_tree is decidable, prove the contraposition:
    *    if CP_U is not a tree then it has a triangle. *)
   case: (boolP (is_tree _)) => // CP_not_tree H; exfalso; apply: H.

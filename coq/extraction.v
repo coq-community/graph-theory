@@ -252,7 +252,7 @@ Proof.
         { apply/bigcupP. exists (i,o); by rewrite // !inE !eqxx. }
         exists px. exists py. by rewrite /= P3. }
       apply/subsetP => z Hz. move: (P4 z). rewrite mem_enum.
-      have Hz': z \in cp G i o. { apply: cp_widen Hz => //. by apply: connectedTE. }
+      have Hz': z \in cp G i o. { apply: cp_widen Hz => //. }
       move/(_ Hz'). move: Hz. 
       rewrite (cpo_cp conn_io) // !inE => /andP[H1 H2].
       case/orP => H3. 
@@ -263,9 +263,6 @@ Proof.
   - rewrite restrictE // in conn_io'. by move => u;rewrite !inE.
 Qed.
 
-Lemma connected_interval (G : sgraph) (x y : G) :
-      connected [set: G] -> connected (interval x y).
-Admitted.
 
 Notation sigraph := cp_minor.igraph.
 Lemma sskeleton_add (G : graph) (x y : G) : 
@@ -330,7 +327,7 @@ Lemma rec_petal (G : graph2) (x : G) :
   CK4F (pgraph IO x) /\ measure (pgraph IO x) < measure G.
 Proof.
   move => [conn_G K4F_G] cp_x Dio. split. 
-  - apply: CK4F_sub => //. apply: connected_petal => //. admit.
+  - apply: CK4F_sub => //. exact: connected_petal.
   - suff: (g_in \notin @petal G IO x) || (g_out \notin @petal G IO x).
     { by case/orP; exact: measure_node. }
     rewrite -negb_and. apply:contraNN Dio => /andP[].
