@@ -618,6 +618,20 @@ Section CheckPoints.
       by rewrite (disjointFr D) // petal_id.
   Qed.
 
+  Lemma petal_nontrivial (U : {set G}) x : 
+    petal U x != [set x] -> exists2 y, y \in petal U x & y != x.
+  Proof. apply: setN01E. apply/set0Pn. exists x. by rewrite petal_id. Qed.
+
+  Lemma ncp0 (U : {set G}) x p : 
+    x \in CP U -> ncp U p == set0 = false.
+  Proof. 
+    case/uPathP : (G_conn p x) => q irr_q Ux.  
+    case: (split_at_first Ux (nodes_end q)) => y [q1] [q2] [def_q CPy Hy].
+    suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
+    apply/ncpP. split => //. by exists q1. 
+  Qed.
+  Arguments ncp0 [U] x p.
+
   (** the root of a petal is a checkpoint separating the petal from
   the rest of the graph *)
   Lemma petal_exit (U : {set G}) x u v : 
@@ -625,13 +639,14 @@ Section CheckPoints.
   Proof.
     move => cp_x. rewrite [v \in _]ncp_petal // => N1 N2.
     have [y [Y1 Y2 Y3]] : exists y, [/\ y \in CP U, x != y & y \in ncp U v].
-    { (* [ncp U v] cannot be empy and is different from [set x] *) admit. } 
+    { case: (setN01E _ N2); first by rewrite (ncp0 x).
+      move => y Y1 Y2. exists y; split => //; by [rewrite eq_sym|case/ncpP : Y1]. }
     move/petalP : N1 => /(_ _ Y1). 
     apply: contraTT => /cpPn' [p] irr_p av_x. 
     case/ncpP : Y3 => _ [q] /(_ _ cp_x) A. 
     have {A} Hq : x \notin q. { apply/negP => /A ?. subst. by rewrite eqxx in Y2. }
     apply: (cpNI' (p := pcat p q)). by rewrite mem_pcat negb_or av_x.
-  Admitted.
+  Qed.
 
   Lemma petal_exit' (U : {set G}) x u v : 
     x \in CP U -> u \in petal U x -> v \in x |: ~: petal U x -> x \in cp u v.
@@ -723,17 +738,6 @@ a clique, so [CP U] is [U]. *)
     - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_idp => /eqP.
   Qed.
   
-  Lemma ncp0 (U : {set G}) x p : 
-    x \in U -> ncp U p == set0 = false.
-  Proof. 
-    move => Ux'. 
-    case/uPathP : (G_conn p x) => q irr_q. 
-    have Ux: x \in CP U by apply: CP_extensive.
-    case: (split_at_first Ux (nodes_end q)) => y [q1] [q2] [def_q CPy Hy].
-    suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
-    apply/ncpP. split => //. by exists q1. 
-  Qed.
-  Arguments ncp0 [U] x p.
   
   (** NOTE: This looks fairly specific, but it also has a fairly
   straightforward proof *)
@@ -802,7 +806,7 @@ a clique, so [CP U] is [U]. *)
     - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
       pose N := ncp [set x; y] p. 
       have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
-      rewrite subset2 // {1}/N (ncp0 x) ?in_setU ?set11 //=. 
+      rewrite subset2 // {1}/N (ncp0 x) ?CP_extensive ?in_setU ?set11 //=.
       case/or3P. 
       + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
         apply: mem_cover. by rewrite !inE eqxx. 

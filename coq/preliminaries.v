@@ -71,6 +71,16 @@ Proof.
   - move => [x E]. exists x. apply/setP => y. by rewrite !inE E.
 Qed.
 
+Lemma setN01E (T : finType) A (x:T) : 
+  A != set0 -> A != [set x] -> exists2 y, y \in A & y != x.
+Proof.
+  case/set0Pn => y Hy H1. apply/exists_inP. apply: contraNT H1.
+  rewrite negb_exists_in => /forall_inP H. 
+  rewrite eqEsubset sub1set (_ : x \in A) ?andbT. 
+  - apply/subsetP => z. rewrite !inE => /H. by rewrite negbK.
+  - move/H : (Hy) => /negPn/eqP Hy'. by subst.
+Qed.
+
 Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
   (A \subset [set x;y]) =
   [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
