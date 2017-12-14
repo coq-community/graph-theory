@@ -792,6 +792,30 @@ a clique, so [CP U] is [U]. *)
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
+  Lemma link_partition x y : link_rel x y -> 
+    pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
+  Proof.
+    move => /= /andP [xy cp_xy]. 
+    have CPxy : CP [set x; y] = [set x; y].
+    { apply: CP_clique. exact: clique2. }
+    apply/andP; split.
+    - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
+      pose N := ncp [set x; y] p. 
+      have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
+      rewrite subset2 // {1}/N (ncp0 x) ?in_setU ?set11 //=. 
+      case/or3P. 
+      + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
+        apply: mem_cover. by rewrite !inE eqxx. 
+      + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
+        apply: mem_cover. by rewrite !inE eqxx. 
+      + rewrite /N. rewrite eqEsubset => /andP [_ /(ncp_interval xy)].
+        apply: mem_cover. by rewrite !inE eqxx. 
+    - apply: trivIset3. 
+      + by apply: petal_disj => //; rewrite CPxy !inE eqxx.
+      + by rewrite sinterval_sym interval_petal_disj // CPxy !inE eqxx.
+      + by rewrite interval_petal_disj // CPxy !inE eqxx.
+  Qed.
+
   Lemma CP_triangle_petals U (x y z : CP_ U) : 
     x -- y -> y -- z -> z -- x -> 
     let U3 : {set G} := [set val x; val y; val z] in

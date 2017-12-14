@@ -71,6 +71,14 @@ Proof.
   - move => [x E]. exists x. apply/setP => y. by rewrite !inE E.
 Qed.
 
+Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
+  (A \subset [set x;y]) =
+  [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
+Proof.
+  case: (boolP (x == y)) => [/eqP ?|xy].
+  - subst y. rewrite setUid subset1. by do 2  case (A == _).
+Admitted.
+
 Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
   reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
 Proof.
@@ -498,4 +506,16 @@ Proof.
     rewrite !pblock_mem ?(cover_partition EP) //. split => //.
     rewrite eq_pblock ?(cover_partition EP) //; last by case/and3P : EP.
     by rewrite pblock_equivalence_partition.
+Qed.
+
+(** Partitions possibly including the empty equivalence class *)
+Definition pe_partition (T : finType) (P : {set {set T}}) (D : {set T}) :=
+  (cover P == D) && (trivIset P).
+
+Lemma trivIset3 (T : finType) (A B C : {set T}) : 
+  [disjoint A & B] -> [disjoint B & C] -> [disjoint A & C] -> 
+  trivIset [set A;B;C].
+Proof. 
+  move => D1 D2 D3. apply/trivIsetP => X Y. rewrite !inE -!orbA.
+  do 2 (case/or3P => /eqP->); try by rewrite ?eqxx // 1?disjoint_sym. 
 Qed.
