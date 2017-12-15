@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 
-Require Import edone finite_quotient preliminaries sgraph minor checkpoint skeleton. 
+Require Import edone finite_quotient preliminaries sgraph minor checkpoint skeleton.
 (* TODO: This file should not depend on skeleton.v - move relevant lemmas *)
 
 Set Implicit Arguments.
@@ -353,123 +353,52 @@ Proof.
   set I := add_edge _ _ _.
   move=> G_conn x_cpio y_cpio xy; apply: minor_K4_free.
   have xNy : x != y by case/andP: xy.
+  have iNo : i != o.
+  { apply: contra_neq xNy => {xy} x_y. move: x_cpio y_cpio.
+    by rewrite -{}x_y cpxx !inE =>/eqP->/eqP->. }
 
   (* Since G is connected, it has a path p from i to o which must contain
-     the checkpoints x and y. Then split p in three at those nodes. *)
+     the checkpoints x and y; w.l.o.g, x can be assumed to occur before y. *)
   case/uPathP: (connectedTE G_conn i o) => [p] Ip.
   have [x_p y_p] : x \in p /\ y \in p by split; apply/cpP': {Ip} p.
-  wlog x_before_y : i o @H x_cpio y_cpio p Ip x_p y_p / x <[p] y.
+  wlog x_before_y : x y @I x_cpio y_cpio xy xNy x_p y_p / x <[p] y.
   { move=> Hyp.
     case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
-    - move=> /(idx_swap y_p x_p Ip).
-      have -> : H = add_edge G o i. { admit. }
-      by apply: Hyp; rewrite 1?cp_sym ?mem_prev; last 3 [exact: prev_irred].
+    - move=> ?; suff : minor (add_edge (igraph G y x) istart iend) I.
+      { by apply: minor_trans; apply: Hyp; rewrite // 1?sg_sym 1?eq_sym. }
+      admit.
     - move=> /idx_inj-/(_ x_p) x_y.
       by exfalso; move: x_y xNy => ->; rewrite eqxx. }
-  case: (three_way_split Ip x_p y_p x_before_y) => [p1] [p2] [p3] [] eq_p xNp3 yNp1.
-  move: Ip; rewrite {}eq_p !irred_cat;
-    move=> /andP[Ip1]/andP[]/andP[_]/andP[Ip3] _ _ {p2}.
 
-  (* The paths trivially lift to H, in which i and o are adjacent. *)
-  have [q1 eq_q1] : exists q : Path H i x, nodes q = nodes p1. { admit. }
-  have [q3 eq_q3] : exists q : Path H y o, nodes q = nodes p3. { admit. }
-  have oi : (o : H) -- (i : H). { admit. }
-  pose q := pcat q3 (pcat (edgep oi) q1).
-  case: (splitL q _) => [ | y1 [yy1] [q'] [_ eq_q']]; first by rewrite eq_sym.
+  pose U2 := [set x; y].
+  (* As a consequence, i (resp. o) is the the petal of x (resp. y) with
+   * respect to {x, y}. *)
+  have i_Px : i \in petal U2 x. { admit. }
+  have o_Py : o \in petal U2 y. { admit. }
 
-  have qI : [set z in q] :&: interval x y = [set x; y].
-  { apply/setP=> u; rewrite 2!inE ![in RHS]inE; apply/idP/idP; last first.
-    { case/orP=>/eqP->.
-      - by rewrite nodes_end /= intervalL.
-      - by rewrite nodes_start /= intervalR. }
-    case/andP=> u_q. apply: contraTT; rewrite negb_or =>/andP[uNx uNy].
-    rewrite inE ![in orb _]inE !negb_or {}uNx {}uNy /=.
-    have disj1sI : [disjoint p1 & sinterval x y].
-    { apply: sinterval_outside => //. apply: contraTN x_cpio.
-      rewrite !inE negb_or => /andP[]/andP[_ iNy]/andP[_].
-      case/(uPathRP iNy)=> p12 Ip12 /subsetP/memPn xNp12.
-      apply/cpP'=>/(_ (pcat p12 p3)); apply/negP.
-      by rewrite mem_pcat negb_or xNp12 xNp3. }
-    have : [disjoint (prev p3) & sinterval y x].
-    { apply: sinterval_outside; rewrite ?mem_prev ?prev_irred //.
-      apply: contraTN y_cpio.
-      rewrite !inE negb_or [o == x]eq_sym => /andP[]/andP[_ xNo]/andP[_].
-      rewrite srestrict_sym.
-      case/(uPathRP xNo)=> p23 Ip23 /subsetP/memPn yNp23.
-      apply/cpP'=>/(_ (pcat p1 p23)); apply/negP.
-      by rewrite mem_pcat negb_or yNp1 yNp23. }
-    rewrite sinterval_sym (eq_disjoint (mem_prev p3)) => disj3sI.
-    apply/negbT; suff : (u \in p1) || (u \in p3).
-      by case/orP; [ move: disj1sI | move: disj3sI ]; apply: disjointFr.
-    move: u_q; rewrite /q (mem_pcat q3) mem_pcat.
-    rewrite [u \in edgep oi]in_collective nodesE/= !inE/=.
-    rewrite !in_collective eq_q1 eq_q3 => u_q.
-    case/orP: u_q => [->//|]; case/orP=> [|->//].
-    by case/orP=>/eqP->; rewrite ?nodes_start ?nodes_end. }
+  case: (collapse_petals G_conn U2 x _); first by rewrite !inE eqxx.
+  set T := U2 :|: _. have -> : T = interval x y. { admit. }
+  rewrite -[induced _]/(igraph G x y). set Gxy := igraph G x y in I *.
 
-  have {qI} qI : [set z in q'] :&: (interval x y) = [set x].
-  { move: qI =>/(congr1 (fun A => A :\ y)).
-    rewrite setDUl setDv setU0.
-    have -> : [set x] :\ y = [set x].
-    { by apply/setDidPl; rewrite (@eq_disjoint1 _ x); last move=> ?; rewrite !inE. }
-    move=> <-. rewrite ![_ :&: interval x y]setIC -setIDA. congr (setI _).
-    apply/setP=>/= u; rewrite !inE; apply/idP/idP; last first.
-    + case/andP => /negbTE uNy.
-      by rewrite eq_q' in_collective nodesE inE uNy.
-    + rewrite eq_q' => u_q'; rewrite [_ \in _]tailW // andbT.
-      apply: contraTN u_q' =>/eqP{u}->.
-      rewrite /q/tail/= mem_cat -(nodesE q1) negb_or eq_q1 yNp1 andbT.
-      move: eq_q3; rewrite 2!nodesE /= => -[]->.
-      by move: Ip3; rewrite irredE/= =>/andP[]. }
-
-  pose phi (u : H) :=
-    if u \in q' then Some (istart : I)
-    else match boolP (u \in interval x y) with
-        | AltTrue u_I => Some (Sub u u_I)
-        | AltFalse _ => None
-      end.
-  pose phi0 (u : H) :=
-    if u \in q' then Some x
-    else if u \in interval x y then Some u
-    else None.
-
-  have phi_val : phi0 =1 omap val \o phi.
-  { move=> u; rewrite /phi/phi0/=; case: ifP => // _.
-    by case: {-}_/boolP => /= [|/negbTE]->. }
-  have phi_eq (u : H) (v : option I) : (phi u == v) = (phi0 u == omap val v).
-  { apply/eqP/eqP; first move=> <-; rewrite phi_val//=.
-    exact: (inj_omap val_inj). }
-
-  have preim_phi (u : I) :
-      phi @^-1 (Some u) = if val u == x then [set z in q'] else [set val u].
-  { apply/setP=> z; rewrite -mem_preim phi_eq/=. case: u => u /= u_I.
-    case: ifP => [/eqP{u u_I}->|uNx]; rewrite inE /phi0; last case: ifP.
-    + apply/eqP/idP; last by move=>->.
-      apply: contra_eqT => zNq'; rewrite (negbTE zNq').
-      case: ifP => // _. apply: contraNN zNq' =>/eqP[]->.
-      exact: nodes_end.
-    + move=> z_q'; rewrite eq_sym eqE/= uNx; apply: esym.
-      apply: contraFF uNx => /eqP eq_z.
-      suff : u \in [set x] by rewrite inE.
-      by rewrite -qI 2!inE // -{1}eq_z z_q' u_I.
-    + move=> _. apply/eqP/eqP; first by case: ifP => // _ [].
-      by move=>->; rewrite u_I. }
-  have preim_phixx (u : I) : val u \in phi @^-1 (Some u).
-    by rewrite preim_phi; case: ifP => [/eqP->|]; rewrite inE ?nodes_end.
-
-  exists phi; split.
-  + by move=> u; exists (val u); apply/eqP; rewrite mem_preim.
-  + move=> u; rewrite preim_phi.
-    case: ifP => _; by [apply: connected_path | apply: connected1].
-  + move=> u1 u2 /orP[/=|].
-    { by move=> u12; exists (val u1); exists (val u2); split; rewrite // u12. }
-    have preim_iend : y \in phi @^-1 Some iend := preim_phixx iend.
-    have preim_y1 : y1 \in phi @^-1 Some istart.
-      by rewrite preim_phi eqxx inE nodes_start.
-    have ? : y1 -- y by rewrite sg_sym.
-    case/orP =>/andP[_]/andP[]/eqP->/eqP->;
-      [ exists y1; exists y | exists y; exists y1];
-      by split.
+  move=> phi [[phi_surj preim_phi_conn phi_edge] preim_phi preim_phixy].
+  apply: strict_is_minor. exists phi; split; first exact: phi_surj.
+  + move=> u; have u_I : val u \in interval x y := valP u.
+    case: (boolP (val u \in U2)) => u_xy.
+    - rewrite preim_phixy //. apply: add_edge_connected.
+      apply: (@connected_petal G G_conn (val u) U2).
+      exact: CP_extensive.
+    - rewrite preim_phi; first exact: connected1.
+      by rewrite inE u_xy u_I.
+  + move=> u v /orP[].
+    - move/phi_edge => [u'] [v'] [? ? uv'].
+      by exists u'; exists v'; split; rewrite //= uv'.
+    - wlog [-> -> _] : u v / u = istart /\ v = iend.
+      { case/(_ istart iend); [ by split | by rewrite /= !eqxx xNy | ].
+        move=> u' [v'] [? ? ?]. have ? : v' -- u' by rewrite sg_sym.
+        case/orP=> /andP[_]/andP[/eqP->/eqP->];
+          [ by exists u'; exists v' | by exists v'; exists u' ]. }
+      rewrite 2?preim_phixy ?inE ?eqxx // ![val _]/=.
+      by exists i; exists o; split; rewrite //= iNo !eqxx.
 Admitted.
 
 Lemma igraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :

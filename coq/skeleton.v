@@ -67,6 +67,10 @@ Definition add_edge (G:sgraph) (i o : G) :=
      sg_sym := add_edge_sym i o;
      sg_irrefl := add_edge_irrefl i o |}.
 
+Lemma add_edge_connected (G : sgraph) (i o : G) (U : {set G}) :
+  @connected G U -> @connected (add_edge i o) U.
+Admitted.
+
 Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
 
 (* Lemma ssk_sym (G : graph2) : symmetric (ssk_rel G). *)

@@ -305,6 +305,9 @@ Section CheckPoints.
 
   Definition interval x y := [set x;y] :|: sinterval x y.
 
+  Lemma interval_sym x y : interval x y = interval y x.
+  Admitted.
+
   (* TODO: This should be done earlier *)
   Lemma symmetric_resrict_sedge (A : pred G) : 
     symmetric (restrict A sedge).
