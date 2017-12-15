@@ -279,12 +279,39 @@ Proof.
   exact: igraph_K4_free. 
 Qed.
 
+Lemma sc_eq T T' (e : rel T) (e' : rel T') f x y : 
+  (forall x y, e' (f x)  (f y) = e x y) -> sc e' (f x) (f y) = sc e x y.
+Proof. move => H. by rewrite /sc /= !H. Qed.
+
+Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
+  ((val u : skeleton G) -- val v) = ((u : skeleton (induced V)) -- v).
+Proof.
+  rewrite /= /sk_rel. apply: sc_eq => {u v} u v /=.
+  rewrite val_eqE. case E : (_ != _) => //=. 
+  apply/existsP/existsP.
+  - case => e e_uv. 
+    have He: e \in edge_set V. 
+    { case/andP : e_uv => E1 E2. rewrite inE (eqP E1) (eqP E2).
+      apply/andP;split; exact: valP. }
+    exists (Sub e He). by rewrite -!val_eqE.
+  - case => e. rewrite -!val_eqE /= => e_uv. by exists (val e).
+Qed.
+
 (* TOTHINK: how to align induced subgraphs for simple graphs and
 induced subgraphs for multigraphs *)
 Lemma connected_induced (G : graph) (V : {set skeleton G}) : 
   connected V -> connected [set: skeleton (induced V)].
 Proof. 
-Admitted.
+  move => conV. apply: connectedTI => u v. 
+  move: (conV (val u) (val v) (valP u) (valP v)). 
+  case/upathPR => p /upathW.
+  elim: p u => [?|a p IH u]. 
+  - move/spath_nil/val_inj ->. exact: connect0.
+  - rewrite spath_cons /= -!andbA => /and4P [A B C D]. 
+    apply: (connect_trans (y := Sub a B)); last exact: IH.
+    apply: connect1. change (u -- (Sub a B)). 
+    by rewrite -skeleton_induced_edge.
+Qed.
 
 Lemma induced_K4_free (G : graph2) (V : {set G}) : 
   K4_free (sskeleton G) -> K4_free (induced V).
@@ -317,15 +344,24 @@ Proof.
     rewrite -negb_and. apply:contraNN Dio => /andP[].
     rewrite !(petal_cp conn_G) // => [/eqP-> /eqP-> //||]; 
       by apply CP_extensive; rewrite !inE eqxx.
-Admitted.
+Qed.  
 
 Lemma cp_pairs_measure (G : graph2) x y :
   CK4F G -> ~~ lens G -> (x,y) \in pairs (@checkpoint_seq G g_in g_out) ->
   measure (igraph x y) < measure G.
-Proof.
+Proof. 
   move => CK4F_G no_lens pair_xy. 
   suff [z Hz] : exists z, z \notin interval x y. 
   { apply: measure_node Hz. by apply CK4F_G. }
+  (* case/cp_pairs_edge : pair_xy; first by apply CK4F_G. *)
+  (* move => x0 [y0] link_xy.  *)
+
+  case: (boolP (link_rel G g_in g_out)) => H.
+  - rewrite /lens H andbT negb_and in no_lens. 
+    case/orP : no_lens => /petal_nontrivial [z]. 
+    + admit.
+    + admit.
+  - 
   (* Either there exists a third checkpoint (that is not in the
   interval) or one of the petals is nontrivial since G is not a
   lens *)
