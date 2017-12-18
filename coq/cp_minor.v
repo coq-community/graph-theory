@@ -343,6 +343,32 @@ Arguments igraph : clear implicits.
 Arguments istart {G x y}.
 Arguments iend {G x y}.
 
+Lemma add_edge_swap (G : sgraph) (i o : G) :
+  sg_iso (add_edge G i o) (add_edge G o i).
+Proof.
+  exists (id : add_edge G o i -> add_edge G i o) id;
+    move=>//= x y /orP[->//|]/orP[]/andP[xNy]/andP[->->]/=;
+    by rewrite [in _ && true]eq_sym xNy.
+Qed.
+
+(* TOTHINK: This lemma can have a more general statement.
+ * add_edge preserves sg_iso when the nodes are applied to the actual iso. *)
+Lemma add_edge_induced_iso (G : sgraph) (S T : {set G})
+      (u v : induced S) (x y : induced T) :
+  S = T -> val u = val x -> val v = val y ->
+  sg_iso (add_edge (induced S) u v) (add_edge (induced T) x y).
+Proof.
+  move=> eq_ST eq_ux eq_vy.
+  have SofT z : z \in T -> z \in S by rewrite eq_ST.
+  have TofS z : z \in S -> z \in T by rewrite eq_ST.
+  set g : induced T -> induced S := fun z => Sub (val z) (SofT (val z) (valP z)).
+  set f : induced S -> induced T := fun z => Sub (val z) (TofS (val z) (valP z)).
+  exists (g : add_edge _ x y -> add_edge _ u v) f; rewrite {}/f {}/g;
+    [ move=> ?; exact: val_inj .. | | ]; move=> a b /=/orP[->//|];
+    rewrite -!(inj_eq val_inj) /= eq_ux eq_vy =>/orP[]/andP[aNb]/andP[->->];
+    by rewrite /= aNb.
+Qed.
+
 Lemma igraph_K4F (G : sgraph) (i o x y : G) :
   connected [set: G] -> 
   x \in cp i o -> y \in cp i o -> (x : link_graph G) -- y ->
@@ -366,18 +392,40 @@ Proof.
     case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
     - move=> ?; suff : minor (add_edge (igraph G y x) istart iend) I.
       { by apply: minor_trans; apply: Hyp; rewrite // 1?sg_sym 1?eq_sym. }
-      admit.
+      apply: strict_is_minor; apply: iso_strict_minor.
+      apply: (@sg_iso_trans I (add_edge (igraph G x y) iend istart)).
+        exact: add_edge_swap.
+      by apply: add_edge_induced_iso; first exact: interval_sym.
     - move=> /idx_inj-/(_ x_p) x_y.
       by exfalso; move: x_y xNy => ->; rewrite eqxx. }
 
   pose U2 := [set x; y].
+  have eq_CPU2 : CP U2 = U2 by apply: CP_clique; apply: clique2.
   (* As a consequence, i (resp. o) is the the petal of x (resp. y) with
    * respect to {x, y}. *)
-  have i_Px : i \in petal U2 x. { admit. }
-  have o_Py : o \in petal U2 y. { admit. }
+  have [i_Px o_Py] : i \in petal U2 x /\ o \in petal U2 y.
+  { case:(three_way_split Ip x_p y_p x_before_y)=>[p1][p2][p3][_ xNp3 yNp1].
+    split; apply/petalP=> z; rewrite eq_CPU2 !inE =>/orP[]/eqP->;
+      last 1 first; [ by rewrite cp_sym mem_cpl .. | | ].
+    + apply: contraTT x_cpio =>/cpPn'[q] _ xNq.
+      apply/cpP'=>/(_ (pcat q p3)); apply/negP.
+      by rewrite mem_pcat negb_or xNq xNp3.
+    + apply: contraTT y_cpio =>/cpPn'[q] _ yNq.
+      apply/cpP'=>/(_ (pcat p1 (prev q))); apply/negP.
+      by rewrite mem_pcat mem_prev negb_or yNq yNp1. }
 
   case: (collapse_petals G_conn U2 x _); first by rewrite !inE eqxx.
-  set T := U2 :|: _. have -> : T = interval x y. { admit. }
+  set T := U2 :|: _. have {T}-> : T = interval x y.
+  { rewrite {}/T {-3}/U2 /interval bigcup_setU !bigcup_set1.
+    congr ([set x; y] :|: _).
+    have : pe_partition [set petal U2 x; petal U2 y; sinterval x y] [set: G].
+    { exact: link_partition. }
+    rewrite /pe_partition =>/andP[/eqP/esym covG _]; move: covG.
+    rewrite /cover !bigcup_setU !bigcup_set1 -setTD =>->.
+    rewrite setDUl setDv set0U; apply/setDidPl.
+    rewrite disjoint_sym disjoints_subset subUset -!disjoints_subset.
+    by rewrite {2}sinterval_sym !interval_petal_disj //;
+    apply: CP_extensive; rewrite !inE eqxx. }
   rewrite -[induced _]/(igraph G x y). set Gxy := igraph G x y in I *.
 
   move=> phi [[phi_surj preim_phi_conn phi_edge] preim_phi preim_phixy].
@@ -399,7 +447,7 @@ Proof.
           [ by exists u'; exists v' | by exists v'; exists u' ]. }
       rewrite 2?preim_phixy ?inE ?eqxx // ![val _]/=.
       by exists i; exists o; split; rewrite //= iNo !eqxx.
-Admitted.
+Qed.
 
 Lemma igraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
   connected [set: G] ->
