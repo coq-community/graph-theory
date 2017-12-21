@@ -529,18 +529,36 @@ Proof.
         apply: (connect_trans (y := o')) => //.
         rewrite connect_symI //. exact: sg_sym. }
       move => x.
+      suff /cpPn'[p _ iNp] : i \notin @cp G  (val x) o.
+      { case: (add_edge_Path i o p) => q eq_q.
+        case: (@Path_to_induced (add_edge G i o) [set ~i] x o' q _); last by
+            [ move=> ? _; exact: Path_connect ].
+        move=> ?; rewrite in_collective eq_q !inE => ?.
+        by apply: contraNN iNp =>/eqP{1}<-. }
       (* if i were a checkpoint between x and o, then 
          x would be in [petal  [set i; o] i] - contradiction *)
-      admit.
+      have : val x \in [set ~i] := valP x; rewrite inE -{4}petal_i.
+      apply: contraNN => i_cpxo. apply/petalP.
+      rewrite CP_clique; last by [apply: clique2; rewrite /= io2 io3].
+      by  move=> ?; rewrite !inE =>/orP[]/eqP->; rewrite // cp_sym mem_cpl.
     - apply/setP => x. rewrite inE. apply/imsetP/idP => [[x']|].
       + case/imsetP => x0 inU -> ->. 
         case/setU1P : (inU) => [->|]. 
         * rewrite insubdK /= ?eqxx ?(negbTE io2) //.
         * rewrite inE insubdK /= => [-> //|]. rewrite !inE. 
-          (* x0 is o or a neighbor *) admit. 
-      + (* follows with irreflexivity *) admit. }
+          move: inU; rewrite eq_sym /U!inE =>/orP[/eqP->//|?].
+          by rewrite sg_edgeNeq.
+      + move=> ix. exists (insubd o' x); last first.
+        * rewrite insubdK //= !inE.
+          case/orP: ix =>[?|/=]; first by rewrite sg_edgeNeq // sg_sym.
+          by case/orP=>/andP[? _]; rewrite // eq_sym.
+        * rewrite /U' mem_imset // /U !inE.
+          case/orP: ix =>[->//|/=]/orP[/andP[_]/andP[_ ->]//|].
+          by move=>/andP[H1]/andP[H2] _; rewrite H2 in H1. }
   have o'_in_U' : o' \in CP U'. 
-  { admit. }
+  { apply: CP_extensive. rewrite /U'/U/= imsetU1 !inE.
+    apply/orP; left; apply/eqP. apply: val_inj => /=.
+    by rewrite val_insubd /= if_same. }
   pose N := @neighbours (CP_ U') (Sub o' o'_in_U').
   have Ngt1: 1 < #|N|.
   { suff: 0 < #|N| /\ #|N| != 1. 
