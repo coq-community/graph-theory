@@ -564,11 +564,43 @@ Proof.
   { suff: 0 < #|N| /\ #|N| != 1. 
     { case: (#|N|) => [|[|]] //; rewrite ?ltnn ?eqxx; by case. }
     split. 
-    - (* i must have a neighbor (that is not o) and CP(U') is connected *)
-      admit.
-    - apply/negP. case/cards1P => z E. 
-      (* for every neighbor x of i, [z \in cp x o].
-         hence [z \in cp i o] (and different from both). Contradiction. *)
+    - apply/card_gt0P.
+      (* i must have a neighbor (that is not o) and CP(U') is connected *)
+      have [j ij] : exists j, i -- j.
+      { have /uPathP[p _] := connectedTE conn_G i o.
+        case: (splitL p io2) => j [ij] _.
+        by exists j. }
+      have Hj : j \in [set ~i].
+      { rewrite !inE; apply: contraTN ij =>/eqP->. by rewrite sg_irrefl. }
+      set j' : G' := Sub j Hj.
+      have j'_in_U' : j' \in CP U'.
+      { apply: CP_extensive. apply/imsetP; exists j; first by rewrite /U !inE ij.
+        by apply: val_inj; rewrite /= val_insubd Hj. }
+      have conn_CPU' : connected [set: CP_ U']. { admit. }
+      case/uPathP: (connectedTE conn_CPU' (Sub o' o'_in_U') (Sub j' j'_in_U')).
+      move=> p _; case: (splitL p _); first by
+        [ rewrite -!(inj_eq val_inj) /=; apply: contraNN io1 =>/eqP-> ].
+      by move=> k'' [ok''] _; exists k''; rewrite !inE.
+    - apply/negP. case/cards1P => n E.
+      have : n \in N by rewrite E inE eqxx. rewrite /N inE => on.
+      have {E} n_uniq (z : CP_ U') : z -- (Sub o' o'_in_U') -> z = n.
+      { move=> zo; have : z \in N by rewrite /N inE sg_sym.
+        by rewrite E inE => /eqP. }
+      (* for every neighbor z of i, [n \in cp z o].
+         hence [n \in cp i o] (and different from both). Contradiction. *)
+      suff : (val (val n) : G) \in cp i o.
+      { move: io3 => /subsetP io3 /io3. rewrite !inE =>/orP[]; apply/negP.
+        * by have := valP (val n); rewrite !inE.
+        * rewrite -[o]/(val o') (inj_eq val_inj).
+          rewrite -[o']/(sval (Sub o' o'_in_U')) (inj_eq val_inj).
+          by apply: contraTN on => /eqP<-; rewrite sg_irrefl. }
+      apply: cp_neighbours => // z iz.
+      (* By [cpP'], take an irredundant [p : Path G z o] and show that [n ∈ p].
+       * W.l.o.g. [i ∉ p] by cutting [p] at the unique occurence of [i].
+       * Using [add_edge_Path] then [Path_to_induced], [p] lifts to H.
+       * (TODO: change [Path_to_induced] so that it preserves [irred].)
+       * It then restricts to [q : Path (CP_ U') z o] which must have [n] as
+       * its penultimate node. Thus [n ∈ q ⊆ p]. *)
       admit.
   }
   case/card_gt1P : Ngt1 => x [y] [Nx Ny xy]. 

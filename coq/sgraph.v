@@ -971,6 +971,9 @@ Proof.
   by apply: (@card_le1 _ (UPath x y) p q); rewrite // card1.
 Qed.
 
+Lemma is_tree_connected : forall G : sgraph, is_tree G -> connected [set: G].
+Admitted.
+
 Lemma connected_not_tree (G : sgraph) (G_conn : forall x y : G, connect sedge x y) :
   ~~ is_tree G -> exists (x y : G) p q, [/\ upath x y p, upath x y q & p != q].
 Proof.
