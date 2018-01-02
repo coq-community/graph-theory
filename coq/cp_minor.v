@@ -296,7 +296,9 @@ Proof.
   have cp_lift u v w : 
     w \in @cp G' u v -> val w \in @cp G (val u) (val v).
   { apply: contraTT => /cpPn' [p] /irred_inT. move/(_ (valP u) (valP v)).
-    case/Path_to_induced => q /(_ w) <-. exact: cpNI'. }
+    case/Path_to_induced => q eq_nodes.
+    rewrite in_collective -eq_nodes (mem_map val_inj).
+    exact: cpNI'. }
 
   pose x0 : G' := Sub (val x) xH'.
   pose y0 : G' := Sub (val y) yH'.
@@ -559,7 +561,8 @@ Proof.
   { apply: CP_extensive. rewrite /U'/U/= imsetU1 !inE.
     apply/orP; left; apply/eqP. apply: val_inj => /=.
     by rewrite val_insubd /= if_same. }
-  pose N := @neighbours (CP_ U') (Sub o' o'_in_U').
+  set o'' := Sub o' o'_in_U' : CP_ U'.
+  pose N := neighbours o''.
   have Ngt1: 1 < #|N|.
   { suff: 0 < #|N| /\ #|N| != 1. 
     { case: (#|N|) => [|[|]] //; rewrite ?ltnn ?eqxx; by case. }
@@ -576,14 +579,15 @@ Proof.
       have j'_in_U' : j' \in CP U'.
       { apply: CP_extensive. apply/imsetP; exists j; first by rewrite /U !inE ij.
         by apply: val_inj; rewrite /= val_insubd Hj. }
+      set j'' := Sub j' j'_in_U' : CP_ U'.
       have conn_CPU' : connected [set: CP_ U']. { admit. }
-      case/uPathP: (connectedTE conn_CPU' (Sub o' o'_in_U') (Sub j' j'_in_U')).
+      case/uPathP: (connectedTE conn_CPU' o'' j'').
       move=> p _; case: (splitL p _); first by
         [ rewrite -!(inj_eq val_inj) /=; apply: contraNN io1 =>/eqP-> ].
       by move=> k'' [ok''] _; exists k''; rewrite !inE.
     - apply/negP. case/cards1P => n E.
       have : n \in N by rewrite E inE eqxx. rewrite /N inE => on.
-      have {E} n_uniq (z : CP_ U') : z -- (Sub o' o'_in_U') -> z = n.
+      have {E} n_uniq (z : CP_ U') : z -- o'' -> z = n.
       { move=> zo; have : z \in N by rewrite /N inE sg_sym.
         by rewrite E inE => /eqP. }
       (* for every neighbor z of i, [n \in cp z o].
@@ -592,16 +596,52 @@ Proof.
       { move: io3 => /subsetP io3 /io3. rewrite !inE =>/orP[]; apply/negP.
         * by have := valP (val n); rewrite !inE.
         * rewrite -[o]/(val o') (inj_eq val_inj).
-          rewrite -[o']/(sval (Sub o' o'_in_U')) (inj_eq val_inj).
+          rewrite -[o']/(sval o'') (inj_eq val_inj).
           by apply: contraTN on => /eqP<-; rewrite sg_irrefl. }
       apply: cp_neighbours => // z iz.
-      (* By [cpP'], take an irredundant [p : Path G z o] and show that [n ∈ p].
-       * W.l.o.g. [i ∉ p] by cutting [p] at the unique occurence of [i].
-       * Using [add_edge_Path] then [Path_to_induced], [p] lifts to H.
-       * (TODO: change [Path_to_induced] so that it preserves [irred].)
-       * It then restricts to [q : Path (CP_ U') z o] which must have [n] as
+      (* By [cpPn'], take an irredundant [p : Path G z o] and show that [n ∈ p].
+       * W.l.o.g. [i ∉ p] by cutting [p] at the unique occurence of [i]. *)
+      apply/cpPn' => -[p] Ip; apply/negP; rewrite negbK.
+      wlog iNp : z iz p Ip / i \notin p.
+      { move=> Hyp. case: (boolP (i \in p)); last exact: Hyp.
+        case/(isplitP Ip) => p1 p2 _ Ip2 _.
+        rewrite mem_pcat; apply/orP; right; clear p1.
+        case: (splitL p2 io2) Ip2 => [z'] [iz'] [p'] [-> _].
+        rewrite irred_cat => /andP[_]/andP[Ip' disj'].
+        rewrite mem_pcat; apply/orP; right; apply: Hyp => //.
+        rewrite in_collective nodesE inE sg_edgeNeq //=.
+        by rewrite (disjointFr disj') // nodes_start. }
+      have zNi : z \in [set~ i] by rewrite !inE sg_edgeNeq // sg_sym.
+      set z' := Sub z zNi : G'.
+      have z'_in_U' : z' \in CP U'.
+      { apply: CP_extensive. rewrite /U'. apply/imsetP.
+        exists z; first by rewrite !inE iz. apply: val_inj => /=.
+        by rewrite val_insubd zNi. }
+      set z'' := Sub z' z'_in_U' : CP_ U'.
+      (* Using [add_edge_Path] then [Path_to_induced], [p] lifts to G'. *)
+      case: (add_edge_Path i o p).
+      rewrite -/H -[z]/(val z') -[o]/(val o') => p' eq_p'.
+      suff : val (val n) \in p' by rewrite in_collective eq_p'.
+      have {Ip} Ip' : irred p' by move: Ip; rewrite !irredE -!nodesE eq_p'.
+      have {p iNp eq_p'} : {subset p' <= [set~ i]}.
+      { move=> x; rewrite !inE. apply: contraTneq => {x}->.
+        by rewrite in_collective eq_p'. }
+      case/Path_to_induced.
+      rewrite -/G' -[z']/(val z'') -[o']/(val o'') => p'' eq_p''.
+      suff : val n \in p'' by move=> /(map_f val); rewrite eq_p''.
+      have {p' Ip' eq_p''} Ip'' : irred p''.
+      { move: Ip'; rewrite !irredE -!nodesE -eq_p''. exact: map_uniq. }
+      (* It then restricts to [q : Path (CP_ U') z o] which must have [n] as
        * its penultimate node. Thus [n ∈ q ⊆ p]. *)
-      admit.
+      have conn_G' : connected [set: G']. { admit. }
+      case: (CP_path conn_G' Ip'') => q _ /subsetP. apply. apply: mem_imset.
+      have : z'' != o''.
+      { suff ? : z' != o' by rewrite -(inj_eq val_inj).
+        suff ? : z  != o  by rewrite -(inj_eq val_inj).
+        by apply: contraTneq iz => ->. }
+      case/(splitR q) => z1 [q'] [z1o] eq_q.
+      have {q' eq_q} : z1 \in q by rewrite eq_q mem_pcat nodes_end.
+      by rewrite (n_uniq z1).
   }
   case/card_gt1P : Ngt1 => x [y] [Nx Ny xy]. 
   (* TOTHINK: can we avoid nested vals using a proper lemma? *)

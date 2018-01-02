@@ -605,7 +605,7 @@ Admitted. (* should follow with lift_spath *)
 
 Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) 
   (p : Path (val x) (val y)) : 
-  {subset p <= S} -> exists q : Path x y, (forall z, (z \in q) = (val z \in p)).
+  {subset p <= S} -> exists q : Path x y, map val (nodes q) = nodes p.
 Admitted. (* follows with path_to_induced *)
 
 
