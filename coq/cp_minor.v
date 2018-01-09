@@ -17,15 +17,6 @@ Set Bullet Behavior "Strict Subproofs".
 Lemma linkNeq (G : sgraph) (x y : link_graph G) : x -- y -> x != y.
 Proof. move => A. by rewrite sg_edgeNeq. Qed.
 
-Lemma idx_end (G : sgraph) (x y : G) (p : Path x y) z : 
-  irred p -> z \in p -> idx p z <= idx p y.
-Proof.
-  case: p => p pth_p. rewrite /idx /irred in_collective nodesE SubK.
-  elim: p x pth_p  => [|a p IH] x.
-  - rewrite inE. by move/spath_nil => -> _ /eqP->.
-  - admit.
-Admitted.
-
 Arguments Path G x y : clear implicits.
 
 Section CheckpointsAndMinors.
@@ -82,7 +73,7 @@ Proof.
   case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ irr_p2 D3].
   have N2 : n2 \in tail p2. { subst p. by rewrite -idxR in before. }
   have N1 : n1 != y. 
-  { apply: contraTN before => /eqP->. by rewrite -leqNgt idx_end. }
+  { apply: contraTN before => /eqP->. by rewrite -leqNgt idx_end // idx_mem. }
   case: (splitL p2 N1) => n1' [n_edge] [p2'] [def_p2 tail_p2].
   have N2' : n2 \in p2' by rewrite tail_p2.
   

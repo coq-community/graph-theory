@@ -640,6 +640,13 @@ Section PathIndexing.
   Variables (G : sgraph).
   Implicit Types x y z : G.
 
+  Lemma idx_mem x y (p : Path x y) z :
+    z \in p -> idx p z <= size (tail p).
+  Proof. 
+    case: p => p pth_p. rewrite /idx /irred in_collective nodesE inE /=.
+    case: ifP => // E. rewrite eq_sym E /= -index_mem => H. exact: leq_trans H _. 
+  Qed.
+
   Lemma idx_end x y (p : Path x y) : 
     irred p -> idx p y = size (tail p).
   Proof.
