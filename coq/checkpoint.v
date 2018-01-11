@@ -476,8 +476,9 @@ Section CheckPoints.
       exact: disjointE.
   Qed.
 
-  Lemma CP_connected (U : {set G}) (x y : CP_ U) : connect sedge x y.
+  Lemma CP_connected (U : {set G}) : connected [set: CP_ U].
   Proof.
+    apply: connectedTI => x y.
     have /uPathP[? /CP_path[q Iq _]] := G_conn (val x) (val y).
     by apply/uPathP; exists q.
   Qed.
@@ -913,7 +914,7 @@ Lemma CP_treeI (G : sgraph) (U : {set G}) :
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
 Proof.
   (* CP_ U is connected because G is. *)
-  move/CP_connected => /(_ U) CP_conn.
+  move/CP_connected => /(_ U)/connectedTE CP_conn.
   (* Since is_tree is decidable, prove the contraposition:
    *    if CP_U is not a tree then it has a triangle. *)
   case: (boolP (is_tree _)) => // CP_not_tree H; exfalso; apply: H.

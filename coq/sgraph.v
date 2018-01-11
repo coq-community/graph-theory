@@ -959,6 +959,16 @@ Proof.
   - case: (Path_to_induced sub_S) => q _. exact: Path_connect q.
 Qed.
 
+Lemma connected_card_gt1 (G : sgraph) (S : {set G}) :
+  connected S -> {in S &, forall x y, x != y -> exists2 z, z \in S & x -- z }.
+Proof.
+  move=> conn_S x y x_S y_S xNy.
+  move: conn_S => /(_ x y x_S y_S)/(PathRP xNy)[p]/subsetP p_S.
+  case: (splitL p xNy) => [z] [xz] [p'] [_ eqi_p'].
+  exists z; last by []; apply: p_S.
+  by rewrite in_collective nodesE inE -eqi_p' nodes_start.
+Qed.
+
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
