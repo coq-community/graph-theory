@@ -639,11 +639,64 @@ Proof.
       by rewrite (n_uniq z1).
   }
 
+  have base_U (y : G') : y \in U' -> val y \in U.
+  { case/imsetP => x xU ->. rewrite insubdK // !inE.
+    move: xU; rewrite !inE => /orP[/eqP->|]; first by rewrite eq_sym.
+    by apply: contraTneq =>->; rewrite sg_irrefl. }
+
+  have CPU_sinterval (z : CP_ U') : o'' != z -> val (val z) \in sinterval i o.
+  { have : val z \in CP U' := valP z.
+    case/bigcupP => -[j0 j1]/= /setXP[/base_U j0U /base_U j1U].
+    wlog ij1 : j0 j1 j0U {j1U} / (val j1 : G) -- i.
+    { move=> Hyp. move: j1U; rewrite 3!inE sg_sym.
+      case/orP => [/eqP eq_j1|]; last exact: Hyp.
+      move: j0U; rewrite 3!inE; case/orP => [/eqP eq_j0|].
+      + move: eq_j0 eq_j1. rewrite {1 2}eq_o'' =>/val_inj->/val_inj->.
+        by rewrite cpxx inE =>/eqP/val_inj->; rewrite eqxx.
+      + by rewrite cp_sym sg_sym; apply: (Hyp j1 j0); rewrite eq_j1 2!inE eqxx.
+    }
+    case/uPathP: (connectedTE conn_G' j0 j1) => p' Ip'.
+    move=> /(@cpP' G')/(_ p') z_p' zNo.
+    set x := val (val z) : G. have {zNo} xNo : x != o.
+    { by apply: contraNN zNo; rewrite eq_o'' !(inj_eq val_inj) eq_sym. }
+    have {j0 j1 p' j0U ij1 Ip' z_p'} [j [p] [j_U Ip x_p]] :
+      exists j (p : Path G j i), [/\ j \in U, irred p & x \in p].
+    { case: (into_base _ _ p') => p iNp eq_p.
+      exists (val j0); exists (pcat p (edgep ij1)); split; first exact: j0U.
+      + move: Ip'; rewrite irred_cat irred_edge !irredE -!nodesE.
+        rewrite eq_p map_inj_uniq =>[->/=|]; last exact: val_inj.
+        rewrite /tail/= disjoint_sym disjoint_has; apply/hasPn=> ?.
+        by rewrite /= inE => /eqP->.
+      + by move: z_p'; rewrite /x mem_pcat 2!in_collective eq_p =>/map_f->. }
+    apply/sintervalP2; split; last first.
+    { case/uPathP: (connectedTE conn_G' (val z) (val o'')) => q' Iq'.
+      case: (into_base _ _ q'); rewrite -eq_o'' => q iNq eq_q.
+      exists q => //. move: Iq'; rewrite !irredE -!nodesE eq_q.
+      by rewrite map_inj_uniq; [ | exact: val_inj ]. }
+    case: (isplitP Ip x_p) => {p Ip x_p} p1 p2 Ip1 Ip2 disj.
+    case: (boolP (o \in p2)) =>[|?]; last by exists p2.
+    rewrite in_collective nodesE inE eq_sym (negbTE xNo) /= -[pval]/tail.
+    move=> /(disjointFl disj).
+    move: j_U; rewrite !inE; case/orP =>[/eqP<-|]; first by rewrite nodes_start.
+    rewrite sg_sym => ij /negbT oNp1. exists (pcat (prev p1) (edgep ij)).
+    + rewrite irred_cat irred_edge prev_irred /tail //=.
+      rewrite disjoint_sym (@eq_disjoint1 G i); last by move=> ?; rewrite !inE.
+      rewrite mem_prev (disjointFl disj) // in_tail ?nodes_end //.
+      by have : x \in [set~ i] := valP (val z); rewrite 2!inE eq_sym.
+    + by rewrite mem_pcatT mem_prev negb_or oNp1 /tail/= inE eq_sym.
+  }
+
   case/card_gt1P : Ngt1 => [x] [y]. rewrite !inE {N}. case=> ox oy xNy.
   (* TOTHINK: can we avoid nested vals using a proper lemma? *)
-  apply/connected2. exists (val (val x)). exists (val (val y)). split.
-  - admit. (* whats the argument that the neighbours are in ]]i;o[[ *)
-  - admit.
-  - (* o, which is not in ]]i;o[[, is a checkpoint beween x and y *)
-    admit. 
+  apply/connected2. exists (val (val x)). exists (val (val y)).
+  split; last 1 [idtac] || by apply: CPU_sinterval; rewrite sg_edgeNeq.
+  (* o, which is not in ]]i;o[[, is a checkpoint beween x and y *)
+  apply/uPathRP => // -[p] Ip /subsetP p_io.
+  have /from_base[p' eq_p'] : i \notin p.
+  { by apply/negP => /p_io; rewrite sinterval_bounds. }
+  pose q' := pcat (prev (edgep ox)) (edgep oy). have Iq' : irred q'.
+  { by rewrite irredE/= !inE negb_or xNy eq_sym (sg_edgeNeq ox) (sg_edgeNeq oy). }
+  have : o'' \in q' by rewrite mem_pcat mem_prev !nodes_start.
+  move=>/(CP_tree_paths conn_G' _ tree_CPU' Iq')/(@cpP' G')/(_ p')/(map_f val).
+  by rewrite -eq_p' -eq_o'' =>/p_io; rewrite sinterval_bounds.
 Admitted.
