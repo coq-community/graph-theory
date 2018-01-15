@@ -449,3 +449,46 @@ Theorem term_of_iso (G : graph2) :
   iso2 G (graph_of_term (term_of G)).
 Proof.
 Admitted.
+
+(** * Minor Exclusion Corollaries *)
+
+Corollary minor_exclusion_2p (G : graph2) :
+  connected [set: skeleton G] -> 
+  K4_free (sskeleton G) <-> 
+  exists (T:tree) (B : T -> {set G}), [/\ decomp T G B, width B <= 3 & compatible B].
+Proof.
+  move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
+  - have [T [B] [B1 B2 B3]] := (graph_of_TW2 (term_of G)).
+    have [i hom_i bij_i] := term_of_iso conn_G K4F_G.
+    exists T. exists (fun t => [set x | i.1 x \in B t]). 
+    (* lift decomposition along isomorphim *) 
+    admit.
+  - apply: (TW2_K4_free (G := sskeleton G)) B2.
+    exact: decomp_sskeleton.
+Admitted.
+
+Lemma inverse_sskeleton (G : sgraph) : 
+  exists G', sg_iso (sskeleton G') G /\ sg_iso (skeleton G') G.
+Proof. (* for evert pair x -- y in G add a 0-edge *) Admitted.
+
+Corollary sminor_exclusion (G : sgraph) :
+  connected [set: G] -> 
+  K4_free G <-> 
+  exists (T:tree) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
+Proof.
+  move => conn_G.
+  have [G' [iso_Gs iso_G]] := inverse_sskeleton G.
+  have conn_G' : connected [set: skeleton G'].
+  { admit. (* lift along iso *) }
+  have M := minor_exclusion_2p conn_G'.  
+  split => [K4F_G|].
+  - have/M [T [B [B1 B2 B3]]] : K4_free (sskeleton G'). 
+    { admit. (* lift along iso *) }
+    exists T. 
+    have: sdecomp T (sskeleton G') B by exact: decomp_sskeleton. 
+    admit. (* lift along iso *)
+  - move => [T [B [B1 B2]]]. 
+    suff: K4_free (sskeleton G'). { admit. (* iso *)}
+    apply/M. 
+    (* need to construct decomposition for the multigraph G' *)
+Admitted.
