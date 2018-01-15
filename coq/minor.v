@@ -417,6 +417,41 @@ Proof.
     by rewrite (inj_eq (@lift_inj _ ord_max)).
 Qed.
 
+Lemma connected_add_node (G : sgraph) (U A : {set G}) : 
+  connected A -> @connected (add_node G U) (Some @: A).
+Proof. 
+  move => H x y /imsetP [x0 Hx0 ->] /imsetP [y0 Hy0 ->].
+  have/uPathRP := H _ _ Hx0 Hy0. 
+  case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
+  case: (add_node_lift_Path U p) => q E. 
+  apply: (connectRI (p := q)) => ?. 
+  rewrite !inE mem_path -nodesE E.
+  case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
+Qed.
+
+Lemma add_node_minor (G G' : sgraph) (U : {set G}) (U' : {set G'}) (phi : G -> G') :
+  (forall y, y \in U' -> exists2 x, x \in U & phi x = y) ->
+  total_minor_map phi ->
+  minor (add_node G U) (add_node G' U').
+Proof.
+  move => H [M1 M2 M3]. 
+  apply: strict_is_minor. exists (omap phi). split.
+  - case => [y|]; last by exists None. case: (M1 y) => x E. 
+    exists (Some x). by rewrite /= E.
+  - move => [y|]. 
+    + rewrite preim_omap_Some. exact: connected_add_node. 
+    + rewrite preim_omap_None. exact: connected1.
+  - move => [x|] [y|] //=. 
+    + move/M3 => [x0] [y0] [H1 H2 H3]. exists (Some x0); exists (Some y0).
+      by rewrite !preim_omap_Some !mem_imset.
+    + move/H => [x0] H1 H2. exists (Some x0); exists None. 
+      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !mem_imset //.
+      by rewrite -mem_preim H2.
+    + move/H => [y0] H1 H2. exists None; exists (Some y0).
+      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !mem_imset //.
+      by rewrite -mem_preim H2.
+Qed.
+
 Lemma minor_with (H G': sgraph) (S : {set H}) (i : H) (N : {set G'})
   (phi : (sgraph.induced S) -> option G') : 
   i \notin S -> 
