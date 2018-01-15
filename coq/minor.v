@@ -169,6 +169,21 @@ Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y :
   (f x == y) = (x \in f @^-1 y).
 Proof. by rewrite !inE. Qed.
 
+Lemma preim_omap_Some (aT rT : finType) (f : aT -> rT) y :
+  (omap f @^-1 Some y) = Some @: (f @^-1 y).
+Proof.
+  apply/setP => [[x|]] //=; rewrite !inE /= ?Some_eqE.
+  - apply/idP/imsetP => E. exists x => //. by rewrite -mem_preim.
+    case: E => x0 ? [->]. by rewrite mem_preim.
+  - by apply/idP/imsetP => // [[?]] //.
+Qed.
+
+Lemma preim_omap_None (aT rT : finType) (f : aT -> rT) :
+  (omap f @^-1 None) = [set None].
+Proof. apply/setP => x. rewrite -mem_preim !inE. by case: x => [x|]. Qed.
+
+
+
 (** H is a minor of G -- The order allows us to write [minor G] for the
 colletion of [G]s minors *)
 

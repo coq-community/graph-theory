@@ -228,26 +228,57 @@ Arguments collapse_petals [G] conn_G U u0' _.
 
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
-(** Proposition 21(i) *)
-(* TOTHINK: Is this statement better than the one below? *)
-Lemma CP_tree (G : sgraph) (U : {set G}) (G_conn : forall x y : G, connect sedge x y) :
-  forall H, minor H (add_node G U) -> K4_free H -> is_tree (CP_ U).
-Proof.
-  move=> H H_min_GU H_K4F.
-  have {H H_min_GU H_K4F} : K4_free (add_node G U).
-    by exact: minor_K4_free H_K4F.
-  set H := add_node G U => H_K4_free.
-Abort.
+(* (** Proposition 21(i) *) *)
+(* (* TOTHINK: Is this statement better than the one below? *) *)
+(* Lemma CP_tree (G : sgraph) (U : {set G}) (G_conn : forall x y : G, connect sedge x y) : *)
+(*   forall H, minor H (add_node G U) -> K4_free H -> is_tree (CP_ U). *)
+(* Proof. *)
+(*   move=> H H_min_GU H_K4F. *)
+(*   have {H H_min_GU H_K4F} : K4_free (add_node G U). *)
+(*     by exact: minor_K4_free H_K4F. *)
+(*   set H := add_node G U => H_K4_free. *)
+(* Abort. *)
 
-(** TOTHINK: [[set val x | x in U] = neighbours i] corresponds to what
-    is written in the paper. Is there a better way to phrase this? *)
-Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
-  connected [set: sgraph.induced [set~ i]] -> 
-  K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
-  is_tree (CP_ U).
+Lemma connected_add_node (G : sgraph) (U A : {set G}) : 
+  connected A -> @connected (add_node G U) (Some @: A).
+Proof. 
+  move => H x y /imsetP [x0 Hx0 ->] /imsetP [y0 Hy0 ->].
+  have/uPathRP := H _ _ Hx0 Hy0. 
+  case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
+  case: (add_node_lift_Path U p) => q E. 
+  apply: (connectRI (p := q)) => ?. 
+  rewrite !inE mem_path -nodesE E.
+  case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
+Qed.
+
+Lemma add_node_minor (G G' : sgraph) (U : {set G}) (U' : {set G'}) (phi : G -> G') :
+  (forall y, y \in U' -> exists2 x, x \in U & phi x = y) ->
+  total_minor_map phi ->
+  minor (add_node G U) (add_node G' U').
 Proof.
-  set G := sgraph.induced _ in U *.
-  move => G_conn H_K4_free UisN. 
+  move => H [M1 M2 M3]. 
+  apply: strict_is_minor. exists (omap phi). split.
+  - case => [y|]; last by exists None. case: (M1 y) => x E. 
+    exists (Some x). by rewrite /= E.
+  - move => [y|]. 
+    + rewrite preim_omap_Some. exact: connected_add_node. 
+    + rewrite preim_omap_None. exact: connected1.
+  - move => [x|] [y|] //=. 
+    + move/M3 => [x0] [y0] [H1 H2 H3]. exists (Some x0); exists (Some y0).
+      by rewrite !preim_omap_Some !mem_imset.
+    + move/H => [x0] H1 H2. exists (Some x0); exists None. 
+      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !mem_imset //.
+      by rewrite -mem_preim H2.
+    + move/H => [y0] H1 H2. exists None; exists (Some y0).
+      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !mem_imset //.
+      by rewrite -mem_preim H2.
+Qed.
+
+Lemma CP_tree' (G : sgraph) (U : {set G}) : 
+  connected [set: G] -> K4_free (add_node G U) -> is_tree (CP_ U).
+Proof.
+  set H := add_node G U.
+  move => G_conn H_K4_free.
   suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI.
   move => [x] [y] [z] [xy yz zx]. apply: H_K4_free. 
   move: (CP_triangle_petals G_conn xy yz zx) => 
@@ -260,7 +291,6 @@ Proof.
   have yY : val y \in Y by apply: (@petal_id G).
   have zZ : val z \in Z by apply: (@petal_id G).
   move def_T: (~: (X :|: Y :|: Z)) => T.
-  
   pose T' : {set G} := U3 :|: T.
   pose G' := @sgraph.induced G T'.
   
@@ -294,7 +324,7 @@ Proof.
   pose x0 : G' := Sub (val x) xH'.
   pose y0 : G' := Sub (val y) yH'.
   pose z0 : G' := Sub (val z) zH'.
-  pose H' := @add_node G' [set x0;y0;z0].  
+  (* pose H' := @add_node G' [set x0;y0;z0]. *)
 
   have link_xy : @link_rel G' x0 y0.
   { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq xy) /=. apply/subsetP.
@@ -311,20 +341,42 @@ Proof.
 
   apply: minor_trans (K4_of_triangle link_xy link_yz link_zx).
   idtac => {link_xy link_yz link_zx}.
-  move/map_of_total in mm_phi.
-  apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx.
+  rewrite /H. apply: add_node_minor mm_phi.
   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b.
-  - exists x'. 
-    + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx.
-    + move/setP/(_ (val x')) : UisN. by rewrite !inE mem_imset // sg_sym. 
-  - exists y'. 
-    + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx.
-    + move/setP/(_ (val y')) : UisN. by rewrite !inE mem_imset // sg_sym.
-  - exists z'. 
-    + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx.
-    + move/setP/(_ (val z')) : UisN. by rewrite !inE mem_imset // sg_sym.
+  - exists x' => //. apply/eqP. rewrite mem_preim P2 //. by rewrite !inE eqxx.
+  - exists y' => //. apply/eqP. rewrite mem_preim P2 //. by rewrite !inE eqxx.
+  - exists z' => //. apply/eqP. rewrite mem_preim P2 //. by rewrite !inE eqxx.  
 Qed.
 
+(* Variant of CP_tree as stated in the original paper 
+   (and the part of the proof that differs from the proof above *)
+
+Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) :
+  connected [set: sgraph.induced [set~ i]] ->
+  K4_free H -> [set val x | x in U] = neighbours i :> {set H} ->
+  is_tree (CP_ U).
+Admitted.
+(* Proof. *)
+(*   set G := sgraph.induced _ in U *. *)
+(*   move => G_conn H_K4_free UisN.  *)
+(*   suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI. *)
+(*   move => [x] [y] [z] [xy yz zx]. apply: H_K4_free.  *)
+(*   [...] *)
+(*   apply: minor_trans (K4_of_triangle link_xy link_yz link_zx). *)
+(*   idtac => {link_xy link_yz link_zx}. *)
+(*   move/map_of_total in mm_phi. *)
+(*   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx. *)
+(*   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b. *)
+(*   - exists x'.  *)
+(*     + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx. *)
+(*     + move/setP/(_ (val x')) : UisN. by rewrite !inE mem_imset // sg_sym.  *)
+(*   - exists y'.  *)
+(*     + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx. *)
+(*     + move/setP/(_ (val y')) : UisN. by rewrite !inE mem_imset // sg_sym. *)
+(*   - exists z'.  *)
+(*     + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx. *)
+(*     + move/setP/(_ (val z')) : UisN. by rewrite !inE mem_imset // sg_sym. *)
+(* Qed. *)
 
 (** Proposition 21(ii) *)
 Definition igraph (G : sgraph) (x y : G) : sgraph     := induced (interval  x y).
