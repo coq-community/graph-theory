@@ -67,9 +67,20 @@ Definition add_edge (G:sgraph) (i o : G) :=
      sg_sym := add_edge_sym i o;
      sg_irrefl := add_edge_irrefl i o |}.
 
+Lemma add_edge_Path (G : sgraph) (i o x y : G) (p : @Path G x y) :
+  exists q : @Path (add_edge i o) x y, nodes q = nodes p.
+Admitted.
+
 Lemma add_edge_connected (G : sgraph) (i o : G) (U : {set G}) :
   @connected G U -> @connected (add_edge i o) U.
-Admitted.
+Proof.
+  move=> U_conn x y x_U y_U; move/(_ x y x_U y_U): U_conn.
+  case: (boolP (x == y :> G)); first by move=>/eqP-> _; rewrite connect0.
+  move=> xNy /(uPathRP xNy)[p _ /subsetP pU].
+  case: (add_edge_Path i o p) => [q eq_q].
+  apply: (@connectRI _ _ x y q) => z.
+  rewrite in_collective eq_q; exact: pU.
+Qed.
 
 Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
 

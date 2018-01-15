@@ -605,7 +605,7 @@ Admitted. (* should follow with lift_spath *)
 
 Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) 
   (p : Path (val x) (val y)) : 
-  {subset p <= S} -> exists q : Path x y, (forall z, (z \in q) = (val z \in p)).
+  {subset p <= S} -> exists q : Path x y, map val (nodes q) = nodes p.
 Admitted. (* follows with path_to_induced *)
 
 
@@ -966,6 +966,16 @@ Proof.
   - case: (Path_to_induced sub_S) => q _. exact: Path_connect q.
 Qed.
 
+Lemma connected_card_gt1 (G : sgraph) (S : {set G}) :
+  connected S -> {in S &, forall x y, x != y -> exists2 z, z \in S & x -- z }.
+Proof.
+  move=> conn_S x y x_S y_S xNy.
+  move: conn_S => /(_ x y x_S y_S)/(PathRP xNy)[p]/subsetP p_S.
+  case: (splitL p xNy) => [z] [xz] [p'] [_ eqi_p'].
+  exists z; last by []; apply: p_S.
+  by rewrite in_collective nodesE inE -eqi_p' nodes_start.
+Qed.
+
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
@@ -977,6 +987,9 @@ Proof.
   apply: val_inj. rewrite {}eq_p {}eq_q. apply: (congr1 val).
   by apply: (@card_le1 _ (UPath x y) p q); rewrite // card1.
 Qed.
+
+Lemma is_tree_connected : forall G : sgraph, is_tree G -> connected [set: G].
+Admitted.
 
 Lemma connected_not_tree (G : sgraph) (G_conn : forall x y : G, connect sedge x y) :
   ~~ is_tree G -> exists (x y : G) p q, [/\ upath x y p, upath x y q & p != q].
