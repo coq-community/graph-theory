@@ -486,8 +486,8 @@ Section CheckPoints.
   Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
     val z \in cp (val x) (val y) -> z \in p.
   Proof. 
-    move/link_path_cp => H. 
-    case: (Path_from_induced p) => p0 P1 P2. by rewrite -P2. 
+    case: (Path_from_induced p) => q _ eq_q /link_path_cp-/(_ q).
+    rewrite in_collective eq_q mem_map //. exact: val_inj.
   Qed.
 
   (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any

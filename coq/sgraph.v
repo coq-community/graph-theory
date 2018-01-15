@@ -610,12 +610,11 @@ Admitted. (* follows with path_to_induced *)
 
 
 Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
-  exists2 q : Path (val x) (val y), {subset q <= S} & forall z : induced S, (val z \in q) = (z \in p).
+  exists2 q : Path (val x) (val y), {subset q <= S} & nodes q = map val (nodes p).
 Proof. 
-  case: p => p pth_p. exists (Build_Path (induced_path pth_p)) => z. 
-  - rewrite !mem_path /= in_cons => /predU1P [->|]; first exact: valP.
-    case/mapP => z' _ ->. exact: valP.
-  - rewrite !mem_path /= in_cons mem_map //. exact: val_inj.
+  case: p => p pth_p.
+  exists (Build_Path (induced_path pth_p)); last by rewrite !nodesE.
+  move=> z; rewrite mem_path /= -map_cons => /mapP[z' _ ->]; exact: valP.
 Qed.
 
 
@@ -949,10 +948,9 @@ Proof.
   case: (boolP (x == y)) => [/eqP->|Hxy]; first exact: connect0.
   move: (conn_A _ _ xA yA) => /uPathRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
   case: (Path_from_induced p) => q sub_S Hq. 
-  apply: (connectRI (p := q)) => z z_on_q. 
-  have zS: (z \in S) by apply: sub_S.
-  rewrite (_ : z = val (Sub z zS : induced S)) ?mem_imset ?SubK //. 
-  apply: subA. by rewrite -Hq.
+  apply: (connectRI (p := q)) => z.
+  rewrite in_collective Hq => /mapP[z'] /subA Hz' ->.
+  exact: mem_imset.
 Qed.
 
 Lemma connected_induced (G : sgraph) (S : {set G}) : 
