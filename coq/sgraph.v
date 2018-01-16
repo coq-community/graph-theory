@@ -456,6 +456,13 @@ Qed.
 
 End PathTheory.
 
+Lemma irredxx (x : G) (p : Path x x) : irred p -> tail p = [::].
+Proof.
+  rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
+  rewrite -lock => p_uniq. suff /upath_nil-> : upath x x p by [].
+  by rewrite /upath p_uniq p_pth.
+Qed.
+
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 

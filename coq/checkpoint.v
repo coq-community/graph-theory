@@ -126,11 +126,49 @@ Section CheckPoints.
   and y? *)
   Admitted.
 
+  Lemma cp_tightenR (x y z u : G) : z \in cp x y -> x \in cp u y -> x \in cp u z.
+  Proof.
+    move=> z_cpxy x_cpuy. apply/cpP' => pi.
+    case/uPathP: (G_conn z y) => pi_o irred_o.
+    move/cpP'/(_ (pcat pi pi_o)): x_cpuy.
+    rewrite mem_pcatT => /orP[//|x_tail]; exfalso.
+    case: (altP (z =P y)). (* TODO: worth a lemma *)
+    { move=> eq_z; move: pi_o irred_o x_tail.
+      by rewrite -eq_z => pi_o /irredxx->. }
+    case/(splitL pi_o) => [v] [zv] [pi'] [eq_pio eq_tail].
+    rewrite -{}eq_tail in x_tail.
+    move: irred_o; rewrite eq_pio irredE (lock uniq) /= -(nodesE pi') -lock /=.
+    move=> /andP[zNpi']; rewrite nodesE -irredE => Ipi'.
+    move: zNpi'; apply/idP.
+    case: (isplitP Ipi' x_tail) z_cpxy => [p1 p2 _ _ _] /cpP'/(_ p2).
+    by rewrite mem_pcat =>->.
+  Qed.
+
+  (* The two-sided version of the previous lemma, not used. *)
+  Lemma cp_tighten (i o p x y : G) :
+    i \in cp x p -> o \in cp p y -> p \in cp x y -> p \in cp i o.
+  (* Proof sketch:
+   * Let [pi : Path i o]. By connectedness, there are irredundant paths
+   * [pi_i : Path x i] and [pi_o : Path o y]. Then [p] must be in the
+   * concatenation [pi_i ++ pi ++ pi_o]. It cannot be in the tail of [pi_o]
+   * because [o \in cp p z] but [pi_o] is assumed to be irredundant. A
+   * symmetrical reasoning for [pi_i] shows that [p \in pi].             Qed. *)
+  Abort.
+
   (** ** CP Closure Operator *)
 
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
   
   Unset Printing Implicit Defensive.
+
+  Lemma CP_set2 (x y : G) : CP [set x; y] = cp x y.
+  Proof.
+    apply/setP => z. apply/bigcupP/idP => /=.
+    + case=> -[a b] /=/setXP[].
+      rewrite !inE =>/orP[]/eqP->; last rewrite (cp_sym x y);
+      move=>/orP[]/eqP->//; rewrite cpxx inE => /eqP->; by rewrite mem_cpl.
+    + move=> Hz. exists (x, y) => //. by apply/setXP; rewrite !inE !eqxx.
+  Qed.
   
   Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
   Proof.
@@ -246,6 +284,26 @@ Section CheckPoints.
   Lemma sinterval_bounds x y : (x \in sinterval x y = false) * 
                                (y \in sinterval x y = false).
   Proof. by rewrite !inE !eqxx. Qed.
+
+  Lemma sintervalP x y u :
+    u \in sinterval x y = (x \notin cp u y) && (y \notin cp u x).
+  Proof.
+    rewrite 5!inE negb_or. apply/andP/andP.
+    + case=> /andP[uNx uNy] /andP[].
+      move=> /(uPathRP uNx)[px] Ipx /subsetP/(_ y).
+      rewrite inE eqxx =>/contraTN/(_ isT) yNpx.
+      move=> /(uPathRP uNy)[py] Ipy /subsetP/(_ x).
+      rewrite inE eqxx =>/contraTN/(_ isT) xNpy.
+      by split; apply/cpPn'; eexists; eassumption.
+    + case=> /cpPn'[py Ipy xNpy] /cpPn'[px Ipx yNpx].
+      have uNx : u != x by apply: contraNneq xNpy =><-; exact: nodes_start.
+      have uNy : u != y by apply: contraNneq yNpx =><-; exact: nodes_start.
+      split; apply/andP; split=> //; apply/PathRP => //.
+      - exists px; apply/subsetP => z ?; rewrite inE.
+        by apply: contraNneq yNpx =><-.
+      - exists py; apply/subsetP => z ?; rewrite inE.
+        by apply: contraNneq xNpy =><-.
+  Qed.
 
   Lemma sintervalP2 x y u :
     reflect ((exists2 p : Path u x, irred p & y \notin p) /\
@@ -800,28 +858,22 @@ a clique, so [CP U] is [U]. *)
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
-  Lemma link_partition x y : link_rel x y -> 
+  Lemma link_partition x y : x != y ->
     pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
   Proof.
-    move => /= /andP [xy cp_xy]. 
-    have CPxy : CP [set x; y] = [set x; y].
-    { apply: CP_clique. exact: clique2. }
-    apply/andP; split.
-    - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
-      pose N := ncp [set x; y] p. 
-      have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
-      rewrite subset2 // {1}/N (ncp0 x) ?CP_extensive ?in_setU ?set11 //=.
-      case/or3P. 
-      + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-        apply: mem_cover. by rewrite !inE eqxx. 
-      + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-        apply: mem_cover. by rewrite !inE eqxx. 
-      + rewrite /N. rewrite eqEsubset => /andP [_ /(ncp_interval xy)].
-        apply: mem_cover. by rewrite !inE eqxx. 
-    - apply: trivIset3. 
-      + by apply: petal_disj => //; rewrite CPxy !inE eqxx.
-      + by rewrite sinterval_sym interval_petal_disj // CPxy !inE eqxx.
-      + by rewrite interval_petal_disj // CPxy !inE eqxx.
+    move=> xNy. apply/andP; split.
+    - rewrite eqEsubset subsetT /=. apply/subsetP => p _.
+      rewrite /cover !bigcup_setU !bigcup_set1.
+      rewrite 2!inE orbC sintervalP -negb_or -implybE. apply/implyP.
+      wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in petal [set x; y] x.
+      { by case/orP => /Hyp; last rewrite setUC; move=>->. }
+      move=> x_cppy; apply/petalP => z. rewrite CP_set2 => z_cpxy.
+      exact: cp_tightenR z_cpxy x_cppy.
+    - have [x_CP y_CP] : x \in CP [set x; y] /\ y \in CP [set x; y].
+      { by split; apply: CP_extensive; rewrite !inE eqxx. }
+      apply: trivIset3; first exact: petal_disj.
+      + by rewrite sinterval_sym interval_petal_disj.
+      + by rewrite interval_petal_disj.
   Qed.
 
   Lemma CP_triangle_petals U (x y z : CP_ U) : 

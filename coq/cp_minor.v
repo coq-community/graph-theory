@@ -417,7 +417,7 @@ Proof.
   { rewrite {}/T {-3}/U2 /interval bigcup_setU !bigcup_set1.
     congr ([set x; y] :|: _).
     have : pe_partition [set petal U2 x; petal U2 y; sinterval x y] [set: G].
-    { exact: link_partition. }
+    { exact: sinterval_petal_partition. }
     rewrite /pe_partition =>/andP[/eqP/esym covG _]; move: covG.
     rewrite /cover !bigcup_setU !bigcup_set1 -setTD =>->.
     rewrite setDUl setDv set0U; apply/setDidPl.
