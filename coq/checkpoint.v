@@ -858,7 +858,7 @@ a clique, so [CP U] is [U]. *)
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
-  Lemma link_partition x y : x != y ->
+  Lemma sinterval_petal_partition x y : x != y ->
     pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
   Proof.
     move=> xNy. apply/andP; split.
