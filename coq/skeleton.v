@@ -151,9 +151,6 @@ Admitted.
 (** TOTHINK: define intervals and petals on graph or sgraph, i.e.,
 where to add theskeleton casts? *)
 
-Definition point (G : graph) (x y : G) := 
-  Eval hnf in @Graph2 G x y.
-
 Fact intervalL (G : sgraph) (x y : G) : 
   x \in interval x y.
 Proof. by rewrite !inE eqxx. Qed.
@@ -249,7 +246,7 @@ Proof.
 Qed.
 
 Lemma sub_pointxx (G : graph) (x:G) :
-  sgraph.subgraph (sskeleton (point x x))
+  sgraph.subgraph (sskeleton (point _ x x))
                   (skeleton G).
 Proof.
   exists id => // u v /=. 

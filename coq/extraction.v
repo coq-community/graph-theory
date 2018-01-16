@@ -12,22 +12,13 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-Arguments point : clear implicits.
+
 
 Definition dom t := tmI (tmS t tmT) tm1.
 
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.
 
-(* Isomorphim of graphs *)
-
-Definition bijective2 (G1 G2 : graph) (h : h_ty G1 G2) := 
-  bijective h.1 /\ bijective h.2.
-
-Definition iso2 (G1 G2 : graph2) : Prop := 
-  exists2 h : h_ty G1 G2, hom_g2 h & bijective2 h.
-
-Notation "G ≈ H" := (iso2 G H) (at level 45).
 
 Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
 Proof. by []. Qed.
@@ -443,11 +434,98 @@ Proof.
     + exact: check_point_wf.
 Qed.
 
-Theorem term_of_iso (G : graph2) : 
-  connected [set: skeleton G] ->  
-  K4_free (sskeleton G) -> 
-  iso2 G (graph_of_term (term_of G)).
+(** * Isomorphim Properties *)
+
+Local Open Scope quotient_scope.
+
+
+Definition iso2_congruence (op : graph2 -> graph2 -> graph2) :=
+  forall (G1 G2 G1' G2' : graph2), G1 ≈ G1' -> G2 ≈ G2' -> op G1 G2 ≈ op G1' G2'.
+
+Definition big_par2 (s : seq graph2) : graph2 := 
+  \big[par2/top2]_(G <- s) G.
+
+Lemma big_par2_map (r : seq term) g : 
+  ~~ nilp r -> big_par2 (map g r) ≈ g (big_tmI r).
+Admitted.
+
+Lemma big_par2_cat r1 r2 : 
+  big_par2 (r1 ++ r2) ≈ par2 (big_par2 r1) (big_par2 r2).
+Proof. rewrite /big_par2. (* how to handle this? *)
+Admitted.
+
+Lemma par2_congr (G1 G2 G1' G2' : graph2) : 
+  G1 ≈ G1' -> G2 ≈ G2' -> par2 G1 G2 ≈ par2 G1' G2'.
 Proof.
+  case => f f1 f2 [g g1 g2].
+  have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
+  apply: (merge_congr (h := h)) => //; try by rewrite I3 f1.
+  move => [x|x] [y|y];rewrite /eq_par2 /= !(I3,I4) //.
+  by rewrite !iso2_inv_in // !iso2_inv_out.
+Qed.
+
+Lemma big_par2_congr (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
+  (forall x, x \in s -> g1 x ≈ g2 x) -> 
+  big_par2 [seq g1 x | x in s] ≈ big_par2 [seq g2 x | x in s].
+Proof. 
+  Unset Printing Notations.
+  move => H. 
+  have {H} : (forall x, x \in enum_mem (mem s) -> g1 x ≈ g2 x) by admit.
+  rewrite /image_mem.
+  Set Printing Notations.
+  elim: (enum_mem (mem s)). 
+  - admit.
+  - (* follows with par2_congr *) admit.
+Admitted.
+
+Section SplitParallel.
+Variable (G : graph2).
+Let E := @edges G g_in g_out :|: edges g_out g_in.
+Let P := components (@sinterval (skeleton G) g_in g_out).
+
+Lemma split_edges : consistent [set g_in;g_out] E.
+Admitted.
+
+Definition G_rest := big_par2 [seq component C | C in P].
+
+Lemma setU22 (T:finType) (x y :T) : y \in [set x;y].
+Proof. by rewrite !inE eqxx. Qed.
+
+Definition G_edges :=
+  @point (subgraph_for split_edges) 
+         (Sub g_in (setU11 _ _)) 
+         (Sub g_out (setU22 _ _)).
+
+(* TOTHINK: What is the general decomposition lemma? (partition overlapping only at IO?) *)
+Lemma split_io : G ≈ par2 G_rest G_edges.
+Admitted.
+End SplitParallel.
+
+Theorem term_of_iso (G : graph2) : 
+  CK4F G -> iso2 G (graph_of_term (term_of G)).
+Proof.
+  elim: (wf_leq term_of_measure G) => {G} G _ IH CK4F_G.
+  rewrite term_of_eq // /term_of_rec. 
+  case: ifP => C1.
+  - (* selfloops / io-redirect *)
+    rewrite /=. 
+    admit.
+  - case: ifP => C2.
+    + (* parallel split *)
+      apply: iso2_trans; last apply (big_par2_map _); last first.
+      { admit. }
+      rewrite map_cat.
+      apply: iso2_trans; last apply iso2_sym,big_par2_cat.
+      apply: iso2_trans; first apply split_io.
+      apply: par2_congr. 
+      * rewrite -map_comp. 
+        apply: big_par2_congr. 
+        move => C HC. apply: IH. 
+        -- exact: measure_lens. 
+        -- exact: CK4F_lens. 
+      * admit.
+    + (* sequential split *) 
+      admit.
 Admitted.
 
 (** * Minor Exclusion Corollaries *)
@@ -459,7 +537,7 @@ Corollary minor_exclusion_2p (G : graph2) :
 Proof.
   move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
   - have [T [B] [B1 B2 B3]] := (graph_of_TW2 (term_of G)).
-    have [i hom_i bij_i] := term_of_iso conn_G K4F_G.
+    have [i hom_i bij_i] := term_of_iso (conj conn_G K4F_G).
     exists T. exists (fun t => [set x | i.1 x \in B t]). 
     (* lift decomposition along isomorphim *) 
     admit.

@@ -139,3 +139,103 @@ Definition induced (G:graph) (S : {set G}) :=
 
 Lemma induced_sub (G:graph) (S : {set G}) : subgraph (induced S) G.
 Proof. exact: subgraph_sub. Qed.
+
+
+(** ** Isomorphim Properties *)
+
+Definition point (G : graph) (x y : G) := 
+  Eval hnf in @Graph2 G x y.
+
+Arguments point : clear implicits.
+
+Local Open Scope quotient_scope.
+
+(* Isomorphim of graphs *)
+
+Definition bijective2 (G1 G2 : graph) (h : h_ty G1 G2) := 
+  bijective h.1 /\ bijective h.2.
+
+Definition iso (G1 G2 : graph) := 
+  exists2 h : h_ty G1 G2, hom_g h & bijective2 h.
+
+Definition iso2 (G1 G2 : graph2) : Prop := 
+  exists2 h : h_ty G1 G2, hom_g2 h & bijective2 h.
+
+Notation "G ≈ H" := (iso2 G H) (at level 45).
+
+Lemma iso2_of_iso (G1 G2 : graph2) (h : h_ty G1 G2) :
+  hom_g h -> bijective2 h -> h.1 g_in = g_in -> h.1 g_out = g_out -> 
+  G1 ≈ G2.
+Admitted. (* check for usage *)
+
+Lemma iso_of_iso2 (G1 G2 : graph2) : G1 ≈ G2 -> iso G1 G2.
+Admitted. (* check for usage *)
+
+Lemma iso2_trans : Transitive iso2.
+Admitted.
+
+Lemma iso2_sym : Symmetric iso2.
+Admitted.
+
+Lemma iso2_inv_in (G1 G2 : graph2) (h : h_ty G1 G2) x : 
+  hom_g2 h -> bijective2 h -> (h.1 x == g_in) = (x == g_in).
+Proof. 
+  move => H1 [[g H2 H3] H4]. rewrite -[g_in]H1 inj_eq //. 
+  exact: can_inj H2.  
+Qed.
+
+Lemma iso2_inv_out (G1 G2 : graph2) (h : h_ty G1 G2) x : 
+  hom_g2 h -> bijective2 h -> (h.1 x == g_out) = (x == g_out).
+Proof.
+  move => H1 [[g H2 H3] H4]. rewrite -[g_out]H1 inj_eq //. 
+  exact: can_inj H2.  
+Qed.
+
+Lemma iso2_point (G1 G2 : graph) (i1 o1 :G1) (i2 o2 : G2) :
+  (exists h, hom_g h -> bijective2 h -> h.1 i1 = i2 -> h.1 o1 = o2) ->
+  point G1 i1 o1 ≈ point G2 i2 o2.
+Admitted. (* check for usage / use in merge_congr? *)
+
+Lemma iso2_union (G1 G2 G1' G2' : graph2) (f : h_ty G1 G1') (g : h_ty G2 G2') :
+  hom_g2 f -> bijective2 f ->
+  hom_g2 g -> bijective2 g ->
+  exists h : h_ty (union G1 G2) (union G1' G2'),
+    [/\ hom_g h, bijective2 h, 
+       forall x : G1, h.1 (inl x) = inl (f.1 x)
+     & forall x : G2, h.1 (inr x) = inr (g.1 x)].
+Proof.
+  move => f1 f2 g1 g2.
+  pose h1 p := 
+    match p with 
+    | inl x => inl (f.1 x) 
+    | inr x => inr (g.1 x)
+    end.
+  pose h2 p := 
+    match p with 
+    | inl x => inl (f.2 x) 
+    | inr x => inr (g.2 x)
+    end.
+  exists (h1,h2). split => //.
+  - (repeat split) => [] [e|e] /=; by rewrite ?f1 ?g1.
+  - split. admit.
+Admitted.
+
+Lemma union_congr (G1 G2 G1' G2' : graph) : 
+  iso G1 G1' -> iso G2 G2' -> iso (union G1 G2) (union G1' G2').
+Admitted. (* check for usage *)
+
+
+(* requires point *)
+Lemma merge_congr (G1 G2 : graph) (E1 : rel G1) (E2 : rel G2) 
+  (i1 o1 : G1) (i2 o2 : G2) (h : h_ty G1 G2) : 
+  hom_g h -> bijective2 h ->
+  h.1 i1 = i2 -> h.1 o1 = o2 ->
+  (forall x y, E1 x y = E2 (h.1 x) (h.1 y)) ->
+  point (merge G1 (equiv_of E1)) 
+        (\pi_({eq_quot (equiv_of E1)}) i1)
+        (\pi_({eq_quot (equiv_of E1)}) o1) ≈ 
+  point (merge G2 (equiv_of E2)) 
+        (\pi_({eq_quot (equiv_of E2)}) i2)
+        (\pi_({eq_quot (equiv_of E2)}) o2).
+Proof.
+Admitted.
