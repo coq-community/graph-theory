@@ -1,3 +1,5 @@
+Require Import RelationClasses.
+
 From mathcomp Require Import all_ssreflect.
 Require Import finite_quotient preliminaries sgraph minor checkpoint.
 Require Import multigraph subalgebra.
@@ -38,7 +40,7 @@ Qed.
 Lemma decomp_skeleton (G : graph) (T : tree) (D : T -> {set G}) :
   decomp T G D -> sdecomp T (skeleton G) D.
 Proof. 
-  case => D1 D2 D3. split => //. apply: skelP => // x y. 
+  case => D1 D2 D3. split => //. apply skelP => // x y. 
   move => [t] A. exists t. by rewrite andbC.
 Qed.
 
@@ -106,7 +108,7 @@ Qed.
 Lemma decomp_sskeleton (G : graph2) (T : tree) (D : T -> {set G}) :
   decomp T G D -> compatible D -> sdecomp T (sskeleton G) D.
 Proof. 
-  case => D1 D2 D3 C. split => //. apply: sskelP  => // x y. 
+  case => D1 D2 D3 C. split => //. apply sskelP  => // x y. 
   move => [t] A. exists t. by rewrite andbC.
 Qed.
 

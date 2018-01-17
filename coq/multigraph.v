@@ -1,3 +1,5 @@
+Require Import RelationClasses Setoid.
+
 From mathcomp Require Import all_ssreflect.
 Require Import finite_quotient preliminaries.
 
@@ -177,6 +179,10 @@ Admitted.
 Lemma iso2_sym : Symmetric iso2.
 Admitted.
 
+Lemma iso2_refl G : G ≈ G.
+Admitted.
+Hint Resolve iso2_refl.
+
 Lemma iso2_inv_in (G1 G2 : graph2) (h : h_ty G1 G2) x : 
   hom_g2 h -> bijective2 h -> (h.1 x == g_in) = (x == g_in).
 Proof. 
@@ -261,3 +267,9 @@ Proof.
   - rewrite /h1. case: piP => /= x /eqmodP /=.
     by rewrite hEq hi => /eqmodP /= ->.
 Admitted.
+
+(** Set up setoid rewriting for iso2 *)
+
+Instance iso2_Equivalence : Equivalence iso2.
+Proof. split. exact: iso2_refl. exact: iso2_sym. exact: iso2_trans. Qed.
+

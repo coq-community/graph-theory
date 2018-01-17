@@ -11,8 +11,8 @@ Local Open Scope quotient_scope.
 (** * Preliminaries *)
 
 (** Use capitalized names for Coq.Relation_Definitions *)
-Definition Symmetric := Relation_Definitions.symmetric.
-Definition Transitive := Relation_Definitions.transitive.
+(* Definition Symmetric := Relation_Definitions.symmetric. *)
+(* Definition Transitive := Relation_Definitions.transitive. *)
 
 (** *** Tactics *)
 
@@ -529,3 +529,22 @@ Proof.
   move => D1 D2 D3. apply/trivIsetP => X Y. rewrite !inE -!orbA.
   do 2 (case/or3P => /eqP->); try by rewrite ?eqxx // 1?disjoint_sym. 
 Qed.
+
+(* foldr1 *)
+
+Definition foldr1 (I R : Type) (x0 : R) (op : R -> R -> R) F  := 
+  fix foldr1_rec (s : seq I) : R :=
+    match s with
+    | [::] => x0
+    | a :: s' => if nilp s' then F a else op (F a) (foldr1_rec s')
+    end.
+
+Section Foldr1.
+Variables (I R : Type) (op : R -> R -> R) (F : I -> R).
+
+
+Lemma foldr1_set_default x0 x1 s : 
+  ~~ nilp s -> foldr1 x0 op F s = foldr1 x1 op F s.
+Proof. elim: s => //= a s. case: (nilp s) => //= IH. by rewrite IH. Qed.
+
+End Foldr1.

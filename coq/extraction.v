@@ -1,4 +1,4 @@
-Require Import Omega Lia.
+Require Import RelationClasses Morphisms Setoid Omega.
 
 From mathcomp Require Import all_ssreflect.
 
@@ -180,8 +180,10 @@ Definition redirect (G : graph2) (H : {set G}) : graph2 :=
   if [pick z in H | adjacent g_in z] isn't Some z then one2 
   else redirect_to H z.
 
-Definition big_tmI : seq term -> term.
-Admitted. (* TODO: use folrd1 and prove the right lemmas about it *)
+
+(* NOTE: We need to use foldr1 here since there is no neutral element
+for parallel composition in the term syntax for connected graphs *)
+Definition big_tmI : seq term -> term := foldr1 tm1 tmI id.
 
 Lemma component_consistent (G : graph2) (H : {set G}) : 
   let H' := g_in |: (g_out |: H) in 
@@ -200,13 +202,13 @@ Definition tmEs (G : graph2) : seq term :=
   [seq tmA (label e) | e in @edges G g_in g_out] ++
   [seq tmC (tmA (label e)) | e in @edges G g_out g_in].
 
-(* NOTE: we assume the input to be connected and K4-free *)
+(* NOTE: we assume the input graph to be connected and K4-free *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
     let P := @components G [set~ g_in] in
-    (\big[tmS/tm1]_(e in @edges G g_in g_in) tm1 :||: tmA (label e)) :o:
-    (\big[tmS/tm1]_(C in P) dom (term_of (redirect C)))
+    (\big[tmS/tm1]_(C in P) dom (term_of (redirect C))) :||:
+    (\big[tmS/tm1]_(e in @edges G g_in g_in) tm1 :||: tmA (label e))
   else (* distinct input and output *)
     if lens G
     then (* no checkpoints and no petals on i and o *)
@@ -423,7 +425,7 @@ Lemma term_of_eq (G : graph2) :
 Proof.
   apply: Fix_eq => // {G} f g G CK4F_G Efg. rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
-  - congr tmS. apply: eq_big => // C HC. rewrite Efg //.
+  - congr tmI. apply: eq_big => // C HC. rewrite Efg //.
     + exact: CK4F_redirect.
     + exact: measure_redirect.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
@@ -442,64 +444,114 @@ Local Open Scope quotient_scope.
 Definition iso2_congruence (op : graph2 -> graph2 -> graph2) :=
   forall (G1 G2 G1' G2' : graph2), G1 ≈ G1' -> G2 ≈ G2' -> op G1 G2 ≈ op G1' G2'.
 
-Definition big_par2 (s : seq graph2) : graph2 := 
-  \big[par2/top2]_(G <- s) G.
-
-Lemma big_par2_map (r : seq term) g : 
-  ~~ nilp r -> big_par2 (map g r) ≈ g (big_tmI r).
-Admitted.
-
-Lemma big_par2_cat r1 r2 : 
-  big_par2 (r1 ++ r2) ≈ par2 (big_par2 r1) (big_par2 r2).
-Proof. rewrite /big_par2. (* how to handle this? *)
-Admitted.
-
-Lemma par2_congr (G1 G2 G1' G2' : graph2) : 
-  G1 ≈ G1' -> G2 ≈ G2' -> par2 G1 G2 ≈ par2 G1' G2'.
+Lemma par2_congr : iso2_congruence par2.
 Proof.
-  case => f f1 f2 [g g1 g2].
+  move => G1 G2 G1' G2' [f f1 f2] [g g1 g2].
   have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
   apply: (merge_congr (h := h)) => //; try by rewrite I3 f1.
   move => [x|x] [y|y];rewrite /eq_par2 /= !(I3,I4) //.
   by rewrite !iso2_inv_in // !iso2_inv_out.
 Qed.
 
-Lemma big_par2_congr (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
+
+(* Instance iso2_Morphism : *)
+(*   Proper (iso2 ==> iso2 ==> iff) (iso2). *)
+(* Proof. *)
+(*   move => G1 G1' iso1 G2 G2' iso2. by rewrite -> iso1,iso2. *)
+(* Qed. *)
+
+Instance par2_morphisem : 
+  Proper (iso2 ==> iso2 ==> iso2) par2.
+Proof. move => ? ? ? ? ? ?. exact: par2_congr. Qed.
+
+Definition big_par2 (s : seq graph2) : graph2 := 
+  \big[par2/top2]_(G <- s) G.
+
+Lemma big_par2_cons G Gs : 
+  big_par2 (G::Gs) = par2 G (big_par2 Gs).
+Proof. by rewrite /big_par2 big_cons. Qed.
+
+(** NOTE: For the moment this is only needed to provide an identity
+element to par2. If this turns out hard to prove, use foldr1 instead *)
+Lemma par2_idR G : par2 G top2 ≈ G.
+Admitted.
+
+Lemma par2_idL G : par2 top2 G ≈ G.
+Admitted.
+
+Lemma big_par2_1 G : big_par2 [:: G] ≈ G.
+Proof. rewrite /big_par2 big_cons big_nil. exact: par2_idR. Qed.
+
+Lemma big_par2_map (r : seq term) : 
+  ~~ nilp r -> big_par2 (map graph_of_term r) ≈ graph_of_term (big_tmI r).
+Proof.
+  elim: r => //= u s. case e : (nilp s).
+  - move => _ _. by rewrite (nilP e) /= /big_par2_cons big_par2_1. 
+  - move/(_ isT) => IH _. by rewrite big_par2_cons /= IH.
+Qed.
+
+Lemma par2_assoc G1 G2 G3 : 
+  par2 (par2 G1 G2) G3 ≈ par2 G1 (par2 G2 G3).
+Admitted.
+
+Lemma big_par2_cat r1 r2 : 
+  big_par2 (r1 ++ r2) ≈ par2 (big_par2 r1) (big_par2 r2).
+Proof. 
+  rewrite /big_par2 big_cat_nested. 
+  elim: r1 => [|G r1 IH].
+  - by rewrite !big_nil par2_idL.
+  - by rewrite !big_cons IH par2_assoc.
+Qed.
+
+Lemma big_par2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
+  (forall x, x \in s -> g1 x ≈ g2 x) -> 
+  big_par2 [seq g1 x | x <- s] ≈ big_par2 [seq g2 x | x <- s].
+Proof. 
+  elim: s => //= a s IH. admit.
+Admitted.
+
+
+
+Lemma big_par2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_par2 [seq g1 x | x in s] ≈ big_par2 [seq g2 x | x in s].
 Proof. 
-  Unset Printing Notations.
-  move => H. 
-  have {H} : (forall x, x \in enum_mem (mem s) -> g1 x ≈ g2 x) by admit.
-  rewrite /image_mem.
-  Set Printing Notations.
-  elim: (enum_mem (mem s)). 
-  - admit.
-  - (* follows with par2_congr *) admit.
-Admitted.
+  move => A. apply: big_par2_congr => x. by rewrite mem_enum => /A.
+Qed.
 
 Section SplitParallel.
 Variable (G : graph2).
 Let E := @edges G g_in g_out :|: edges g_out g_in.
 Let P := components (@sinterval (skeleton G) g_in g_out).
 
-Lemma split_edges : consistent [set g_in;g_out] E.
-Admitted.
-
 Definition G_rest := big_par2 [seq component C | C in P].
 
 Lemma setU22 (T:finType) (x y :T) : y \in [set x;y].
 Proof. by rewrite !inE eqxx. Qed.
 
-Definition G_edges :=
-  @point (subgraph_for split_edges) 
-         (Sub g_in (setU11 _ _)) 
-         (Sub g_out (setU22 _ _)).
+Lemma split_edge e : e \in E -> consistent [set g_in;g_out] [set e].
+Admitted.
 
-(* TOTHINK: What is the general decomposition lemma? (partition overlapping only at IO?) *)
+Definition G_edge (e : edge G) := sym2 (label e).
+Definition G_edgeC (e : edge G) := cnv2 (sym2 (label e)).
+
+Definition G_edges := big_par2 ([seq G_edge e | e in edges g_in g_out] ++ 
+                                [seq G_edgeC e | e in edges g_out g_in]).
+
+(* Definition G_edges := *)
+(*   @point (subgraph_for split_edges)  *)
+(*          (Sub g_in (setU11 _ _))  *)
+(*          (Sub g_out (setU22 _ _)). *)
+
+
+(* TOTHINK: What is the general decomposition lemma? (partition
+overlapping only at IO?) *)
 Lemma split_io : G ≈ par2 G_rest G_edges.
 Admitted.
 End SplitParallel.
+
+Lemma sintervalxx (G : sgraph) (x : G) : sinterval x x = [set~ x].
+Admitted.
 
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
@@ -508,22 +560,23 @@ Proof.
   rewrite term_of_eq // /term_of_rec. 
   case: ifP => C1.
   - (* selfloops / io-redirect *)
-    rewrite /=. 
-    admit.
+    rewrite /= {1}[G]split_io. apply: par2_congr.
+    + rewrite /G_rest -(eqP C1) sintervalxx. 
+      admit.
+    + admit.
   - case: ifP => C2.
     + (* parallel split *)
-      apply: iso2_trans; last apply (big_par2_map _); last first.
+      rewrite -big_par2_map; last first.
       { admit. }
-      rewrite map_cat.
-      apply: iso2_trans; last apply iso2_sym,big_par2_cat.
-      apply: iso2_trans; first apply split_io.
+      rewrite map_cat big_par2_cat {1}[G]split_io.
       apply: par2_congr. 
-      * rewrite -map_comp. 
-        apply: big_par2_congr. 
+      * rewrite -map_comp. apply: big_par2_congrs. 
         move => C HC. apply: IH. 
         -- exact: measure_lens. 
         -- exact: CK4F_lens. 
-      * admit.
+      * rewrite /G_edges /tmEs map_cat -!map_comp. 
+        rewrite big_par2_cat. reflexivity.
+        (* the complexity is in [split_io] *)
     + (* sequential split *) 
       admit.
 Admitted.
