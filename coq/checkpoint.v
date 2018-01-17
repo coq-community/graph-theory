@@ -979,25 +979,41 @@ Section CheckpointOrder.
     move=> x_cpio y_cpio.
     have [x_path y_path] : x \in the_uPath /\ y \in the_uPath.
     { by split; move: the_uPath; apply/cpP'. }
-    rewrite {1}/cpo leq_eqVlt =>/orP[/eqP/(idx_inj x_path)<- z|].
+    rewrite {1}/cpo leq_eqVlt =>/orP[/eqP/(idx_inj x_path)<- z | x_lt_y].
     { rewrite cpxx inE eq_sym.
       apply/eqP/andP; last by case; exact: cpo_antisym.
       by move=><-; split; last rewrite /cpo. }
-    case/(three_way_split the_uPathP x_path y_path)=>[p1][p2][p3][eq_path xNp3 yNp1].
+    case: (three_way_split the_uPathP x_path y_path x_lt_y)
+      => [p1] [p2] [p3] [eq_path xNp3 yNp1].
+    move: the_uPathP; rewrite eq_path !irred_cat =>/and3P[Ip1]/and3P[Ip2 Ip3].
+    move=> disj23 disj123.
     move=> z; apply/idP/andP.
     + move=> z_cpxy. have z_cpio := cp_widen conn_G x_cpio y_cpio z_cpxy.
       split=>//. move: z_cpio => /cpP'/(_ the_uPath) z_path.
-      move: z_cpxy => /cpP'/(_ p2) z_p2.
-      rewrite /cpo/idx !nodesE eq_path (lock index)/=-lock.
-      rewrite -[i :: _]/((i :: _) ++ _) lastI cat_rcons.
-      case/andP: (valP p1) => _ /eqP->.
-      admit.
-    + case=> z_cpio. rewrite /cpo leq_eqVlt [idx _ _ <= _]leq_eqVlt.
-      case/andP=> /orP[/eqP/(idx_inj x_path)-> _ | x_lt_z ]; first exact: mem_cpl.
-      rewrite eq_sym.
-      move=> /orP[/eqP/(idx_inj y_path)-> | z_lt_y ]; first by rewrite cp_sym mem_cpl.
-      admit.
-  Admitted.
+      move: z_cpxy => /cpP'/(_ p2) z_p2. rewrite /cpo.
+      case: (altP (z =P x)) => [->|zNx]; first by rewrite leqnn (ltnW x_lt_y).
+      apply/andP; split; last first.
+      - rewrite eq_path idx_catR ?idx_catL ?nodes_end ?idx_end ?idx_mem //.
+        have : z \in pcat p2 p3 by rewrite mem_pcat z_p2.
+        by rewrite mem_path inE (negbTE zNx) => /(disjointFl disj123)->.
+      - rewrite eq_path leq_eqVlt. apply/orP; right.
+        rewrite -idxR -?eq_path ?the_uPathP //. apply: in_tail zNx _.
+        by rewrite mem_pcat z_p2.
+    + case=> z_cpio /andP[x_le_z z_le_y]. apply/cpP' => p.
+      have /cpP'/(_ (pcat p1 (pcat p p3))) := z_cpio.
+      case (altP (z =P x)) => [-> _ | zNx]; first exact: nodes_start.
+      case (altP (z =P y)) => [-> _ | zNy]; first exact: nodes_end.
+      have zNp1 : z \notin p1.
+      { apply: contraNN zNx => z_p1. apply/eqP; apply: cpo_antisym => //.
+        rewrite x_le_z andbT /cpo eq_path idx_catL ?nodes_end // idx_end //.
+        exact: idx_mem. }
+      rewrite mem_pcat -implyNb => /implyP/(_ zNp1).
+      rewrite mem_pcat => /orP[// | /(in_tail zNy) z_p3].
+      exfalso; have := zNy; apply/negP; rewrite negbK.
+      apply/eqP; apply: cpo_antisym => //.
+      rewrite z_le_y /=/cpo eq_path idx_catR // leq_eqVlt.
+      by rewrite -idxR ?irred_cat ?nodesE/= ?inE ?mem_cat ?z_p3.
+  Qed.
 
 End CheckpointOrder.
 

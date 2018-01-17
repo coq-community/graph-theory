@@ -460,12 +460,8 @@ Qed.
 
 End PathTheory.
 
-Lemma irredxx (x : G) (p : Path x x) : irred p -> tail p = [::].
-Proof.
-  rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
-  rewrite -lock => p_uniq. suff /upath_nil-> : upath x x p by [].
-  by rewrite /upath p_uniq p_pth.
-Qed.
+Lemma prevK x y (p : Path x y) : prev (prev p) = p.
+Proof. apply/val_inj=> /=. apply: srevK. exact: path_last. Qed.
 
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
@@ -476,6 +472,13 @@ Definition idp (u : G) := Build_Path (spathxx u).
 
 Lemma mem_idp (x u : G) : (x \in idp u) = (x == u).
 Proof. by rewrite mem_path !inE. Qed.
+
+Lemma irredxx (x : G) (p : Path x x) : irred p -> p = idp x.
+Proof.
+  rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
+  rewrite -lock => p_uniq. apply/val_inj => /=.
+  by have /upath_nil-> : upath x x p by rewrite /upath p_uniq p_pth.
+Qed.
 
 (** Paths with a single edge using an injection from (proofs of) [x -- y] *)
 
@@ -536,6 +539,9 @@ Proof.
   - move => u. by rewrite mem_prev.
   - by rewrite -!lock /= ltnS /srev size_rev size_belast.
 Qed.
+
+Lemma irred_rev x y (p : Path x y) : irred (prev p) = irred p.
+Proof. apply/idP/idP; first rewrite -[p as X in irred X]prevK; exact: prev_irred. Qed.
  
 Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect sedge x y).
 Proof. 
@@ -667,6 +673,26 @@ Section PathIndexing.
     by rewrite /idx nodesE -[in index _](path_last p) index_last.
   Qed.
 
+  Lemma idx_catL (x y z u v : G) (p : Path x y) (q : Path y z) :
+    u \in p -> v \in p -> idx (pcat p q) u <= idx (pcat p q) v = (idx p u <= idx p v).
+  Proof.
+    move=> u_p v_p. rewrite /idx (nodesE (pcat _ _)) (lock index)/= -lock.
+    by rewrite -cat_cons -nodesE !index_cat u_p v_p.
+  Qed.
+
+  Lemma idx_catR (x y z u v : G) (p : Path x y) (q : Path y z) :
+    u \notin p -> v \notin p ->
+    idx (pcat p q) u <= idx (pcat p q) v = (idx q u <= idx q v).
+  Proof.
+    move=> uNp vNp. rewrite /idx (nodesE (pcat _ _)) (lock index)/= -lock.
+    rewrite -cat_cons lastI cat_rcons path_last -nodesE !index_cat.
+    have /negbTE-> : u \notin belast x (val p).
+    { apply: contraNN uNp. by rewrite mem_path lastI mem_rcons inE =>->. }
+    have /negbTE-> : v \notin belast x (val p).
+    { apply: contraNN vNp. by rewrite mem_path lastI mem_rcons inE =>->. }
+    by rewrite leq_add2l.
+  Qed.
+
   Section IDX.
     Variables (x z y : G) (p : Path x z) (q : Path z y).
     Implicit Types u v : G.
@@ -699,19 +725,6 @@ Section PathIndexing.
         rewrite -index_mem in A. apply: leq_trans A _. by rewrite nodesE.
       - rewrite A (disjointFl dis_pq A) -!/(idx _ _) (idx_end irr_p).
         by rewrite nodesE /= addSn ltnS leq_addr. 
-    Qed.
-
-    Lemma idx_catL u v : u \in tail q -> v \in tail q -> u <[pcat p q] v = u <[q] v.
-    Proof.
-      move => A B. rewrite /idx nodesE -!cat_cons !index_cat -nodesE.
-      have C : (u \notin nodes p). 
-      { apply/negP. apply: disjointE A. by rewrite disjoint_sym dis_pq. }
-      have D : (v \notin nodes p). 
-      { apply/negP. apply: disjointE B. by rewrite disjoint_sym dis_pq. }
-      rewrite (negbTE C) (negbTE D) ltn_add2l nodesE /=.
-      have -> : z == u = false. apply: contraTF C => /eqP<-. by rewrite negbK nodes_end.
-      have -> : z == v = false. apply: contraTF D => /eqP<-. by rewrite negbK nodes_end.
-      by rewrite ltnS.
     Qed.
 
     Lemma idx_nLR u : u \in nodes (pcat p q) -> 
