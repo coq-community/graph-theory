@@ -269,3 +269,8 @@ Proof.
     apply/orP; right. apply/existsP; exists (he e). by rewrite !inE !eqxx.
 Qed.
 
+Lemma flesh_out (G : sgraph) : 
+  exists G', sg_iso (sskeleton G') G /\ sg_iso (skeleton G') G.
+Proof. (* for evert pair x -- y in G add a 0-edge *) Admitted.
+
+

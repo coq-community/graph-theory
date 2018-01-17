@@ -598,9 +598,6 @@ Proof.
     exact: decomp_sskeleton.
 Admitted.
 
-Lemma inverse_sskeleton (G : sgraph) : 
-  exists G', sg_iso (sskeleton G') G /\ sg_iso (skeleton G') G.
-Proof. (* for evert pair x -- y in G add a 0-edge *) Admitted.
 
 Corollary sminor_exclusion (G : sgraph) :
   connected [set: G] -> 
@@ -608,7 +605,7 @@ Corollary sminor_exclusion (G : sgraph) :
   exists (T:tree) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
   move => conn_G.
-  have [G' [iso_Gs iso_G]] := inverse_sskeleton G.
+  have [G' [iso_Gs iso_G]] := flesh_out G.
   have conn_G' : connected [set: skeleton G'].
   { admit. (* lift along iso *) }
   have M := minor_exclusion_2p conn_G'.  
