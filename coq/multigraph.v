@@ -192,7 +192,7 @@ Proof.
 Qed.
 
 Lemma iso2_point (G1 G2 : graph) (i1 o1 :G1) (i2 o2 : G2) :
-  (exists h, hom_g h -> bijective2 h -> h.1 i1 = i2 -> h.1 o1 = o2) ->
+  (exists h, [/\ hom_g h, bijective2 h, h.1 i1 = i2 & h.1 o1 = o2]) ->
   point G1 i1 o1 ≈ point G2 i2 o2.
 Admitted. (* check for usage / use in merge_congr? *)
 
@@ -225,6 +225,12 @@ Lemma union_congr (G1 G2 G1' G2' : graph) :
 Admitted. (* check for usage *)
 
 
+Lemma lift_equiv (T1 T2 : finType) (E1 : rel T1) (E2 : rel T2) h :
+  bijective h -> (forall x y, E1 x y = E2 (h x) (h y)) ->
+  (forall x y, equiv_of E1 x y = equiv_of E2 (h x) (h y)).
+Proof.
+Admitted.
+
 (* requires point *)
 Lemma merge_congr (G1 G2 : graph) (E1 : rel G1) (E2 : rel G2) 
   (i1 o1 : G1) (i2 o2 : G2) (h : h_ty G1 G2) : 
@@ -238,4 +244,20 @@ Lemma merge_congr (G1 G2 : graph) (E1 : rel G1) (E2 : rel G2)
         (\pi_({eq_quot (equiv_of E2)}) i2)
         (\pi_({eq_quot (equiv_of E2)}) o2).
 Proof.
+  set M1 := merge G1 _. set M2 := merge G2 _.
+  move => hom_h bij_h hi ho hE.
+  have hEq x y  : equiv_of E1 x y = equiv_of E2 (h.1 x) (h.1 y).
+  { apply: lift_equiv => //. by apply bij_h. }
+  apply: iso2_point.
+  pose h1 (x : M1) : M2 := \pi_({eq_quot (equiv_of E2)}) (h.1 (repr x)).
+  exists (h1,h.2). split => //=.
+  - (repeat split) => e /=.
+    + rewrite /h1 -hom_h. case: piP => /= x. 
+      move/eqmodP => /=. rewrite hEq. by move/eqmodP.
+    + admit. (* as above *)
+    + by rewrite hom_h.
+  - split => //=; last apply bij_h. 
+    admit.
+  - rewrite /h1. case: piP => /= x /eqmodP /=.
+    by rewrite hEq hi => /eqmodP /= ->.
 Admitted.
