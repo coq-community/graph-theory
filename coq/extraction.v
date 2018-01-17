@@ -207,7 +207,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
   if g_in == g_out :> G
   then (* input equals output *)
     let P := @components G [set~ g_in] in
-    (\big[tmS/tm1]_(C in P) dom (term_of (redirect C))) :||:
+    (\big[tmS/tm1]_(C in P) dom (term_of (redirect C))) :o:
     (\big[tmS/tm1]_(e in @edges G g_in g_in) tm1 :||: tmA (label e))
   else (* distinct input and output *)
     if lens G
@@ -425,7 +425,7 @@ Lemma term_of_eq (G : graph2) :
 Proof.
   apply: Fix_eq => // {G} f g G CK4F_G Efg. rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
-  - congr tmI. apply: eq_big => // C HC. rewrite Efg //.
+  - congr tmS. apply: eq_big => // C HC. rewrite Efg //.
     + exact: CK4F_redirect.
     + exact: measure_redirect.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
@@ -521,6 +521,7 @@ Qed.
 
 Section SplitParallel.
 Variable (G : graph2).
+Hypothesis G_io : g_in != g_out :> G.
 Let E := @edges G g_in g_out :|: edges g_out g_in.
 Let P := components (@sinterval (skeleton G) g_in g_out).
 
@@ -529,46 +530,99 @@ Definition G_rest := big_par2 [seq component C | C in P].
 Lemma setU22 (T:finType) (x y :T) : y \in [set x;y].
 Proof. by rewrite !inE eqxx. Qed.
 
-Lemma split_edge e : e \in E -> consistent [set g_in;g_out] [set e].
-Admitted.
+(* Lemma split_edge e : e \in E -> consistent [set g_in;g_out] [set e]. *)
+(* Admitted. *)
 
 Definition G_edge (e : edge G) := sym2 (label e).
 Definition G_edgeC (e : edge G) := cnv2 (sym2 (label e)).
 
 Definition G_edges := big_par2 ([seq G_edge e | e in edges g_in g_out] ++ 
                                 [seq G_edgeC e | e in edges g_out g_in]).
-
-(* Definition G_edges := *)
-(*   @point (subgraph_for split_edges)  *)
-(*          (Sub g_in (setU11 _ _))  *)
-(*          (Sub g_out (setU22 _ _)). *)
-
-
 (* TOTHINK: What is the general decomposition lemma? (partition
 overlapping only at IO?) *)
 Lemma split_io : G ≈ par2 G_rest G_edges.
 Admitted.
 End SplitParallel.
 
-Lemma sintervalxx (G : sgraph) (x : G) : sinterval x x = [set~ x].
+Lemma seq2_congr : iso2_congruence seq2.
 Admitted.
+
+Lemma seq2_idR G : seq2 G one2 ≈ G.
+Admitted.
+
+Lemma seq2_idL G : seq2 one2 G ≈ G.
+Admitted.
+
+Lemma seq2_assoc G1 G2 G3 : 
+  seq2 (seq2 G1 G2) G3 ≈ seq2 G1 (seq2 G2 G3).
+Admitted.
+
+Definition big_seq2 (s : seq graph2) := \big[seq2/one2]_(G <- s) G.
+
+Lemma big_seq2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
+  (forall x, x \in s -> g1 x ≈ g2 x) -> 
+  big_seq2 [seq g1 x | x <- s] ≈ big_seq2 [seq g2 x | x <- s].
+Proof. 
+  elim: s => //= a s IH.
+Admitted.
+
+
+Lemma big_seq2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
+  (forall x, x \in s -> g1 x ≈ g2 x) -> 
+  big_seq2 [seq g1 x | x in s] ≈ big_seq2 [seq g2 x | x in s].
+Proof. 
+  move => A. apply: big_seq2_congr => x. by rewrite mem_enum => /A.
+Qed.
+
+Lemma big_seq2_map (I : Type) (r : seq I) F : 
+  big_seq2 [seq graph_of_term (F u) | u <- r] ≈ 
+  graph_of_term (\big[tmS/tm1]_(u <- r) F u).
+Admitted.
+
+(* TOTHINK: This Lemma matches the Proog below, but does it really
+order the element of r in the same way *)
+Lemma big_seq2_maps (I : finType) (r : {set I}) F : 
+  big_seq2 [seq graph_of_term (F u) | u in r] ≈ 
+  graph_of_term (\big[tmS/tm1]_(u in r) F u).
+Proof. 
+  rewrite big_seq2_map. 
+  Unset Printing Notations.
+Admitted.
+Set Printing Notations.
+
+Section SplitPetals.
+  Variable (G : graph2).
+  Hypothesis G_io : g_in == g_out :> G.
+  Let E := @edges G g_in g_out.
+  Let P := @components G [set~ g_in].
+  
+  Definition G_edges' := big_seq2 [seq G_edge e | e in E].
+  Definition G_rest' := big_seq2 [seq component C | C in P].
+
+  Lemma split_i : G ≈ seq2 G_rest' G_edges'.
+  Admitted.
+
+End SplitPetals.
+
+Lemma sintervalxx (G : sgraph) (x : G) : sinterval x x = [set~ x].
+Abort.
 
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
 Proof.
   elim: (wf_leq term_of_measure G) => {G} G _ IH CK4F_G.
   rewrite term_of_eq // /term_of_rec. 
-  case: ifP => C1.
+  case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)
-    rewrite /= {1}[G]split_io. apply: par2_congr.
-    + rewrite /G_rest -(eqP C1) sintervalxx. 
+    rewrite {1}[G]split_i //=. apply: seq2_congr.
+    + rewrite /G_rest'. rewrite -big_seq2_maps. 
       admit.
     + admit.
-  - case: ifP => C2.
+  - case: ifP => [C2|C2].
     + (* parallel split *)
       rewrite -big_par2_map; last first.
       { admit. }
-      rewrite map_cat big_par2_cat {1}[G]split_io.
+      rewrite map_cat big_par2_cat {1}[G]split_io //.
       apply: par2_congr. 
       * rewrite -map_comp. apply: big_par2_congrs. 
         move => C HC. apply: IH. 
