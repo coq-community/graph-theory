@@ -121,10 +121,6 @@ Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) :=
   if s isn't x::s' then [::] 
   else if s' is y :: s'' then (x,y):: pairs s' else [::].
 
-Eval simpl in pairs [:: 1].
-Eval simpl in pairs [:: 1;2].
-Eval simpl in pairs [:: 1;2;3;4].
-
 Lemma pairs_cons (T : Type) a b (s : seq T) : 
   pairs [:: a, b & s] = (a,b) :: pairs (b :: s).
 Proof. done. Qed.

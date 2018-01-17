@@ -549,5 +549,3 @@ Proof.
   - move: IHu IHv => [T1] [D1] [? ? ?] [T2] [D2] [? ? ?].
     simpl graph_of_term. exact: (decomp_par2 (D1 := D1) (D2 := D2)).
 Qed.
-
-Print Assumptions graph_of_TW2.
