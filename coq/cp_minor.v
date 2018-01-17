@@ -369,48 +369,38 @@ Qed.
 
 Lemma igraph_K4F (G : sgraph) (i o x y : G) :
   connected [set: G] -> 
-  x \in cp i o -> y \in cp i o -> (x : link_graph G) -- y ->
+  x \in cp i o -> y \in cp i o -> x != y ->
   K4_free (add_edge G i o) ->
   K4_free (add_edge (igraph G x y) istart iend).
 Proof.
   set H := add_edge G i o.
   set I := add_edge _ _ _.
-  move=> G_conn x_cpio y_cpio xy; apply: minor_K4_free.
-  have xNy : x != y by case/andP: xy.
+  move=> G_conn x_cpio y_cpio xNy; apply: minor_K4_free.
   have iNo : i != o.
-  { apply: contra_neq xNy => {xy} x_y. move: x_cpio y_cpio.
+  { apply: contra_neq xNy => x_y. move: x_cpio y_cpio.
     by rewrite -{}x_y cpxx !inE =>/eqP->/eqP->. }
 
-  (* Since G is connected, it has a path p from i to o which must contain
-     the checkpoints x and y; w.l.o.g, x can be assumed to occur before y. *)
-  case/uPathP: (connectedTE G_conn i o) => [p] Ip.
-  have [x_p y_p] : x \in p /\ y \in p by split; apply/cpP': {Ip} p.
-  wlog x_before_y : x y @I x_cpio y_cpio xy xNy x_p y_p / x <[p] y.
-  { move=> Hyp.
-    case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
-    - move=> ?; suff : minor (add_edge (igraph G y x) istart iend) I.
-      { by apply: minor_trans; apply: Hyp; rewrite // 1?sg_sym 1?eq_sym. }
-      apply: strict_is_minor; apply: iso_strict_minor.
-      apply: (@sg_iso_trans I (add_edge (igraph G x y) iend istart)).
-        exact: add_edge_swap.
-      by apply: add_edge_induced_iso; first exact: interval_sym.
-    - move=> /idx_inj-/(_ x_p) x_y.
-      by exfalso; move: x_y xNy => ->; rewrite eqxx. }
+  have conn_io : connect sedge i o := connectedTE G_conn i o.
+  wlog x_le_y : x y @I x_cpio y_cpio xNy / cpo conn_io x y.
+  { move=> Hyp. case/orP: (cpo_total conn_io x y); first exact: Hyp.
+    move=> ?; suff : minor (add_edge (igraph G y x) istart iend) I.
+    { by apply: minor_trans; apply: Hyp; rewrite // 1?sg_sym 1?eq_sym. }
+    apply: strict_is_minor; apply: iso_strict_minor.
+    apply: (@sg_iso_trans I (add_edge (igraph G x y) iend istart)).
+      exact: add_edge_swap.
+    by apply: add_edge_induced_iso; first exact: interval_sym. }
 
   pose U2 := [set x; y].
-  have eq_CPU2 : CP U2 = U2 by apply: CP_clique; apply: clique2.
   (* As a consequence, i (resp. o) is the the petal of x (resp. y) with
    * respect to {x, y}. *)
   have [i_Px o_Py] : i \in petal U2 x /\ o \in petal U2 y.
-  { case:(three_way_split Ip x_p y_p x_before_y)=>[p1][p2][p3][_ xNp3 yNp1].
-    split; apply/petalP=> z; rewrite eq_CPU2 !inE =>/orP[]/eqP->;
-      last 1 first; [ by rewrite cp_sym mem_cpl .. | | ].
-    + apply: contraTT x_cpio =>/cpPn'[q] _ xNq.
-      apply/cpP'=>/(_ (pcat q p3)); apply/negP.
-      by rewrite mem_pcat negb_or xNq xNp3.
-    + apply: contraTT y_cpio =>/cpPn'[q] _ yNq.
-      apply/cpP'=>/(_ (pcat p1 (prev q))); apply/negP.
-      by rewrite mem_pcat mem_prev negb_or yNq yNp1. }
+  { split; apply/petalP=> z; rewrite CP_set2 (cpo_cp G_conn x_cpio y_cpio x_le_y);
+    move=> /andP[z_cpio] /andP[x_le_z z_le_y].
+    + rewrite (cpo_cp G_conn (mem_cpl i o) z_cpio);
+      repeat (apply/andP; split) => //; exact: cpo_min.
+    + have o_cpio : o \in cp i o by rewrite cp_sym mem_cpl.
+      rewrite cp_sym (cpo_cp G_conn z_cpio o_cpio);
+      repeat (apply/andP; split) => //; exact: cpo_max. }
 
   case: (collapse_petals G_conn U2 x _); first by rewrite !inE eqxx.
   set T := U2 :|: _. have {T}-> : T = interval x y.
@@ -449,12 +439,11 @@ Qed.
 
 Lemma igraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
   connected [set: G] ->
-  K4_free (add_edge G i o) -> x -- y ->
+  K4_free (add_edge G i o) -> x != y ->
   K4_free (add_edge (igraph G (val x) (val y)) istart iend).
 Proof.
-  move=> G_conn H_K4F xy.
+  move=> G_conn H_K4F xNy.
   set x0 : G := val x; set y0 : G := val y.
-  have xy0 : (x0 : link_graph G) -- y0 by exact: xy.
   have [u[]v[]] : exists u v : G, [/\ _, _ & [set x0; y0] \subset cp u v]
     := CP_base_ x y.
   wlog /andP[/eqP{u}-> /eqP{v}-> _ _] : u v / (u == i) && (v == o).
@@ -470,7 +459,7 @@ Qed.
 
 Lemma igraph_K4F_add_node (G : sgraph) (U : {set G}) :
   connected [set: G] ->
-  forall x y : CP_ U, x -- y -> K4_free (add_node G U) ->
+  forall x y : CP_ U, x != y -> K4_free (add_node G U) ->
   K4_free (add_edge (igraph G (val x) (val y)) istart iend).
 Proof.
   set H := add_node G U => G_conn x' y' xy H_K4F.

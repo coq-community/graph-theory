@@ -367,6 +367,10 @@ Section PathDef.
   Canonical Path_subType := [subType for pval].
   Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:].
   Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
+  Definition Path_choiceMixin := Eval hnf in [choiceMixin of Path by <:].
+  Canonical Path_choiceType := Eval hnf in ChoiceType Path Path_choiceMixin.
+  Definition Path_countMixin := Eval hnf in [countMixin of Path by <:].
+  Canonical Path_countType := Eval hnf in CountType Path Path_countMixin.
 
 
   Record UPath : predArgType := { uval : seq G; _ : upath x y uval }.
@@ -652,6 +656,9 @@ Section PathIndexing.
     case: p => p pth_p. rewrite /idx /irred in_collective nodesE inE /=.
     case: ifP => // E. rewrite eq_sym E /= -index_mem => H. exact: leq_trans H _. 
   Qed.
+
+  Lemma idx_start x y (p : Path x y) : idx p x = 0.
+  Proof. by rewrite /idx nodesE /= eqxx. Qed.
 
   Lemma idx_end x y (p : Path x y) : 
     irred p -> idx p y = size (tail p).

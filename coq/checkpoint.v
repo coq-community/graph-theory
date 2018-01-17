@@ -917,16 +917,18 @@ Section CheckpointOrder.
 
   (* TODO: This uses upath in a nontrivial way. *)
 
-  Lemma the_upath_proof : exists p, upath i o p.
-  Proof. case/upathP : conn_io => p Hp. by exists p. Qed.
+  Lemma the_uPath_proof : exists p : Path i o, irred p.
+  Proof. case/uPathP: conn_io => p Ip. by exists p. Qed.
                                                                 
-  Definition the_upath := xchoose (the_upath_proof).
+  Definition the_uPath := xchoose (the_uPath_proof).
 
-  Lemma the_upathP x y : upath i o (the_upath).
+  Lemma the_uPathP : irred (the_uPath).
   Proof. exact: xchooseP. Qed.
 
-  Definition cpo x y := let p := the_upath in 
-                        index x (i::p) <= index y (i::p).
+  Definition cpo x y := let p := the_uPath in idx p x <= idx p y.
+
+  Lemma cpo_refl : reflexive cpo.
+  Proof. move => ?. exact: leqnn. Qed.
 
   Lemma cpo_trans : transitive cpo.
   Proof. move => ? ? ?. exact: leq_trans. Qed.
@@ -936,25 +938,65 @@ Section CheckpointOrder.
 
   Lemma cpo_antisym : {in cp i o&,antisymmetric cpo}.
   Proof. 
-    move => x y Cx Cy. rewrite /cpo -eqn_leq. 
-    have Hx: x \in i :: the_upath. 
-    { move/cpP : Cx => /(_ (the_upath)). 
-      apply. apply upathW. exact: the_upathP. }
-    have Hy: y \in i :: the_upath.
-    { move/cpP : Cy => /(_ (the_upath)). 
-      apply. apply upathW. exact: the_upathP. }
-    by rewrite -{2}[x](nth_index i Hx) -{2}[y](nth_index i Hy) => /eqP->.
+    move => x y /cpP'/(_ the_uPath) Hx _.
+    rewrite /cpo -eqn_leq =>/eqP. exact: idx_inj.
   Qed.
 
   (** All paths visist all checkpoints in the same order as the canonical upath *)
   (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
-  Lemma cpo_order (x y : G) p : x \in cp i o -> y \in cp i o -> upath i o p -> 
-    cpo x y = (index x (i::p) <= index y (i::p)).
-    move => cp_x cp_y pth_p. rewrite /cpo. 
-  Admitted.
+  Lemma cpo_order (x y : G) (p : Path i o) :
+    x \in cp i o -> y \in cp i o -> irred p -> cpo x y = (idx p x <= idx p y).
+  Proof.
+    move => /cpP' cp_x /cpP' cp_y Ip. rewrite /cpo.
+    wlog suff Hyp : p Ip / x <[p] y -> forall q : Path i o, irred q -> ~ y <[q] x.
+    { apply/idP/idP; rewrite leq_eqVlt; case/orP=> [/eqP|x_lt_y].
+      + by move=> /(idx_inj (cp_x the_uPath))->.
+      + by rewrite leqNgt; apply/negP; apply: Hyp the_uPathP _ _ _.
+      + by move=> /(idx_inj (cp_x p))->.
+      + by rewrite leqNgt; apply/negP; apply: Hyp x_lt_y _ the_uPathP.
+    }
+    case/(three_way_split Ip (cp_x p) (cp_y p)) => [p1][_][p3][_ xNp3 yNp1].
+    move=> q Iq.
+    case/(three_way_split Iq (cp_y q) (cp_x q)) => [q1][_][q3][_ yNq3 xNq1].
+    have := cp_x (pcat q1 p3); apply/negP.
+    by rewrite mem_pcat negb_or; apply/andP.
+  Qed.
 
-  Lemma cpo_cp x y z : 
-    x \in cp i o -> y \in cp i o -> z \in cp x y = cpo x z && cpo z y.  
+  Lemma cpo_min x : cpo i x.
+  Proof. by rewrite /cpo idx_start. Qed.
+
+  Lemma cpo_max x : x \in cp i o -> cpo x o.
+  Proof.
+    move=> /cpP'/(_ the_uPath) x_path.
+    rewrite /cpo idx_end; [ exact: idx_mem | exact: the_uPathP ].
+  Qed.
+
+  Hypothesis conn_G : connected [set: G].
+
+  Lemma cpo_cp x y : x \in cp i o -> y \in cp i o -> cpo x y ->
+    forall z, z \in cp x y = [&& (z \in cp i o), cpo x z & cpo z y].
+  Proof.
+    move=> x_cpio y_cpio.
+    have [x_path y_path] : x \in the_uPath /\ y \in the_uPath.
+    { by split; move: the_uPath; apply/cpP'. }
+    rewrite {1}/cpo leq_eqVlt =>/orP[/eqP/(idx_inj x_path)<- z|].
+    { rewrite cpxx inE eq_sym.
+      apply/eqP/andP; last by case; exact: cpo_antisym.
+      by move=><-; split; last rewrite /cpo. }
+    case/(three_way_split the_uPathP x_path y_path)=>[p1][p2][p3][eq_path xNp3 yNp1].
+    move=> z; apply/idP/andP.
+    + move=> z_cpxy. have z_cpio := cp_widen conn_G x_cpio y_cpio z_cpxy.
+      split=>//. move: z_cpio => /cpP'/(_ the_uPath) z_path.
+      move: z_cpxy => /cpP'/(_ p2) z_p2.
+      rewrite /cpo/idx !nodesE eq_path (lock index)/=-lock.
+      rewrite -[i :: _]/((i :: _) ++ _) lastI cat_rcons.
+      case/andP: (valP p1) => _ /eqP->.
+      admit.
+    + case=> z_cpio. rewrite /cpo leq_eqVlt [idx _ _ <= _]leq_eqVlt.
+      case/andP=> /orP[/eqP/(idx_inj x_path)-> _ | x_lt_z ]; first exact: mem_cpl.
+      rewrite eq_sym.
+      move=> /orP[/eqP/(idx_inj y_path)-> | z_lt_y ]; first by rewrite cp_sym mem_cpl.
+      admit.
   Admitted.
 
 End CheckpointOrder.

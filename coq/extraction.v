@@ -228,7 +228,7 @@ Definition term_of := Fix tmT term_of_measure term_of_rec.
 
 Lemma mem_pairs_sort (T : eqType) e x y (s : seq T) : 
   uniq s -> total e -> (x,y) \in pairs (sort e s) -> 
-  [/\ x \in s, y \in s, x != y & forall z, z \in s -> e z x || e y z].
+  [/\ x \in s, y \in s, x != y, e x y & forall z, z \in s -> e z x || e y z].
 Admitted.
 
 (** All pairs in the checkpoint sequence are adjacent in CP({i,o}) *)
@@ -240,7 +240,7 @@ Lemma cp_pairs_edge (G : graph) (i o x y : G) :
 Proof.
   move => conn_G. move/(_ i o) : (conn_G) => conn_io'.
   rewrite /checkpoint_seq. case: {-}_ / idP => [conn_io|].
-  - move/mem_pairs_sort. case/(_ _ _)/Wrap => [||[P1 P2 P3 P4]].
+  - move/mem_pairs_sort. case/(_ _ _)/Wrap => [||[P1 P2 P3 P4 P5]].
     + exact: enum_uniq. 
     + exact: (@cpo_total (skeleton G)).
     + rewrite !mem_enum in P1,P2.
@@ -250,10 +250,10 @@ Proof.
         have py: y \in @CP G [set i;o].
         { apply/bigcupP. exists (i,o); by rewrite // !inE !eqxx. }
         exists px. exists py. by rewrite /= P3. }
-      apply/subsetP => z Hz. move: (P4 z). rewrite mem_enum.
+      apply/subsetP => z Hz. move: (P5 z). rewrite mem_enum.
       have Hz': z \in cp G i o. { apply: cp_widen Hz => //. }
       move/(_ Hz'). move: Hz. 
-      rewrite (cpo_cp conn_io) // !inE => /andP[H1 H2].
+      rewrite (cpo_cp conn_G P1 P2 P4) // !inE => /and3P[_ H1 H2].
       case/orP => H3. 
       * have H: cpo conn_io x z && cpo conn_io z x by rewrite H3.
         by rewrite (cpo_antisym _ _ H) // eqxx.
@@ -273,7 +273,7 @@ Admitted.
 Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) : 
   CK4F G -> x -- y -> CK4F (igraph (val x) (val y)).
 Proof.
-  move => [conn_G K4F_G] xy. 
+  move => [conn_G K4F_G] /sg_edgeNeq/negbT xy. 
   split; first exact: connected_igraph.
   apply: subgraph_K4_free (sskeleton_add _ _) _.
   exact: igraph_K4_free. 
