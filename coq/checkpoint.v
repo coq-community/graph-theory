@@ -126,11 +126,49 @@ Section CheckPoints.
   and y? *)
   Admitted.
 
+  Lemma cp_tightenR (x y z u : G) : z \in cp x y -> x \in cp u y -> x \in cp u z.
+  Proof.
+    move=> z_cpxy x_cpuy. apply/cpP' => pi.
+    case/uPathP: (G_conn z y) => pi_o irred_o.
+    move/cpP'/(_ (pcat pi pi_o)): x_cpuy.
+    rewrite mem_pcatT => /orP[//|x_tail]; exfalso.
+    case: (altP (z =P y)). (* TODO: worth a lemma *)
+    { move=> eq_z; move: pi_o irred_o x_tail.
+      by rewrite -eq_z => pi_o /irredxx->. }
+    case/(splitL pi_o) => [v] [zv] [pi'] [eq_pio eq_tail].
+    rewrite -{}eq_tail in x_tail.
+    move: irred_o; rewrite eq_pio irredE (lock uniq) /= -(nodesE pi') -lock /=.
+    move=> /andP[zNpi']; rewrite nodesE -irredE => Ipi'.
+    move: zNpi'; apply/idP.
+    case: (isplitP Ipi' x_tail) z_cpxy => [p1 p2 _ _ _] /cpP'/(_ p2).
+    by rewrite mem_pcat =>->.
+  Qed.
+
+  (* The two-sided version of the previous lemma, not used. *)
+  Lemma cp_tighten (i o p x y : G) :
+    i \in cp x p -> o \in cp p y -> p \in cp x y -> p \in cp i o.
+  (* Proof sketch:
+   * Let [pi : Path i o]. By connectedness, there are irredundant paths
+   * [pi_i : Path x i] and [pi_o : Path o y]. Then [p] must be in the
+   * concatenation [pi_i ++ pi ++ pi_o]. It cannot be in the tail of [pi_o]
+   * because [o \in cp p z] but [pi_o] is assumed to be irredundant. A
+   * symmetrical reasoning for [pi_i] shows that [p \in pi].             Qed. *)
+  Abort.
+
   (** ** CP Closure Operator *)
 
   Definition CP (U : {set G}) := \bigcup_(xy in setX U U) cp xy.1 xy.2.
   
   Unset Printing Implicit Defensive.
+
+  Lemma CP_set2 (x y : G) : CP [set x; y] = cp x y.
+  Proof.
+    apply/setP => z. apply/bigcupP/idP => /=.
+    + case=> -[a b] /=/setXP[].
+      rewrite !inE =>/orP[]/eqP->; last rewrite (cp_sym x y);
+      move=>/orP[]/eqP->//; rewrite cpxx inE => /eqP->; by rewrite mem_cpl.
+    + move=> Hz. exists (x, y) => //. by apply/setXP; rewrite !inE !eqxx.
+  Qed.
   
   Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
   Proof.
@@ -246,6 +284,26 @@ Section CheckPoints.
   Lemma sinterval_bounds x y : (x \in sinterval x y = false) * 
                                (y \in sinterval x y = false).
   Proof. by rewrite !inE !eqxx. Qed.
+
+  Lemma sintervalP x y u :
+    u \in sinterval x y = (x \notin cp u y) && (y \notin cp u x).
+  Proof.
+    rewrite 5!inE negb_or. apply/andP/andP.
+    + case=> /andP[uNx uNy] /andP[].
+      move=> /(uPathRP uNx)[px] Ipx /subsetP/(_ y).
+      rewrite inE eqxx =>/contraTN/(_ isT) yNpx.
+      move=> /(uPathRP uNy)[py] Ipy /subsetP/(_ x).
+      rewrite inE eqxx =>/contraTN/(_ isT) xNpy.
+      by split; apply/cpPn'; eexists; eassumption.
+    + case=> /cpPn'[py Ipy xNpy] /cpPn'[px Ipx yNpx].
+      have uNx : u != x by apply: contraNneq xNpy =><-; exact: nodes_start.
+      have uNy : u != y by apply: contraNneq yNpx =><-; exact: nodes_start.
+      split; apply/andP; split=> //; apply/PathRP => //.
+      - exists px; apply/subsetP => z ?; rewrite inE.
+        by apply: contraNneq yNpx =><-.
+      - exists py; apply/subsetP => z ?; rewrite inE.
+        by apply: contraNneq xNpy =><-.
+  Qed.
 
   Lemma sintervalP2 x y u :
     reflect ((exists2 p : Path u x, irred p & y \notin p) /\
@@ -800,28 +858,22 @@ a clique, so [CP U] is [U]. *)
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
-  Lemma link_partition x y : link_rel x y -> 
+  Lemma sinterval_petal_partition x y : x != y ->
     pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
   Proof.
-    move => /= /andP [xy cp_xy]. 
-    have CPxy : CP [set x; y] = [set x; y].
-    { apply: CP_clique. exact: clique2. }
-    apply/andP; split.
-    - rewrite eqEsubset subsetT /=. apply/subsetP => p _. 
-      pose N := ncp [set x; y] p. 
-      have: N \subset [set x; y]. by rewrite /N /ncp -lock setIdE CPxy subsetIl.
-      rewrite subset2 // {1}/N (ncp0 x) ?CP_extensive ?in_setU ?set11 //=.
-      case/or3P. 
-      + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-        apply: mem_cover. by rewrite !inE eqxx. 
-      + rewrite -ncp_petal ?CPxy ?in_setU ?set11 //. 
-        apply: mem_cover. by rewrite !inE eqxx. 
-      + rewrite /N. rewrite eqEsubset => /andP [_ /(ncp_interval xy)].
-        apply: mem_cover. by rewrite !inE eqxx. 
-    - apply: trivIset3. 
-      + by apply: petal_disj => //; rewrite CPxy !inE eqxx.
-      + by rewrite sinterval_sym interval_petal_disj // CPxy !inE eqxx.
-      + by rewrite interval_petal_disj // CPxy !inE eqxx.
+    move=> xNy. apply/andP; split.
+    - rewrite eqEsubset subsetT /=. apply/subsetP => p _.
+      rewrite /cover !bigcup_setU !bigcup_set1.
+      rewrite 2!inE orbC sintervalP -negb_or -implybE. apply/implyP.
+      wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in petal [set x; y] x.
+      { by case/orP => /Hyp; last rewrite setUC; move=>->. }
+      move=> x_cppy; apply/petalP => z. rewrite CP_set2 => z_cpxy.
+      exact: cp_tightenR z_cpxy x_cppy.
+    - have [x_CP y_CP] : x \in CP [set x; y] /\ y \in CP [set x; y].
+      { by split; apply: CP_extensive; rewrite !inE eqxx. }
+      apply: trivIset3; first exact: petal_disj.
+      + by rewrite sinterval_sym interval_petal_disj.
+      + by rewrite interval_petal_disj.
   Qed.
 
   Lemma CP_triangle_petals U (x y z : CP_ U) : 
@@ -865,16 +917,18 @@ Section CheckpointOrder.
 
   (* TODO: This uses upath in a nontrivial way. *)
 
-  Lemma the_upath_proof : exists p, upath i o p.
-  Proof. case/upathP : conn_io => p Hp. by exists p. Qed.
+  Lemma the_uPath_proof : exists p : Path i o, irred p.
+  Proof. case/uPathP: conn_io => p Ip. by exists p. Qed.
                                                                 
-  Definition the_upath := xchoose (the_upath_proof).
+  Definition the_uPath := xchoose (the_uPath_proof).
 
-  Lemma the_upathP x y : upath i o (the_upath).
+  Lemma the_uPathP : irred (the_uPath).
   Proof. exact: xchooseP. Qed.
 
-  Definition cpo x y := let p := the_upath in 
-                        index x (i::p) <= index y (i::p).
+  Definition cpo x y := let p := the_uPath in idx p x <= idx p y.
+
+  Lemma cpo_refl : reflexive cpo.
+  Proof. move => ?. exact: leqnn. Qed.
 
   Lemma cpo_trans : transitive cpo.
   Proof. move => ? ? ?. exact: leq_trans. Qed.
@@ -884,26 +938,82 @@ Section CheckpointOrder.
 
   Lemma cpo_antisym : {in cp i o&,antisymmetric cpo}.
   Proof. 
-    move => x y Cx Cy. rewrite /cpo -eqn_leq. 
-    have Hx: x \in i :: the_upath. 
-    { move/cpP : Cx => /(_ (the_upath)). 
-      apply. apply upathW. exact: the_upathP. }
-    have Hy: y \in i :: the_upath.
-    { move/cpP : Cy => /(_ (the_upath)). 
-      apply. apply upathW. exact: the_upathP. }
-    by rewrite -{2}[x](nth_index i Hx) -{2}[y](nth_index i Hy) => /eqP->.
+    move => x y /cpP'/(_ the_uPath) Hx _.
+    rewrite /cpo -eqn_leq =>/eqP. exact: idx_inj.
   Qed.
 
   (** All paths visist all checkpoints in the same order as the canonical upath *)
   (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
-  Lemma cpo_order (x y : G) p : x \in cp i o -> y \in cp i o -> upath i o p -> 
-    cpo x y = (index x (i::p) <= index y (i::p)).
-    move => cp_x cp_y pth_p. rewrite /cpo. 
-  Admitted.
+  Lemma cpo_order (x y : G) (p : Path i o) :
+    x \in cp i o -> y \in cp i o -> irred p -> cpo x y = (idx p x <= idx p y).
+  Proof.
+    move => /cpP' cp_x /cpP' cp_y Ip. rewrite /cpo.
+    wlog suff Hyp : p Ip / x <[p] y -> forall q : Path i o, irred q -> ~ y <[q] x.
+    { apply/idP/idP; rewrite leq_eqVlt; case/orP=> [/eqP|x_lt_y].
+      + by move=> /(idx_inj (cp_x the_uPath))->.
+      + by rewrite leqNgt; apply/negP; apply: Hyp the_uPathP _ _ _.
+      + by move=> /(idx_inj (cp_x p))->.
+      + by rewrite leqNgt; apply/negP; apply: Hyp x_lt_y _ the_uPathP.
+    }
+    case/(three_way_split Ip (cp_x p) (cp_y p)) => [p1][_][p3][_ xNp3 yNp1].
+    move=> q Iq.
+    case/(three_way_split Iq (cp_y q) (cp_x q)) => [q1][_][q3][_ yNq3 xNq1].
+    have := cp_x (pcat q1 p3); apply/negP.
+    by rewrite mem_pcat negb_or; apply/andP.
+  Qed.
 
-  Lemma cpo_cp x y z : 
-    x \in cp i o -> y \in cp i o -> z \in cp x y = cpo x z && cpo z y.  
-  Admitted.
+  Lemma cpo_min x : cpo i x.
+  Proof. by rewrite /cpo idx_start. Qed.
+
+  Lemma cpo_max x : x \in cp i o -> cpo x o.
+  Proof.
+    move=> /cpP'/(_ the_uPath) x_path.
+    rewrite /cpo idx_end; [ exact: idx_mem | exact: the_uPathP ].
+  Qed.
+
+  Hypothesis conn_G : connected [set: G].
+
+  Lemma cpo_cp x y : x \in cp i o -> y \in cp i o -> cpo x y ->
+    forall z, z \in cp x y = [&& (z \in cp i o), cpo x z & cpo z y].
+  Proof.
+    move=> x_cpio y_cpio.
+    have [x_path y_path] : x \in the_uPath /\ y \in the_uPath.
+    { by split; move: the_uPath; apply/cpP'. }
+    rewrite {1}/cpo leq_eqVlt =>/orP[/eqP/(idx_inj x_path)<- z | x_lt_y].
+    { rewrite cpxx inE eq_sym.
+      apply/eqP/andP; last by case; exact: cpo_antisym.
+      by move=><-; split; last rewrite /cpo. }
+    case: (three_way_split the_uPathP x_path y_path x_lt_y)
+      => [p1] [p2] [p3] [eq_path xNp3 yNp1].
+    move: the_uPathP; rewrite eq_path !irred_cat =>/and3P[Ip1]/and3P[Ip2 Ip3].
+    move=> disj23 disj123.
+    move=> z; apply/idP/andP.
+    + move=> z_cpxy. have z_cpio := cp_widen conn_G x_cpio y_cpio z_cpxy.
+      split=>//. move: z_cpio => /cpP'/(_ the_uPath) z_path.
+      move: z_cpxy => /cpP'/(_ p2) z_p2. rewrite /cpo.
+      case: (altP (z =P x)) => [->|zNx]; first by rewrite leqnn (ltnW x_lt_y).
+      apply/andP; split; last first.
+      - rewrite eq_path idx_catR ?idx_catL ?nodes_end ?idx_end ?idx_mem //.
+        have : z \in pcat p2 p3 by rewrite mem_pcat z_p2.
+        by rewrite mem_path inE (negbTE zNx) => /(disjointFl disj123)->.
+      - rewrite eq_path leq_eqVlt. apply/orP; right.
+        rewrite -idxR -?eq_path ?the_uPathP //. apply: in_tail zNx _.
+        by rewrite mem_pcat z_p2.
+    + case=> z_cpio /andP[x_le_z z_le_y]. apply/cpP' => p.
+      have /cpP'/(_ (pcat p1 (pcat p p3))) := z_cpio.
+      case (altP (z =P x)) => [-> _ | zNx]; first exact: nodes_start.
+      case (altP (z =P y)) => [-> _ | zNy]; first exact: nodes_end.
+      have zNp1 : z \notin p1.
+      { apply: contraNN zNx => z_p1. apply/eqP; apply: cpo_antisym => //.
+        rewrite x_le_z andbT /cpo eq_path idx_catL ?nodes_end // idx_end //.
+        exact: idx_mem. }
+      rewrite mem_pcat -implyNb => /implyP/(_ zNp1).
+      rewrite mem_pcat => /orP[// | /(in_tail zNy) z_p3].
+      exfalso; have := zNy; apply/negP; rewrite negbK.
+      apply/eqP; apply: cpo_antisym => //.
+      rewrite z_le_y /=/cpo eq_path idx_catR // leq_eqVlt.
+      by rewrite -idxR ?irred_cat ?nodesE/= ?inE ?mem_cat ?z_p3.
+  Qed.
 
 End CheckpointOrder.
 
