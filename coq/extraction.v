@@ -543,18 +543,53 @@ End SplitParallel.
 Lemma seq2_congr : iso2_congruence seq2.
 Admitted.
 
+Instance seq2_morphism : Proper (iso2 ==> iso2 ==> iso2) seq2.
+Proof. move => ? ? ? ? ? ?. exact: seq2_congr. Qed.
+
 Lemma seq2_idR G : seq2 G one2 ≈ G.
 Admitted.
 
 Lemma seq2_idL G : seq2 one2 G ≈ G.
 Admitted.
 
+Local Open Scope quotient_scope.
+Local Notation "\pi x" := (\pi_(_) x) (at level 4,only parsing).
+
 Lemma seq2_assoc G1 G2 G3 : 
   seq2 (seq2 G1 G2) G3 ≈ seq2 G1 (seq2 G2 G3).
+Proof.
+  pose x0 := (g_in : seq2 G1 (seq2 G2 G3)).
+  pose f (x : seq2 (seq2 G1 G2) G3) :  seq2 G1 (seq2 G2 G3) := 
+    match repr x with
+    | inl y => match repr y with
+              | inl z => \pi (inl z) 
+              | inr z => \pi (inr (\pi (inl z)))
+              end
+    | inr y => \pi (inr (\pi (inr y)))
+    end.
+  Set Printing All.
+  pose g (x :  seq2 G1 (seq2 G2 G3)) : seq2 (seq2 G1 G2) G3 := 
+    match repr x with
+    | inr y => match repr y with
+              | inl z => \pi (inl (\pi (inr z)))
+              | inr z => \pi (inr z)
+              end
+    | inl y => \pi (inl (\pi (inl y)))
+    end.
+  (* rewrite /= in f,g. runs forever *)
+  (* have Cfg : cancel f g. *)
+  (* { move => x. rewrite /f /g.  *)
+  (*   case e1: (repr x) => [a|a]. *)
+  (*   case e2: (repr a) => [b|b]. *)
+  (*   case: piP => y Hy. rewrite /= in Hy. (* why does this take to long? *) *)
+  (*   case e3: y => [c|c]. *)
 Admitted.
 
 Definition big_seq2 (s : seq graph2) := \big[seq2/one2]_(G <- s) G.
 
+Lemma big_seq2_cons G Gs : big_seq2 (G :: Gs) = seq2 G (big_seq2 Gs).
+Proof. by rewrite /big_seq2 big_cons. Qed.
+  
 Lemma big_seq2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_seq2 [seq g1 x | x <- s] ≈ big_seq2 [seq g2 x | x <- s].
@@ -573,18 +608,18 @@ Qed.
 Lemma big_seq2_map (I : Type) (r : seq I) F : 
   big_seq2 [seq graph_of_term (F u) | u <- r] ≈ 
   graph_of_term (\big[tmS/tm1]_(u <- r) F u).
-Admitted.
+Proof.
+  elim: r => /= [|a r IH].
+  - by rewrite /big_seq2 !big_nil.
+  - by rewrite big_cons big_seq2_cons /= IH.
+Qed.
 
-(* TOTHINK: This Lemma matches the Proog below, but does it really
+(* TOTHINK: This Lemma matches the Proof below, but does it really
 order the element of r in the same way *)
 Lemma big_seq2_maps (I : finType) (r : {set I}) F : 
   big_seq2 [seq graph_of_term (F u) | u in r] ≈ 
   graph_of_term (\big[tmS/tm1]_(u in r) F u).
-Proof. 
-  rewrite big_seq2_map. 
-  Unset Printing Notations.
-Admitted.
-Set Printing Notations.
+Proof. by rewrite big_seq2_map -filter_index_enum big_filter. Qed.
 
 Section SplitPetals.
   Variable (G : graph2).
@@ -592,7 +627,8 @@ Section SplitPetals.
   Let E := @edges G g_in g_out.
   Let P := @components G [set~ g_in].
   
-  Definition G_edges' := big_seq2 [seq G_edge e | e in E].
+  Definition G_edge' (e : edge G) := par2 one2 (sym2 (label e)).
+  Definition G_edges' := big_seq2 [seq G_edge' e | e in E].
   Definition G_rest' := big_seq2 [seq component C | C in P].
 
   Lemma split_i : G ≈ seq2 G_rest' G_edges'.
@@ -600,8 +636,22 @@ Section SplitPetals.
 
 End SplitPetals.
 
-Lemma sintervalxx (G : sgraph) (x : G) : sinterval x x = [set~ x].
-Abort.
+(* TODO: implement *)
+Parameter dom2 : graph2 -> graph2. 
+Lemma dom2_def (G : graph2) : dom2 G ≈ point G g_in g_in.
+Admitted.
+
+Lemma graph_of_dom u : graph_of_term (dom u) ≈ dom2 (graph_of_term u).
+Admitted.
+
+Instance dom2_morphism : Proper (iso2 ==> iso2) dom2.
+Admitted.
+
+Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
+  g_in == g_out :> G -> C \in components [set~ g_in] -> 
+  component C ≈ dom2 (redirect C).
+Proof.
+Admitted.
 
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
@@ -611,9 +661,12 @@ Proof.
   case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)
     rewrite {1}[G]split_i //=. apply: seq2_congr.
-    + rewrite /G_rest'. rewrite -big_seq2_maps. 
-      admit.
-    + admit.
+    + rewrite /G_rest' -big_seq2_maps. apply: big_seq2_congrs.
+      move => C HC. rewrite graph_of_dom -IH ?comp_dom2_redirect //.
+      * exact: measure_redirect.
+      * exact: CK4F_redirect.
+    + rewrite /G_edges' -big_seq2_maps -(eqP C1). 
+      apply: big_seq2_congrs => e He. done.
   - case: ifP => [C2|C2].
     + (* parallel split *)
       rewrite -big_par2_map; last first.
