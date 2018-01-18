@@ -25,6 +25,13 @@ Record sdecomp (T:tree) (G : sgraph) (bag : T -> {set G}) := SDecomp
 
 Arguments sdecomp T G bag : clear implicits.
 
+Definition triv_sdecomp (G : sgraph) :
+  sdecomp tunit G (fun _ => [set: G]).
+Proof.
+  split => [x|e|x [] [] _ _]; try by exists tt; rewrite !inE.
+  exact: connect0.
+Qed.
+
 Section DecompTheory.
   Variables (G : sgraph) (T : tree) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).

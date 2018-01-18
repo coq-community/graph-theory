@@ -478,14 +478,7 @@ Lemma compat_cnv (G : graph2) T (D : T -> {set G}) :
   compatible D -> compatible (G := cnv2 G) D.
 Proof. move => [t] H. exists t => /=. by rewrite andbC. Qed.
 
-Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
-
-Definition unit_tree_axiom : tree_axiom (sunit).
-Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
-
-Definition tunit := Tree unit_tree_axiom.
-
-Definition triv_decomp (G : graph2) :
+Definition triv_decomp (G : graph) :
   decomp tunit G (fun _ => [set: G]).
 Proof. 
   split => [x|e|x [] [] _ _]; try by exists tt; rewrite !inE.

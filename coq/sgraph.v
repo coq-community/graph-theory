@@ -815,6 +815,13 @@ Lemma restrict_tree (T : tree) (A : pred T) :
   connect_sym (restrict A sedge).
 Proof. apply: connect_symI => x y /=. by rewrite sgP [(x \in A) && _]andbC. Qed.
 
+Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
+
+Definition unit_tree_axiom : tree_axiom (sunit).
+Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
+
+Definition tunit := Tree unit_tree_axiom.
+
 
 (** We define [width] and [rename] for tree decompositions already
 here, so that we can use use them for tree decompositions of simple
@@ -822,6 +829,9 @@ graphs and directed graphs. *)
 
 (** Non-standard: we do not substract 1 *)
 Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
+
+Lemma width_bound (T G : finType) (D : T -> {set G}) : width D <= #|G|.
+Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
 
 Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') := 
   [fun x => h @: B x].

@@ -247,13 +247,18 @@ Proof.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
 Qed.
 
+Lemma iso_pointxx (G : graph) (x : G) :
+  sg_iso (sskeleton (point _ x x)) (skeleton G).
+Proof.
+  exists (id : skeleton G -> sskeleton (point G x x)) id => // u v /=;
+  first by move=>->. case/or3P => // /and3P[uNv /eqP eq1 /eqP eq2];
+  move: uNv; by rewrite eq1 eq2 eqxx.
+Qed.
+
 Lemma sub_pointxx (G : graph) (x:G) :
   sgraph.subgraph (sskeleton (point _ x x))
                   (skeleton G).
-Proof.
-  exists id => // u v /=. 
-  case/or3P; solve [by right| by case/and3P => _ /eqP-> /eqP->; left].
-Qed.
+Proof. apply: iso_subgraph; exact: iso_pointxx. Qed.
 
 (* The subgraph relation lifts to skeletons *)
 Lemma sub_sub (G H : graph) : 
@@ -269,8 +274,21 @@ Proof.
     apply/orP; right. apply/existsP; exists (he e). by rewrite !inE !eqxx.
 Qed.
 
-Lemma flesh_out (G : sgraph) : 
+Definition flesh_out_graph (G : sgraph) (z : G) : graph2 :=
+  {| graph_of :=
+       {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];
+          source := fst \o val; target := snd \o val; label := fun _ => sym0 |} ;
+     g_in := z; g_out := z |}.
+
+Lemma flesh_out (G : sgraph) (z : G) :
   exists G', sg_iso (sskeleton G') G /\ sg_iso (skeleton G') G.
-Proof. (* for evert pair x -- y in G add a 0-edge *) Admitted.
-
-
+Proof.
+  pose G' := flesh_out_graph z. exists G'.
+  suff iso : sg_iso (skeleton G') G.
+  { split=> //. apply: sg_iso_trans iso. exact: iso_pointxx. }
+  exists (id : G -> skeleton G') id; move=> //= x y; rewrite /sk_rel/=.
+  - move=> xy. apply/orP; left. rewrite sg_edgeNeq //=.
+    apply/existsP; exists (Sub (x, y) xy); by rewrite /= !eqxx.
+  - case/orP=> /andP[_] /existsP[][/=][u v /=] ? /andP[/eqP<- /eqP<-] //.
+    by rewrite sg_sym.
+Qed.

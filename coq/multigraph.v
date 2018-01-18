@@ -13,7 +13,9 @@ Set Bullet Behavior "Strict Subproofs".
 (** * Directed Multigraphs *)
 
 (* FIXME: Properly abstract this *)
-Lemma sym : eqType. exact: [eqType of nat]. Qed.
+Lemma _symbols : { sym : eqType & sym }. exists [eqType of nat]; exact: 0. Qed.
+Definition sym : eqType := projT1 _symbols.
+Definition sym0 : sym := projT2 _symbols.
 
 
 Record graph := Graph { vertex :> finType;
