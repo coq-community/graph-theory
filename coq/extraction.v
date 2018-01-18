@@ -242,7 +242,7 @@ Proof.
       apply/subsetP => z Hz. move: (P5 z). rewrite mem_enum.
       have Hz': z \in cp G i o. { apply: cp_widen Hz => //. }
       move/(_ Hz'). move: Hz. 
-      rewrite (cpo_cp conn_G P1 P2 P4) // !inE => /and3P[_ H1 H2].
+      rewrite (cpo_cp P1 P2 P4) // !inE => /and3P[_ H1 H2].
       case/orP => H3. 
       * have H: cpo conn_io x z && cpo conn_io z x by rewrite H3.
         by rewrite (cpo_antisym _ _ H) // eqxx.

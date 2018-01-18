@@ -338,7 +338,7 @@ Qed.
 
 Lemma induced_cycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
   cycle sedge p -> cycle (@sedge G) (map val p).
-Proof. Admitted.
+Proof. case: p => //= a p. rewrite -map_rcons. exact: project_path. Qed.
 
 Lemma induced_ucycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
   ucycle sedge p -> ucycle (@sedge G) (map val p).
@@ -618,12 +618,21 @@ End Pack.
 Lemma path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) p' : 
   @spath G (val x) (val y) p' -> {subset p' <= S} -> 
   exists2 p, spath x y p & p' = map val p.
-Admitted. (* should follow with lift_spath *) 
+Proof.
+  move=> pth_p' sub_p'.
+  case: (lift_spath _ _ pth_p' _) => //; first exact: val_inj.
+  - move=> z /sub_p' z_S. by apply/codomP; exists (Sub z z_S).
+  - move=> p [pth_p /esym eq_p']. by exists p.
+Qed.
 
 Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) 
   (p : Path (val x) (val y)) : 
   {subset p <= S} -> exists q : Path x y, map val (nodes q) = nodes p.
-Admitted. (* follows with path_to_induced *)
+Proof.
+  case: p => p pth_p sub_p. case: (path_to_induced pth_p).
+  - move=> z z_p; apply: sub_p. by rewrite mem_path /= inE z_p.
+  - move=> q pth_q eq_p. exists (Sub q pth_q). by rewrite !nodesE /= eq_p.
+Qed.
 
 
 Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 

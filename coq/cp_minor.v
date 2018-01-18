@@ -394,12 +394,12 @@ Proof.
   (* As a consequence, i (resp. o) is the the petal of x (resp. y) with
    * respect to {x, y}. *)
   have [i_Px o_Py] : i \in petal U2 x /\ o \in petal U2 y.
-  { split; apply/petalP=> z; rewrite CP_set2 (cpo_cp G_conn x_cpio y_cpio x_le_y);
+  { split; apply/petalP=> z; rewrite CP_set2 (cpo_cp x_cpio y_cpio x_le_y);
     move=> /andP[z_cpio] /andP[x_le_z z_le_y].
-    + rewrite (cpo_cp G_conn (mem_cpl i o) z_cpio);
+    + rewrite (cpo_cp (mem_cpl i o) z_cpio);
       repeat (apply/andP; split) => //; exact: cpo_min.
     + have o_cpio : o \in cp i o by rewrite cp_sym mem_cpl.
-      rewrite cp_sym (cpo_cp G_conn z_cpio o_cpio);
+      rewrite cp_sym (cpo_cp z_cpio o_cpio);
       repeat (apply/andP; split) => //; exact: cpo_max. }
 
   case: (collapse_petals G_conn U2 x _); first by rewrite !inE eqxx.
