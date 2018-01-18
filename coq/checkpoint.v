@@ -121,10 +121,17 @@ Section CheckPoints.
   Lemma cp_widen (i o x y z : G) :
     x \in cp i o -> y \in cp i o -> z \in cp x y -> z \in cp i o.
   Proof.
-    move => A B C. 
-  (* TOTHINK: is there a simpler proof than splitting an io-path at x
-  and y? *)
-  Admitted.
+    move=> x_cpio y_cpio z_cpxy.
+    apply/cpPn'=> -[p] Ip; apply/negP; rewrite negbK.
+    move: x_cpio y_cpio => /cpP'/(_ p) x_p /cpP'/(_ p) y_p.
+    wlog : x y z_cpxy p Ip x_p y_p / x <[p] y.
+    { move=> Hyp. case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
+      - by apply: Hyp; first rewrite cp_sym.
+      - move=>/(idx_inj x_p) x_y.
+        by move: z_cpxy; rewrite -{1}x_y cpxx inE =>/eqP->. }
+    case/(three_way_split Ip x_p y_p) => [p1][p2][p3][-> _ _].
+    rewrite !mem_pcat. by move: z_cpxy => /cpP'/(_ p2)->.
+  Qed.
 
   Lemma cp_tightenR (x y z u : G) : z \in cp x y -> x \in cp u y -> x \in cp u z.
   Proof.
@@ -364,7 +371,7 @@ Section CheckPoints.
   Definition interval x y := [set x;y] :|: sinterval x y.
 
   Lemma interval_sym x y : interval x y = interval y x.
-  Admitted.
+  Proof. by rewrite /interval [[set x; y]]setUC sinterval_sym. Qed.
 
   (* TODO: This should be done earlier *)
   Lemma symmetric_resrict_sedge (A : pred G) : 
@@ -971,8 +978,6 @@ Section CheckpointOrder.
     rewrite /cpo idx_end; [ exact: idx_mem | exact: the_uPathP ].
   Qed.
 
-  Hypothesis conn_G : connected [set: G].
-
   Lemma cpo_cp x y : x \in cp i o -> y \in cp i o -> cpo x y ->
     forall z, z \in cp x y = [&& (z \in cp i o), cpo x z & cpo z y].
   Proof.
@@ -988,7 +993,7 @@ Section CheckpointOrder.
     move: the_uPathP; rewrite eq_path !irred_cat =>/and3P[Ip1]/and3P[Ip2 Ip3].
     move=> disj23 disj123.
     move=> z; apply/idP/andP.
-    + move=> z_cpxy. have z_cpio := cp_widen conn_G x_cpio y_cpio z_cpxy.
+    + move=> z_cpxy. have z_cpio := cp_widen x_cpio y_cpio z_cpxy.
       split=>//. move: z_cpio => /cpP'/(_ the_uPath) z_path.
       move: z_cpxy => /cpP'/(_ p2) z_p2. rewrite /cpo.
       case: (altP (z =P x)) => [->|zNx]; first by rewrite leqnn (ltnW x_lt_y).

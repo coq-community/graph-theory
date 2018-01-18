@@ -338,7 +338,7 @@ Qed.
 
 Lemma induced_cycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
   cycle sedge p -> cycle (@sedge G) (map val p).
-Proof. Admitted.
+Proof. case: p => //= a p. rewrite -map_rcons. exact: project_path. Qed.
 
 Lemma induced_ucycle (G : sgraph) (S : {set G}) (p : seq (induced S)) :
   ucycle sedge p -> ucycle (@sedge G) (map val p).
@@ -618,12 +618,21 @@ End Pack.
 Lemma path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) p' : 
   @spath G (val x) (val y) p' -> {subset p' <= S} -> 
   exists2 p, spath x y p & p' = map val p.
-Admitted. (* should follow with lift_spath *) 
+Proof.
+  move=> pth_p' sub_p'.
+  case: (lift_spath _ _ pth_p' _) => //; first exact: val_inj.
+  - move=> z /sub_p' z_S. by apply/codomP; exists (Sub z z_S).
+  - move=> p [pth_p /esym eq_p']. by exists p.
+Qed.
 
 Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) 
   (p : Path (val x) (val y)) : 
   {subset p <= S} -> exists q : Path x y, map val (nodes q) = nodes p.
-Admitted. (* follows with path_to_induced *)
+Proof.
+  case: p => p pth_p sub_p. case: (path_to_induced pth_p).
+  - move=> z z_p; apply: sub_p. by rewrite mem_path /= inE z_p.
+  - move=> q pth_q eq_p. exists (Sub q pth_q). by rewrite !nodesE /= eq_p.
+Qed.
 
 
 Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
@@ -815,6 +824,13 @@ Lemma restrict_tree (T : tree) (A : pred T) :
   connect_sym (restrict A sedge).
 Proof. apply: connect_symI => x y /=. by rewrite sgP [(x \in A) && _]andbC. Qed.
 
+Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
+
+Definition unit_tree_axiom : tree_axiom (sunit).
+Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
+
+Definition tunit := Tree unit_tree_axiom.
+
 
 (** We define [width] and [rename] for tree decompositions already
 here, so that we can use use them for tree decompositions of simple
@@ -822,6 +838,9 @@ graphs and directed graphs. *)
 
 (** Non-standard: we do not substract 1 *)
 Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
+
+Lemma width_bound (T G : finType) (D : T -> {set G}) : width D <= #|G|.
+Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
 
 Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') := 
   [fun x => h @: B x].

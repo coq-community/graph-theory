@@ -242,7 +242,7 @@ Proof.
       apply/subsetP => z Hz. move: (P5 z). rewrite mem_enum.
       have Hz': z \in cp G i o. { apply: cp_widen Hz => //. }
       move/(_ Hz'). move: Hz. 
-      rewrite (cpo_cp conn_G P1 P2 P4) // !inE => /and3P[_ H1 H2].
+      rewrite (cpo_cp P1 P2 P4) // !inE => /and3P[_ H1 H2].
       case/orP => H3. 
       * have H: cpo conn_io x z && cpo conn_io z x by rewrite H3.
         by rewrite (cpo_antisym _ _ H) // eqxx.
@@ -707,19 +707,17 @@ Corollary sminor_exclusion (G : sgraph) :
   K4_free G <-> 
   exists (T:tree) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  move => conn_G.
-  have [G' [iso_Gs iso_G]] := flesh_out G.
+  move => conn_G. split=> [K4F_G | [T][B][]]; last exact: TW2_K4_free.
+  case: (posnP #|G|) =>[G_empty | /card_gt0P[x _]].
+  { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
+    apply: leq_trans (width_bound _) _. by rewrite G_empty. }
+  have [G' [iso_Gs iso_G]] := flesh_out x.
   have conn_G' : connected [set: skeleton G'].
   { admit. (* lift along iso *) }
   have M := minor_exclusion_2p conn_G'.  
-  split => [K4F_G|].
-  - have/M [T [B [B1 B2 B3]]] : K4_free (sskeleton G'). 
-    { admit. (* lift along iso *) }
-    exists T. 
-    have: sdecomp T (sskeleton G') B by exact: decomp_sskeleton. 
-    admit. (* lift along iso *)
-  - move => [T [B [B1 B2]]]. 
-    suff: K4_free (sskeleton G'). { admit. (* iso *)}
-    apply/M. 
-    (* need to construct decomposition for the multigraph G' *)
+  have/M [T [B [B1 B2 B3]]] : K4_free (sskeleton G').
+  { admit. (* lift along iso *) }
+  exists T.
+  have: sdecomp T (sskeleton G') B by exact: decomp_sskeleton.
+  admit. (* lift along iso *)
 Admitted.
