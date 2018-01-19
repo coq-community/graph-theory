@@ -71,7 +71,13 @@ Definition add_edge (G:sgraph) (i o : G) :=
 
 Lemma add_edge_Path (G : sgraph) (i o x y : G) (p : @Path G x y) :
   exists q : @Path (add_edge i o) x y, nodes q = nodes p.
-Admitted.
+Proof.
+  case: p => p p_pth.
+  have p_iopth : @spath (add_edge i o) x y p.
+  { case/andP: p_pth => p_path p_last. apply/andP; split=> //.
+    apply: sub_path p_path. by move=> u v /=->. }
+  by exists (Sub (p : seq (add_edge i o)) p_iopth).
+Qed.
 
 Lemma add_edge_connected (G : sgraph) (i o : G) (U : {set G}) :
   @connected G U -> @connected (add_edge i o) U.
@@ -142,9 +148,14 @@ Lemma adjacentE (G : graph) (x y : skeleton G) :
   (x != y) && adjacent x y = x -- y.
 Proof.
   apply/andP/idP.
-  - move => /= [Hxy]. rewrite /sk_rel /= Hxy eq_sym Hxy /=.
-    rewrite /adjacent. 
-Admitted.
+  - move=> /= [Hxy]. rewrite /sk_rel /= Hxy eq_sym Hxy /= /adjacent.
+    case/orP => /existsP[e]; rewrite inE => ?; apply/orP; [left|right];
+    by apply/existsP; exists e.
+  - move=> xy; split; first by rewrite sg_edgeNeq.
+    move: xy; rewrite /=/sk_rel/adjacent/=.
+    case/orP=> /andP[_] /existsP[e He]; apply/orP; [left|right];
+    by apply/existsP; exists e; rewrite inE.
+Qed.
 
 
 
@@ -173,7 +184,7 @@ Coercion skeleton : graph >-> sgraph.
 Lemma igraph_proof (G : graph) (x y : skeleton G) :
   consistent (interval x y) 
              (edge_set (interval x y) :\: (edges x x :|: edges y y)).
-Admitted.
+Proof. move=> e. rewrite inE =>/andP[_]. by rewrite inE =>/andP. Qed.
 
 Definition igraph (G : graph) (x y : skeleton G) :=
   @point (subgraph_for (@igraph_proof G x y))

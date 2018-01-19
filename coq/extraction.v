@@ -110,8 +110,7 @@ Proof.
   move => A B C [D E]. 
   apply/equivalence_partition_gt1P.
   - move => x y z _ _ _. exact: (sedge_in_equiv (G := skeleton G)).
-  - set H := sinterval _ _. apply/(@connected2 (skeleton G)).
-    apply: ssplit_K4_nontrivial => //.
+  - set H := sinterval _ _. apply: ssplit_K4_nontrivial E _ D.
     + by rewrite -adjacentE A.
     + by case/and3P : B.
     + apply/eqP. by case/and3P : B => ? _ _.

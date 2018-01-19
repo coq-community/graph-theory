@@ -958,6 +958,19 @@ Proof. by move/upathW/spathW. Qed.
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.
 
+Definition disconnected (G : sgraph) (S : {set G}) :=
+  exists x y : G, [/\ x \in S, y \in S & ~~ connect (restrict (mem S) sedge) x y].
+
+Lemma disconnectedE (G : sgraph) (S : {set G}) : disconnected S <-> ~ connected S.
+Proof.
+  split; first by case=> [x] [y] [x_S y_S /negP xNy] /(_ x y x_S y_S).
+  move=> SNconn. apply/'exists_'exists_and3P.
+  rewrite -[X in is_true X]negbK. apply/negP => SNdisconn.
+  apply: SNconn => x y x_S y_S. move: SNdisconn.
+  rewrite negb_exists => /forallP/(_ x). rewrite negb_exists => /forallP/(_ y).
+  by rewrite x_S y_S /= negbK.
+Qed.
+
 Lemma connectedTE (G : sgraph) : 
   connected [set: G] -> forall x y : G, connect sedge x y. 
 Proof. 
@@ -972,6 +985,12 @@ Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 
 Lemma connected1 (G : sgraph) (x : G) : connected [set x].
 Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
+
+Lemma connected2 (G : sgraph) (x y: G) : x -- y -> connected [set x; y].
+Proof.
+  move=> xy ? ? /set2P[]-> /set2P[]->; try exact: connect0;
+  apply: connect1; rewrite /= !inE !eqxx orbT //=. by rewrite sg_sym.
+Qed.
 
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
   connected [set z in p].

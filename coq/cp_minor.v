@@ -482,25 +482,19 @@ Proof.
   exists phi; split.
   + by move=> /= u; exists (Some u).
   + move=> /= u; rewrite preim_phi.
-    case: ifP => [/eqP{u}->|_]; last by rewrite setU0; exact: connected1.
-    admit.
+    case: ifP => [/eqP{u}->|_]; first exact: connected2.
+    by rewrite setU0; exact: connected1.
   + move=> u v /orP[]; first by [ exists (Some u); exists (Some v); split ].
     move=> /orP[]/andP[_]/andP[/eqP->/eqP->];
     [ exists None; exists (Some o) | exists (Some o); exists None ];
     by split; rewrite // -mem_preim.
-Admitted.
-
-
-Lemma connected2 (G : sgraph) (D : {set G}) : 
-  (~ connected D) <-> 
-  exists x y, [/\ x \in D, y \in D & ~~ connect (restrict (mem D) sedge) x y].
-Admitted.
+Qed.
 
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> link_rel G i o -> K4_free (add_edge G i o) -> 
   petal [set i;o] i = [set i] ->
-  connected [set: G] -> ~ connected (sinterval i o).
+  connected [set: G] -> disconnected (sinterval i o).
 Proof.
   move => /= io1 /andP [io2 io3] K4F petal_i conn_G. 
   pose G' := @sgraph.induced G [set~ i].
@@ -661,7 +655,7 @@ Proof.
 
   case/card_gt1P : Ngt1 => [x] [y]. rewrite !inE {N}. case=> ox oy xNy.
   (* TOTHINK: can we avoid nested vals using a proper lemma? *)
-  apply/connected2. exists (val (val x)). exists (val (val y)).
+  exists (val (val x)). exists (val (val y)).
   split; last 1 [idtac] || by apply: CPU_sinterval; rewrite sg_edgeNeq.
   (* o, which is not in ]]i;o[[, is a checkpoint beween x and y *)
   apply/uPathRP => // -[p] Ip /subsetP p_io.
