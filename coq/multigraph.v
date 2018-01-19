@@ -176,13 +176,27 @@ Lemma iso_of_iso2 (G1 G2 : graph2) : G1 ≈ G2 -> iso G1 G2.
 Admitted. (* check for usage *)
 
 Lemma iso2_trans : Transitive iso2.
-Admitted.
+Proof.
+  move=> G1 G2 G3 [f] f_hom [f1_bij f2_bij] [g] g_hom [g1_bij g2_bij].
+  exists (g.1 \o f.1, g.2 \o f.2); last by split; exact: bij_comp.
+  (repeat split)=> /= [e|e|e||]; first 3 [by rewrite g_hom f_hom];
+  by rewrite f_hom g_hom.
+Qed.
 
 Lemma iso2_sym : Symmetric iso2.
-Admitted.
+Proof.
+  move=> G1 G2 [f] f_hom [[f1inv] f1K f1invK [f2inv] f2K f2invK].
+  exists (f1inv, f2inv); last by split=> /=; [exists f.1 | exists f.2].
+  (repeat split)=> /= [e|e|e||].
+  - by rewrite -{1}(f2invK e) -f_hom f1K.
+  - by rewrite -{1}(f2invK e) -f_hom f1K.
+  - by rewrite -f_hom f2invK.
+  - by rewrite -(f1K g_in) f_hom.
+  - by rewrite -(f1K g_out) f_hom.
+Qed.
 
 Lemma iso2_refl G : G ≈ G.
-Admitted.
+Proof. by exists (id, id); repeat split; exists id. Qed.
 Hint Resolve iso2_refl.
 
 Lemma iso2_inv_in (G1 G2 : graph2) (h : h_ty G1 G2) x : 
