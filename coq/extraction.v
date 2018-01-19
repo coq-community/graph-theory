@@ -536,8 +536,14 @@ Lemma split_io : G ≈ par2 G_rest G_edges.
 Admitted.
 End SplitParallel.
 
+
 Lemma seq2_congr : iso2_congruence seq2.
-Admitted.
+  move => G1 G2 G1' G2' [f f1 f2] [g g1 g2].
+  have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
+  apply: (merge_congr (h := h)) => //; try by rewrite ?(I3,I4) ?f1 ?g1.
+  move => [x|x] [y|y];rewrite /eq_seq2 /= !(I3,I4) //.
+  by rewrite !sum_eqE !iso2_inv_in // !iso2_inv_out.
+Qed.
 
 Instance seq2_morphism : Proper (iso2 ==> iso2 ==> iso2) seq2.
 Proof. move => ? ? ? ? ? ?. exact: seq2_congr. Qed.

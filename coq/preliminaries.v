@@ -34,6 +34,17 @@ Lemma Some_eqE (T : eqType) (x y : T) :
   (Some x == Some y) = (x == y).
 Proof. by apply/eqP/eqP => [[//]|->]. Qed.
 
+Lemma inl_eqE (A B : eqType) x y : 
+  (@inl A B x == @inl A B y) = (x == y).
+Proof. by apply/eqP/eqP => [[]|->]. Qed.
+
+Lemma inr_eqE (A B : eqType) x y : 
+  (@inr A B x == @inr A B y) = (x == y).
+Proof. by apply/eqP/eqP => [[]|->]. Qed.
+
+Definition sum_eqE := (inl_eqE,inr_eqE).
+
+
 Lemma inj_omap T1 T2 (f : T1 -> T2) : injective f -> injective (omap f).
 Proof. by move=> f_inj [x1|] [x2|] //= []/f_inj->. Qed.
 
