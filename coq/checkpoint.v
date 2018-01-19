@@ -386,11 +386,42 @@ Section CheckPoints.
       z \in interval x y -> connect (restrict (mem (interval x y)) sedge) z y.
     { move => u v /conn_y Hu /conn_y Hv. 
       apply: connect_trans Hu _. by rewrite connect_symI. }
-    (* if z != x, take an x-avoiding zy-path. 
-       this path cannot leave ]]x;y[[ by [sinterval_exit]
-       if z = x, take any irredundant path. 
-       After splitting off [x], we're in the previous case *)
-  Admitted.
+    move=> z_intv. wlog z_sintv : z {z_intv} / z \in sinterval x y.
+    { move=> Hyp. move: z_intv.
+      rewrite 4!inE -orbA => /or3P[/eqP->|/eqP->|//];
+      last exact: Hyp; last exact: connect0.
+      case: (altP (x =P y)) => [->|xNy]; first exact: connect0.
+      case/uPathP: (G_conn x y) => p.
+      case: (splitL p xNy) => [u] [xu] [p'] [-> _].
+      rewrite irred_cat' =>/and3P[_ Ip']/eqP/setP/(_ x).
+      rewrite !inE nodes_start /= sg_edgeNeq // => xNp'.
+      case: (altP (y =P u)) xu => [<- xy|yNu xu].
+      { apply/(PathRP xNy). exists (edgep xy).
+        apply/subsetP=> v. rewrite mem_edgep.
+        by case/orP=> /eqP->; rewrite !inE eqxx. }
+      have usi : u \in sinterval x y.
+      { apply/sintervalP2; split; last by exists p'; rewrite // xNp'.
+        exists (prev (edgep xu)); first by rewrite irred_rev irred_edge.
+        by rewrite mem_prev mem_edgep negb_or eq_sym xNy yNu. }
+      { apply: @connect_trans (Hyp u usi).
+        apply/PathRP; first by rewrite sg_edgeNeq.
+        exists (edgep xu); apply/subsetP=> v.
+        rewrite mem_edgep => /orP[]/eqP->.
+        - by rewrite !inE eqxx.
+        - by rewrite inE usi. }
+    }
+    case/sintervalP2: (z_sintv) => _ [p Ip xNp].
+    apply/PathRP; first by apply: contraTneq z_sintv =>->; rewrite sinterval_bounds.
+    exists p. apply/subsetP=> u u_p.
+    have uNx : u != x by apply: contraNneq xNp => <-.
+    case: (Path_split u_p) Ip xNp => [p1][p2]->.
+    rewrite irred_cat' => /and3P[_ _] /eqP/setP/(_ y).
+    rewrite 2!inE nodes_end andbT eq_sym mem_pcat negb_or => y_up2 /andP[xNp1 xNp2].
+    rewrite 4!inE (negbTE uNx) /= orbC -implyNb. apply/implyP=> uNsi.
+    case: (sinterval_exit uNsi z_sintv); rewrite cp_sym => /cpP'/(_ p1).
+    - by rewrite (negbTE xNp1).
+    - by rewrite y_up2.
+  Qed.
 
 
   Definition petal (U : {set G}) x :=

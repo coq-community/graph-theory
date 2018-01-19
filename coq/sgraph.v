@@ -533,6 +533,23 @@ Proof.
   case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // nodes_end. 
 Qed.
 
+Lemma irred_cat' x y z (p : Path x z) (q : Path z y) :
+  irred (pcat p q) = [&& irred p, irred q & [set u in p | u \in q] == [set z]].
+Proof.
+  rewrite /irred {1}nodesE (lock uniq) /= -lock -cat_cons -nodesE cat_uniq.
+  congr (_ && _). rewrite (nodesE q) /=. case: uniq => //; rewrite !andbT.
+  apply/hasPn/andP.
+  - move=> H. split; first by apply/negP=>/H/=; rewrite nodes_end.
+    apply/eqP/setP=> u; rewrite !inE.
+    apply/andP/eqP; last by [move=>->; rewrite nodes_start nodes_end].
+    case=> u_p. rewrite mem_path inE =>/orP[/eqP//|/H/=]. by rewrite u_p.
+  - case=> zNTq. rewrite eqEsubset =>/andP[/subsetP sub _].
+    move=> u u_q /=. apply/negP=> u_p.
+    case/(_ u _)/Wrap: sub; rewrite inE.
+    + rewrite u_p /=; exact: tailW.
+    + apply/negP; by apply: contraNneq zNTq =>{1}<-.
+Qed.
+
 Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
 Proof.
   rewrite /irred /nodes => U. apply: leq_size_uniq U _ _. 
