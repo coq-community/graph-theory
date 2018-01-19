@@ -216,7 +216,7 @@ Qed.
 Lemma iso2_point (G1 G2 : graph) (i1 o1 :G1) (i2 o2 : G2) :
   (exists h, [/\ hom_g h, bijective2 h, h.1 i1 = i2 & h.1 o1 = o2]) ->
   point G1 i1 o1 ≈ point G2 i2 o2.
-Admitted. (* check for usage / use in merge_congr? *)
+Proof. case=> h [hom_h bij_h hi ho]. by exists h. Qed.
 
 Lemma iso2_union (G1 G2 G1' G2' : graph2) (f : h_ty G1 G1') (g : h_ty G2 G2') :
   hom_g2 f -> bijective2 f ->
@@ -227,20 +227,16 @@ Lemma iso2_union (G1 G2 G1' G2' : graph2) (f : h_ty G1 G1') (g : h_ty G2 G2') :
      & forall x : G2, h.1 (inr x) = inr (g.1 x)].
 Proof.
   move => f1 f2 g1 g2.
-  pose h1 p := 
-    match p with 
-    | inl x => inl (f.1 x) 
-    | inr x => inr (g.1 x)
-    end.
-  pose h2 p := 
-    match p with 
-    | inl x => inl (f.2 x) 
-    | inr x => inr (g.2 x)
-    end.
-  exists (h1,h2). split => //.
-  - (repeat split) => [] [e|e] /=; by rewrite ?f1 ?g1.
-  - split. admit.
-Admitted.
+  pose h1 p := funU f.1 g.1 p.
+  pose h2 p := funU f.2 g.2 p.
+  exists (h1,h2).
+  split=> //; first by (repeat split) => [] [e|e]; rewrite /h1/h2/= ?f1 ?g1.
+  case: f2 => - [f1inv f1K f1invK] [f2inv f2K f2invK].
+  case: g2 => - [g1inv g1K g1invK] [g2inv g2K g2invK].
+  split.
+  - exists (funU f1inv g1inv) => -[x|x]; by rewrite /h1/= ?f1K ?f1invK ?g1K ?g1invK.
+  - exists (funU f2inv g2inv) => -[x|x]; by rewrite /h2/= ?f2K ?f2invK ?g2K ?g2invK.
+Qed.
 
 Lemma union_congr (G1 G2 G1' G2' : graph) : 
   iso G1 G1' -> iso G2 G2' -> iso (union G1 G2) (union G1' G2').
@@ -251,7 +247,11 @@ Lemma lift_equiv (T1 T2 : finType) (E1 : rel T1) (E2 : rel T2) h :
   bijective h -> (forall x y, E1 x y = E2 (h x) (h y)) ->
   (forall x y, equiv_of E1 x y = equiv_of E2 (h x) (h y)).
 Proof.
-Admitted.
+  move=> [hinv] hK hinvK hE x y. rewrite /equiv_of. apply/idP/idP.
+  - by apply: connect_img => {x y} x y /=; rewrite !hE.
+  - rewrite -{2}(hK x) -{2}(hK y).
+    by apply: connect_img => {x y} x y /=; rewrite !hE !hinvK.
+Qed.
 
 (* requires point *)
 Lemma merge_congr (G1 G2 : graph) (E1 : rel G1) (E2 : rel G2) 
@@ -276,13 +276,20 @@ Proof.
   - (repeat split) => e /=.
     + rewrite /h1 -hom_h. case: piP => /= x. 
       move/eqmodP => /=. rewrite hEq. by move/eqmodP.
-    + admit. (* as above *)
+    + rewrite /h1 -hom_h. case: piP => /= x.
+      move/eqmodP => /=. rewrite hEq. by move/eqmodP.
     + by rewrite hom_h.
   - split => //=; last apply bij_h. 
-    admit.
+    case: bij_h => -[h1inv] _ h1invK _.
+    pose h1inv' (x : M2) : M1 := \pi_({eq_quot (equiv_of E1)}) (h1inv (repr x)).
+    exists h1inv' => x; rewrite /h1/h1inv'; case: piP => /= y /eqmodP/=.
+    + by rewrite -{1}(h1invK y) -hEq =>/eqmodP<-; rewrite reprK.
+    + by rewrite hEq h1invK =>/eqmodP<-; rewrite reprK.
   - rewrite /h1. case: piP => /= x /eqmodP /=.
     by rewrite hEq hi => /eqmodP /= ->.
-Admitted.
+  - rewrite /h1. case: piP => /= x /eqmodP /=.
+    by rewrite hEq ho => /eqmodP /= ->.
+Qed.
 
 (** Set up setoid rewriting for iso2 *)
 
