@@ -13,9 +13,6 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 
-
-Definition dom t := tmI (tmS t tmT) tm1.
-
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.
 
@@ -202,7 +199,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
   if g_in == g_out :> G
   then (* input equals output *)
     let P := @components G [set~ g_in] in
-    (\big[tmS/tm1]_(C in P) dom (term_of (redirect C))) :o:
+    (\big[tmS/tm1]_(C in P) tmD (term_of (redirect C))) :o:
     (\big[tmS/tm1]_(e in @edges G g_in g_in) tm1 :||: tmA (label e))
   else (* distinct input and output *)
     if lens G
@@ -566,7 +563,6 @@ Proof.
               end
     | inr y => \pi (inr (\pi (inr y)))
     end.
-  Set Printing All.
   pose g (x :  seq2 G1 (seq2 G2 G3)) : seq2 (seq2 G1 G2) G3 := 
     match repr x with
     | inr y => match repr y with
@@ -635,14 +631,6 @@ Section SplitPetals.
 
 End SplitPetals.
 
-(* TODO: implement *)
-Parameter dom2 : graph2 -> graph2. 
-Lemma dom2_def (G : graph2) : dom2 G ≈ point G g_in g_in.
-Admitted.
-
-Lemma graph_of_dom u : graph_of_term (dom u) ≈ dom2 (graph_of_term u).
-Admitted.
-
 Instance dom2_morphism : Proper (iso2 ==> iso2) dom2.
 Admitted.
 
@@ -650,6 +638,13 @@ Lemma comp_dom2_redirect (G : graph2) (C : {set G}) :
   g_in == g_out :> G -> C \in components [set~ g_in] -> 
   component C ≈ dom2 (redirect C).
 Proof.
+  move => Eio HC.
+  rewrite /redirect. case: pickP => [x /andP [inC adj_x] |].
+  - apply: subgraph_for_iso => //.
+    + by rewrite (eqP Eio) setUA setUid [x |: C](setUidPr _) // sub1set. 
+    + by rewrite (eqP Eio) setUA setDDl !setUid [x |: C](setUidPr _) // sub1set.
+    + by rewrite /= (eqP Eio).
+  - 
 Admitted.
 
 Theorem term_of_iso (G : graph2) : 
@@ -661,7 +656,7 @@ Proof.
   - (* selfloops / io-redirect *)
     rewrite {1}[G]split_i //=. apply: seq2_congr.
     + rewrite /G_rest' -big_seq2_maps. apply: big_seq2_congrs.
-      move => C HC. rewrite graph_of_dom -IH ?comp_dom2_redirect //.
+      move => C HC. rewrite /= -IH ?comp_dom2_redirect //.
       * exact: measure_redirect.
       * exact: CK4F_redirect.
     + rewrite /G_edges' -big_seq2_maps -(eqP C1). 

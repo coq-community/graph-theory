@@ -54,6 +54,9 @@ Proof. move => A. rewrite -[m]subn0. exact: leq_sub. Qed.
 Lemma set1_inj (T : finType) : injective (@set1 T).
 Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
 
+Lemma id_bij T : bijective (@id T).
+Proof. exact: (Bijective (g := id)). Qed.
+
 Lemma set2C (T : finType) (x y : T) : [set x;y] = [set y;x].
 Proof. apply/setP => z. apply/set2P/set2P; tauto. Qed.
 

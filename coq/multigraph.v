@@ -291,6 +291,20 @@ Proof.
     by rewrite hEq ho => /eqmodP /= ->.
 Qed.
 
+Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
+  (C1 : @consistent G V1 E1) (C2: consistent V2 E2) :
+  V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->
+  point (subgraph_for C1) i1 o1 ≈ point (subgraph_for C2) i2 o2.
+Proof.
+  move => eq_V eq_E eq_i eq_o. subst.
+  move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
+  exists (id,id) => //; last (split;exact: id_bij).
+  + (repeat split) => //= e.
+    * by rewrite (bool_irrelevance (source_proof C1 e) (source_proof C2 e)).
+    * by rewrite (bool_irrelevance (target_proof C1 e) (target_proof C2 e)).
+Qed.
+
+
 (** Set up setoid rewriting for iso2 *)
 
 Instance iso2_Equivalence : Equivalence iso2.
