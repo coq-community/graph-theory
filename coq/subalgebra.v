@@ -478,6 +478,19 @@ Lemma compat_cnv (G : graph2) T (D : T -> {set G}) :
   compatible D -> compatible (G := cnv2 G) D.
 Proof. move => [t] H. exists t => /=. by rewrite andbC. Qed.
 
+Definition dom2 (G : graph2) := 
+  {| graph_of := G; g_in := g_in; g_out := g_in |}.
+
+Lemma decomp_dom (G : graph2) T D : 
+  decomp T G D -> decomp T (dom2 G) D.
+Proof. done. Qed.
+
+Lemma compat_dom (G : graph2) T (D : T -> {set G}) : 
+  compatible D -> compatible (G := dom2 G) D.
+Proof. 
+  move => [t] /andP [H _]. exists t => /=. by rewrite !H. 
+Qed.
+
 Definition triv_decomp (G : graph) :
   decomp tunit G (fun _ => [set: G]).
 Proof. 
@@ -516,7 +529,9 @@ Inductive term :=
 | tmT 
 | tmC of term
 | tmS of term & term
-| tmI of term & term.
+| tmI of term & term
+| tmD of term
+.
 
 Fixpoint graph_of_term (u:term) {struct u} : graph2 := 
   match u with
@@ -526,12 +541,13 @@ Fixpoint graph_of_term (u:term) {struct u} : graph2 :=
   | tmC u => cnv2 (graph_of_term u)
   | tmS u v => seq2 (graph_of_term u) (graph_of_term v)
   | tmI u v => par2 (graph_of_term u) (graph_of_term v)
+  | tmD u => dom2 (graph_of_term u)
   end.
 
 Theorem graph_of_TW2 (u : term) : 
   exists T D, [/\ decomp T (graph_of_term u) D, compatible D & width D <= 3].
 Proof.
-  elim: u => [a| | | u IHu | u IHu v IHv | u IHu v IHv ].
+  elim: u => [a| | | u IHu | u IHu v IHv | u IHu v IHv | u IHu ].
   - apply: decomp_small. by rewrite card_bool.
   - apply: decomp_small. by rewrite card_unit.
   - apply: decomp_small. by rewrite card_bool.
@@ -541,4 +557,6 @@ Proof.
     simpl graph_of_term. exact: (decomp_seq2 (D1 := D1) (D2 := D2)).
   - move: IHu IHv => [T1] [D1] [? ? ?] [T2] [D2] [? ? ?].
     simpl graph_of_term. exact: (decomp_par2 (D1 := D1) (D2 := D2)).
+  - move: IHu => [T] [D] [D1 D2 D3]. exists T. exists D. split => //. 
+    exact: compat_dom. (* FIXME: Hidden argument *)
 Qed.
