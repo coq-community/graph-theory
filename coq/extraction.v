@@ -80,6 +80,8 @@ Qed.
 (** ** Subroutines *)
 
 Notation IO := ([set g_in; g_out]).
+Notation "u :||: v" := (tmI u v) (at level 35, right associativity).
+Notation "u :o: v" := (tmS u v) (at level 33, right associativity).
 
 Definition lens (G : graph2) := 
   [&& @petal G IO g_in  == [set g_in ],
@@ -127,8 +129,17 @@ Lemma pairs_cat (T : Type) a1 a2 (s1 s2 : seq T) :
   pairs (rcons s1 a1) ++ (a1,a2) :: pairs (a2 :: s2).
 Admitted.
 
-(* Fixpoint pairs (T : Type) (x : T) (s : seq T) :=  *)
-(*   if s is y::s' then (x,y) :: pairs y s' else nil. *)
+(** BEGIN: Temporary simplification: binary sequential split *)
+
+Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
+  let (i,o) := (g_in : G, g_out : G) in 
+  if (@petal G IO g_in != [set g_in]) || (@petal G IO g_out != [set g_out])
+  then g (pgraph IO i) :o: g (igraph i o) :o: g (pgraph IO o)
+  else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
+       else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
+
+(** END: Temporary simplification: binary sequential split *)
+
 
 (** list of checkpoint bewteen x and y (excluding x) *)
 (* NOTE: see insub in eqtype.v *)
@@ -136,9 +147,6 @@ Admitted.
 Definition checkpoint_seq (G : graph) (x y : G) := 
   if @idP (connect (@sedge (skeleton G)) x y) isn't ReflectT con_xy then [::]
   else sort (cpo con_xy) (enum (@cp (skeleton G) x y)).
-
-Notation "u :||: v" := (tmI u v) (at level 35).
-Notation "u :o: v" := (tmS u v) (at level 33).
 
 Definition check_point_term (t : graph2 -> term) (G : graph2) :=
   let (i,o) := (g_in : G, g_out : G) in
@@ -203,7 +211,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let P := components (@sinterval (skeleton G) g_in g_out) in
       big_tmI ([seq term_of (component C) | C in P] ++ tmEs G)
     else (* at least one nontrivial petal or checkpoint *)
-      @check_point_term term_of G.
+      @simple_check_point_term term_of G.
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
 
@@ -251,10 +259,10 @@ Proof.
   rewrite /igraph /sigraph /sskeleton -/istart -/iend. 
 Admitted.
 
-Lemma CK4F_link (G : graph2) (x y : @CP_ G IO) : 
-  CK4F G -> x -- y -> CK4F (igraph (val x) (val y)).
+Lemma CK4F_igraph (G : graph2) (x y : @CP_ G IO) : 
+  CK4F G -> x != y -> CK4F (igraph (val x) (val y)).
 Proof.
-  move => [conn_G K4F_G] /sg_edgeNeq/negbT xy. 
+  move => [conn_G K4F_G] xy. 
   split; first exact: connected_igraph.
   apply: subgraph_K4_free (sskeleton_add _ _) _.
   exact: igraph_K4_free. 
@@ -354,7 +362,7 @@ Lemma cp_pairs_CK4G (G : graph2) (x y : G) :
 Proof.
   move => [G_conn G_K4F] ? Hxy.
   move/cp_pairs_edge : (Hxy) => /(_ G_conn) [px] [py] link_xy. 
-  exact: CK4F_link link_xy. 
+  exact: CK4F_igraph (linkNeq link_xy). 
 Qed.
                            
 Definition check_point_wf (f g : graph2 -> term) (G : graph2) : 
@@ -408,6 +416,38 @@ Proof.
     and therefore at least one edge. *)     
 Admitted. 
 
+
+
+
+Definition simple_check_point_wf (f g : graph2 -> term) (G : graph2) : 
+  CK4F G -> 
+  g_in != g_out :> G ->
+  ~~ lens G -> 
+  (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) -> 
+  simple_check_point_term f G = simple_check_point_term g G.
+Proof.
+  move => CK4F_G Eio nlens_G Efg.
+  rewrite /simple_check_point_term.
+  (* rewrite /lens andbA 2!negb_and in nlens_G.  *)
+  case: ifP => [A|A].
+  have {A} [x Hx] : exists x:G, x \notin @interval G g_in g_out.
+  { case/orP : A => /petal_nontrivial [x X1 X]. 
+    - admit.
+    - admit. }
+    
+  - (* g_out not in left petal, x notin interval, g_in not in right petal *)
+    rewrite ![f (pgraph _ _)]Efg; 
+      try (apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx).
+    do 2 f_equal. rewrite Efg //. 
+    * admit. (* CK4F_igraph should apply ... *)
+    * apply: measure_node Hx. by apply CK4F_G.
+  - move/negbT : A. rewrite negb_or !negbK. case/andP => A B.
+    rewrite /lens !negb_and A B (negbTE Eio) /= in nlens_G. 
+    case: pickP => [z Hz|//].
+    (* g_out not in left side, g_in not in right side *)
+Admitted.
+
+
 Lemma term_of_eq (G : graph2) : 
   CK4F G -> term_of G = term_of_rec term_of G.
 Proof.
@@ -421,7 +461,7 @@ Proof.
       rewrite mem_enum => HC. apply: Efg.
       * exact: CK4F_lens.
       * exact: measure_lens. 
-    + exact: check_point_wf.
+    + exact: simple_check_point_wf.
 Qed.
 
 (** * Isomorphim Properties *)
@@ -509,8 +549,12 @@ Proof.
       * rewrite /G_edges /tmEs map_cat -!map_comp. 
         rewrite big_par2_cat. reflexivity.
         (* the complexity is in [split_io] *)
-    + (* sequential split *) 
-      admit.
+    + (* petal/sequential split *) 
+      rewrite /simple_check_point_term. 
+      case: ifP => [|].
+      * (* petal split *)
+        rewrite /= -!IH; admit.
+      * admit.
 Admitted.
 
 (** * Minor Exclusion Corollaries *)
