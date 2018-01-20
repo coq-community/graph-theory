@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries.
 Require Import sgraph minor checkpoint cp_minor. 
-Require Import multigraph subalgebra skeleton bounded.
+Require Import multigraph subalgebra tm_iso skeleton bounded.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -172,10 +172,6 @@ Definition redirect (G : graph2) (H : {set G}) : graph2 :=
   if [pick z in H | adjacent g_in z] isn't Some z then one2 
   else redirect_to H z.
 
-
-(* NOTE: We need to use foldr1 here since there is no neutral element
-for parallel composition in the term syntax for connected graphs *)
-Definition big_tmI : seq term -> term := foldr1 tm1 tmI id.
 
 Lemma component_consistent (G : graph2) (H : {set G}) : 
   let H' := g_in |: (g_out |: H) in 
@@ -430,139 +426,6 @@ Qed.
 
 (** * Isomorphim Properties *)
 
-Local Open Scope quotient_scope.
-Local Notation "\pi x" := (\pi_(_) x) (at level 4).
-
-
-Definition iso2_congruence (op : graph2 -> graph2 -> graph2) :=
-  forall (G1 G2 G1' G2' : graph2), G1 ≈ G1' -> G2 ≈ G2' -> op G1 G2 ≈ op G1' G2'.
-
-Lemma par2_congr : iso2_congruence par2.
-Proof.
-  move => G1 G2 G1' G2' [f f1 f2] [g g1 g2].
-  have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
-  apply: (merge_congr (h := h)) => //; try by rewrite I3 f1.
-  move => [x|x] [y|y];rewrite /eq_par2 /= !(I3,I4) //.
-  by rewrite !iso2_inv_in // !iso2_inv_out.
-Qed.
-
-
-(* Instance iso2_Morphism : *)
-(*   Proper (iso2 ==> iso2 ==> iff) (iso2). *)
-(* Proof. *)
-(*   move => G1 G1' iso1 G2 G2' iso2. by rewrite -> iso1,iso2. *)
-(* Qed. *)
-
-Instance par2_morphisem : 
-  Proper (iso2 ==> iso2 ==> iso2) par2.
-Proof. move => ? ? ? ? ? ?. exact: par2_congr. Qed.
-
-Definition big_par2 (s : seq graph2) : graph2 := 
-  \big[par2/top2]_(G <- s) G.
-
-Lemma big_par2_cons G Gs : 
-  big_par2 (G::Gs) = par2 G (big_par2 Gs).
-Proof. by rewrite /big_par2 big_cons. Qed.
-
-
-(** NOTE: For the moment this is only needed to provide an identity
-element to par2. If this turns out hard to prove, use foldr1 instead *)
-
-Lemma par2_LR (G1 G2 : graph2) x y :
-  inl x = inr y %[mod_eq @eqv_par2 G1 G2] ->
-  x = g_in /\ y = g_in \/ x = g_out /\ y = g_out.
-Proof.
-  move/eqmodP => /=. case/connectP => p. 
-  elim: p x => //=. move => [//|a] p IH x /andP [A B C]. 
-  rewrite -orbA in A. case/or3P : A.
-  - case/andP => [/eqP ? /eqP ?]. subst.
-Admitted.
-
-Lemma par2_injL (G1 G2 : graph2) x y : 
-  g_in != g_out :> G2 -> 
-  inl x = inl y %[mod_eq @eqv_par2 G1 G2] ->
-  x = y.
-Admitted.
-
-Lemma par2_idR G : par2 G top2 ≈ G.
-Proof 
-  with try solve [by move/par2_injL => <- //
-                 |by case/par2_LR => [] [? ?];subst ].
-  pose f (x : par2 G top2) : G := 
-    match repr x with
-    | inl x => x 
-    | inr false => g_in
-    | inr true => g_out
-    end.
-  pose g (x : G) : par2 G top2 := \pi (inl x).
-  have c1 : cancel f g.
-  { move => x. rewrite /f /g. 
-    case e1 : (repr x) => [a|[|]]; first by rewrite -e1 reprK.
-    - rewrite -[x]reprK e1. apply/eqmodP => /=. 
-      apply: sub_equiv_of => /=. by rewrite !eqxx.
-    - rewrite -[x]reprK e1. apply/eqmodP => /=. 
-      apply: sub_equiv_of => /=. by rewrite !eqxx. }
-  have c2 : cancel g f.
-  { move => x. rewrite /f /g. 
-    case: piP => [[y|[]]] Hy. 
-    - symmetry. exact: par2_injL Hy.
-    - case: (par2_LR Hy) => [] [? ?];by subst.
-    - case: (par2_LR Hy) => [] [? ?];by subst. }
-  pose h (e: edge (par2 G top2)) : edge G :=
-    match e with inl e => e | inr e => match e with end end.
-  exists (f,h); repeat split => //=. (* simpl takes long ... *)
-  - case => // e. rewrite /f. case: piP => [[y|[|]]]...
-  - case => // e. rewrite /f. case: piP => [[y|[|]]]...
-  - by case. 
-  - rewrite /f. case: piP => [[y|[|]]]...
-  - rewrite /f. case: piP => [[y|[|]]]...
-  - exact: Bijective c1 c2.
-  - by apply: (Bijective (g := inl)) => [[e|]|].
- Qed.
-
-
-Lemma par2_idL G : par2 top2 G ≈ G.
-Admitted.
-
-Lemma big_par2_1 G : big_par2 [:: G] ≈ G.
-Proof. rewrite /big_par2 big_cons big_nil. exact: par2_idR. Qed.
-
-Lemma big_par2_map (r : seq term) : 
-  ~~ nilp r -> big_par2 (map graph_of_term r) ≈ graph_of_term (big_tmI r).
-Proof.
-  elim: r => //= u s. case e : (nilp s).
-  - move => _ _. by rewrite (nilP e) /= /big_par2_cons big_par2_1. 
-  - move/(_ isT) => IH _. by rewrite big_par2_cons /= IH.
-Qed.
-
-Lemma par2_assoc G1 G2 G3 : 
-  par2 (par2 G1 G2) G3 ≈ par2 G1 (par2 G2 G3).
-Admitted.
-
-Lemma big_par2_cat r1 r2 : 
-  big_par2 (r1 ++ r2) ≈ par2 (big_par2 r1) (big_par2 r2).
-Proof. 
-  rewrite /big_par2 big_cat_nested. 
-  elim: r1 => [|G r1 IH].
-  - by rewrite !big_nil par2_idL.
-  - by rewrite !big_cons IH par2_assoc.
-Qed.
-
-Lemma big_par2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
-  (forall x, x \in s -> g1 x ≈ g2 x) -> 
-  big_par2 [seq g1 x | x <- s] ≈ big_par2 [seq g2 x | x <- s].
-Proof. 
-  elim: s => //= a s IH. admit.
-Admitted.
-
-
-
-Lemma big_par2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
-  (forall x, x \in s -> g1 x ≈ g2 x) -> 
-  big_par2 [seq g1 x | x in s] ≈ big_par2 [seq g2 x | x in s].
-Proof. 
-  move => A. apply: big_par2_congr => x. by rewrite mem_enum => /A.
-Qed.
 
 Section SplitParallel.
 Variable (G : graph2).
@@ -590,88 +453,6 @@ Admitted.
 End SplitParallel.
 
 
-Lemma seq2_congr : iso2_congruence seq2.
-  move => G1 G2 G1' G2' [f f1 f2] [g g1 g2].
-  have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
-  apply: (merge_congr (h := h)) => //; try by rewrite ?(I3,I4) ?f1 ?g1.
-  move => [x|x] [y|y];rewrite /eq_seq2 /= !(I3,I4) //.
-  by rewrite !sum_eqE !iso2_inv_in // !iso2_inv_out.
-Qed.
-
-Instance seq2_morphism : Proper (iso2 ==> iso2 ==> iso2) seq2.
-Proof. move => ? ? ? ? ? ?. exact: seq2_congr. Qed.
-
-Lemma seq2_idR G : seq2 G one2 ≈ G.
-Admitted.
-
-Lemma seq2_idL G : seq2 one2 G ≈ G.
-Admitted.
-
-Lemma seq2_assoc G1 G2 G3 : 
-  seq2 (seq2 G1 G2) G3 ≈ seq2 G1 (seq2 G2 G3).
-Proof.
-  pose x0 := (g_in : seq2 G1 (seq2 G2 G3)).
-  pose f (x : seq2 (seq2 G1 G2) G3) :  seq2 G1 (seq2 G2 G3) := 
-    match repr x with
-    | inl y => match repr y with
-              | inl z => \pi (inl z) 
-              | inr z => \pi (inr (\pi (inl z)))
-              end
-    | inr y => \pi (inr (\pi (inr y)))
-    end.
-  pose g (x :  seq2 G1 (seq2 G2 G3)) : seq2 (seq2 G1 G2) G3 := 
-    match repr x with
-    | inr y => match repr y with
-              | inl z => \pi (inl (\pi (inr z)))
-              | inr z => \pi (inr z)
-              end
-    | inl y => \pi (inl (\pi (inl y)))
-    end.
-  (* rewrite /= in f,g. runs forever *)
-  (* have Cfg : cancel f g. *)
-  (* { move => x. rewrite /f /g.  *)
-  (*   case e1: (repr x) => [a|a]. *)
-  (*   case e2: (repr a) => [b|b]. *)
-  (*   case: piP => y Hy. rewrite /= in Hy. (* why does this take to long? *) *)
-  (*   case e3: y => [c|c]. *)
-Admitted.
-
-Definition big_seq2 (s : seq graph2) := \big[seq2/one2]_(G <- s) G.
-
-Lemma big_seq2_cons G Gs : big_seq2 (G :: Gs) = seq2 G (big_seq2 Gs).
-Proof. by rewrite /big_seq2 big_cons. Qed.
-  
-Lemma big_seq2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
-  (forall x, x \in s -> g1 x ≈ g2 x) -> 
-  big_seq2 [seq g1 x | x <- s] ≈ big_seq2 [seq g2 x | x <- s].
-Proof. 
-  elim: s => //= a s IH.
-Admitted.
-
-
-Lemma big_seq2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
-  (forall x, x \in s -> g1 x ≈ g2 x) -> 
-  big_seq2 [seq g1 x | x in s] ≈ big_seq2 [seq g2 x | x in s].
-Proof. 
-  move => A. apply: big_seq2_congr => x. by rewrite mem_enum => /A.
-Qed.
-
-Lemma big_seq2_map (I : Type) (r : seq I) F : 
-  big_seq2 [seq graph_of_term (F u) | u <- r] ≈ 
-  graph_of_term (\big[tmS/tm1]_(u <- r) F u).
-Proof.
-  elim: r => /= [|a r IH].
-  - by rewrite /big_seq2 !big_nil.
-  - by rewrite big_cons big_seq2_cons /= IH.
-Qed.
-
-(* TOTHINK: This Lemma matches the Proof below, but does it really
-order the element of r in the same way *)
-Lemma big_seq2_maps (I : finType) (r : {set I}) F : 
-  big_seq2 [seq graph_of_term (F u) | u in r] ≈ 
-  graph_of_term (\big[tmS/tm1]_(u in r) F u).
-Proof. by rewrite big_seq2_map -filter_index_enum big_filter. Qed.
-
 Section SplitPetals.
   Variable (G : graph2).
   Hypothesis G_io : g_in == g_out :> G.
@@ -687,9 +468,6 @@ Section SplitPetals.
 
 End SplitPetals.
 
-Instance dom2_morphism : Proper (iso2 ==> iso2) dom2.
-Admitted.
-
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   g_in == g_out :> G -> C \in components [set~ g_in] -> 
   component C ≈ dom2 (redirect C).
@@ -702,6 +480,7 @@ Proof.
     + by rewrite /= (eqP Eio).
   - 
 Admitted.
+
 
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
