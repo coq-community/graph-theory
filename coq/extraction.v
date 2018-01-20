@@ -431,6 +431,7 @@ Qed.
 (** * Isomorphim Properties *)
 
 Local Open Scope quotient_scope.
+Local Notation "\pi x" := (\pi_(_) x) (at level 4).
 
 
 Definition iso2_congruence (op : graph2 -> graph2 -> graph2) :=
@@ -463,10 +464,62 @@ Lemma big_par2_cons G Gs :
   big_par2 (G::Gs) = par2 G (big_par2 Gs).
 Proof. by rewrite /big_par2 big_cons. Qed.
 
+
 (** NOTE: For the moment this is only needed to provide an identity
 element to par2. If this turns out hard to prove, use foldr1 instead *)
-Lemma par2_idR G : par2 G top2 ≈ G.
+
+Lemma par2_LR (G1 G2 : graph2) x y :
+  inl x = inr y %[mod_eq @eqv_par2 G1 G2] ->
+  x = g_in /\ y = g_in \/ x = g_out /\ y = g_out.
+Proof.
+  move/eqmodP => /=. case/connectP => p. 
+  elim: p x => //=. move => [//|a] p IH x /andP [A B C]. 
+  rewrite -orbA in A. case/or3P : A.
+  - case/andP => [/eqP ? /eqP ?]. subst.
 Admitted.
+
+Lemma par2_injL (G1 G2 : graph2) x y : 
+  g_in != g_out :> G2 -> 
+  inl x = inl y %[mod_eq @eqv_par2 G1 G2] ->
+  x = y.
+Admitted.
+
+Lemma par2_idR G : par2 G top2 ≈ G.
+Proof 
+  with try solve [by move/par2_injL => <- //
+                 |by case/par2_LR => [] [? ?];subst ].
+  pose f (x : par2 G top2) : G := 
+    match repr x with
+    | inl x => x 
+    | inr false => g_in
+    | inr true => g_out
+    end.
+  pose g (x : G) : par2 G top2 := \pi (inl x).
+  have c1 : cancel f g.
+  { move => x. rewrite /f /g. 
+    case e1 : (repr x) => [a|[|]]; first by rewrite -e1 reprK.
+    - rewrite -[x]reprK e1. apply/eqmodP => /=. 
+      apply: sub_equiv_of => /=. by rewrite !eqxx.
+    - rewrite -[x]reprK e1. apply/eqmodP => /=. 
+      apply: sub_equiv_of => /=. by rewrite !eqxx. }
+  have c2 : cancel g f.
+  { move => x. rewrite /f /g. 
+    case: piP => [[y|[]]] Hy. 
+    - symmetry. exact: par2_injL Hy.
+    - case: (par2_LR Hy) => [] [? ?];by subst.
+    - case: (par2_LR Hy) => [] [? ?];by subst. }
+  pose h (e: edge (par2 G top2)) : edge G :=
+    match e with inl e => e | inr e => match e with end end.
+  exists (f,h); repeat split => //=. (* simpl takes long ... *)
+  - case => // e. rewrite /f. case: piP => [[y|[|]]]...
+  - case => // e. rewrite /f. case: piP => [[y|[|]]]...
+  - by case. 
+  - rewrite /f. case: piP => [[y|[|]]]...
+  - rewrite /f. case: piP => [[y|[|]]]...
+  - exact: Bijective c1 c2.
+  - by apply: (Bijective (g := inl)) => [[e|]|].
+ Qed.
+
 
 Lemma par2_idL G : par2 top2 G ≈ G.
 Admitted.
@@ -553,9 +606,6 @@ Admitted.
 
 Lemma seq2_idL G : seq2 one2 G ≈ G.
 Admitted.
-
-Local Open Scope quotient_scope.
-Local Notation "\pi x" := (\pi_(_) x) (at level 4,only parsing).
 
 Lemma seq2_assoc G1 G2 G3 : 
   seq2 (seq2 G1 G2) G3 ≈ seq2 G1 (seq2 G2 G3).

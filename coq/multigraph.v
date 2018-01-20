@@ -100,6 +100,9 @@ Proof. exact: connect_trans. Qed.
 Canonical equiv_of_equivalence :=
   EquivRel equiv_of equiv_of_refl equiv_of_sym equiv_of_trans.
 
+Lemma sub_equiv_of : subrel e equiv_of.
+Proof. move => x y He. apply: connect1 => /=. by rewrite He. Qed.
+
 End Equivalence.
 
 (** ** Subgraphs and Induced Subgraphs *)
