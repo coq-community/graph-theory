@@ -209,7 +209,11 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
     if lens G
     then (* no checkpoints and no petals on i and o *)
       let P := components (@sinterval (skeleton G) g_in g_out) in
-      big_tmI ([seq term_of (component C) | C in P] ++ tmEs G)
+      let E := @edge_set G IO in
+      if E == set0 then big_tmI [seq term_of (component C) | C in P]
+      else if P == set0 then big_tmI (tmEs G) 
+           else big_tmI (tmEs G) :||: 
+                term_of (point (remove_edges E) g_in g_out)
     else (* at least one nontrivial petal or checkpoint *)
       @simple_check_point_term term_of G.
 
@@ -457,12 +461,17 @@ Proof.
     + exact: CK4F_redirect.
     + exact: measure_redirect.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
-    + congr big_tmI. congr cat. apply eq_in_map => C. 
+    + case: (boolP (_ == _)) => Es.
+      * congr big_tmI. apply eq_in_map => C. 
       rewrite mem_enum => HC. apply: Efg.
-      * exact: CK4F_lens.
-      * exact: measure_lens. 
+        -- exact: CK4F_lens.
+        -- exact: measure_lens. 
+      * case: (boolP (_ == _)) => Ps //. congr tmI.
+        rewrite Efg //. 
+        -- admit.
+        -- admit.
     + exact: simple_check_point_wf.
-Qed.
+Admitted.
 
 (** * Isomorphim Properties *)
 
@@ -538,17 +547,17 @@ Proof.
       apply: big_seq2_congrs => e He. done.
   - case: ifP => [C2|C2].
     + (* parallel split *)
-      rewrite -big_par2_map; last first.
-      { admit. }
-      rewrite map_cat big_par2_cat {1}[G]split_io //.
-      apply: par2_congr. 
-      * rewrite -map_comp. apply: big_par2_congrs. 
-        move => C HC. apply: IH. 
-        -- exact: measure_lens. 
-        -- exact: CK4F_lens. 
-      * rewrite /G_edges /tmEs map_cat -!map_comp. 
-        rewrite big_par2_cat. reflexivity.
-        (* the complexity is in [split_io] *)
+      case: (boolP (_ == set0)) => C3.
+      * rewrite -big_par2_map; last first.
+        { admit. }
+        rewrite -map_comp. 
+        admit.
+      * case: (boolP (_ == set0)) => C4 /=.
+        -- admit.
+        -- rewrite -IH /=. 
+           admit.
+           admit.
+           admit.
     + (* petal/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [|].
