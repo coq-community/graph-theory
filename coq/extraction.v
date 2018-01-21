@@ -84,9 +84,13 @@ Notation "u :||: v" := (tmI u v) (at level 35, right associativity).
 Notation "u :o: v" := (tmS u v) (at level 33, right associativity).
 
 Definition lens (G : graph2) := 
-  [&& @petal G IO g_in  == [set g_in ],
-      @petal G IO g_out == [set g_out]&
+  [&& edge_set (@petal G IO g_in)  == set0 ,
+      edge_set (@petal G IO g_out) == set0 &
       @link_rel (skeleton G) g_in g_out].
+
+Lemma edgeless_petal (G : graph) (U : {set G}) x : 
+  edge_set (@petal G U x)  == set0 -> @petal G U x == [set x].
+Admitted.
 
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
@@ -112,7 +116,7 @@ Proof.
   - set H := sinterval _ _. apply: ssplit_K4_nontrivial E _ D.
     + by rewrite -adjacentE A.
     + by case/and3P : B.
-    + apply/eqP. by case/and3P : B => ? _ _.
+    + apply/eqP. apply: edgeless_petal. by case/and3P : B => ? _ _.
 Qed.
 
 Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) := 
@@ -133,7 +137,7 @@ Admitted.
 
 Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
   let (i,o) := (g_in : G, g_out : G) in 
-  if (@petal G IO g_in != [set g_in]) || (@petal G IO g_out != [set g_out])
+  if  (edge_set (@petal G IO i) != set0) || (edge_set (@petal G IO o) != set0)
   then g (pgraph IO i) :o: g (igraph i o) :o: g (pgraph IO o)
   else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
        else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
@@ -344,20 +348,7 @@ Lemma cp_pairs_measure (G : graph2) x y :
   measure (igraph x y) < measure G.
 Proof. 
   move => CK4F_G no_lens pair_xy. 
-  suff [z Hz] : exists z, z \notin interval x y. 
-  { apply: measure_node Hz. by apply CK4F_G. }
-  (* case/cp_pairs_edge : pair_xy; first by apply CK4F_G. *)
-  (* move => x0 [y0] link_xy.  *)
-
-  case: (boolP (link_rel G g_in g_out)) => H.
-  - rewrite /lens H andbT negb_and in no_lens. 
-    case/orP : no_lens => /petal_nontrivial [z]. 
-    + admit.
-    + admit.
-  - 
-  (* Either there exists a third checkpoint (that is not in the
-  interval) or one of the petals is nontrivial since G is not a
-  lens *)
+  rewrite /lens in no_lens. 
 Admitted.
 
 Lemma cp_pairs_CK4G (G : graph2) (x y : G) :
@@ -421,7 +412,8 @@ Proof.
 Admitted. 
 
 
-
+Definition igraph_edges (G : graph) x y := 
+  (edge_set (@interval G x y) :\: (edges x x :|: edges y y)).
 
 Definition simple_check_point_wf (f g : graph2 -> term) (G : graph2) : 
   CK4F G -> 
@@ -434,23 +426,25 @@ Proof.
   rewrite /simple_check_point_term.
   (* rewrite /lens andbA 2!negb_and in nlens_G.  *)
   case: ifP => [A|A].
-  have {A} [x Hx] : exists x:G, x \notin @interval G g_in g_out.
-  { case/orP : A => /petal_nontrivial [x X1 X]. 
-    - admit.
-    - admit. }
-    
-  - (* g_out not in left petal, x notin interval, g_in not in right petal *)
+  have {A} [e He] : exists e : edge G, e \notin igraph_edges g_in g_out.
+  { admit. }
+  - (* g_out not in left petal, e notin interval, g_in not in right petal *)
     rewrite ![f (pgraph _ _)]Efg; 
       try (apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx).
     do 2 f_equal. rewrite Efg //. 
     * admit. (* CK4F_igraph should apply ... *)
-    * apply: measure_node Hx. by apply CK4F_G.
-  - move/negbT : A. rewrite negb_or !negbK. case/andP => A B.
-    rewrite /lens !negb_and A B (negbTE Eio) /= in nlens_G. 
+    * exact: measure_subgraph He. 
+  - (* move/negbT : A. rewrite negb_or !negbK. case/andP => A B. *)
+    (* rewrite /lens !negb_and A B (negbTE Eio) /= in nlens_G.  *)
     case: pickP => [z Hz|//].
     (* g_out not in left side, g_in not in right side *)
+    (* neither g_in nor g_out is in the central petal *)
+    (* Note: A is not needed here, it is needed to justify that z actually exists *)
 Admitted.
 
+Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|{: T}|.
+Proof. Admitted.
+  
 
 Lemma term_of_eq (G : graph2) : 
   CK4F G -> term_of G = term_of_rec term_of G.
@@ -468,8 +462,13 @@ Proof.
         -- exact: measure_lens. 
       * case: (boolP (_ == _)) => Ps //. congr tmI.
         rewrite Efg //. 
-        -- admit.
-        -- admit.
+        -- (* if there are components, then removing the direct edges preserves
+           connectedness *) 
+           (* removing edges preserves
+              K4_freeness *) admit.
+        -- case/set0Pn : Es => e inIO. 
+           apply: measure_card => /=. rewrite card_sig.
+           apply: (card_ltnT (x := e)). by rewrite /= negbK.
     + exact: simple_check_point_wf.
 Admitted.
 
