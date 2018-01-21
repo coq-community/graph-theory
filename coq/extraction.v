@@ -88,9 +88,25 @@ Definition lens (G : graph2) :=
       edge_set (@petal G IO g_out) == set0 &
       @link_rel (skeleton G) g_in g_out].
 
+Lemma get_edge (G : graph) (U : {set G}) (x y : skeleton G) : 
+  x \in U -> y \in U -> x -- y -> exists e : edge G, e \in edge_set U.
+Proof.
+  move => Hx Hy. rewrite -adjacentE => /andP [_] /orP [A|A].
+  all: case/existsP : A => e; rewrite !inE => /andP[/eqP S /eqP T].
+  all: exists e; by rewrite inE S T Hx Hy.
+Qed.
+
 Lemma edgeless_petal (G : graph) (U : {set G}) x : 
+  connected [set: skeleton G] -> x \in @CP G U ->
   edge_set (@petal G U x)  == set0 -> @petal G U x == [set x].
-Admitted.
+Proof.
+  move => con_G cp_x.
+  apply: contraTT => /petal_nontrivial [y Y1 Y2]. rewrite eq_sym in Y2.
+  have con_Px := connected_petal con_G cp_x.
+  have [||z Pz xz] := connected_card_gt1 con_Px _ _ Y2.
+    exact: petal_id. done. 
+  apply/set0Pn. apply: get_edge xz => //. exact: petal_id.
+Qed.
 
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
@@ -113,10 +129,12 @@ Proof.
   move => A B C [D E]. 
   apply/equivalence_partition_gt1P.
   - move => x y z _ _ _. exact: (sedge_in_equiv (G := skeleton G)).
-  - set H := sinterval _ _. apply: ssplit_K4_nontrivial E _ D.
+  - set H := sinterval _ _. apply: ssplit_K4_nontrivial (E) _ (D).
     + by rewrite -adjacentE A.
     + by case/and3P : B.
-    + apply/eqP. apply: edgeless_petal. by case/and3P : B => ? _ _.
+    + apply/eqP. apply: edgeless_petal => //=. 
+      * apply: (@CP_extensive G); by rewrite !inE eqxx.
+      * by case/and3P : B => ? _ _.
 Qed.
 
 Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) := 
