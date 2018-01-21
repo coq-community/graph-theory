@@ -216,9 +216,10 @@ Definition component (G : graph2) (H : {set G}) : graph2 :=
 (** Possibly empty sequence of (trivial) terms corresponding to direct
 i-o edges. Yields nonempty parallel composition when concatenated with
 the terms for the i-o components *)
-Definition tmEs (G : graph2) : seq term := 
-  [seq tmA (label e) | e in @edges G g_in g_out] ++
-  [seq tmC (tmA (label e)) | e in @edges G g_out g_in].
+Definition tm_ (G : graph2) (e : edge G) := 
+  if e \in edges g_in g_out then tmA (label e) else tmC (tmA (label e)).
+
+Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
 
 (* NOTE: we assume the input graph to be connected and K4-free *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
@@ -503,7 +504,25 @@ Admitted.
 
 Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|{: T}|.
 Proof. Admitted.
-  
+
+Lemma CK4F_remove_edges (G : graph2) : 
+  CK4F G -> g_in != g_out :> G -> lens G ->
+  @edge_set G IO != set0 -> components (@sinterval G g_in g_out) != set0 -> 
+  CK4F (point (remove_edges (@edge_set G IO)) g_in g_out).
+Proof.
+  move => CK4F_G Hio lens_G Es Ps. split.
+  - (* if there is at least one component, then this component connects g_in and g_out *)
+    admit.
+  - apply: subgraph_K4_free (proj2 CK4F_G). 
+    admit.
+Admitted.
+
+Lemma measure_remove_edges (G : graph2) (E : {set edge G}) : 
+  E != set0 -> measure (point (remove_edges E) g_in g_out) < measure G.
+Proof.
+  case/set0Pn => e inIO. apply: measure_card => /=. rewrite card_sig.
+  apply: (card_ltnT (x := e)). by rewrite /= negbK.
+Qed.
 
 Lemma term_of_eq (G : graph2) : 
   CK4F G -> term_of G = term_of_rec term_of G.
@@ -521,15 +540,10 @@ Proof.
         -- exact: measure_lens. 
       * case: (boolP (_ == _)) => Ps //. congr tmI.
         rewrite Efg //. 
-        -- (* if there are components, then removing the direct edges preserves
-           connectedness *) 
-           (* removing edges preserves
-              K4_freeness *) admit.
-        -- case/set0Pn : Es => e inIO. 
-           apply: measure_card => /=. rewrite card_sig.
-           apply: (card_ltnT (x := e)). by rewrite /= negbK.
+        -- exact: CK4F_remove_edges. 
+        -- exact: measure_remove_edges.
     + exact: simple_check_point_wf.
-Admitted.
+Qed.
 
 (** * Isomorphim Properties *)
 
@@ -595,6 +609,20 @@ Lemma split_cp (G : graph2) (z : skeleton G) :
   G ≈ seq2 (@igraph G g_in z) (seq2 (@pgraph G IO z) (@igraph G z g_out)).
 Admitted.
 
+Lemma split_par_components (G : graph2): 
+  CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
+  G ≈ big_par2 [seq component C | C in components (@sinterval G g_in g_out)].
+Admitted.
+
+Definition sym2_ (G : graph2) (e : edge G) :=
+  if e \in edges g_in g_out then sym2 (label e) else cnv2 (sym2 (label e)).
+
+Lemma split_par_edges (G : graph2) :
+  CK4F G -> g_in != g_out :> G -> lens G -> 
+  components (@sinterval G g_in g_out) == set0 -> @edge_set G IO != set0 ->
+  G ≈ big_par2 [seq sym2_ e | e in @edge_set G IO].
+Admitted.
+
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
 Proof.
@@ -614,14 +642,18 @@ Proof.
       case: (boolP (_ == set0)) => C3.
       * rewrite -big_par2_map; last first.
         { admit. }
-        rewrite -map_comp. 
-        admit.
+        rewrite -map_comp {1}[G]split_par_components //. 
+        apply: big_par2_congr => C HC. rewrite mem_enum in HC.
+        rewrite -IH //. exact: measure_lens. exact: CK4F_lens.
       * case: (boolP (_ == set0)) => C4 /=.
-        -- admit.
+        -- rewrite {1}[G]split_par_edges // -big_par2_map.
+           ++ rewrite /tmEs -map_comp. apply: big_par2_congr.
+              move => e _. rewrite /tm_ /sym2_. by case: ifP.
+           ++ apply: contraNN C3. rewrite /tmEs /nilp size_map. admit.
         -- rewrite -IH /=. 
-           admit.
-           admit.
-           admit.
+           ++ admit.
+           ++ exact: measure_remove_edges.
+           ++ exact: CK4F_remove_edges. 
     + (* petal/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [A|/negbT A].
