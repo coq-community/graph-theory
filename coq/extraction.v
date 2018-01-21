@@ -267,13 +267,14 @@ Proof.
   rewrite /igraph /sigraph /sskeleton -/istart -/iend. 
 Admitted.
 
-Lemma CK4F_igraph (G : graph2) (x y : @CP_ G IO) : 
-  CK4F G -> x != y -> CK4F (igraph (val x) (val y)).
+Lemma CK4F_igraph (G : graph2) (x y : G) : 
+  x \in cp G g_in g_out -> y \in cp G g_in g_out ->
+  CK4F G -> x != y -> CK4F (igraph x y).
 Proof.
-  move => [conn_G K4F_G] xy. 
+  move => Hx Hy [conn_G K4F_G] xy. 
   split; first exact: connected_igraph.
   apply: subgraph_K4_free (sskeleton_add _ _) _.
-  exact: igraph_K4_free. 
+  exact: igraph_K4F K4F_G.
 Qed.
 
 Lemma sc_eq T T' (e : rel T) (e' : rel T') f x y : 
@@ -357,8 +358,8 @@ Lemma cp_pairs_CK4G (G : graph2) (x y : G) :
 Proof.
   move => [G_conn G_K4F] ? Hxy.
   move/cp_pairs_edge : (Hxy) => /(_ G_conn) [px] [py] link_xy. 
-  exact: CK4F_igraph (linkNeq link_xy). 
-Qed.
+  apply: CK4F_igraph; admit.
+Admitted.
                            
 Definition check_point_wf (f g : graph2 -> term) (G : graph2) : 
   CK4F G -> 
@@ -380,9 +381,9 @@ Lemma CK4F_redirect (G : graph2) C :
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   CK4F (redirect C).
 Proof.
-  split. 
-  - rewrite /redirect. case: pickP. 
-Admitted. (* Follows with proposition 21(iii) *)
+  rewrite /redirect. case: pickP. 
+  - (* moving the output along an edge does not change the (strong) skeleton *)
+Admitted. 
 
 Lemma measure_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
@@ -412,6 +413,49 @@ Proof.
 Admitted. 
 
 
+Section SplitCP.
+Variables (G : graph2).
+Hypothesis CK4F_G : CK4F G.
+Hypothesis Hio : g_in != g_out :> G.
+
+
+(* g_out not in left side, g_in not in right side *)
+(* neither g_in nor g_out is in the central petal *)
+
+Lemma CK4F_split_cpL z :
+ z \in cp G g_in g_out :\: IO -> CK4F (igraph g_in z).
+Proof.
+  move => Hz.
+  apply: CK4F_igraph => //; first exact: (@mem_cpl G).
+  - move: z Hz. apply/subsetP. exact: subsetDl.
+  - apply: contraTN Hz => C. by rewrite !inE !negb_or (eqP C) eqxx.
+Qed.
+
+Lemma CK4F_split_cpR z :
+ z \in cp G g_in g_out :\: IO -> CK4F (igraph z g_out).
+Admitted.
+
+Lemma CK4F_split_cpM z :
+ z \in cp G g_in g_out :\: IO -> CK4F (@pgraph G IO z).
+Admitted.
+
+Lemma measure_split_cpL z :
+ z \in cp G g_in g_out :\: IO -> measure (igraph g_in z) < measure G.
+Proof.
+  move => Hz. apply: (measure_node (v := g_out)); first apply CK4F_G.
+  admit.
+Admitted.
+
+Lemma measure_split_cpR z :
+ z \in cp G g_in g_out :\: IO -> measure (igraph z g_out) < measure G.
+Admitted.
+
+Lemma measure_split_cpM z :
+ z \in cp G g_in g_out :\: IO -> measure (@pgraph G IO z) < measure G.
+Admitted.
+
+End SplitCP.
+
 Definition igraph_edges (G : graph) x y := 
   (edge_set (@interval G x y) :\: (edges x x :|: edges y y)).
 
@@ -424,7 +468,6 @@ Definition simple_check_point_wf (f g : graph2 -> term) (G : graph2) :
 Proof.
   move => CK4F_G Eio nlens_G Efg.
   rewrite /simple_check_point_term.
-  (* rewrite /lens andbA 2!negb_and in nlens_G.  *)
   case: ifP => [A|A].
   have {A} [e He] : exists e : edge G, e \notin igraph_edges g_in g_out.
   { admit. }
@@ -432,14 +475,12 @@ Proof.
     rewrite ![f (pgraph _ _)]Efg; 
       try (apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx).
     do 2 f_equal. rewrite Efg //. 
-    * admit. (* CK4F_igraph should apply ... *)
+    * apply: CK4F_igraph => //=; last rewrite cp_sym; exact: (@mem_cpl G). 
     * exact: measure_subgraph He. 
-  - (* move/negbT : A. rewrite negb_or !negbK. case/andP => A B. *)
-    (* rewrite /lens !negb_and A B (negbTE Eio) /= in nlens_G.  *)
-    case: pickP => [z Hz|//].
-    (* g_out not in left side, g_in not in right side *)
-    (* neither g_in nor g_out is in the central petal *)
-    (* Note: A is not needed here, it is needed to justify that z actually exists *)
+  - case: pickP => [z Hz|//]; repeat congr tmS.
+    + rewrite Efg //. exact: CK4F_split_cpL. exact: measure_split_cpL.
+    + rewrite Efg //; apply rec_petal => //. admit. (* align assumptions *) admit.
+    + rewrite Efg //. exact: CK4F_split_cpR. exact: measure_split_cpR.
 Admitted.
 
 Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|{: T}|.
@@ -529,6 +570,12 @@ Proof.
   - 
 Admitted.
 
+Lemma split_cp (G : graph2) (z : skeleton G) : 
+  z \in @cp G g_in g_out :\: IO ->  g_in != g_out :> G -> 
+  edge_set (@petal G IO g_in) == set0 -> 
+  edge_set (@petal G IO g_out) == set0 ->
+  G ≈ seq2 (@igraph G g_in z) (seq2 (@pgraph G IO z) (@igraph G z g_out)).
+Admitted.
 
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
@@ -544,7 +591,7 @@ Proof.
       * exact: CK4F_redirect.
     + rewrite /G_edges' -big_seq2_maps -(eqP C1). 
       apply: big_seq2_congrs => e He. done.
-  - case: ifP => [C2|C2].
+  - case: ifP => [C2|/negbT C2].
     + (* parallel split *)
       case: (boolP (_ == set0)) => C3.
       * rewrite -big_par2_map; last first.
@@ -559,10 +606,19 @@ Proof.
            admit.
     + (* petal/sequential split *) 
       rewrite /simple_check_point_term. 
-      case: ifP => [|].
-      * (* petal split *)
-        rewrite /= -!IH; admit.
+      case: ifP => [A|/negbT A].
       * admit.
+      * move: A. rewrite negb_or !negbK. case/andP => A B.
+        rewrite /lens !negb_and A B (negbTE C1) /= in C2.
+        case: pickP => [z Hz|C]; last first.
+        { case:notF. apply: contraNT C2 => _. rewrite -setD_eq0. 
+          apply/eqP. apply/setP => x. by rewrite C inE. }
+        rewrite /=. 
+        rewrite {1}[G](split_cp Hz) //. repeat apply: seq2_congr. 
+        -- rewrite -IH //. exact: measure_split_cpL. exact: CK4F_split_cpL.
+        -- suff ? : z \in @CP G IO. { rewrite -IH //; by apply rec_petal. }
+           admit.
+        -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Admitted.
 
 (** * Minor Exclusion Corollaries *)
