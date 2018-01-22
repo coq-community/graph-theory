@@ -235,8 +235,8 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let E := @edge_set G IO in
       if E == set0 then big_tmI [seq term_of (component C) | C in P]
       else if P == set0 then big_tmI (tmEs G) 
-           else big_tmI (tmEs G) :||: 
-                term_of (point (remove_edges E) g_in g_out)
+           else let t0 := term_of (point (remove_edges E) g_in g_out) in
+                \big[tmI/t0]_(e in @edge_set G IO) tm_ e
     else (* at least one nontrivial petal or checkpoint *)
       @simple_check_point_term term_of G.
 
@@ -535,7 +535,7 @@ Proof.
       rewrite mem_enum => HC. apply: Efg.
         -- exact: CK4F_lens.
         -- exact: measure_lens. 
-      * case: (boolP (_ == _)) => Ps //. congr tmI.
+      * case: (boolP (_ == _)) => Ps //. 
         rewrite Efg //. 
         -- exact: CK4F_remove_edges. 
         -- exact: measure_remove_edges.
@@ -545,31 +545,8 @@ Qed.
 (** * Isomorphim Properties *)
 
 
-Section SplitParallel.
-Variable (G : graph2).
-Hypothesis G_io : g_in != g_out :> G.
-Let E := @edges G g_in g_out :|: edges g_out g_in.
-Let P := components (@sinterval (skeleton G) g_in g_out).
-
-Definition G_rest := big_par2 [seq component C | C in P].
-
 Lemma setU22 (T:finType) (x y :T) : y \in [set x;y].
 Proof. by rewrite !inE eqxx. Qed.
-
-(* Lemma split_edge e : e \in E -> consistent [set g_in;g_out] [set e]. *)
-(* Admitted. *)
-
-Definition G_edge (e : edge G) := sym2 (label e).
-Definition G_edgeC (e : edge G) := cnv2 (sym2 (label e)).
-
-Definition G_edges := big_par2 ([seq G_edge e | e in edges g_in g_out] ++ 
-                                [seq G_edgeC e | e in edges g_out g_in]).
-
-(* TOTHINK: What is the general decomposition lemma? (partition
-overlapping only at IO?) *)
-Lemma split_io : G ≈ par2 G_rest G_edges.
-Admitted.
-End SplitParallel.
 
 
 Section SplitPetals.
@@ -582,10 +559,18 @@ Section SplitPetals.
   Definition G_edges' := big_seq2 [seq G_edge' e | e in E].
   Definition G_rest' := big_seq2 [seq component C | C in P].
 
+  (* can we prove this without associativity? *)
   Lemma split_i : G ≈ seq2 G_rest' G_edges'.
   Admitted.
 
 End SplitPetals.
+
+Lemma comp_exit (G : graph2) (C : {set G}) : 
+  g_in == g_out :> G -> C \in components [set~ g_in] -> 
+  exists2 z : skeleton G, z \in C & z -- g_in.
+Proof.
+  move => Eio HC.
+Admitted.
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   g_in == g_out :> G -> C \in components [set~ g_in] -> 
@@ -597,8 +582,10 @@ Proof.
     + by rewrite (eqP Eio) setUA setUid [x |: C](setUidPr _) // sub1set. 
     + by rewrite (eqP Eio) setUA setDDl !setUid [x |: C](setUidPr _) // sub1set.
     + by rewrite /= (eqP Eio).
-  - 
-Admitted.
+  - case: (comp_exit Eio HC) => z Z1 Z2.
+    rewrite sg_sym -adjacentE in Z2. case/andP : Z2 => [A B].
+    move/(_ z). by rewrite Z1 B. 
+Qed.
 
 Lemma split_cp (G : graph2) (z : skeleton G) : 
   z \in @cp G g_in g_out :\: IO ->  g_in != g_out :> G -> 
@@ -609,20 +596,69 @@ Admitted.
 
 Lemma split_par_components (G : graph2): 
   CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
-  G ≈ big_par2 [seq component C | C in components (@sinterval G g_in g_out)].
+  G ≈ big_par2 [seq component C | C in @components G (~: IO)].
 Admitted.
 
 Definition sym2_ (G : graph2) (e : edge G) :=
   if e \in edges g_in g_out then sym2 (label e) else cnv2 (sym2 (label e)).
 
-
-
-Lemma split_par_edges (G : graph2) :
-  CK4F G -> g_in != g_out :> G -> lens G -> 
-  components (@sinterval G g_in g_out) == set0 -> @edge_set G IO != set0 ->
-  G ≈ big_par2 [seq sym2_ e | e in @edge_set G IO].
+Lemma split_par_top (G : graph2) : 
+  g_in != g_out :> G -> @components G (~: IO) == set0 -> @edge_set G IO == set0 ->
+  G ≈ top2.
 Admitted.
 
+Lemma split_par_edges_rest (G : graph2) :
+  g_in != g_out :> G -> 
+  let G' := point (remove_edges (@edge_set G IO)) g_in g_out in 
+  G ≈ \big[par2/G']_(e in @edge_set G IO) sym2_ e .
+Proof.
+Admitted.
+
+Lemma remove0 (G : graph2) : 
+  point (@remove_edges G set0) g_in g_out ≈ G.
+Admitted.
+
+Lemma split_par_edges (G : graph2) :
+  g_in != g_out :> G -> 
+  @components G (~: IO) == set0 -> 
+  G ≈ big_par2 [seq sym2_ e | e in @edge_set G IO].
+Proof.
+  move => Eio com0. rewrite {1}[G]split_par_edges_rest //. 
+  rewrite /big_par2. 
+  (* TODO: proper inductive proof *)
+  case: (set_0Vmem (@edge_set G IO)) => [H|].
+  - rewrite H. 
+    rewrite big_pred0; last by move => x; rewrite ?inE.
+    rewrite /image_mem enum_set0 big_nil.
+    rewrite remove0. apply: split_par_top => //. exact/eqP.
+  - admit.
+Admitted.
+
+Lemma graph_of_bigI_nested (T : finType) (r : seq T) F u : 
+  (graph_of_term (\big[tmI/u]_(e <- r) F e)) = 
+  \big[par2/graph_of_term u]_(e <- r) graph_of_term (F e).
+Proof. 
+  elim: r => [|a r IH]; first by rewrite !big_nil.
+  by rewrite !big_cons /= IH.
+Qed.
+
+Lemma graph_of_bigIs_nested (T : finType) (r : {set T}) F u : 
+  (graph_of_term (\big[tmI/u]_(e in r) F e)) = 
+  \big[par2/graph_of_term u]_(e in r) graph_of_term (F e).
+Admitted.
+
+Lemma big_par2_iso_cps (G G' : graph2) (T : finType) (A : {set T}) F F' : 
+  G ≈ G' -> (forall e, e \in A -> F e ≈ F' e) -> 
+  \big[par2/G]_(e in A) F e ≈ \big[par2/G']_(e in A) F' e.
+Admitted.
+
+Lemma split_pip (G : graph2) : 
+  CK4F G -> g_in != g_out :> G -> (* needed ? *)
+  G ≈ seq2 (@pgraph G IO g_in) (seq2 (@igraph G g_in g_out) (@pgraph G IO g_out)).
+Proof.
+  move => CK4F_G Eio.
+Admitted.
+  
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
 Proof.
@@ -639,25 +675,40 @@ Proof.
       apply: big_seq2_congrs => e He. done.
   - case: ifP => [C2|/negbT C2].
     + (* parallel split *)
+      have EC: @sinterval G g_in g_out = ~: IO. { admit. }
       case: (boolP (_ == set0)) => C3.
       * rewrite -big_par2_map; last first.
         { admit. }
-        rewrite -map_comp {1}[G]split_par_components //. 
+        rewrite -map_comp {1}[G]split_par_components // EC. 
         apply: big_par2_congr => C HC. rewrite mem_enum in HC.
-        rewrite -IH //. exact: measure_lens. exact: CK4F_lens.
-      * case: (boolP (_ == set0)) => C4 /=.
+        rewrite -IH //; rewrite -EC in HC. exact: measure_lens. exact: CK4F_lens.
+      * rewrite EC.
+        case: (boolP (_ == set0)) => C4 /=.
         -- rewrite {1}[G]split_par_edges // -big_par2_map.
            ++ rewrite /tmEs -map_comp. apply: big_par2_congr.
               move => e _. rewrite /tm_ /sym2_. by case: ifP.
            ++ apply: contraNN C3. rewrite /tmEs /nilp size_map. admit.
-        -- rewrite -IH /=. 
-           ++ admit.
-           ++ exact: measure_remove_edges.
-           ++ exact: CK4F_remove_edges. 
+        -- rewrite {1}[G]split_par_edges_rest //.
+           rewrite graph_of_bigIs_nested /=. 
+           apply: big_par2_iso_cps.
+           ++ rewrite -IH //. 
+              exact: measure_remove_edges.
+              rewrite -EC in C4. exact: CK4F_remove_edges. 
+           ++ move => e. rewrite /tm_ /sym2_. by case: ifP.
     + (* petal/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [A|/negbT A].
-      * admit.
+      * rewrite /=. (* TODO: clean this up *)
+        rewrite -IH; first last. 
+          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
+          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
+        rewrite -IH; first last.
+          apply: CK4F_igraph => //. admit. admit.
+          admit.
+        rewrite -IH; first last. 
+          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
+          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
+          exact: split_pip.
       * move: A. rewrite negb_or !negbK. case/andP => A B.
         rewrite /lens !negb_and A B (negbTE C1) /= in C2.
         case: pickP => [z Hz|C]; last first.
@@ -667,7 +718,8 @@ Proof.
         rewrite {1}[G](split_cp Hz) //. repeat apply: seq2_congr. 
         -- rewrite -IH //. exact: measure_split_cpL. exact: CK4F_split_cpL.
         -- suff ? : z \in @CP G IO. { rewrite -IH //; by apply rec_petal. }
-           admit.
+           case/setDP : Hz => Hz _. apply/bigcupP; exists (g_in,g_out) => //. 
+           by rewrite !inE !eqxx.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Admitted.
 
