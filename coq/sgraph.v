@@ -1064,6 +1064,10 @@ Qed.
 Definition conn_component (G : sgraph) (S : {set G}) (x : G) : {set G} :=
   [set y in S | connect (restrict (mem S) sedge) x y].
 
+Lemma conn_componentP (G : sgraph) (S : {set G}) (x y : G) :
+  reflect (exists p : Path x y, {subset p <= S}) (y \in conn_component S x).
+Admitted.
+
 Lemma conn_component_subset (G : sgraph) (S : {set G}) (x : G) :
   conn_component S x \subset S.
 Admitted.
