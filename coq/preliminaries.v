@@ -71,6 +71,13 @@ Proof. exact: (Bijective (g := id)). Qed.
 Lemma set2C (T : finType) (x y : T) : [set x;y] = [set y;x].
 Proof. apply/setP => z. apply/set2P/set2P; tauto. Qed.
 
+Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|{: T}|.
+Proof. 
+  move => A. apply/proper_card. rewrite properE. 
+  apply/andP; split; first by apply/subsetP.
+  apply/subsetPn. by exists x. 
+Qed.
+
 Lemma cards3 (T : finType) (a b c : T) : #|[set a;b;c]| <= 3.
 Proof. 
   rewrite !cardsU !cards1 !addn1. 

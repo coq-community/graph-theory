@@ -502,9 +502,6 @@ Proof.
     + rewrite Efg //. exact: CK4F_split_cpR. exact: measure_split_cpR.
 Admitted.
 
-Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|{: T}|.
-Proof. Admitted.
-
 Lemma CK4F_remove_edges (G : graph2) : 
   CK4F G -> g_in != g_out :> G -> lens G ->
   @edge_set G IO != set0 -> components (@sinterval G g_in g_out) != set0 -> 
@@ -567,6 +564,7 @@ Definition G_edgeC (e : edge G) := cnv2 (sym2 (label e)).
 
 Definition G_edges := big_par2 ([seq G_edge e | e in edges g_in g_out] ++ 
                                 [seq G_edgeC e | e in edges g_out g_in]).
+
 (* TOTHINK: What is the general decomposition lemma? (partition
 overlapping only at IO?) *)
 Lemma split_io : G ≈ par2 G_rest G_edges.
@@ -616,6 +614,8 @@ Admitted.
 
 Definition sym2_ (G : graph2) (e : edge G) :=
   if e \in edges g_in g_out then sym2 (label e) else cnv2 (sym2 (label e)).
+
+
 
 Lemma split_par_edges (G : graph2) :
   CK4F G -> g_in != g_out :> G -> lens G -> 
