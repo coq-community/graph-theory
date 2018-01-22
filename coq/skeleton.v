@@ -1,7 +1,7 @@
 Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
-Require Import finite_quotient preliminaries sgraph minor checkpoint.
+Require Import edone finite_quotient preliminaries sgraph minor checkpoint.
 Require Import multigraph subalgebra.
 
 Set Implicit Arguments.
@@ -157,6 +157,21 @@ Proof.
     by apply/existsP; exists e; rewrite inE.
 Qed.
 
+Lemma sskeleton_subgraph_for (G : graph2) (V : {set G}) (E : {set edge G})
+  (con : consistent V E) (i o : sig [eta mem V]) : val i = g_in -> val o = g_out ->
+  sgraph.subgraph (sskeleton (point (subgraph_for con) i o)) (sskeleton G).
+Proof.
+  rewrite /sskeleton/= => <- <-.
+  (* TODO: Factor out some lemma about [add_edge] and [sgraph.subgraph]. *)
+  exists val; first exact: val_inj.
+  move=> x y /=; rewrite -!(inj_eq val_inj) /=.
+  case/or3P=> [xy|->|->]; right=> //. apply/orP; left.
+  move: xy; rewrite /sk_rel/= -!(inj_eq val_inj).
+  case/orP=> /andP[->] /= /existsP[e];
+  rewrite -!(inj_eq val_inj) /= => He; apply/orP; [left|right];
+  apply/existsP; by exists (val e).
+Qed.
+
 
 
 (** ** Intervals and Petals *)
@@ -229,29 +244,40 @@ Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) :
 Proof. rewrite card_imset //. exact: val_inj. Qed.
 
 (* lifting connectedness from the skeleton *)
-Lemma connected_skeleton (G : graph) V E (con : @consistent G V E) : 
-  @connected (skeleton G) V -> 
-  (forall e, e \in edge_set V -> source e != target e -> e \in E) ->
-  connected [set: skeleton (subgraph_for con)].
+Lemma connected_skeleton' (G : graph) V E (con : @consistent G V E) :
+  forall U : {set subgraph_for con}, @connected (skeleton G) (val @: U) ->
+  (forall e, e \in edge_set (val @: U) -> source e != target e ->
+             let x := source e in let y := target e in
+             exists2 e, e \in E & (e \in edges x y) || (e \in edges y x)) ->
+  @connected (skeleton (subgraph_for con)) U.
 Proof.
-  move => conn_V all_edges. 
-  move => x y xV yV. move: (conn_V _ _ (valP x) (valP y)). 
+  move => U conn_U all_edges.
+  move => x y x_U y_U. (* move: (conn_U _ _ x_U y_U). *)
   (* ... *)
 Admitted.
+
+Lemma connected_skeleton (G : graph) V E (con : @consistent G V E) :
+  forall U : {set subgraph_for con}, @connected (skeleton G) (val @: U) ->
+  (forall e, e \in edge_set (val @: U) -> source e != target e -> e \in E) ->
+  @connected (skeleton (subgraph_for con)) U.
+Proof.
+  move=> U conn_U all_edges. apply: connected_skeleton' conn_U _.
+  move=> e E1 E2; exists e; rewrite ?inE ?eqxx //. exact: all_edges.
+Qed.
 
 Lemma connected_pgraph (G : graph2) (U : {set G}) (x : G) : 
   connected [set: skeleton G] -> x \in @CP (skeleton G) U -> 
   connected [set: skeleton (pgraph U x)].
 Proof.
   move => conn_G cp_x.
-  apply: connected_skeleton => //. exact: connected_petal.
+  apply: connected_skeleton; rewrite imset_valT memKset //. exact: connected_petal.
 Qed.
 
 Lemma connected_igraph (G : graph2) (x y: G) : 
   connected [set: skeleton G] -> 
   connected [set: skeleton (igraph x y)].
 Proof.
-  move => conn_G. apply: connected_skeleton.
+  move=> conn_G. apply: connected_skeleton; rewrite imset_valT memKset.
   + exact: connected_interval.
   + move => e E1 E2. rewrite 4!inE E1 andbT negb_or. apply/andP;split.
     * apply: contraNN E2 => /andP [/eqP -> /eqP ->]; by rewrite eqxx.
