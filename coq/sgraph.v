@@ -1064,6 +1064,16 @@ Qed.
 Definition conn_component (G : sgraph) (S : {set G}) (x : G) : {set G} :=
   [set y in S | connect (restrict (mem S) sedge) x y].
 
+Lemma conn_componentP (G : sgraph) (S : {set G}) (x y : G) :
+  reflect (exists p : Path x y, {subset p <= S}) (y \in conn_component S x).
+Proof.
+  rewrite inE; apply: (iffP andP); first case: (altP (x =P y)).
+  + move=> -> [y_S _]; by exists (idp y) => z; rewrite mem_idp =>/eqP->.
+  + move=> xNy [_] /(PathRP xNy)[p] /subsetP p_sub; by exists p.
+  + case=> p p_sub. split; last exact: connectRI p_sub.
+    by apply: p_sub; rewrite nodes_end.
+Qed.
+
 Lemma conn_component_subset (G : sgraph) (S : {set G}) (x : G) :
   conn_component S x \subset S.
 Admitted.
