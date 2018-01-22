@@ -132,6 +132,10 @@ Definition CK4F (G : graph2) :=
 Definition components (G : graph) (H : {set G}) : {set {set G}} := 
   equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H.
 
+Lemma componentsP (G : graph) (H C : {set G}) :
+  reflect (exists2 a, C = @conn_component G H a & a \in H) (C \in components H).
+Proof. apply: (iffP imsetP) => -[a ? ?]; by exists a. Qed.
+
 (** If G is a lens with non non-adjacent input and output, then it has
 at least two parallel components *)
 Lemma split_K4_nontrivial (G : graph2) : 
@@ -431,9 +435,8 @@ Lemma CK4F_lens (G : graph2) C :
   CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
   CK4F (component C).
 Proof.
-  move=> [G_conn G_K4F] G_lens /imsetP[a] a_sintv {C}->.
-  pose C := conn_component (@sinterval G g_in g_out) a.
-  rewrite -[X in component X]/C (lock C) {}/C.
+  move=> [G_conn G_K4F] G_lens /componentsP[a] {C}-> a_sintv.
+  set C := conn_component _ _. rewrite (lock C) {}/C.
   set C := locked _. set G' := component C.
   split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
   have ioNC : ((g_in \in C = false) * (g_out \in C = false))%type.
@@ -648,23 +651,31 @@ Section SplitPetals.
 End SplitPetals.
 
 Lemma comp_exit (G : graph2) (C : {set G}) : 
+  connected [set: skeleton G] ->
   g_in == g_out :> G -> C \in components [set~ g_in] -> 
   exists2 z : skeleton G, z \in C & z -- g_in.
 Proof.
-  move => Eio HC.
-Admitted.
+  move => G_conn Eio /componentsP[a]->. rewrite !inE => aNi.
+  case/uPathP: (connectedTE G_conn a g_in) => p.
+  case: (splitR p aNi) => [z][q][zi] {p}->.
+  rewrite irred_cat'. case/and3P=> _ _ /eqP/setP/(_ g_in).
+  rewrite !inE eq_sym sg_edgeNeq // nodes_end andbT => /negbT iNq.
+  exists z => //. apply/conn_componentP. exists q => x.
+  rewrite !inE. by apply: contraTneq =>->.
+Qed.
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
+  connected [set: skeleton G] ->
   g_in == g_out :> G -> C \in components [set~ g_in] -> 
   component C ≈ dom2 (redirect C).
 Proof.
-  move => Eio HC.
+  move => G_conn Eio HC.
   rewrite /redirect. case: pickP => [x /andP [inC adj_x] |].
   - apply: subgraph_for_iso => //.
     + by rewrite (eqP Eio) setUA setUid [x |: C](setUidPr _) // sub1set. 
     + by rewrite (eqP Eio) setUA setDDl !setUid [x |: C](setUidPr _) // sub1set.
     + by rewrite /= (eqP Eio).
-  - case: (comp_exit Eio HC) => z Z1 Z2.
+  - case: (comp_exit G_conn Eio HC) => z Z1 Z2.
     rewrite sg_sym -adjacentE in Z2. case/andP : Z2 => [A B].
     move/(_ z). by rewrite Z1 B. 
 Qed.
@@ -750,6 +761,7 @@ Proof.
   - (* selfloops / io-redirect *)
     rewrite {1}[G]split_i //=. apply: seq2_congr.
     + rewrite /G_rest' -big_seq2_maps. apply: big_seq2_congrs.
+      have G_conn : connected [set: skeleton G] by case: CK4F_G.
       move => C HC. rewrite /= -IH ?comp_dom2_redirect //.
       * exact: measure_redirect.
       * exact: CK4F_redirect.
