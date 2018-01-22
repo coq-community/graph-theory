@@ -235,5 +235,31 @@ Proof. by rewrite big_seq2_map -filter_index_enum big_filter. Qed.
 Instance dom2_morphism : Proper (iso2 ==> iso2) dom2.
 Admitted.
 
+Local Notation IO := ([set g_in; g_out]).
 
-
+Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
+  (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
+  C :&: D \subset IO -> C :|: D = setT -> 
+  edge_set C :&: edge_set D = set0 -> edge_set C :|: edge_set D = setT ->
+  G ≈ (par2 (point (induced C) (Sub g_in Ci) (Sub g_out Co)) 
+            (point (induced D) (Sub g_in Di) (Sub g_out Do))).
+Proof.
+  move => subIO fullCD disjE fullE.
+  set G' := par2 _ _.
+  have decV (v : G) : ((v \in C) + (v \in D))%type.
+  { admit. }
+  have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
+  { admit. }
+  pose f (x : G) : G' := 
+    match decV x with 
+    | inl p => \pi_(_) (inl (Sub x p)) 
+    | inr p => \pi_(_) (inr (Sub x p))
+    end.
+  (* do NOT use simpl *)
+  pose h (e : edge G) : edge G' := 
+    match decE e with 
+    | inl p => inl (Sub e p)
+    | inr p => inr (Sub e p)
+    end.
+  exists (f,h).
+Admitted.
