@@ -108,6 +108,21 @@ Proof.
   apply/set0Pn. apply: get_edge xz => //. exact: petal_id.
 Qed.
 
+Lemma lens_sinterval (G : graph2) :
+  connected [set: skeleton G] -> lens G ->
+  (@sinterval G g_in g_out = [set: G] :\: IO).
+Proof.
+  move=> G_conn /and3P[] /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
+  rewrite !inE eqxx =>/(_ isT) petal_i.
+  move=> /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
+  rewrite !inE eqxx orbT =>/(_ isT) petal_o /andP[iNo _].
+  case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
+  rewrite petal_i petal_o /cover !bigcup_setU !bigcup_set1.
+  rewrite setDUl setDv set0U setDE. apply: esym; apply/setIidPl.
+  apply/subsetP=> x x_sI. rewrite !inE negb_or.
+  apply/andP; split; apply: contraTneq x_sI =>->; by rewrite sinterval_bounds.
+Qed.
+
 Arguments cp : clear implicits.
 Arguments Path : clear implicits.
 
