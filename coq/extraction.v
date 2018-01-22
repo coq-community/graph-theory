@@ -416,7 +416,32 @@ Lemma CK4F_lens (G : graph2) C :
   CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
   CK4F (component C).
 Proof.
-  (* Follows since all components are subgraphs of G (with same input and output *)
+  set sI := sinterval _ _.
+  move=> [G_conn G_K4F] G_lens /imsetP[a] a_sintv {C}->.
+  set C := conn_component sI a. rewrite -[X in component X]/C.
+  set G' := component C. split.
+  - have -> : [set: G'] = g_in |: (g_out |: (val : G' -> G) @^-1: C).
+    { apply/setP=> x. have := valP x.
+      by rewrite inE in_setT !in_setU !in_set1 [x \in _]inE. }
+    have [u iu u_C] : exists2 u, (g_in : skeleton G') -- u & val u \in C.
+    { admit. }
+    have [v ov v_C] : exists2 v, (g_out : skeleton G') -- v & val v \in C.
+    { admit. }
+    apply: connectedU_edge iu _ _; rewrite 3?inE ?eqxx ?u_C //;
+    first exact: connected1.
+    apply: connectedU_edge ov _ _; rewrite 1?inE ?eqxx ?v_C //;
+    first exact: connected1.
+    have C_ioC : C \subset (mem (g_in |: (g_out |: C))).
+    { by apply/subsetP=> z; rewrite (lock C) !inE => ->. }
+    apply: connected_skeleton; rewrite imset_pre_val //;
+      first exact: connected_component.
+    move=> e; rewrite (lock C) !inE -lock => E1. case/andP: (E1) => -> -> _.
+    have [iNC oNC] : g_in \notin C /\ g_out \notin C.
+    { by split; rewrite /C/conn_component setIdE inE sinterval_bounds. }
+    rewrite !orbT !andbT; apply/andP; split.
+    + apply: contraTN E1 => /andP[/eqP-> /eqP->]; by rewrite negb_and iNC oNC.
+    + apply: contraTN E1 => /andP[/eqP-> /eqP->]; by rewrite negb_and iNC oNC.
+  - apply: subgraph_K4_free G_K4F. exact: sskeleton_subgraph_for.
 Admitted.
 
 Lemma measure_lens (G : graph2) C : 

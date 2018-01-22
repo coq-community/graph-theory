@@ -1003,6 +1003,10 @@ Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 Lemma connected1 (G : sgraph) (x : G) : connected [set x].
 Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
 
+Lemma connectedU_edge (G : sgraph) (U V : {set G}) (x y : G) :
+  x \in U -> y \in V -> x -- y -> connected U -> connected V -> connected (U :|: V).
+Admitted.
+
 Lemma connected2 (G : sgraph) (x y: G) : x -- y -> connected [set x; y].
 Proof.
   move=> xy ? ? /set2P[]-> /set2P[]->; try exact: connect0;
@@ -1055,6 +1059,19 @@ Proof.
   exists z; last by []; apply: p_S.
   by rewrite in_collective nodesE inE -eqi_p' nodes_start.
 Qed.
+
+
+Definition conn_component (G : sgraph) (S : {set G}) (x : G) : {set G} :=
+  [set y in S | connect (restrict (mem S) sedge) x y].
+
+Lemma conn_component_subset (G : sgraph) (S : {set G}) (x : G) :
+  conn_component S x \subset S.
+Admitted.
+
+Lemma connected_component (G : sgraph) (S : {set G}) (x : G) :
+  connected (conn_component S x).
+Admitted.
+
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].

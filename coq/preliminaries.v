@@ -481,6 +481,25 @@ Proof.
   [by case=> [y] ? /f_inj-> | by move=> ?; exists x].
 Qed.
 
+Lemma imset_pre_val (T : finType) (P : pred T) (s : subFinType P) (A : {set T}) :
+  A \subset P -> val @: (val @^-1: A : {set s}) = A.
+Proof.
+  move=> /subsetP A_P. apply/setP=> x; apply/imsetP/idP.
+  + case=> y; by rewrite inE => ? ->.
+  + move=> x_A; by exists (Sub x (A_P x x_A)); rewrite ?inE SubK.
+Qed.
+
+Lemma imset_valT (T : finType) (P : pred T) (s : subFinType P) :
+  val @: [set: s] = finset P.
+Proof.
+  apply/setP=> z; apply/imsetP/idP; rewrite inE.
+  + case=> y _ ->; exact: (valP y).
+  + move=> z_P; by exists (Sub z z_P); last rewrite SubK.
+Qed.
+
+Lemma memKset (T : finType) (A : {set T}) : finset (mem A) = A.
+Proof. apply/setP=> x; by rewrite !inE. Qed.
+
 (** *** Replacement for partial functions *)
 
 Definition pimset (aT rT : finType) (f : aT -> option rT) (A : {set aT}) := 
