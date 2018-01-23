@@ -443,17 +443,30 @@ Proof.
   exact: connected_in_components C_comp.
 Qed.
 
-Lemma measure_lens (G : graph2) C : 
-  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+Lemma measure_lens (G : graph2) C :
+  CK4F G -> lens G -> @edge_set G IO == set0 ->
+  C \in components (@sinterval (skeleton G) g_in g_out) ->
   measure (component C) < measure G.
-Proof. 
-  (* By case distinction on [#|P|] where [P := components _]
-  - #|P| = 0: trivial
-  - #|P| = 1: Since G is K4-free, there must be a direct io-edge e by Prop. 22(i)
-    e is not an edge of [component C].
-  - #|P| > 1: Every component in P has at least one node (distinct from i and o) 
-    and therefore at least one edge. *)     
-Admitted. 
+Proof.
+  set sI := sinterval _ _. case/and3P: (partition_components sI).
+  set P := components _.
+  move=> /eqP compU compI comp0 [G_conn G_K4F] G_lens Eio0 C_comp.
+  have iNo : g_in != g_out :> G
+    by case/and3P: G_lens => _ _ /(@sg_edgeNeq (link_graph G))->.
+  have Nio : ~~ @adjacent G g_in g_out.
+  { apply: contraTN Eio0 => io. apply/set0Pn.
+    case/orP: io => /existsP[e]; rewrite inE => /andP[/eqP src_e /eqP tgt_e].
+    all: by exists e; rewrite !inE src_e tgt_e !eqxx //. }
+  have : 1 < #|P| by exact: split_K4_nontrivial.
+  rewrite (cardD1 C) C_comp add1n ltnS => /card_gt0P[/= D].
+  rewrite !inE => /andP[DNC] D_comp.
+  have /set0Pn[x x_D] : D != set0 by apply: contraTneq D_comp =>->.
+  move/trivIsetP: compI => /(_ D C D_comp C_comp DNC)/disjointFr/(_ x_D) xNC.
+  suff : x \notin g_in |: (g_out |: C) by exact: measure_node.
+  have : x \in sI by rewrite -compU; apply/bigcupP; exists D.
+  rewrite ![in ~~ _]inE xNC orbF.
+  apply: contraTN =>/orP[]/eqP->; by rewrite (@sinterval_bounds G).
+Qed.
 
 
 Section SplitCP.
