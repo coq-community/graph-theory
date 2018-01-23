@@ -44,6 +44,10 @@ Proof.
   apply: symmetric_restrict. exact:sg_sym. 
 Qed.
 
+Lemma sedge_equiv_in (G : sgraph) (A : {set G}) :
+  {in A & &, equivalence_rel (connect (restrict (mem A) sedge))}.
+Proof. move: (sedge_in_equiv A). by firstorder. Qed.
+
 (** ** Homomorphisms *)
 
 Definition hom_s (G1 G2 : sgraph) (h : G1 -> G2) := 
@@ -972,6 +976,8 @@ Lemma upathWW (G : sgraph) (x y : G) p : upath x y p -> path (@sedge G) x p.
 Proof. by move/upathW/spathW. Qed.
 
 
+(** ** Connectedness *)
+
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.
 
@@ -1061,25 +1067,37 @@ Proof.
 Qed.
 
 
-Definition conn_component (G : sgraph) (S : {set G}) (x : G) : {set G} :=
-  [set y in S | connect (restrict (mem S) sedge) x y].
+Definition components (G : sgraph) (H : {set G}) : {set {set G}} :=
+  equivalence_partition (connect (restrict (mem H) sedge)) H.
 
-Lemma conn_componentP (G : sgraph) (S : {set G}) (x y : G) :
-  reflect (exists p : Path x y, {subset p <= S}) (y \in conn_component S x).
+Lemma partition_components (G : sgraph) (H : {set G}) :
+  partition (components H) H.
+Proof. apply: equivalence_partitionP. exact: (@sedge_equiv_in G). Qed.
+
+Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :
+  reflect (exists p : Path x y, p \subset H) (y \in pblock (components H) x).
 Proof.
-  rewrite inE; apply: (iffP andP); first case: (altP (x =P y)).
-  + move=> -> [y_S _]; by exists (idp y) => z; rewrite mem_idp =>/eqP->.
-  + move=> xNy [_] /(PathRP xNy)[p] /subsetP p_sub; by exists p.
-  + case=> p p_sub. split; last exact: connectRI p_sub.
-    by apply: p_sub; rewrite nodes_end.
+  apply: (iffP idP).
+  - move=> y_block. case/and3P: (partition_components H) => /eqP compU compI comp0.
+    have same_comp := same_pblock compI y_block.
+    have := y_block. rewrite -same_comp mem_pblock compU => y_H.
+    have /eqP := same_comp.
+    rewrite eq_pblock ?compU // same_comp mem_pblock compU => x_H.
+    move: y_block.
+    rewrite (pblock_equivalence_partition _ x_H y_H); last exact: sedge_equiv_in.
+    wlog xNy : / x != y.
+    { move=> Hyp. case: (altP (x =P y)) => [<- _|]; last exact: Hyp.
+      exists (idp x). apply/subsetP=> z. by rewrite mem_idp => /eqP->. }
+    case/(PathRP xNy) => p p_sub. by exists p.
+  - case=> p /subsetP p_sub. rewrite pblock_equivalence_partition.
+    + exact: connectRI p_sub.
+    + exact: sedge_equiv_in.
+    + apply: p_sub; exact: nodes_start.
+    + apply: p_sub; exact: nodes_end.
 Qed.
 
-Lemma conn_component_subset (G : sgraph) (S : {set G}) (x : G) :
-  conn_component S x \subset S.
-Admitted.
-
-Lemma connected_component (G : sgraph) (S : {set G}) (x : G) :
-  connected (conn_component S x).
+Lemma connected_in_components (G : sgraph) (H C : {set G}) :
+  C \in components H -> connected C.
 Admitted.
 
 

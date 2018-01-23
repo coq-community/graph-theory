@@ -129,13 +129,6 @@ Arguments Path : clear implicits.
 Definition CK4F (G : graph2) := 
   connected [set: skeleton G] /\ K4_free (sskeleton G).
 
-Definition components (G : graph) (H : {set G}) : {set {set G}} := 
-  equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H.
-
-Lemma componentsP (G : graph) (H C : {set G}) :
-  reflect (exists2 a, C = @conn_component G H a & a \in H) (C \in components H).
-Proof. apply: (iffP imsetP) => -[a ? ?]; by exists a. Qed.
-
 (** If G is a lens with non non-adjacent input and output, then it has
 at least two parallel components *)
 Lemma split_K4_nontrivial (G : graph2) : 
@@ -222,15 +215,10 @@ Definition redirect (G : graph2) (H : {set G}) : graph2 :=
   else redirect_to H z.
 
 
-Lemma component_consistent (G : graph2) (H : {set G}) : 
-  let H' := g_in |: (g_out |: H) in 
-  @consistent G H' (edge_set H' :\: edges g_in g_out :\: edges g_out g_in).
-Proof. do 2 apply: consistent_setD. exact: induced_proof. Qed.
-
 Definition component (G : graph2) (H : {set G}) : graph2 := 
-  @point (subgraph_for (@component_consistent G H))
+  @point (induced (g_in |: (g_out |: H)))
          (Sub g_in (setU11 _ _))
-         (Sub g_out (redirect_output_proof)).
+         (Sub g_out (setU1r _ (setU11 _ _))).
 
 (** Possibly empty sequence of (trivial) terms corresponding to direct
 i-o edges. Yields nonempty parallel composition when concatenated with
@@ -244,9 +232,13 @@ Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
-    let P := @components G [set~ g_in] in
-    (\big[tmS/tm1]_(C in P) tmD (term_of (redirect C))) :o:
-    (\big[tmS/tm1]_(e in @edges G g_in g_in) tm1 :||: tmA (label e))
+    if [pick e in @edges G g_in g_in] is Some e
+    then (* e is a self-loop on the input *)
+      (tm1 :||: tmA (label e)) :o:
+      term_of (point (remove_edges [set e]) g_in g_in)
+    else (* the input has no self-loops *)
+      let P := @components G [set~ g_in] in
+      (\big[tmS/tm1]_(C in P) tmD (term_of (redirect C)))
   else (* distinct input and output *)
     if lens G
     then (* no checkpoints and no petals on i and o *)
@@ -415,6 +407,11 @@ Proof.
       by apply: Efg; apply rec_petal.
 Qed.
 
+Lemma CK4F_remove_loop (G : graph2) (e : edge G) :
+  CK4F G -> g_in == g_out :> G -> e \in @edges G g_in g_in ->
+  CK4F (point (remove_edges [set e]) g_in g_in).
+Admitted.
+
 Lemma CK4F_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   CK4F (redirect C).
@@ -435,73 +432,15 @@ Lemma CK4F_lens (G : graph2) C :
   CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
   CK4F (component C).
 Proof.
-  move=> [G_conn G_K4F] G_lens /componentsP[a] {C}-> a_sintv.
-  set C := conn_component _ _. rewrite (lock C) {}/C.
-  set C := locked _. set G' := component C.
+  set sI := sinterval _ _. move=> [G_conn G_K4F] G_lens C_comp.
   split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
-  have ioNC : ((g_in \in C = false) * (g_out \in C = false))%type.
-  { by split; rewrite /C/conn_component -lock setIdE inE sinterval_bounds. }
-
-  case/(@sintervalP2 G): a_sintv (a_sintv) => -[p] Ip oNp [q] Iq iNq.
-  rewrite lens_sinterval // !inE negb_or andbT =>/andP[].
-  case/(splitR p) => [u][p'][ui] eq_p.
-  case/(splitR q) => [v][q'][vo] eq_q.
-
-  have {oNp iNq} [oNp' iNq'] : g_out \notin p' /\ g_in \notin q'.
-  { move: oNp iNq.
-    by rewrite eq_p eq_q !mem_pcat !negb_or => /andP[-> _] /andP[-> _]. }
-  have {p Ip eq_p q Iq eq_q} [iNp' oNq'] : g_in \notin p' /\ g_out \notin q'.
-  { move: Ip Iq; rewrite eq_p eq_q !irred_cat'.
-    case/and3P=> _ _ /eqP/setP/(_ g_in) Hi.
-    case/and3P=> _ _ /eqP/setP/(_ g_out) Ho.
-    split; apply: negbT; [move: Hi | move: Ho];
-    by rewrite !inE nodes_end andbT eq_sym sg_edgeNeq. }
-
-  have {p' iNp' oNp'} u_C : u \in C.
-  { rewrite /C lens_sinterval -?lock //.
-    apply/conn_componentP; exists p' => x x_p'.
-    rewrite !inE andbT. by apply: contraTN x_p' => /orP[]/eqP->. }
-  have {q' iNq' oNq'} v_C : v \in C.
-  { rewrite /C lens_sinterval -?lock //.
-    apply/conn_componentP; exists q' => x x_q'.
-    rewrite !inE andbT. by apply: contraTN x_q' => /orP[]/eqP->. }
-
-  have {ui} iu : @sedge G' g_in (Sub u (setU1r g_in (setU1r g_out u_C))).
-  { have uNio : ((u == g_in = false) * (u == g_out = false))%type.
-    { by split; apply: negbTE; apply: contraTneq u_C => ->; rewrite ioNC. }
-    move: ui; rewrite sg_sym /=/sk_rel/= /eq_op/= -/eq_op.
-    rewrite eq_sym -!andb_orr => /andP[->]/=.
-    set E := _ :\: _. (* The set of edges from G kept in G' *)
-    case/orP=> /existsP[e]/andP[/eqP src_e /eqP tgt_e];
-    apply/orP; [left|right]; apply/existsP=> /=; rewrite -src_e -tgt_e;
-    suff e_E : e \in E by [exists (Sub e e_E); rewrite /= !eqxx];
-    by rewrite !inE !negb_and src_e tgt_e !uNio eqxx u_C. }
-
-  have {vo} ov : @sedge G' g_out (Sub v (setU1r g_in (setU1r g_out v_C))).
-  { have vNio : ((v == g_in = false) * (v == g_out = false))%type.
-    { by split; apply: negbTE; apply: contraTneq v_C => ->; rewrite ioNC. }
-    move: vo; rewrite sg_sym /=/sk_rel/= /eq_op/= -/eq_op.
-    rewrite eq_sym -!andb_orr => /andP[->]/=.
-    set E := _ :\: _. (* The set of edges from G kept in G' *)
-    case/orP=> /existsP[e]/andP[/eqP src_e /eqP tgt_e];
-    apply/orP; [left|right]; apply/existsP=> /=; rewrite -src_e -tgt_e;
-    suff e_E : e \in E by [exists (Sub e e_E); rewrite /= !eqxx];
-    by rewrite !inE !negb_and src_e tgt_e !vNio eqxx v_C. }
-
-  have -> : [set: G'] = g_in |: (g_out |: (val : G' -> G) @^-1: C).
-  { apply/setP=> x. have := valP x. by rewrite !inE. }
+  apply: connected_induced.
+  case: (sinterval_components C_comp) => -[u] u_C iu [v] v_C ov.
   apply: connectedU_edge iu _ _; rewrite 3?inE ?eqxx ?u_C //;
   first exact: connected1.
   apply: connectedU_edge ov _ _; rewrite 1?inE ?eqxx ?v_C //;
   first exact: connected1.
-
-  have C_ioC : C \subset (mem (g_in |: (g_out |: C))).
-  { by apply/subsetP=> z; rewrite !inE => ->. }
-  apply: connected_skeleton; rewrite imset_pre_val //;
-    first by rewrite /C -lock; exact: connected_component.
-  move=> e; rewrite !inE => E1. case/andP: (E1) =>->-> _.
-  rewrite !orbT !andbT -negb_or. apply: contraTN E1.
-  case/orP=> /andP[/eqP-> /eqP->]; by rewrite ioNC.
+  exact: connected_in_components C_comp.
 Qed.
 
 Lemma measure_lens (G : graph2) C : 
@@ -599,8 +538,8 @@ Proof.
     admit.
 Admitted.
 
-Lemma measure_remove_edges (G : graph2) (E : {set edge G}) : 
-  E != set0 -> measure (point (remove_edges E) g_in g_out) < measure G.
+Lemma measure_remove_edges (G : graph2) (E : {set edge G}) (i o : G) :
+  E != set0 -> measure (point (remove_edges E) i o) < measure G.
 Proof.
   case/set0Pn => e inIO. apply: measure_card => /=. rewrite card_sig.
   apply: (card_ltnT (x := e)). by rewrite /= negbK.
@@ -611,9 +550,14 @@ Lemma term_of_eq (G : graph2) :
 Proof.
   apply: Fix_eq => // {G} f g G CK4F_G Efg. rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
-  - congr tmS. apply: eq_big => // C HC. rewrite Efg //.
-    + exact: CK4F_redirect.
-    + exact: measure_redirect.
+  - case: pickP => [e e_loop|].
+    + congr tmS. rewrite Efg //.
+        * exact: CK4F_remove_loop.
+        * apply: measure_remove_edges. by rewrite -cards_eq0 cards1.
+    + move=> /(_ _)/negbT no_loops.
+      apply: eq_big => // C HC. rewrite Efg //.
+      * exact: CK4F_redirect.
+      * exact: measure_redirect.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
     + case: (boolP (_ == _)) => Es.
       * congr big_tmI. apply eq_in_map => C. 
@@ -652,28 +596,35 @@ End SplitPetals.
 
 Lemma comp_exit (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] ->
-  g_in == g_out :> G -> C \in components [set~ g_in] -> 
+  g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   exists2 z : skeleton G, z \in C & z -- g_in.
 Proof.
-  move => G_conn Eio /componentsP[a]->. rewrite !inE => aNi.
+  move=> G_conn Eio C_comp.
+  case/and3P: (@partition_components G [set~ g_in]) => /eqP compU compI comp0.
+  have /card_gt0P[a a_C] : 0 < #|C|.
+  { rewrite card_gt0. by apply: contraTneq C_comp =>->. }
+  have aNi : a \in [set~ g_in]. { rewrite -compU. by apply/bigcupP; exists C. }
+  rewrite -{C C_comp a_C}(def_pblock compI C_comp a_C).
   case/uPathP: (connectedTE G_conn a g_in) => p.
-  case: (splitR p aNi) => [z][q][zi] {p}->.
+  move: (aNi); rewrite !inE. case/(splitR p) => [z][q][zi] {p}->.
   rewrite irred_cat'. case/and3P=> _ _ /eqP/setP/(_ g_in).
   rewrite !inE eq_sym sg_edgeNeq // nodes_end andbT => /negbT iNq.
-  exists z => //. apply/conn_componentP. exists q => x.
-  rewrite !inE. by apply: contraTneq =>->.
+  exists z => //.
+  rewrite pblock_equivalence_partition // ?inE ?(sg_edgeNeq zi) //.
+  + apply: (connectRI (p := q)) => x. rewrite !inE. by apply: contraTneq =>->.
+  + exact: sedge_equiv_in.
 Qed.
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
-  connected [set: skeleton G] ->
-  g_in == g_out :> G -> C \in components [set~ g_in] -> 
+  connected [set: skeleton G] -> g_in == g_out :> G ->
+  @edges G g_in g_in = set0 -> C \in @components G [set~ g_in] ->
   component C ≈ dom2 (redirect C).
 Proof.
-  move => G_conn Eio HC.
+  move => G_conn Eio no_iloops HC.
   rewrite /redirect. case: pickP => [x /andP [inC adj_x] |].
   - apply: subgraph_for_iso => //.
     + by rewrite (eqP Eio) setUA setUid [x |: C](setUidPr _) // sub1set. 
-    + by rewrite (eqP Eio) setUA setDDl !setUid [x |: C](setUidPr _) // sub1set.
+    + by rewrite -(eqP Eio) setUA setUid [x |: C](setUidPr _) ?sub1set // no_iloops setD0.
     + by rewrite /= (eqP Eio).
   - case: (comp_exit G_conn Eio HC) => z Z1 Z2.
     rewrite sg_sym -adjacentE in Z2. case/andP : Z2 => [A B].
@@ -759,14 +710,16 @@ Proof.
   rewrite term_of_eq // /term_of_rec. 
   case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)
-    rewrite {1}[G]split_i //=. apply: seq2_congr.
-    + rewrite /G_rest' -big_seq2_maps. apply: big_seq2_congrs.
-      have G_conn : connected [set: skeleton G] by case: CK4F_G.
-      move => C HC. rewrite /= -IH ?comp_dom2_redirect //.
-      * exact: measure_redirect.
-      * exact: CK4F_redirect.
-    + rewrite /G_edges' -big_seq2_maps -(eqP C1). 
-      apply: big_seq2_congrs => e He. done.
+    case: pickP => [e e_loop|no_loops]; admit.
+    (* Old proof was: *)
+    (* rewrite {1}[G]split_i //=. apply: seq2_congr. *)
+    (* + rewrite /G_rest' -big_seq2_maps. apply: big_seq2_congrs. *)
+    (*   have G_conn : connected [set: skeleton G] by case: CK4F_G. *)
+    (*   move => C HC. rewrite /= -IH ?comp_dom2_redirect //. *)
+    (*   * exact: measure_redirect. *)
+    (*   * exact: CK4F_redirect. *)
+    (* + rewrite /G_edges' -big_seq2_maps -(eqP C1).  *)
+    (*   apply: big_seq2_congrs => e He. done. *)
   - case: ifP => [C2|/negbT C2].
     + (* parallel split *)
       have EC: @sinterval G g_in g_out = ~: IO. { admit. }

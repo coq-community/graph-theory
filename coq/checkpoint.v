@@ -368,6 +368,48 @@ Section CheckPoints.
       subst v. by rewrite sinterval_bounds in v_Ixy.
   Qed.
 
+  Lemma sinterval_components (C : {set G}) x y :
+    C \in components (sinterval x y) ->
+    (exists2 u, u \in C & x -- u) /\ (exists2 v, v \in C & y -- v).
+  Proof.
+    case/and3P: (partition_components (sinterval x y)).
+    move=> /eqP compU compI comp0 C_comp.
+    have /card_gt0P[a a_C] : 0 < #|C|.
+    { rewrite card_gt0. by apply: contraTneq C_comp =>->. }
+    have a_sI : a \in sinterval x y. { rewrite -compU. by apply/bigcupP; exists C. }
+    rewrite -{C C_comp a_C}(def_pblock compI C_comp a_C).
+
+    case/sintervalP2: (a_sI) (a_sI) => -[p] Ip yNp [q] Iq xNq.
+    rewrite !inE negb_or =>/andP[] /andP[aNx aNy] _.
+    case: (splitR p aNx) Ip (yNp) => [u][p'][ux] ->.
+    case: (splitR q aNy) Iq (xNq) => [v][q'][vy] ->.
+    rewrite !irred_cat' !mem_pcat !mem_edgep !negb_or.
+    case/and3P=> Iq' _ /eqP/setP/(_ y).
+    rewrite !inE nodes_end andbT eq_sym sg_edgeNeq //.
+    move=> /negbT yNq' /and3P[xNq' xNv xNy].
+    case/and3P=> Ip' _ /eqP/setP/(_ x).
+    rewrite !inE nodes_end andbT eq_sym sg_edgeNeq //.
+    move=> /negbT xNp' /and3P[yNp' yNu yNx].
+
+    split; [exists u | exists v]; rewrite 1?sg_sym //; apply/components_pblockP.
+    - exists p'. apply/subsetP => z z_p. rewrite sintervalP.
+      case: (Path_split z_p) xNp' yNp' => [p1][p2]->.
+      rewrite !mem_pcat !negb_or => /andP[xNp1 xNp2] /andP[yNp1 yNp2].
+      apply/andP; split; apply/cpP'.
+      + move=> /(_ (pcat (prev p1) q)). apply/negP.
+        by rewrite !mem_pcat mem_prev negb_or xNp1 xNq.
+      + move=> /(_ (pcat p2 (edgep ux))). apply/negP.
+        by rewrite !mem_pcat mem_edgep !negb_or yNp2 yNu yNx.
+    - exists q'. apply/subsetP => z z_q. rewrite sintervalP.
+      case: (Path_split z_q) xNq' yNq' => [q1][q2]->.
+      rewrite !mem_pcat !negb_or => /andP[xNq1 xNq2] /andP[yNq1 yNq2].
+      apply/andP; split; apply/cpP'.
+      + move=> /(_ (pcat q2 (edgep vy))). apply/negP.
+        by rewrite !mem_pcat mem_edgep !negb_or xNq2 xNv xNy.
+      + move=> /(_ (pcat (prev q1) p)). apply/negP.
+        by rewrite !mem_pcat mem_prev negb_or yNq1 yNp.
+  Qed.
+
   Definition interval x y := [set x;y] :|: sinterval x y.
 
   Lemma interval_sym x y : interval x y = interval y x.
