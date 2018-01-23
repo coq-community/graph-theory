@@ -147,13 +147,28 @@ Definition induced (G:graph) (S : {set G}) :=
 Lemma induced_sub (G:graph) (S : {set G}) : subgraph (induced S) G.
 Proof. exact: subgraph_sub. Qed.
 
-
-(** ** Isomorphim Properties *)
-
 Definition point (G : graph) (x y : G) := 
   Eval hnf in @Graph2 G x y.
 
 Arguments point : clear implicits.
+
+Definition induced2 (G : graph2) (V :{set G}) := 
+  match @idP (g_in \in V), @idP (g_out \in V) with 
+  | ReflectT p, ReflectT q => point (induced V) (Sub g_in p) (Sub g_out q)
+  | _,_ => G
+  end.
+
+Lemma induced2_induced (G : graph2) (V :{set G}) (iV : g_in \in V) (oV :g_out \in V) : 
+  induced2 V = point (induced V) (Sub g_in iV) (Sub g_out oV).
+Proof.
+  rewrite /induced2. 
+  case: {-}_ / idP; last by rewrite iV.
+  case: {-}_ / idP; last by rewrite oV.
+  move => p q. by rewrite (bool_irrelevance p oV) (bool_irrelevance q iV).
+Qed.
+
+(** ** Isomorphim Properties *)
+
 
 Local Open Scope quotient_scope.
 
