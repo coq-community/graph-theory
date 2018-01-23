@@ -976,6 +976,8 @@ Lemma upathWW (G : sgraph) (x y : G) p : upath x y p -> path (@sedge G) x p.
 Proof. by move/upathW/spathW. Qed.
 
 
+(** ** Connectedness *)
+
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.
 
@@ -1063,6 +1065,40 @@ Proof.
   exists z; last by []; apply: p_S.
   by rewrite in_collective nodesE inE -eqi_p' nodes_start.
 Qed.
+
+
+Definition components (G : sgraph) (H : {set G}) : {set {set G}} :=
+  equivalence_partition (connect (restrict (mem H) sedge)) H.
+
+Lemma partition_components (G : sgraph) (H : {set G}) :
+  partition (components H) H.
+Proof. apply: equivalence_partitionP. exact: (@sedge_equiv_in G). Qed.
+
+Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :
+  reflect (exists p : Path x y, p \subset H) (y \in pblock (components H) x).
+Proof.
+  apply: (iffP idP).
+  - move=> y_block. case/and3P: (partition_components H) => /eqP compU compI comp0.
+    have same_comp := same_pblock compI y_block.
+    have := y_block. rewrite -same_comp mem_pblock compU => y_H.
+    have /eqP := same_comp.
+    rewrite eq_pblock ?compU // same_comp mem_pblock compU => x_H.
+    move: y_block.
+    rewrite (pblock_equivalence_partition _ x_H y_H); last exact: sedge_equiv_in.
+    wlog xNy : / x != y.
+    { move=> Hyp. case: (altP (x =P y)) => [<- _|]; last exact: Hyp.
+      exists (idp x). apply/subsetP=> z. by rewrite mem_idp => /eqP->. }
+    case/(PathRP xNy) => p p_sub. by exists p.
+  - case=> p /subsetP p_sub. rewrite pblock_equivalence_partition.
+    + exact: connectRI p_sub.
+    + exact: sedge_equiv_in.
+    + apply: p_sub; exact: nodes_start.
+    + apply: p_sub; exact: nodes_end.
+Qed.
+
+Lemma connected_in_components (G : sgraph) (H C : {set G}) :
+  C \in components H -> connected C.
+Admitted.
 
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)

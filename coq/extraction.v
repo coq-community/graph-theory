@@ -129,17 +129,6 @@ Arguments Path : clear implicits.
 Definition CK4F (G : graph2) := 
   connected [set: skeleton G] /\ K4_free (sskeleton G).
 
-Definition components (G : graph) (H : {set G}) : {set {set G}} := 
-  equivalence_partition (connect (restrict (mem H) (@sedge (skeleton G)))) H.
-
-Lemma partition_components (G : graph) (H : {set G}) :
-  partition (components H) H.
-Proof. apply: equivalence_partitionP. exact: (@sedge_equiv_in G). Qed.
-
-Lemma connected_pblock_components (G : graph) (H : {set G}) (x : G) :
-  x \in H -> @connected G (pblock (components H) x).
-Admitted.
-
 (** If G is a lens with non non-adjacent input and output, then it has
 at least two parallel components *)
 Lemma split_K4_nontrivial (G : graph2) : 
@@ -445,52 +434,13 @@ Lemma CK4F_lens (G : graph2) C :
 Proof.
   set sI := sinterval _ _. move=> [G_conn G_K4F] G_lens C_comp.
   split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
-
   apply: connected_induced.
-  case/and3P: (partition_components sI) => /eqP compU compI comp0.
-  have /card_gt0P[a a_C] : 0 < #|C|.
-  { rewrite card_gt0. by apply: contraTneq C_comp =>->. }
-  have a_sI : a \in sI. { rewrite -compU. by apply/bigcupP; exists C. }
-  rewrite -{C C_comp a_C}(def_pblock compI C_comp a_C).
-
-  case/(@sintervalP2 G): (a_sI) (a_sI) => -[p] Ip oNp [q] Iq iNq.
-  rewrite {1}/sI lens_sinterval // !inE negb_or andbT =>/andP[].
-  case/(splitR p) => [u][p'][ui] eq_p.
-  case/(splitR q) => [v][q'][vo] eq_q.
-
-  have {oNp iNq} [oNp' iNq'] : g_out \notin p' /\ g_in \notin q'.
-  { move: oNp iNq.
-    by rewrite eq_p eq_q !mem_pcat !negb_or => /andP[-> _] /andP[-> _]. }
-  have {p Ip eq_p q Iq eq_q} [iNp' oNq'] : g_in \notin p' /\ g_out \notin q'.
-  { move: Ip Iq; rewrite eq_p eq_q !irred_cat'.
-    case/and3P=> _ _ /eqP/setP/(_ g_in) Hi.
-    case/and3P=> _ _ /eqP/setP/(_ g_out) Ho.
-    split; apply: negbT; [move: Hi | move: Ho];
-    by rewrite !inE nodes_end andbT eq_sym sg_edgeNeq. }
-
-  have {p' iNp' oNp'} u_a : u \in pblock (components sI) a.
-  { have sub_p' : {subset p' <= sI}.
-    { move=> x. rewrite /sI lens_sinterval // !inE andbT.
-      apply: contraTN. by case/orP=> /eqP->. }
-    rewrite pblock_equivalence_partition //.
-    + exact: connectRI sub_p'.
-    + exact: sedge_equiv_in.
-    + apply: sub_p'; exact: nodes_end. }
-  have {q' iNq' oNq'} v_a : v \in pblock (components sI) a.
-  { have sub_q' : {subset q' <= sI}.
-    { move=> x. rewrite /sI lens_sinterval // !inE andbT.
-      apply: contraTN. by case/orP=> /eqP->. }
-    rewrite pblock_equivalence_partition //.
-    + exact: connectRI sub_q'.
-    + exact: sedge_equiv_in.
-    + apply: sub_q'; exact: nodes_end. }
-
-  rewrite sg_sym in ui. rewrite sg_sym in vo.
-  apply: connectedU_edge ui _ _; rewrite 3?inE ?eqxx ?u_a //;
+  case: (sinterval_components C_comp) => -[u] u_C iu [v] v_C ov.
+  apply: connectedU_edge iu _ _; rewrite 3?inE ?eqxx ?u_C //;
   first exact: connected1.
-  apply: connectedU_edge vo _ _; rewrite 1?inE ?eqxx ?v_a //;
+  apply: connectedU_edge ov _ _; rewrite 1?inE ?eqxx ?v_C //;
   first exact: connected1.
-  exact: connected_pblock_components.
+  exact: connected_in_components C_comp.
 Qed.
 
 Lemma measure_lens (G : graph2) C : 
@@ -646,7 +596,7 @@ End SplitPetals.
 
 Lemma comp_exit (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] ->
-  g_in == g_out :> G -> C \in components [set~ g_in] -> 
+  g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   exists2 z : skeleton G, z \in C & z -- g_in.
 Proof.
   move=> G_conn Eio C_comp.
@@ -667,7 +617,7 @@ Qed.
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] -> g_in == g_out :> G ->
-  @edges G g_in g_in = set0 -> C \in components [set~ g_in] ->
+  @edges G g_in g_in = set0 -> C \in @components G [set~ g_in] ->
   component C ≈ dom2 (redirect C).
 Proof.
   move => G_conn Eio no_iloops HC.
