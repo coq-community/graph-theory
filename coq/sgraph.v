@@ -1011,7 +1011,24 @@ Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
 
 Lemma connectedU_edge (G : sgraph) (U V : {set G}) (x y : G) :
   x \in U -> y \in V -> x -- y -> connected U -> connected V -> connected (U :|: V).
-Admitted.
+Proof.
+  move=> x_U y_V xy U_conn V_conn u v u_UV v_UV.
+  have subl : {subset mem U <= mem (U :|: V)} by move=> ?; rewrite !inE =>->.
+  have subr : {subset mem V <= mem (U :|: V)} by move=> ?; rewrite !inE =>->.
+  case: (altP (u =P v)) => [->|uNv]; first exact: connect0.
+  wlog [u_U v_V] : u v uNv {u_UV v_UV} / u \in U /\ v \in V.
+  { move=> Hyp. move: u_UV v_UV. rewrite !inE.
+    move=> /orP[u_U | u_V] /orP[v_U | v_V].
+    - apply: connect_mono (U_conn u v u_U v_U). exact: restrict_mono.
+    - exact: Hyp.
+    - rewrite srestrict_sym. apply: Hyp; by [rewrite eq_sym |].
+    - apply: connect_mono (V_conn u v u_V v_V). exact: restrict_mono. }
+  apply: (@connect_trans _ _ y); last first.
+  { apply: connect_mono (V_conn y v y_V v_V). exact: restrict_mono. }
+  apply: (@connect_trans _ _ x).
+  { apply: connect_mono (U_conn u x u_U x_U). exact: restrict_mono. }
+  by apply: connect1; rewrite /= !inE x_U y_V xy.
+Qed.
 
 Lemma connected2 (G : sgraph) (x y: G) : x -- y -> connected [set x; y].
 Proof.
@@ -1098,7 +1115,22 @@ Qed.
 
 Lemma connected_in_components (G : sgraph) (H C : {set G}) :
   C \in components H -> connected C.
-Admitted.
+Proof.
+  move=> C_comp x y x_C y_C.
+  case: (altP (x =P y)) => [->|xNy]; first exact: connect0.
+  case/and3P: (partition_components H) => /eqP compU compI comp0.
+  have [x_H y_H] : x \in H /\ y \in H.
+  { rewrite -compU. split; [exact: mem_cover x_C | exact: mem_cover y_C]. }
+  have /(PathRP xNy)[p /subsetP p_sub] : connect (restrict (mem H) sedge) x y.
+  { rewrite -(pblock_equivalence_partition (@sedge_equiv_in G H)) //.
+    by rewrite (def_pblock _ C_comp) //. }
+  suff /connectRI : {subset p <= mem C} by [].
+  move=> z z_p. have z_H : z \in H := p_sub z z_p.
+  rewrite -(def_pblock compI C_comp x_C).
+  rewrite (pblock_equivalence_partition (@sedge_equiv_in G H)) //.
+  case: (Path_split z_p) => [p1] [p2] eq_p. apply: (connectRI (p := p1)).
+  move=> a a_p1; apply: p_sub; by rewrite eq_p mem_pcat a_p1.
+Qed.
 
 
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
