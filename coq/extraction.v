@@ -660,6 +660,176 @@ Lemma split_par_top (G : graph2) :
   G ≈ top2.
 Admitted.
 
+(** (a,true) -> io-edge / (a,false) -> oi-edge *)
+Definition sym2b (a : sym) (b : bool) : graph2 :=
+  if b then sym2 a else cnv2 (sym2 a).
+
+Definition sym2b' (a : sym) (b : bool) : graph2 :=
+  point (edge_graph a) (~~b) (b). 
+
+Lemma sym_eqv (a : sym) (b : bool) : sym2b a b = sym2b' a b.
+Proof. by case: b. Qed.
+
+(** "false" is the input and "true" is the output *)
+Definition edges2_graph (As : seq (sym * bool)) : graph := 
+  {| vertex := [finType of bool];
+     edge := [finType of 'I_(size As)];
+     label e := (tnth (in_tuple As) e).1;
+     source e := ~~ (tnth (in_tuple As) e).2;
+     target e := (tnth (in_tuple As) e).2 |}.
+
+Definition edges2 (As : seq (sym * bool)) : graph2 := 
+  point (edges2_graph As) false true.
+
+Lemma edges2_nil : edges2 nil ≈ top2.
+Admitted.
+
+Lemma ord_0Vp n (o : 'I_n.+1) : (o = ord0) + ({o' : 'I_n | o'.+1 = o :> nat}).
+Proof.
+  Check (unlift ord0 o).
+  case: (unliftP ord0 o); last by left.
+  move => o' A. right. exists o'. by rewrite A.
+Qed.
+
+Local Open Scope quotient_scope.
+Local Notation "\pi x" := (\pi_(_) x) (at level 4).
+
+Lemma par2_eqv_ii (G1 G2 : graph2) x y : 
+  x = g_in :> G1 -> y = g_in :> G2 ->
+  @par2_eqv G1 G2 (inl x) (inr y).
+Proof.
+  move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
+  by rewrite /par2_eq !eqxx. 
+Qed.
+
+Lemma par2_eqv_oo (G1 G2 : graph2) x y : 
+  x = g_out :> G1 -> y = g_out :> G2 ->
+  @par2_eqv G1 G2 (inl x) (inr y).
+Proof.
+  move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
+  by rewrite /par2_eq !eqxx. 
+Qed.
+
+Lemma tnth_cons (T : Type) a (s : seq T) (i : 'I_(size s).+1) (j : 'I_(size s)) :
+  j.+1 = i -> tnth (in_tuple (a :: s)) i = tnth (in_tuple s) j.
+Proof. move => E. rewrite /tnth -E /=. exact: set_nth_default. Qed.
+Arguments tnth_cons [T a s i j].
+
+Lemma par2_injR (G1 G2 : graph2) x y : 
+  g_in != g_out :> G1 -> 
+  inr x = inr y %[mod_eq @par2_eqv G1 G2] ->
+  x = y.
+Proof.
+  move=> iNo2 /eqmodP/=. rewrite /par2_eqv/= iNo2 /= sum_eqE.
+  case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
+  - rewrite !inE !eqEsubset ![[set inr x; inr y] \subset _]subUset !sub1set !inE.
+    rewrite /eq_op/=. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
+  - by rewrite subUset !sub1set !inE /eq_op/= !orbb => /andP[/eqP-> /eqP->].
+Qed.
+
+Lemma edges2_cons (a : sym) (b : bool) (Ar : seq (sym * bool)) : 
+  edges2 ((a, b) :: Ar) ≈ par2 (sym2b a b) (edges2 Ar).
+Proof.
+  rewrite sym_eqv. (* this makes h actually typecheck *)
+  set E1 := edges2 _.
+  set E2 := par2 _ _.
+  pose f (x : E1) : E2 := \pi (inr x).
+    (* if x == g_in then \pi (inr g_in) else \pi (inr g_out). *) 
+  pose g (x : E2) : E1 :=
+    match repr x with 
+    | inl x => if x == g_in then g_in else g_out
+    | inr x => x end.
+  pose h (x : edge E1) : edge E2 := 
+    match ord_0Vp x with 
+    | inl e => inl tt
+    | inr (exist o H) => inr o
+    end.
+  exists (f,h); repeat split.
+  - move => e. 
+    rewrite [source]lock /= -lock. rewrite /h /=.
+    case: (ord_0Vp e) => [E|[o' Ho']].
+    + rewrite E /f /=. destruct b eqn: def_b.
+      all: symmetry; apply/eqmodP => //=.
+      exact: par2_eqv_ii.
+      exact: par2_eqv_oo.
+    + rewrite (tnth_cons Ho'). case: (tnth _ _) => a' b' /=.
+      rewrite /f /=. by case: b'.
+  - move => e. 
+    rewrite [target]lock /= -lock. rewrite /h /=.
+    case: (ord_0Vp e) => [E|[o' Ho']].
+    + rewrite E /f /=. destruct b eqn: def_b.
+      all: symmetry; apply/eqmodP => //=.
+      exact: par2_eqv_oo.
+      exact: par2_eqv_ii.
+    + rewrite (tnth_cons Ho'). case: (tnth _ _) => a' b' /=.
+      rewrite /f /=. by case: b'.
+  - move => e. rewrite /= /h. case: (ord_0Vp e) => [-> //|[o' Ho']].
+    by rewrite (tnth_cons Ho'). 
+  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_ii.
+  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_oo.
+  - apply: (Bijective (g := g)) => /= x. 
+    + rewrite /f /g /=. case: piP => [] [y|y] /= /esym Hy.
+      * move/(@par2_LR (sym2b' a b) (edges2 Ar)) : Hy.
+        case => [[-> ->]|[-> ->]]; by destruct b.
+      * move/(@par2_injR (sym2b' a b) (edges2 Ar)) : Hy. apply. 
+        by destruct b.
+    + rewrite /f /g /=. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
+      rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqmodP => /=. 
+      destruct b;destruct y => //=;
+      solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
+  - pose h' (e : edge E2) : edge E1 := 
+      match e with inl tt => ord0 | inr i => lift ord0 i end.
+    apply: (Bijective (g := h')) => /= x.
+    + rewrite /h /h'. case: (ord_0Vp x) => [-> //|[o' Ho']].
+      apply: ord_inj. by rewrite lift0.
+    + rewrite /h /h'. case: x => [[]|x]. 
+      by case: (ord_0Vp ord0) => [|[o' Ho']].
+      case: (ord_0Vp _) => [|[o']]. 
+      * move/(f_equal (@nat_of_ord _)). by rewrite lift0.
+      * move/eqP. rewrite lift0 eqSS => /eqP E. 
+        congr inr. exact: ord_inj.
+Qed.
+
+Lemma edges2_big (As : seq (sym * bool)) : 
+  edges2 As ≈ \big[par2/top2]_(x <- As) sym2b x.1 x.2.
+Proof.
+  elim: As => [|[a b] Ar IH].
+  - by rewrite big_nil edges2_nil.
+  - by rewrite big_cons /= -IH edges2_cons.
+Qed. 
+
+Definition strip (G : graph2) (e : edge G) := 
+  if e \in edges g_in g_out then (label e,true) else (label e,false).
+
+Lemma split_io_edges (G : graph2) : 
+  let E : {set edge G} := edges g_in g_out :|: edges g_out g_in in
+  G ≈ par2 (edges2 [seq strip e | e in E]) (point (remove_edges E) g_in g_out).
+Proof.
+  move => E.
+  set G' := par2 _ _.
+  pose S := [seq strip e | e in E].
+  pose n := size S.
+  (* have e0 : edge (edges2 [seq strip e | e in E]). admit. *)
+  have h_proof e : e \in E -> index e (enum E) < n. admit.
+  pose f (x : G) : G' := \pi_(_) (inr x).
+  pose h (e : edge G) : edge G' :=
+    match boolP (e \in E) with 
+    | AltTrue p => inl (Ordinal (h_proof e p))
+    | AltFalse p => inr (Sub e p)
+    end.
+  exists (f,h); repeat split. 
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //=.
+    admit.
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
+    admit.
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
+    admit.
+  - rewrite /= /f. admit.
+  - admit.
+  - admit.
+  - admit.
+Admitted.
+
 Lemma split_par_edges_rest (G : graph2) :
   g_in != g_out :> G -> 
   let G' := point (remove_edges (@edge_set G IO)) g_in g_out in 
