@@ -33,7 +33,8 @@ Proof.
   move => G1 G2 G1' G2' [f f1 f2] [g g1 g2].
   have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
   apply: (merge_congr (h := h)) => //; try by rewrite I3 f1.
-  move => [x|x] [y|y];rewrite /eq_par2 /= !(I3,I4) //.
+  move=> x y /=. rewrite !par2_equiv_of. apply: lift_equiv; first by case: I2.
+  move=> {x y} [x|x] [y|y]; rewrite /par2_eq/= !(I3, I4) //.
   by rewrite !iso2_inv_in // !iso2_inv_out.
 Qed.
 
@@ -52,20 +53,31 @@ Proof. by rewrite /big_par2 big_cons. Qed.
 element to par2. If this turns out hard to prove, use foldr1 instead *)
 
 Lemma par2_LR (G1 G2 : graph2) x y :
-  inl x = inr y %[mod_eq @eqv_par2 G1 G2] ->
+  inl x = inr y %[mod_eq @par2_eqv G1 G2] ->
   x = g_in /\ y = g_in \/ x = g_out /\ y = g_out.
 Proof.
-  move/eqmodP => /=. case/connectP => p. 
-  elim: p x => //=. move => [//|a] p IH x /andP [A B C]. 
-  rewrite -orbA in A. case/or3P : A.
-  - case/andP => [/eqP ? /eqP ?]. subst.
-Admitted.
+  case/eqmodP; rewrite /=/par2_eqv /eq_op/= -!/eq_op. case: ifP => i_o.
+  - rewrite !inE !eqEsubset. case/orP=> /andP[H _]; move: H.
+    all: rewrite subUset !sub1set !inE /eq_op/= orbF =>/andP[/eqP-> /eqP->].
+    + by left.
+    + by right.
+  - move/negbT: i_o. rewrite negb_and !negbK. case/orP=> /eqP<-.
+    all: rewrite subUset !sub1set !inE /eq_op/= !orbF orbb.
+    + case/andP=> /eqP-> /orP[]/eqP->; by [left | right].
+    + case/andP=> /orP[]/eqP-> /eqP->; by [left | right].
+Qed.
 
 Lemma par2_injL (G1 G2 : graph2) x y : 
   g_in != g_out :> G2 -> 
-  inl x = inl y %[mod_eq @eqv_par2 G1 G2] ->
+  inl x = inl y %[mod_eq @par2_eqv G1 G2] ->
   x = y.
-Admitted.
+Proof.
+  move=> iNo2 /eqmodP/=. rewrite /par2_eqv/= iNo2 andbT sum_eqE.
+  case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
+  - rewrite !inE !eqEsubset ![[set inl x; inl y] \subset _]subUset !sub1set !inE.
+    rewrite /eq_op/= !orbF. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
+  - by rewrite subUset !sub1set !inE /eq_op/= !orbF !orbb => /andP[/eqP-> /eqP->].
+Qed.
 
 Lemma par2_idR G : par2 G top2 ≈ G.
 Proof 
@@ -81,10 +93,8 @@ Proof
   have c1 : cancel f g.
   { move => x. rewrite /f /g. 
     case e1 : (repr x) => [a|[|]]; first by rewrite -e1 reprK.
-    - rewrite -[x]reprK e1. apply/eqmodP => /=. 
-      apply: sub_equiv_of => /=. by rewrite !eqxx.
-    - rewrite -[x]reprK e1. apply/eqmodP => /=. 
-      apply: sub_equiv_of => /=. by rewrite !eqxx. }
+    - rewrite -[x]reprK e1. apply/eqmodP => /=. by rewrite par2_eqv_io.
+    - rewrite -[x]reprK e1. apply/eqmodP => /=. by rewrite par2_eqv_io. }
   have c2 : cancel g f.
   { move => x. rewrite /f /g. 
     case: piP => [[y|[]]] Hy. 
@@ -154,7 +164,8 @@ Lemma seq2_congr : iso2_congruence seq2.
   move => G1 G2 G1' G2' [f f1 f2] [g g1 g2].
   have [h [I1 I2 I3 I4]] := iso2_union f1 f2 g1 g2.
   apply: (merge_congr (h := h)) => //; try by rewrite ?(I3,I4) ?f1 ?g1.
-  move => [x|x] [y|y];rewrite /eq_seq2 /= !(I3,I4) //.
+  move=> x y /=. rewrite !seq2_equiv_of. apply: lift_equiv; first by case: I2.
+  move=> {x y} [x|x] [y|y]; rewrite /seq2_eq /= !(I3,I4) //.
   by rewrite !sum_eqE !iso2_inv_in // !iso2_inv_out.
 Qed.
 

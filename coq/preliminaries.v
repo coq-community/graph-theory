@@ -509,8 +509,8 @@ Proof. apply: connect_symI => x y /=. by rewrite orbC. Qed.
 Definition equiv_of_trans : transitive equiv_of.
 Proof. exact: connect_trans. Qed.
 
-Canonical equiv_of_equivalence :=
-  EquivRel equiv_of equiv_of_refl equiv_of_sym equiv_of_trans.
+(* Canonical equiv_of_equivalence := *)
+(*   EquivRel equiv_of equiv_of_refl equiv_of_sym equiv_of_trans. *)
 
 Lemma sub_equiv_of : subrel e equiv_of.
 Proof. move => x y He. apply: connect1 => /=. by rewrite He. Qed.

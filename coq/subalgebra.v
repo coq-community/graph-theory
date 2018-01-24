@@ -330,23 +330,6 @@ Section Quotients.
 
   Definition admissible (eqv : rel (union G1 G2)) := 
     forall x y, eqv x y -> x = y \/ [set x;y] \subset P. 
-
-  Lemma admissibleI (e : rel (union G1 G2)) : 
-    (forall x y, e x y -> [set x;y] \subset P) -> admissible (equiv_of e).
-  Proof.
-    move => H x y. 
-    have sub_P p a : path (sc e) a p -> {subset p <= P}.
-    { elim: p a => //= b p IH a /andP [A B]. 
-      apply/subset_cons; split;eauto.
-      by case/orP : A => /H; rewrite subUset !sub1set => /andP[]. }
-    case/connectP => p. case: p => /= [_ <- |]; first by left.
-    rewrite -/(sc e). move => a p /andP[A B] C. 
-    have [C1 C2] : x \in P /\ a \in P. 
-    { case/orP : A => /H; by rewrite subUset !sub1set => /andP[]. } 
-    right. rewrite subUset !sub1set C1 /= C. 
-    move: (mem_last a p). rewrite inE. case/predU1P => [->//|] /=. 
-    exact: sub_P B _.
-  Qed.
  
   Lemma decomp_quot (T1 T2 : tree) D1 D2 (e : equiv_rel (union G1 G2)): 
     decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
@@ -384,23 +367,50 @@ Section Quotients.
           by move => [x|]; rewrite !in_simpl // codom_f. 
   Qed.
 
-  Definition eq_par2 (x y : union G1 G2) := 
+  Definition par2_eqv : rel (union G1 G2) :=
+    fun x y => (x == y) ||
+      if (g_in != g_out :> G1) && (g_in != g_out :> G2)
+      then [set x; y] \in [set [set inl g_in; inr g_in]; [set inl g_out; inr g_out]]
+      else [set x; y] \subset [set inl g_in; inl g_out; inr g_in; inr g_out].
+
+  Definition par2_eqv_refl : reflexive par2_eqv.
+  Proof. by move=> ?; rewrite /par2_eqv eqxx. Qed.
+
+  Lemma par2_eqv_sym : symmetric par2_eqv.
+  Proof. move=> x y. by rewrite /par2_eqv [[set y; x]]setUC [y == x]eq_sym. Qed.
+
+  Definition par2_eqv_trans : transitive par2_eqv.
+  Admitted.
+
+  Canonical par2_eqv_equivalence :=
+    EquivRel par2_eqv par2_eqv_refl par2_eqv_sym par2_eqv_trans.
+
+  Lemma par2_eqv_io :
+    (par2_eqv (inl g_in) (inr g_in)) * (par2_eqv (inl g_out) (inr g_out)).
+  Proof.
+    rewrite /par2_eqv/=. case: ifP => _.
+    - by rewrite !inE !eqxx.
+    - by rewrite !subUset !sub1set !inE !eqxx.
+  Qed.
+
+  Definition par2_eq (x y : union G1 G2) :=
     match x,y with
     | inl x, inr y => (x == g_in) && (y == g_in) || (x == g_out) && (y == g_out)
     | _,_ => false
     end.
 
-  Definition eqv_par2 := equiv_of eq_par2.
+  Lemma par2_equiv_of : par2_eqv =2 equiv_of par2_eq.
+  Admitted.
 
   Definition par2 := 
-    {| graph_of := merge (union G1 G2) eqv_par2 ;
-       g_in := \pi_{eq_quot eqv_par2} (inl g_in);
-       g_out := \pi_{eq_quot eqv_par2} (inl g_out) |}.
+    {| graph_of := merge (union G1 G2) par2_eqv ;
+       g_in := \pi_{eq_quot par2_eqv} (inl g_in);
+       g_out := \pi_{eq_quot par2_eqv} (inl g_out) |}.
 
-  Lemma eqv_par2P : admissible eqv_par2.
+  Lemma par2_eqvP : admissible par2_eqv.
   Proof. 
-    apply: admissibleI => [[x|x] [y|y]] //= /orP [] /andP[/eqP-> /eqP->]; 
-      by rewrite subUset !sub1set !inE ?eqxx ?orbT.
+    move=> x y. case/orP=> [/eqP|]; first by left. case: ifP; last by right.
+    rewrite !inE => _ /orP[]/eqP->; by right; rewrite subUset !sub1set !inE !eqxx.
   Qed.
 
   Lemma decomp_par2 (T1 T2 : tree) D1 D2 : 
@@ -410,37 +420,55 @@ Section Quotients.
     exists T D, [/\ decomp T (par2) D, compatible D & width D <= 3].
   Proof.
     move => dec1 dec2 comp1 comp2 W1 W2.
-    case: (decomp_quot (e:= [equiv_rel of eqv_par2]) dec1 dec2 comp1 comp2 W1 W2 _ _).
-    - exact: eqv_par2P.
+    case: (decomp_quot (e:= [equiv_rel of par2_eqv]) dec1 dec2 comp1 comp2 W1 W2 _ _).
+    - exact: par2_eqvP.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out].
       apply: (@leq_trans #|P'|); last by rewrite cards2; by case (_ != _).
       apply: (@leq_trans #|[set (\pi x : par2) | x in P']|); last exact: leq_imset_card.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. case/setUP : H1 => H1; first case/setUP : H1 => H1.
       * by rewrite mem_imset.
-      * case/set1P : H1 => ->. apply/imsetP. exists (inl g_in); first by rewrite !inE eqxx ?orbT.
-        apply/eqmodP. apply: sub_connect. by rewrite /= !eqxx.
-      * case/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
-        apply/eqmodP. apply: sub_connect. by rewrite /= !eqxx orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (inl g_in); first by rewrite !inE eqxx ?orbT.
+        apply/eqmodP. by rewrite equiv_sym /= par2_eqv_io.
+      * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
+        apply/eqmodP. by rewrite equiv_sym /= par2_eqv_io.
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. exists t. 
       by rewrite C !mem_imset // !inE ?eqxx ?orbT.
   Qed.
 
-  Definition eq2 (T : finType) (x y : T) :=
-    [rel a b | (a == x) && (b == y)].
+  Definition seq2_eqv : rel (union G1 G2) :=
+    fun x y => (x == y) || ([set x; y] == [set inl g_out; inr g_in]).
 
-  Definition eq_seq2 : rel (union G1 G2) := eq2 (inl g_out) (inr g_in).
-  Definition eqv_seq2 := equiv_of eq_seq2.
+  Definition seq2_eqv_refl : reflexive seq2_eqv.
+  Proof. by move=> ?; rewrite /seq2_eqv eqxx. Qed.
+
+  Lemma seq2_eqv_sym : symmetric seq2_eqv.
+  Proof. move=> x y. by rewrite /seq2_eqv [[set y; x]]setUC [y == x]eq_sym. Qed.
+
+  Definition seq2_eqv_trans : transitive seq2_eqv.
+  Admitted.
+
+  Canonical seq2_eqv_equivalence :=
+    EquivRel seq2_eqv seq2_eqv_refl seq2_eqv_sym seq2_eqv_trans.
+
+  Lemma seq2_eqv_io : seq2_eqv (inl g_out) (inr g_in).
+  Proof. by rewrite /seq2_eqv/=. Qed.
+
+  Definition seq2_eq : rel (union G1 G2) :=
+    [rel a b | (a == inl g_out) && (b == inr g_in)].
+
+  Lemma seq2_equiv_of : seq2_eqv =2 equiv_of seq2_eq.
+  Admitted.
 
   Definition seq2 :=
-    {| graph_of := merge (union G1 G2) eqv_seq2 ;
-       g_in := \pi_{eq_quot eqv_seq2} (inl g_in);
-       g_out := \pi_{eq_quot eqv_seq2} (inr g_out) |}.
+    {| graph_of := merge (union G1 G2) seq2_eqv ;
+       g_in := \pi_{eq_quot seq2_eqv} (inl g_in);
+       g_out := \pi_{eq_quot seq2_eqv} (inr g_out) |}.
 
-  Lemma eqv_seq2P : admissible eqv_seq2.
+  Lemma seq2_eqvP : admissible seq2_eqv.
   Proof. 
-    apply: admissibleI => [[x|x] [y|y]] //= /andP[/eqP-> /eqP->]; 
-      by rewrite subUset !sub1set !inE ?eqxx ?orbT.
+    move=> x y. case/orP => /eqP->; [by left | right].
+    by rewrite subUset !sub1set !inE !eqxx.
   Qed.
 
   Lemma decomp_seq2 (T1 T2 : tree) D1 D2 : 
@@ -450,8 +478,8 @@ Section Quotients.
     exists T D, [/\ decomp T seq2 D, compatible D & width D <= 3].
   Proof.
     move => dec1 dec2 comp1 comp2 W1 W2.
-    case: (decomp_quot (e:= [equiv_rel of eqv_seq2]) dec1 dec2 comp1 comp2 W1 W2 _ _).
-    - exact: eqv_seq2P.
+    case: (decomp_quot (e:= [equiv_rel of seq2_eqv]) dec1 dec2 comp1 comp2 W1 W2 _ _).
+    - exact: seq2_eqvP.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out; inr g_out].
       apply: (@leq_trans #|P'|); last apply cards3.
       apply: (@leq_trans #|[set (\pi x : seq2) | x in P']|); last exact: leq_imset_card.
@@ -460,7 +488,7 @@ Section Quotients.
       rewrite /P -!setUA [[set _;_]]setUC !setUA. case/setUP => H1.
       * by rewrite mem_imset.
       * case/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
-        apply/eqmodP. apply: sub_connect. by rewrite /eq_seq2 /= !eqxx.
+        apply/eqmodP. by rewrite equiv_sym /= seq2_eqv_io.
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. exists t. 
       by rewrite C !mem_imset // !inE ?eqxx ?orbT.
   Qed.
