@@ -245,9 +245,9 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let P := components (@sinterval (skeleton G) g_in g_out) in
       let E := @edge_set G IO in
       if E == set0 then big_tmI [seq term_of (component C) | C in P]
-      else if P == set0 then big_tmI (tmEs G) 
-           else let t0 := term_of (point (remove_edges E) g_in g_out) in
-                \big[tmI/t0]_(e in @edge_set G IO) tm_ e
+      else if P == set0 then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
+           else  (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||: 
+                 term_of (point (remove_edges E) g_in g_out) 
     else (* at least one nontrivial petal or checkpoint *)
       @simple_check_point_term term_of G.
 
@@ -881,6 +881,56 @@ Lemma split_pip (G : graph2) :
 Proof.
   move => CK4F_G Eio.
 Admitted.
+
+Lemma componentless_top (G : graph2) : 
+  @components G (~: IO) == set0 -> 
+  point (@remove_edges G (edge_set IO)) g_in g_out ≈ top2.
+Admitted.
+
+Lemma lens_io_set (G : graph2) : 
+  lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
+Admitted.
+
+Lemma graph_of_big_tmI (T : eqType) (r : seq T) F : 
+  graph_of_term (\big[tmI/tmT]_(x <- r) F x) ≈
+  \big[par2/top2]_(x <- r) graph_of_term (F x).
+Proof. elim: r => [|i r IH]; by rewrite ?big_nil ?big_cons /= ?IH. Qed.
+
+Lemma big_enum_in (I : finType) (R : Type) (A : {set I}) (F : I -> R) op idx :
+  \big[op/idx]_(x <- enum A) F x = \big[op/idx]_(x in A) F x.
+Proof. by rewrite -filter_index_enum big_filter. Qed.
+
+Lemma graph_of_big_tmIs (T : finType) (r : {set T}) F : 
+  graph_of_term (\big[tmI/tmT]_(x in r) F x) ≈
+  \big[par2/top2]_(x in r) graph_of_term (F x).
+Proof. by rewrite -!big_enum_in graph_of_big_tmI. Qed.
+
+
+Lemma big_iso_congr op (con : iso2_congruence op) (T : eqType) (s : seq T) idx F G : 
+  (forall x, x \in s -> F x ≈ G x) ->
+  \big[op/idx]_(x <- s) F x ≈ \big[op/idx]_(x <- s) G x.
+Proof. 
+  move => A. elim: s A => [_|i s IH A]; first by rewrite !big_nil. 
+  rewrite !big_cons. apply: con. 
+  - by rewrite A // mem_head.
+  - apply: IH. 
+Admitted.
+
+Definition big_par2_congr' := big_iso_congr par2_congr.
+
+Lemma edges2_graph_of (G : graph2) : 
+  g_in != g_out :> G ->
+  edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in]
+         ≈ graph_of_term (\big[tmI/tmT]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
+Proof.
+  intros C1.
+  rewrite edges2_big // big_map.
+  rewrite graph_of_big_tmIs //. rewrite -big_enum_in.
+  set s := enum _. 
+  apply: big_par2_congr'.
+  move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges g_in _). 
+Qed.
+  
   
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
@@ -910,17 +960,15 @@ Proof.
         rewrite -IH //; rewrite -EC in HC. exact: measure_lens. exact: CK4F_lens.
       * rewrite EC.
         case: (boolP (_ == set0)) => C4 /=.
-        -- rewrite {1}[G]split_par_edges // -big_par2_map.
-           ++ rewrite /tmEs -map_comp. apply: big_par2_congr.
-              move => e _. rewrite /tm_ /sym2_. by case: ifP.
-           ++ apply: contraNN C3. rewrite /tmEs /nilp size_map. admit.
-        -- rewrite {1}[G]split_par_edges_rest //.
-           rewrite graph_of_bigIs_nested /=. 
-           apply: big_par2_iso_cps.
-           ++ rewrite -IH //. 
+        -- rewrite {1}[G]split_io_edges -{2}lens_io_set //.
+           rewrite componentless_top // par2_idR lens_io_set //.
+           exact: edges2_graph_of.
+        -- rewrite {1}[G]split_io_edges /=. 
+           apply: par2_congr. 
+           ++ rewrite lens_io_set //. exact: edges2_graph_of.
+           ++ rewrite -IH lens_io_set // -lens_io_set //. 
               exact: measure_remove_edges.
-              rewrite -EC in C4. exact: CK4F_remove_edges. 
-           ++ move => e. rewrite /tm_ /sym2_. by case: ifP.
+              rewrite -EC in C4. exact: CK4F_remove_edges.
     + (* petal/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [A|/negbT A].
