@@ -78,33 +78,6 @@ Lemma hom_of_surj (G : graph) (e : equiv_rel G) :
   surjective2 (hom_of e).
 Proof. split; [exact: emb_surj|exact: id_surj]. Qed.
 
-(** Equivalence Closure *)
-
-Section Equivalence.
-
-Variables (T : finType) (e : rel T).
-
-Definition sc (T : Type) (e : rel T) := [rel x y | e x y || e y x].
-
-Definition equiv_of  := connect (sc e).
-
-Definition equiv_of_refl : reflexive equiv_of.
-Proof. exact: connect0. Qed.
-
-Lemma equiv_of_sym : symmetric equiv_of.
-Proof. apply: connect_symI => x y /=. by rewrite orbC. Qed.
-  
-Definition equiv_of_trans : transitive equiv_of.
-Proof. exact: connect_trans. Qed.
-
-Canonical equiv_of_equivalence :=
-  EquivRel equiv_of equiv_of_refl equiv_of_sym equiv_of_trans.
-
-Lemma sub_equiv_of : subrel e equiv_of.
-Proof. move => x y He. apply: connect1 => /=. by rewrite He. Qed.
-
-End Equivalence.
-
 (** ** Subgraphs and Induced Subgraphs *)
 
 Definition subgraph (H G : graph) := 
@@ -259,17 +232,6 @@ Qed.
 Lemma union_congr (G1 G2 G1' G2' : graph) : 
   iso G1 G1' -> iso G2 G2' -> iso (union G1 G2) (union G1' G2').
 Admitted. (* check for usage *)
-
-
-Lemma lift_equiv (T1 T2 : finType) (E1 : rel T1) (E2 : rel T2) h :
-  bijective h -> (forall x y, E1 x y = E2 (h x) (h y)) ->
-  (forall x y, equiv_of E1 x y = equiv_of E2 (h x) (h y)).
-Proof.
-  move=> [hinv] hK hinvK hE x y. rewrite /equiv_of. apply/idP/idP.
-  - by apply: connect_img => {x y} x y /=; rewrite !hE.
-  - rewrite -{2}(hK x) -{2}(hK y).
-    by apply: connect_img => {x y} x y /=; rewrite !hE !hinvK.
-Qed.
 
 (* requires point *)
 Lemma merge_congr (G1 G2 : graph) (E1 : rel G1) (E2 : rel G2) 

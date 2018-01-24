@@ -307,10 +307,6 @@ Proof.
   exact: igraph_K4F K4F_G.
 Qed.
 
-Lemma sc_eq T T' (e : rel T) (e' : rel T') f x y : 
-  (forall x y, e' (f x)  (f y) = e x y) -> sc e' (f x) (f y) = sc e x y.
-Proof. move => H. by rewrite /sc /= !H. Qed.
-
 Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
   ((val u : skeleton G) -- val v) = ((u : skeleton (induced V)) -- v).
 Proof.

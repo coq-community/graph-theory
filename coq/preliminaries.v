@@ -220,6 +220,11 @@ Proof. done. Qed.
 Fact rel0_sym {T:Type} : @symmetric T rel0.
 Proof. done. Qed.
 
+Lemma relU_sym' (T : Type) (e e' : rel T) :
+  symmetric e -> symmetric e' -> symmetric (relU e e').
+Proof. move => sym_e sym_e' x y /=. by rewrite sym_e sym_e'. Qed.
+
+
 Definition surjective aT (rT:eqType) (f : aT -> rT) := forall y, exists x, f x == y.
 
 Lemma id_surj (T : eqType) : surjective (@id T).
@@ -476,6 +481,50 @@ Lemma connect_img (aT rT : finType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a 
 Proof. 
   move => A. case/connectP => p p1 p2. apply/connectP. 
   exists (map f p); by [exact: project_path p1|rewrite last_map -p2].
+Qed.
+
+Definition sc (T : Type) (e : rel T) := [rel x y | e x y || e y x].
+
+Lemma sc_sym (T : Type) (e : rel T) : symmetric (sc e).
+Proof. move => x y /=. by rewrite orbC. Qed.
+
+Lemma sc_eq T T' (e : rel T) (e' : rel T') f x y :
+  (forall x y, e' (f x) (f y) = e x y) -> sc e' (f x) (f y) = sc e x y.
+Proof. move => H. by rewrite /sc /= !H. Qed.
+
+(** Equivalence Closure *)
+
+Section Equivalence.
+
+Variables (T : finType) (e : rel T).
+
+Definition equiv_of := connect (sc e).
+
+Definition equiv_of_refl : reflexive equiv_of.
+Proof. exact: connect0. Qed.
+
+Lemma equiv_of_sym : symmetric equiv_of.
+Proof. apply: connect_symI => x y /=. by rewrite orbC. Qed.
+
+Definition equiv_of_trans : transitive equiv_of.
+Proof. exact: connect_trans. Qed.
+
+Canonical equiv_of_equivalence :=
+  EquivRel equiv_of equiv_of_refl equiv_of_sym equiv_of_trans.
+
+Lemma sub_equiv_of : subrel e equiv_of.
+Proof. move => x y He. apply: connect1 => /=. by rewrite He. Qed.
+
+End Equivalence.
+
+Lemma lift_equiv (T1 T2 : finType) (E1 : rel T1) (E2 : rel T2) h :
+  bijective h -> (forall x y, E1 x y = E2 (h x) (h y)) ->
+  (forall x y, equiv_of E1 x y = equiv_of E2 (h x) (h y)).
+Proof.
+  move=> [hinv] hK hinvK hE x y. rewrite /equiv_of. apply/idP/idP.
+  - by apply: connect_img => {x y} x y /=; rewrite !hE.
+  - rewrite -{2}(hK x) -{2}(hK y).
+    by apply: connect_img => {x y} x y /=; rewrite !hE !hinvK.
 Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj.

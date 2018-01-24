@@ -47,13 +47,6 @@ Qed.
 Definition ssk_rel (G : graph2) := 
   relU (sk_rel G) (sc [rel x y | [&& x != y, x == g_in & y == g_out]]).
 
-Lemma relU_sym' (T : Type) (e e' : rel T) :
-  symmetric e -> symmetric e' -> symmetric (relU e e').
-Proof. move => sym_e sym_e' x y /=. by rewrite sym_e sym_e'. Qed.
-
-Lemma sc_sym (T : Type) (e : rel T) : symmetric (sc e).
-Proof. move => x y /=. by rewrite orbC. Qed.
-
 Definition add_edge_rel (G:sgraph) (i o : G) := 
   relU (@sedge G) (sc [rel x y | [&& x != y, x == i & y == o]]).
 
