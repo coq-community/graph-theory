@@ -825,18 +825,15 @@ Admitted.
 
 
 Lemma edges2_graph_of (G : graph2) : 
-  g_in != g_out :> G ->
   edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in] ≈ 
   graph_of_term (\big[tmI/tmT]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
 Proof.
-  intros C1.
   rewrite edges2_big // big_map.
   rewrite graph_of_big_tmIs //. rewrite -big_enum_in.
   set s := enum _. 
   apply: big_par2_congr'.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges g_in _). 
 Qed.
-  
   
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
