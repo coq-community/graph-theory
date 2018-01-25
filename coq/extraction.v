@@ -234,8 +234,9 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
   then (* input equals output *)
     let E := @edge_set G IO in
     if E == set0 then
-      let P := @components G [set~ g_in] in
-      \big[tmS/tm1]_(C in P) tmD (term_of (redirect C))
+      if [pick C in @components G [set~ g_in]] is Some C then
+        tmD (term_of (redirect C)) :||: term_of (induced2 (~: C))
+      else tm1
     else (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||:
          term_of (point (remove_edges E) g_in g_out)
   else (* distinct input and output *)
@@ -359,6 +360,23 @@ Proof.
     apply: induced_K4_free. apply CK4F_G.
 Qed.
 
+Lemma CK4F_induced2 (G : graph2) (V : {set G}) :
+    @connected G V -> CK4F G -> CK4F (induced2 V).
+Proof.
+  move=> V_conn G_CK4F. rewrite /induced2.
+  case: {-}_ / idP => // i_V. case: {-}_ / idP => // o_V.
+  split; first exact: connected_induced.
+  case: G_CK4F => _. apply: subgraph_K4_free.
+  exists val; first exact: val_inj.
+  move=> x y xy. right. move: xy. rewrite /= -!(inj_eq val_inj) /=.
+  case/or3P=> [xy|->|->] //. apply/orP. left.
+  have /negbT : x == y = false := @sg_edgeNeq (induced V) x y xy.
+  pattern x, y. revert x y xy.
+  apply skelP; first by move=> x y xy; rewrite eq_sym sk_rel_sym.
+  move=> e. rewrite /sk_rel/= -!(inj_eq val_inj)/= => -> /=.
+  apply/orP. left. apply/'exists_andP. by exists (sval e).
+Qed.
+
 
 Lemma rec_petal (G : graph2) (x : G) : 
   CK4F G -> x \in @CP (skeleton G) IO -> g_in != g_out :> G ->
@@ -404,6 +422,27 @@ Proof.
     + apply: Efg; by [apply: cp_pairs_CK4G|apply: cp_pairs_measure].
     + move/cp_pairs_edge : Hxy => /(_ G_conn) [px] [py] _. 
       by apply: Efg; apply rec_petal.
+Qed.
+
+Lemma CK4F_remove_component (G : graph2) (C : {set G}) :
+  g_in == g_out :> G -> @edge_set G IO == set0 -> C \in @components G [set~ g_in] ->
+  CK4F G -> CK4F (induced2 (~: C)).
+Proof.
+  move=> Eio _ C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F).
+Admitted.
+
+Lemma measure_remove_component (G : graph2) (C : {set G}) :
+  g_in == g_out :> G -> C \in @components G [set~ g_in] ->
+  CK4F G -> measure (induced2 (~: C)) < measure G.
+Proof.
+  move=> Eio C_comp [G_conn _].
+  case/and3P: (@partition_components G [set~ g_in]) => /eqP compU _ compN0.
+  have /set0Pn[x x_C] : C != set0 by apply: contraTneq C_comp =>->.
+  have {x_C} : x \notin ~: C by rewrite inE negbK.
+  have : (g_in : G) \notin [set~ g_in] by rewrite !inE negbK.
+  rewrite -compU. move/bigcupP/(_ (ex_intro2 _ _ C C_comp _))=> /negP iNC.
+  have {iNC} [iNC oNC] : g_in \in ~: C /\ g_out \in ~: C by rewrite -(eqP Eio) !inE.
+  rewrite induced2_induced. exact: measure_node.
 Qed.
 
 Lemma CK4F_redirect (G : graph2) C : 
@@ -574,7 +613,9 @@ Proof.
   apply: Fix_eq => // {G} f g G CK4F_G Efg. rewrite /term_of_rec. 
   case: (boolP (@g_in G == g_out)) => Hio.
   - case (boolP (@edge_set G IO == set0)) => Es.
-    + apply: eq_big => // C HC. rewrite Efg //.
+    + case: pickP => //= C HC. rewrite !Efg //.
+      * exact: CK4F_remove_component.
+      * exact: measure_remove_component.
       * exact: CK4F_redirect.
       * exact: measure_redirect.
     + congr tmI. rewrite Efg //.
@@ -632,14 +673,14 @@ Proof.
     move/(_ z). by rewrite Z1 B. 
 Qed.
 
+Lemma componentless_one (G : graph2) :
+  g_in == g_out :> G -> @edge_set G IO == set0 ->
+  @components G [set~ g_in] == set0 -> G ≈ one2.
+Admitted.
+
 Lemma split_component (G : graph2) (C : {set G}) :
   @edge_set G IO == set0 -> C \in @components G (~: IO) ->
   G ≈ par2 (component C) (induced2 (~: C)).
-Admitted.
-
-Lemma split_seq_components (G : graph2) :
-    g_in == g_out :> G -> @edge_set G IO == set0 ->
-    G ≈ big_seq2 [seq component C | C in @components G [set~ g_in]].
 Admitted.
 
 Lemma split_cp (G : graph2) (z : skeleton G) : 
@@ -647,11 +688,6 @@ Lemma split_cp (G : graph2) (z : skeleton G) :
   edge_set (@petal G IO g_in) == set0 -> 
   edge_set (@petal G IO g_out) == set0 ->
   G ≈ seq2 (@igraph G g_in z) (seq2 (@pgraph G IO z) (@igraph G z g_out)).
-Admitted.
-
-Lemma split_par_components (G : graph2): 
-  CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
-  G ≈ big_par2 [seq component C | C in @components G (~: IO)].
 Admitted.
 
 Definition sym2_ (G : graph2) (e : edge G) :=
@@ -817,7 +853,7 @@ Proof.
 Admitted.
 
 Lemma componentless_top (G : graph2) : 
-  @components G (~: IO) == set0 -> 
+  g_in != g_out :> G -> @components G (~: IO) == set0 -> 
   point (@remove_edges G (edge_set IO)) g_in g_out ≈ top2.
 Admitted.
 
@@ -844,11 +880,17 @@ Proof.
   case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)
     case: ifP => [C2|/negbT C2] /=.
-    + have G_conn : connected [set: skeleton G] by case: CK4F_G.
-      rewrite -big_seq2_maps {1}[G]split_seq_components //.
-      apply: big_seq2_congrs => C HC. rewrite /= -IH ?comp_dom2_redirect //.
-      * exact: measure_redirect.
-      * exact: CK4F_redirect.
+    + case: pickP => [C HC|/(_ _) HC] /=.
+      * rewrite {1}[G](@split_component _ C) // -?(eqP C1) ?setUid //.
+        have G_conn : connected [set: skeleton G] by case: CK4F_G.
+        apply: par2_congr; rewrite -IH ?comp_dom2_redirect //.
+        -- exact: measure_redirect.
+        -- exact: CK4F_redirect.
+        -- exact: measure_remove_component.
+        -- exact: CK4F_remove_component.
+      * have : @components G [set~ g_in] == set0.
+        { rewrite -subset0. apply/subsetP => C. by rewrite HC. }
+        exact: componentless_one.
     + rewrite {1}[G]split_io_edges. set E := edges _ _ :|: edges _ _.
       have Eio : E = edge_set IO. by rewrite /E (eqP C1) !setUid edge_set1.
       rewrite -{1}Eio {2}Eio. apply: par2_congr; first exact: edges2_graph_of.
