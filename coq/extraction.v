@@ -771,6 +771,11 @@ Qed.
 Definition strip (G : graph2) (e : edge G) := 
   if e \in edges g_in g_out then (label e,true) else (label e,false).
 
+Lemma edges_st (G : graph2) (x y : G) (e : edge G) : 
+  e \in edges x y -> (source e = x) * (target e = y).
+Proof. by rewrite inE => /andP[/eqP -> /eqP ->]. Qed.
+
+
 Lemma split_io_edges (G : graph2) : 
   let E : {set edge G} := edges g_in g_out :|: edges g_out g_in in
   G ≈ par2 (edges2 [seq strip e | e in E]) (point (remove_edges E) g_in g_out).
@@ -780,30 +785,70 @@ Proof.
   pose S := [seq strip e | e in E].
   pose n := size S.
   (* have e0 : edge (edges2 [seq strip e | e in E]). admit. *)
-  have h_proof e : e \in E -> index e (enum E) < n. admit.
   pose f (x : G) : G' := \pi (inr x).
   pose g (x : G') : G := 
     match repr x with 
     | inl x => if x then g_out else g_in
     | inr x => x
     end.
+  have h_proof e : e \in E -> index e (enum E) < n. 
+  { move => A. by rewrite /n /S size_map index_mem mem_enum. }
   pose h (e : edge G) : edge G' :=
     match boolP (e \in E) with 
     | AltTrue p => inl (Ordinal (h_proof e p))
     | AltFalse p => inr (Sub e p)
     end.
   exists (f,h); repeat split. 
-  - move => e /=. rewrite /h. case: {-}_ / boolP => p //=.
-    admit.
   - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
-    admit.
+    symmetry. apply/eqmodP => /=. move: (h_proof _ _) => He. 
+    rewrite tnth_map_in ?mem_enum //. 
+    move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
+    + apply: par2_eqv_ii => //. by rewrite (edges_st A).
+    + apply: par2_eqv_oo => //. by rewrite (edges_st B).
   - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
-    admit.
-  - rewrite /= /f. admit.
-  - admit.
-  - admit.
-  - admit.
-Admitted.
+    symmetry. apply/eqmodP => /=. move: (h_proof _ _) => He. 
+    rewrite tnth_map_in ?mem_enum //. 
+    move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
+    + apply: par2_eqv_oo => //. by rewrite (edges_st A).
+    + apply: par2_eqv_ii => //. by rewrite (edges_st B).
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
+    rewrite tnth_map_in ?mem_enum // /strip. by case: ifP.
+  - rewrite /= /f. symmetry. apply/eqmodP => /=. 
+    exact: par2_eqv_ii.
+  - rewrite /= /f. symmetry. apply/eqmodP => /=. 
+    exact: par2_eqv_oo.
+  - apply: (Bijective (g := g)) => x /=.
+    + rewrite /f /g. case: piP => /= [[y|y]] /esym Hy.
+      * move/(@par2_LR (edges2 [seq strip e | e in E]) 
+                       (point (remove_edges E) g_in g_out)) : Hy.
+        by case => [][-> ->]. 
+      * exact: (@par2_injR (edges2 [seq strip e | e in E]) 
+                           (point (remove_edges E) g_in g_out)).
+    + rewrite /f /g. case def_y : (repr x) => [y|y].
+      * rewrite -[x]reprK def_y. symmetry. apply/eqmodP => /=. 
+        destruct y => //=; solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
+      * by rewrite -def_y reprK. 
+  - rewrite /=. 
+    have cast: size [seq strip e | e in E] = size (enum E).
+    { by rewrite size_map. }
+    pose h' (e : edge G') := 
+      match e with 
+      | inl i => (tnth (in_tuple (enum E)) (cast_ord cast i))
+      | inr e => val e
+      end.
+    apply: (Bijective (g := h')) => e.
+    + rewrite /h /h'. case: {-}_ / boolP => p //. 
+      by rewrite /cast_ord /tnth nth_index //= ?mem_enum.
+    + rewrite /h'. case: e => [i|e]. 
+      * rewrite /h. case: {-}_/ boolP => p //.
+        -- move: (h_proof _ _) => A. 
+           congr inl. apply: val_inj => /=. 
+           rewrite /tnth index_uniq //. exact: enum_uniq.
+        -- case: notF. by rewrite -mem_enum mem_tnth in p. 
+      * rewrite /h. case: {-}_/ boolP => p //.
+        -- case:notF. by rewrite (negbTE (valP e)) in p.
+        -- congr inr. exact: val_inj.
+Qed.
 
 Lemma remove0 (G : graph2) : 
   point (@remove_edges G set0) g_in g_out ≈ G.

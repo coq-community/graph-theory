@@ -334,6 +334,14 @@ Notation "[ 'disjoint3' A & B & C ]" :=
 
 (** *** Sequences and Paths *)
 
+Lemma tnth_map_in (T:eqType) rT (s : seq T) (f : T -> rT) e 
+  (He : index e s < size [seq f x | x <- s]) : e \in s ->
+  tnth (in_tuple [seq f x | x <- s]) (Ordinal He)  = f e.
+Proof.
+  move => in_s. rewrite /tnth /= (nth_map e) ?nth_index //. 
+  apply: leq_trans He _. by rewrite size_map.
+Qed.
+
 Lemma tnth_cons (T : Type) a (s : seq T) (i : 'I_(size s).+1) (j : 'I_(size s)) :
   j.+1 = i -> tnth (in_tuple (a :: s)) i = tnth (in_tuple s) j.
 Proof. move => E. rewrite /tnth -E /=. exact: set_nth_default. Qed.
