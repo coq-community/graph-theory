@@ -402,6 +402,22 @@ Section Quotients.
   Lemma par2_equiv_of : par2_eqv =2 equiv_of par2_eq.
   Admitted.
 
+  Lemma par2_eqv_ii x y : 
+    x = g_in :> G1 -> y = g_in :> G2 ->
+    par2_eqv (inl x) (inr y).
+  Proof.
+    move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
+      by rewrite /par2_eq !eqxx. 
+  Qed.
+  
+  Lemma par2_eqv_oo x y : 
+    x = g_out :> G1 -> y = g_out :> G2 ->
+    par2_eqv (inl x) (inr y).
+  Proof.
+    move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
+      by rewrite /par2_eq !eqxx. 
+  Qed.
+
   Definition par2 := 
     {| graph_of := merge (union G1 G2) par2_eqv ;
        g_in := \pi_{eq_quot par2_eqv} (inl g_in);
@@ -588,3 +604,5 @@ Proof.
   - move: IHu => [T] [D] [D1 D2 D3]. exists T. exists D. split => //. 
     exact: compat_dom. (* FIXME: Hidden argument *)
 Qed.
+
+

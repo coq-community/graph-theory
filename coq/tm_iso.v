@@ -79,6 +79,19 @@ Proof.
   - by rewrite subUset !sub1set !inE /eq_op/= !orbF !orbb => /andP[/eqP-> /eqP->].
 Qed.
 
+(** TODO: simplify once we have symmetry? *)
+Lemma par2_injR (G1 G2 : graph2) x y : 
+  g_in != g_out :> G1 -> 
+  inr x = inr y %[mod_eq @par2_eqv G1 G2] ->
+  x = y.
+Proof.
+  move=> iNo2 /eqmodP/=. rewrite /par2_eqv/= iNo2 /= sum_eqE.
+  case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
+  - rewrite !inE !eqEsubset ![[set inr x; inr y] \subset _]subUset !sub1set !inE.
+    rewrite /eq_op/=. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
+  - by rewrite subUset !sub1set !inE /eq_op/= !orbb => /andP[/eqP-> /eqP->].
+Qed.
+
 Lemma par2_idR G : par2 G top2 ≈ G.
 Proof 
   with try solve [by move/par2_injL => <- //
@@ -274,3 +287,26 @@ Proof.
     end.
   exists (f,h).
 Admitted.
+
+
+Lemma graph_of_big_tmI (T : eqType) (r : seq T) F : 
+  graph_of_term (\big[tmI/tmT]_(x <- r) F x) ≈
+  \big[par2/top2]_(x <- r) graph_of_term (F x).
+Proof. elim: r => [|i r IH]; by rewrite ?big_nil ?big_cons /= ?IH. Qed.
+
+Lemma graph_of_big_tmIs (T : finType) (r : {set T}) F : 
+  graph_of_term (\big[tmI/tmT]_(x in r) F x) ≈
+  \big[par2/top2]_(x in r) graph_of_term (F x).
+Proof. by rewrite -!big_enum_in graph_of_big_tmI. Qed.
+
+Lemma big_iso_congr op (con : iso2_congruence op) 
+  (T : eqType) (s : seq T) idx F G : 
+  (forall x, x \in s -> F x ≈ G x) ->
+  \big[op/idx]_(x <- s) F x ≈ \big[op/idx]_(x <- s) G x.
+Proof. 
+  move => A. 
+  elim: s A => [_|i s IH /all_cons [A B]]; first by rewrite !big_nil. 
+  rewrite !big_cons. apply: con => //. exact: IH.
+Qed.
+
+Definition big_par2_congr' := big_iso_congr par2_congr.

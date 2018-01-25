@@ -686,7 +686,6 @@ Admitted.
 
 Lemma ord_0Vp n (o : 'I_n.+1) : (o = ord0) + ({o' : 'I_n | o'.+1 = o :> nat}).
 Proof.
-  Check (unlift ord0 o).
   case: (unliftP ord0 o); last by left.
   move => o' A. right. exists o'. by rewrite A.
 Qed.
@@ -694,38 +693,7 @@ Qed.
 Local Open Scope quotient_scope.
 Local Notation "\pi x" := (\pi_(_) x) (at level 4).
 
-Lemma par2_eqv_ii (G1 G2 : graph2) x y : 
-  x = g_in :> G1 -> y = g_in :> G2 ->
-  @par2_eqv G1 G2 (inl x) (inr y).
-Proof.
-  move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
-  by rewrite /par2_eq !eqxx. 
-Qed.
 
-Lemma par2_eqv_oo (G1 G2 : graph2) x y : 
-  x = g_out :> G1 -> y = g_out :> G2 ->
-  @par2_eqv G1 G2 (inl x) (inr y).
-Proof.
-  move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
-  by rewrite /par2_eq !eqxx. 
-Qed.
-
-Lemma tnth_cons (T : Type) a (s : seq T) (i : 'I_(size s).+1) (j : 'I_(size s)) :
-  j.+1 = i -> tnth (in_tuple (a :: s)) i = tnth (in_tuple s) j.
-Proof. move => E. rewrite /tnth -E /=. exact: set_nth_default. Qed.
-Arguments tnth_cons [T a s i j].
-
-Lemma par2_injR (G1 G2 : graph2) x y : 
-  g_in != g_out :> G1 -> 
-  inr x = inr y %[mod_eq @par2_eqv G1 G2] ->
-  x = y.
-Proof.
-  move=> iNo2 /eqmodP/=. rewrite /par2_eqv/= iNo2 /= sum_eqE.
-  case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
-  - rewrite !inE !eqEsubset ![[set inr x; inr y] \subset _]subUset !sub1set !inE.
-    rewrite /eq_op/=. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
-  - by rewrite subUset !sub1set !inE /eq_op/= !orbb => /andP[/eqP-> /eqP->].
-Qed.
 
 Lemma edges2_cons (a : sym) (b : bool) (Ar : seq (sym * bool)) : 
   edges2 ((a, b) :: Ar) ≈ par2 (sym2b a b) (edges2 Ar).
@@ -811,7 +779,12 @@ Proof.
   pose n := size S.
   (* have e0 : edge (edges2 [seq strip e | e in E]). admit. *)
   have h_proof e : e \in E -> index e (enum E) < n. admit.
-  pose f (x : G) : G' := \pi_(_) (inr x).
+  pose f (x : G) : G' := \pi (inr x).
+  pose g (x : G') : G := 
+    match repr x with 
+    | inl x => if x then g_out else g_in
+    | inr x => x
+    end.
   pose h (e : edge G) : edge G' :=
     match boolP (e \in E) with 
     | AltTrue p => inl (Ordinal (h_proof e p))
@@ -830,49 +803,8 @@ Proof.
   - admit.
 Admitted.
 
-Lemma split_par_edges_rest (G : graph2) :
-  g_in != g_out :> G -> 
-  let G' := point (remove_edges (@edge_set G IO)) g_in g_out in 
-  G ≈ \big[par2/G']_(e in @edge_set G IO) sym2_ e .
-Proof.
-Admitted.
-
 Lemma remove0 (G : graph2) : 
   point (@remove_edges G set0) g_in g_out ≈ G.
-Admitted.
-
-Lemma split_par_edges (G : graph2) :
-  g_in != g_out :> G -> 
-  @components G (~: IO) == set0 -> 
-  G ≈ big_par2 [seq sym2_ e | e in @edge_set G IO].
-Proof.
-  move => Eio com0. rewrite {1}[G]split_par_edges_rest //. 
-  rewrite /big_par2. 
-  (* TODO: proper inductive proof *)
-  case: (set_0Vmem (@edge_set G IO)) => [H|].
-  - rewrite H. 
-    rewrite big_pred0; last by move => x; rewrite ?inE.
-    rewrite /image_mem enum_set0 big_nil.
-    rewrite remove0. apply: split_par_top => //. exact/eqP.
-  - admit.
-Admitted.
-
-Lemma graph_of_bigI_nested (T : finType) (r : seq T) F u : 
-  (graph_of_term (\big[tmI/u]_(e <- r) F e)) = 
-  \big[par2/graph_of_term u]_(e <- r) graph_of_term (F e).
-Proof. 
-  elim: r => [|a r IH]; first by rewrite !big_nil.
-  by rewrite !big_cons /= IH.
-Qed.
-
-Lemma graph_of_bigIs_nested (T : finType) (r : {set T}) F u : 
-  (graph_of_term (\big[tmI/u]_(e in r) F e)) = 
-  \big[par2/graph_of_term u]_(e in r) graph_of_term (F e).
-Admitted.
-
-Lemma big_par2_iso_cps (G G' : graph2) (T : finType) (A : {set T}) F F' : 
-  G ≈ G' -> (forall e, e \in A -> F e ≈ F' e) -> 
-  \big[par2/G]_(e in A) F e ≈ \big[par2/G']_(e in A) F' e.
 Admitted.
 
 Lemma split_pip (G : graph2) : 
@@ -891,37 +823,11 @@ Lemma lens_io_set (G : graph2) :
   lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
 Admitted.
 
-Lemma graph_of_big_tmI (T : eqType) (r : seq T) F : 
-  graph_of_term (\big[tmI/tmT]_(x <- r) F x) ≈
-  \big[par2/top2]_(x <- r) graph_of_term (F x).
-Proof. elim: r => [|i r IH]; by rewrite ?big_nil ?big_cons /= ?IH. Qed.
-
-Lemma big_enum_in (I : finType) (R : Type) (A : {set I}) (F : I -> R) op idx :
-  \big[op/idx]_(x <- enum A) F x = \big[op/idx]_(x in A) F x.
-Proof. by rewrite -filter_index_enum big_filter. Qed.
-
-Lemma graph_of_big_tmIs (T : finType) (r : {set T}) F : 
-  graph_of_term (\big[tmI/tmT]_(x in r) F x) ≈
-  \big[par2/top2]_(x in r) graph_of_term (F x).
-Proof. by rewrite -!big_enum_in graph_of_big_tmI. Qed.
-
-
-Lemma big_iso_congr op (con : iso2_congruence op) (T : eqType) (s : seq T) idx F G : 
-  (forall x, x \in s -> F x ≈ G x) ->
-  \big[op/idx]_(x <- s) F x ≈ \big[op/idx]_(x <- s) G x.
-Proof. 
-  move => A. elim: s A => [_|i s IH A]; first by rewrite !big_nil. 
-  rewrite !big_cons. apply: con. 
-  - by rewrite A // mem_head.
-  - apply: IH. 
-Admitted.
-
-Definition big_par2_congr' := big_iso_congr par2_congr.
 
 Lemma edges2_graph_of (G : graph2) : 
   g_in != g_out :> G ->
-  edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in]
-         ≈ graph_of_term (\big[tmI/tmT]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
+  edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in] ≈ 
+  graph_of_term (\big[tmI/tmT]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
 Proof.
   intros C1.
   rewrite edges2_big // big_map.
