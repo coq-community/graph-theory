@@ -432,16 +432,18 @@ Proof.
 Admitted.
 
 Lemma measure_remove_component (G : graph2) (C : {set G}) :
-  g_in == g_out :> G -> C \in @components G [set~ g_in] ->
-  CK4F G -> measure (induced2 (~: C)) < measure G.
+  CK4F G -> C \in @components G (~: IO) -> measure (induced2 (~: C)) < measure G.
 Proof.
-  move=> Eio C_comp [G_conn _].
-  case/and3P: (@partition_components G [set~ g_in]) => /eqP compU _ compN0.
+  move=> [G_conn _] C_comp.
+  case/and3P: (@partition_components G (~: IO)) => /eqP compU _ compN0.
   have /set0Pn[x x_C] : C != set0 by apply: contraTneq C_comp =>->.
   have {x_C} : x \notin ~: C by rewrite inE negbK.
-  have : (g_in : G) \notin [set~ g_in] by rewrite !inE negbK.
-  rewrite -compU. move/bigcupP/(_ (ex_intro2 _ _ C C_comp _))=> /negP iNC.
-  have {iNC} [iNC oNC] : g_in \in ~: C /\ g_out \in ~: C by rewrite -(eqP Eio) !inE.
+  have : (g_in  : G) \notin ~: IO by rewrite !inE negbK eqxx.
+  have : (g_out : G) \notin ~: IO by rewrite !inE negbK eqxx.
+  rewrite -compU.
+  move/bigcupP/(_ (ex_intro2 _ _ C C_comp _))=> /negP oNC.
+  move/bigcupP/(_ (ex_intro2 _ _ C C_comp _))=> /negP iNC.
+  have {iNC oNC} [iNC oNC] : g_in \in ~: C /\ g_out \in ~: C by rewrite !inE.
   rewrite induced2_induced. exact: measure_node.
 Qed.
 
@@ -602,10 +604,12 @@ Lemma CK4F_lens_rest (G : graph2) C :
 Admitted.
 
 Lemma measure_lens_rest (G : graph2) C : 
-  CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
-  C \in @components G (@sinterval G g_in g_out) -> 
+  CK4F G -> lens G -> C \in @components G (@sinterval G g_in g_out) ->
   measure (induced2 (~: C)) < measure G.
-Admitted.
+Proof.
+  move=> G_CK4F G_lens. rewrite lens_sinterval //; last by case: G_CK4F.
+  exact: measure_remove_component.
+Qed.
 
 Lemma term_of_eq (G : graph2) : 
   CK4F G -> term_of G = term_of_rec term_of G.
@@ -615,7 +619,8 @@ Proof.
   - case (boolP (@edge_set G IO == set0)) => Es.
     + case: pickP => //= C HC. rewrite !Efg //.
       * exact: CK4F_remove_component.
-      * exact: measure_remove_component.
+      * move: HC. rewrite -[set1 g_in]setUid {2}(eqP Hio).
+        exact: measure_remove_component.
       * exact: CK4F_redirect.
       * exact: measure_redirect.
     + congr tmI. rewrite Efg //.
@@ -886,7 +891,8 @@ Proof.
         apply: par2_congr; rewrite -IH ?comp_dom2_redirect //.
         -- exact: measure_redirect.
         -- exact: CK4F_redirect.
-        -- exact: measure_remove_component.
+        -- move: HC. rewrite -[set1 g_in]setUid {2}(eqP C1).
+           exact: measure_remove_component.
         -- exact: CK4F_remove_component.
       * have : @components G [set~ g_in] == set0.
         { rewrite -subset0. apply/subsetP => C. by rewrite HC. }
