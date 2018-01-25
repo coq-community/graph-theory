@@ -110,10 +110,10 @@ Qed.
 
 Lemma lens_sinterval (G : graph2) :
   connected [set: skeleton G] -> lens G ->
-  (@sinterval G g_in g_out = [set: G] :\: IO).
+  (@sinterval G g_in g_out = ~: IO).
 Proof.
   move=> G_conn /and3P[] /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
-  rewrite !inE eqxx =>/(_ isT) petal_i.
+  rewrite !inE -setTD eqxx =>/(_ isT) petal_i.
   move=> /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
   rewrite !inE eqxx orbT =>/(_ isT) petal_o /andP[iNo _].
   case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
@@ -243,8 +243,12 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
     then (* no checkpoints and no petals on i and o *)
       let P := components (@sinterval (skeleton G) g_in g_out) in
       let E := @edge_set G IO in
-      if E == set0 then big_tmI [seq term_of (component C) | C in P]
-      else if P == set0 then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
+      if E == set0 
+      then 
+        if [pick C in P] isn't Some C then tmT 
+        else term_of (component C) :||: term_of (induced2 (~: C))
+      else if P == set0 
+           then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
            else  (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||: 
                  term_of (point (remove_edges E) g_in g_out) 
     else (* at least one nontrivial petal or checkpoint *)
@@ -553,6 +557,17 @@ Lemma CK4F_remove_loops (G : graph2) :
   CK4F (point (remove_edges (@edge_set G IO)) g_in g_out).
 Admitted.
 
+Lemma CK4F_lens_rest (G : graph2) C : 
+  CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
+  C \in @components G (@sinterval G g_in g_out) -> CK4F (induced2 (~: C)).
+Admitted.
+
+Lemma measure_lens_rest (G : graph2) C : 
+  CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
+  C \in @components G (@sinterval G g_in g_out) -> 
+  measure (induced2 (~: C)) < measure G.
+Admitted.
+
 Lemma term_of_eq (G : graph2) : 
   CK4F G -> term_of G = term_of_rec term_of G.
 Proof.
@@ -567,10 +582,9 @@ Proof.
       * exact: measure_remove_edges.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
     + case: (boolP (_ == _)) => Es.
-      * congr big_tmI. apply eq_in_map => C. 
-      rewrite mem_enum => HC. apply: Efg.
-        -- exact: CK4F_lens.
-        -- exact: measure_lens. 
+      * case: pickP => [C HC|//]. congr tmI.
+        -- apply: Efg. exact: CK4F_lens. exact: measure_lens.
+        -- apply: Efg. exact: CK4F_lens_rest. exact: measure_lens_rest.
       * case: (boolP (_ == _)) => Ps //. 
         rewrite Efg //. 
         -- exact: CK4F_remove_edges. 
@@ -619,7 +633,7 @@ Proof.
 Qed.
 
 Lemma split_component (G : graph2) (C : {set G}) :
-  @edge_set G IO == set0 -> C \in @components G ([set: G] :\: IO) ->
+  @edge_set G IO == set0 -> C \in @components G (~: IO) ->
   G ≈ par2 (component C) (induced2 (~: C)).
 Admitted.
 
@@ -811,7 +825,6 @@ Lemma lens_io_set (G : graph2) :
   lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
 Admitted.
 
-
 Lemma edges2_graph_of (G : graph2) : 
   edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in] ≈ 
   graph_of_term (\big[tmI/tmT]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
@@ -822,7 +835,7 @@ Proof.
   apply: big_par2_congr'.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges g_in _). 
 Qed.
-  
+
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
 Proof.
@@ -842,13 +855,18 @@ Proof.
       apply: IH; [exact: measure_remove_edges | exact: CK4F_remove_loops].
   - case: ifP => [C2|/negbT C2].
     + (* parallel split *)
-      have EC: @sinterval G g_in g_out = ~: IO. { admit. }
+      have EC := lens_sinterval (proj1 CK4F_G) C2.
       case: (boolP (_ == set0)) => C3.
-      * rewrite -big_par2_map; last first.
-        { admit. }
-        rewrite -map_comp {1}[G]split_par_components // EC. 
-        apply: big_par2_congr => C HC. rewrite mem_enum in HC.
-        rewrite -IH //; rewrite -EC in HC. exact: measure_lens. exact: CK4F_lens.
+      * case: pickP => [C HC|]. 
+        -- rewrite EC in HC. rewrite {1}[G](split_component _ HC) //=.  
+           apply: par2_congr. 
+           ++ rewrite -IH //; rewrite -EC in HC.
+              exact: measure_lens. exact: CK4F_lens.
+           ++ rewrite -IH //; rewrite -EC in HC. 
+              exact: measure_lens_rest. exact: CK4F_lens_rest.
+        -- have := split_K4_nontrivial C1 C2 _ CK4F_G. 
+           rewrite edge_set_adj // => /(_ isT)/ltnW. 
+           case/card_gt0P => C HC /(_ C). by rewrite HC.
       * rewrite EC.
         case: (boolP (_ == set0)) => C4 /=.
         -- rewrite {1}[G]split_io_edges -{2}lens_io_set //.

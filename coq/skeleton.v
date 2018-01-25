@@ -150,6 +150,15 @@ Proof.
     by apply/existsP; exists e; rewrite inE.
 Qed.
 
+(* TODO: simplify edge_set, edges, adjacent, ... *)
+Lemma edge_set_adj (G : graph2) : 
+  @edge_set G [set g_in; g_out] == set0 -> ~~ @adjacent G g_in g_out. 
+Proof. 
+  apply: contraTN => /orP[] /existsP [e He]. 
+  all: rewrite !inE in He; case/andP: He => He1 He2. 
+  all: apply/set0Pn; exists e; by rewrite !inE ?He1 ?He2. 
+Qed.
+
 Lemma edge_set1 (G : graph) (x : G) : edge_set [set x] = edges x x.
 Proof. apply/setP=> e. by rewrite !inE. Qed.
 
