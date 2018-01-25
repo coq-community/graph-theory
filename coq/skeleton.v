@@ -150,6 +150,9 @@ Proof.
     by apply/existsP; exists e; rewrite inE.
 Qed.
 
+Lemma edge_set1 (G : graph) (x : G) : edge_set [set x] = edges x x.
+Proof. apply/setP=> e. by rewrite !inE. Qed.
+
 Lemma sskeleton_subgraph_for (G : graph2) (V : {set G}) (E : {set edge G})
   (con : consistent V E) (i o : sig [eta mem V]) : val i = g_in -> val o = g_out ->
   sgraph.subgraph (sskeleton (point (subgraph_for con) i o)) (sskeleton G).
