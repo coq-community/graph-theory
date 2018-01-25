@@ -618,6 +618,11 @@ Proof.
     move/(_ z). by rewrite Z1 B. 
 Qed.
 
+Lemma split_component (G : graph2) (C : {set G}) :
+  @edge_set G IO == set0 -> C \in @components G ([set: G] :\: IO) ->
+  G ≈ par2 (component C) (induced ~: C).
+Admitted.
+
 Lemma split_seq_components (G : graph2) :
     g_in == g_out :> G -> @edge_set G IO == set0 ->
     G ≈ big_seq2 [seq component C | C in @components G [set~ g_in]].
