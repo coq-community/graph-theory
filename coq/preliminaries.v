@@ -25,6 +25,14 @@ Ltac contrab :=
 
 (** *** Generic Trivialities *)
 
+Lemma all_cons (T : eqType) (P : T -> Prop) a (s : seq T) : 
+  (forall x, x \in a :: s -> P x) <-> (P a) /\ (forall x, x \in s -> P x).
+Proof.
+  split => [A|[A B]]. 
+  - by split => [|b Hb]; apply: A; rewrite !inE ?eqxx ?Hb. 
+  - move => x /predU1P [-> //|]. exact: B.
+Qed.
+
 (** Note: [u : sig_subType P] provides for the decidable equality *)
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
@@ -163,6 +171,10 @@ Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
 Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
   \bigcup_(i in [set i0]) F i = F i0.
 Proof. by rewrite -big_filter filter_index_enum enum_set1 big_seq1. Qed.
+
+Lemma big_enum_in (I : finType) (R : Type) (A : {set I}) (F : I -> R) op idx :
+  \big[op/idx]_(x <- enum A) F x = \big[op/idx]_(x in A) F x.
+Proof. by rewrite -filter_index_enum big_filter. Qed.
 
 Lemma wf_leq X (f : X -> nat) : well_founded (fun x y => f x < f y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ f) => x y /ltP. Qed.
@@ -321,6 +333,11 @@ Notation "[ 'disjoint3' A & B & C ]" :=
 
 
 (** *** Sequences and Paths *)
+
+Lemma tnth_cons (T : Type) a (s : seq T) (i : 'I_(size s).+1) (j : 'I_(size s)) :
+  j.+1 = i -> tnth (in_tuple (a :: s)) i = tnth (in_tuple s) j.
+Proof. move => E. rewrite /tnth -E /=. exact: set_nth_default. Qed.
+Arguments tnth_cons [T a s i j].
 
 Lemma mem_tail (T : eqType) (x y : T) s : y \in s -> y \in x :: s.
 Proof. by rewrite inE => ->. Qed.

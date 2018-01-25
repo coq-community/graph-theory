@@ -245,9 +245,9 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let P := components (@sinterval (skeleton G) g_in g_out) in
       let E := @edge_set G IO in
       if E == set0 then big_tmI [seq term_of (component C) | C in P]
-      else if P == set0 then big_tmI (tmEs G) 
-           else let t0 := term_of (point (remove_edges E) g_in g_out) in
-                \big[tmI/t0]_(e in @edge_set G IO) tm_ e
+      else if P == set0 then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
+           else  (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||: 
+                 term_of (point (remove_edges E) g_in g_out) 
     else (* at least one nontrivial petal or checkpoint *)
       @simple_check_point_term term_of G.
 
@@ -660,49 +660,151 @@ Lemma split_par_top (G : graph2) :
   G ≈ top2.
 Admitted.
 
-Lemma split_par_edges_rest (G : graph2) :
-  g_in != g_out :> G -> 
-  let G' := point (remove_edges (@edge_set G IO)) g_in g_out in 
-  G ≈ \big[par2/G']_(e in @edge_set G IO) sym2_ e .
+(** (a,true) -> io-edge / (a,false) -> oi-edge *)
+Definition sym2b (a : sym) (b : bool) : graph2 :=
+  if b then sym2 a else cnv2 (sym2 a).
+
+Definition sym2b' (a : sym) (b : bool) : graph2 :=
+  point (edge_graph a) (~~b) (b). 
+
+Lemma sym_eqv (a : sym) (b : bool) : sym2b a b = sym2b' a b.
+Proof. by case: b. Qed.
+
+(** "false" is the input and "true" is the output *)
+Definition edges2_graph (As : seq (sym * bool)) : graph := 
+  {| vertex := [finType of bool];
+     edge := [finType of 'I_(size As)];
+     label e := (tnth (in_tuple As) e).1;
+     source e := ~~ (tnth (in_tuple As) e).2;
+     target e := (tnth (in_tuple As) e).2 |}.
+
+Definition edges2 (As : seq (sym * bool)) : graph2 := 
+  point (edges2_graph As) false true.
+
+Lemma edges2_nil : edges2 nil ≈ top2.
+Admitted.
+
+Lemma ord_0Vp n (o : 'I_n.+1) : (o = ord0) + ({o' : 'I_n | o'.+1 = o :> nat}).
 Proof.
+  case: (unliftP ord0 o); last by left.
+  move => o' A. right. exists o'. by rewrite A.
+Qed.
+
+Local Open Scope quotient_scope.
+Local Notation "\pi x" := (\pi_(_) x) (at level 4).
+
+
+
+Lemma edges2_cons (a : sym) (b : bool) (Ar : seq (sym * bool)) : 
+  edges2 ((a, b) :: Ar) ≈ par2 (sym2b a b) (edges2 Ar).
+Proof.
+  rewrite sym_eqv. (* this makes h actually typecheck *)
+  set E1 := edges2 _.
+  set E2 := par2 _ _.
+  pose f (x : E1) : E2 := \pi (inr x).
+    (* if x == g_in then \pi (inr g_in) else \pi (inr g_out). *) 
+  pose g (x : E2) : E1 :=
+    match repr x with 
+    | inl x => if x == g_in then g_in else g_out
+    | inr x => x end.
+  pose h (x : edge E1) : edge E2 := 
+    match ord_0Vp x with 
+    | inl e => inl tt
+    | inr (exist o H) => inr o
+    end.
+  exists (f,h); repeat split.
+  - move => e. 
+    rewrite [source]lock /= -lock. rewrite /h /=.
+    case: (ord_0Vp e) => [E|[o' Ho']].
+    + rewrite E /f /=. destruct b eqn: def_b.
+      all: symmetry; apply/eqmodP => //=.
+      exact: par2_eqv_ii.
+      exact: par2_eqv_oo.
+    + rewrite (tnth_cons Ho'). case: (tnth _ _) => a' b' /=.
+      rewrite /f /=. by case: b'.
+  - move => e. 
+    rewrite [target]lock /= -lock. rewrite /h /=.
+    case: (ord_0Vp e) => [E|[o' Ho']].
+    + rewrite E /f /=. destruct b eqn: def_b.
+      all: symmetry; apply/eqmodP => //=.
+      exact: par2_eqv_oo.
+      exact: par2_eqv_ii.
+    + rewrite (tnth_cons Ho'). case: (tnth _ _) => a' b' /=.
+      rewrite /f /=. by case: b'.
+  - move => e. rewrite /= /h. case: (ord_0Vp e) => [-> //|[o' Ho']].
+    by rewrite (tnth_cons Ho'). 
+  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_ii.
+  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_oo.
+  - apply: (Bijective (g := g)) => /= x. 
+    + rewrite /f /g /=. case: piP => [] [y|y] /= /esym Hy.
+      * move/(@par2_LR (sym2b' a b) (edges2 Ar)) : Hy.
+        case => [[-> ->]|[-> ->]]; by destruct b.
+      * move/(@par2_injR (sym2b' a b) (edges2 Ar)) : Hy. apply. 
+        by destruct b.
+    + rewrite /f /g /=. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
+      rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqmodP => /=. 
+      destruct b;destruct y => //=;
+      solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
+  - pose h' (e : edge E2) : edge E1 := 
+      match e with inl tt => ord0 | inr i => lift ord0 i end.
+    apply: (Bijective (g := h')) => /= x.
+    + rewrite /h /h'. case: (ord_0Vp x) => [-> //|[o' Ho']].
+      apply: ord_inj. by rewrite lift0.
+    + rewrite /h /h'. case: x => [[]|x]. 
+      by case: (ord_0Vp ord0) => [|[o' Ho']].
+      case: (ord_0Vp _) => [|[o']]. 
+      * move/(f_equal (@nat_of_ord _)). by rewrite lift0.
+      * move/eqP. rewrite lift0 eqSS => /eqP E. 
+        congr inr. exact: ord_inj.
+Qed.
+
+Lemma edges2_big (As : seq (sym * bool)) : 
+  edges2 As ≈ \big[par2/top2]_(x <- As) sym2b x.1 x.2.
+Proof.
+  elim: As => [|[a b] Ar IH].
+  - by rewrite big_nil edges2_nil.
+  - by rewrite big_cons /= -IH edges2_cons.
+Qed. 
+
+Definition strip (G : graph2) (e : edge G) := 
+  if e \in edges g_in g_out then (label e,true) else (label e,false).
+
+Lemma split_io_edges (G : graph2) : 
+  let E : {set edge G} := edges g_in g_out :|: edges g_out g_in in
+  G ≈ par2 (edges2 [seq strip e | e in E]) (point (remove_edges E) g_in g_out).
+Proof.
+  move => E.
+  set G' := par2 _ _.
+  pose S := [seq strip e | e in E].
+  pose n := size S.
+  (* have e0 : edge (edges2 [seq strip e | e in E]). admit. *)
+  have h_proof e : e \in E -> index e (enum E) < n. admit.
+  pose f (x : G) : G' := \pi (inr x).
+  pose g (x : G') : G := 
+    match repr x with 
+    | inl x => if x then g_out else g_in
+    | inr x => x
+    end.
+  pose h (e : edge G) : edge G' :=
+    match boolP (e \in E) with 
+    | AltTrue p => inl (Ordinal (h_proof e p))
+    | AltFalse p => inr (Sub e p)
+    end.
+  exists (f,h); repeat split. 
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //=.
+    admit.
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
+    admit.
+  - move => e /=. rewrite /h. case: {-}_ / boolP => p //.
+    admit.
+  - rewrite /= /f. admit.
+  - admit.
+  - admit.
+  - admit.
 Admitted.
 
 Lemma remove0 (G : graph2) : 
   point (@remove_edges G set0) g_in g_out ≈ G.
-Admitted.
-
-Lemma split_par_edges (G : graph2) :
-  g_in != g_out :> G -> 
-  @components G (~: IO) == set0 -> 
-  G ≈ big_par2 [seq sym2_ e | e in @edge_set G IO].
-Proof.
-  move => Eio com0. rewrite {1}[G]split_par_edges_rest //. 
-  rewrite /big_par2. 
-  (* TODO: proper inductive proof *)
-  case: (set_0Vmem (@edge_set G IO)) => [H|].
-  - rewrite H. 
-    rewrite big_pred0; last by move => x; rewrite ?inE.
-    rewrite /image_mem enum_set0 big_nil.
-    rewrite remove0. apply: split_par_top => //. exact/eqP.
-  - admit.
-Admitted.
-
-Lemma graph_of_bigI_nested (T : finType) (r : seq T) F u : 
-  (graph_of_term (\big[tmI/u]_(e <- r) F e)) = 
-  \big[par2/graph_of_term u]_(e <- r) graph_of_term (F e).
-Proof. 
-  elim: r => [|a r IH]; first by rewrite !big_nil.
-  by rewrite !big_cons /= IH.
-Qed.
-
-Lemma graph_of_bigIs_nested (T : finType) (r : {set T}) F u : 
-  (graph_of_term (\big[tmI/u]_(e in r) F e)) = 
-  \big[par2/graph_of_term u]_(e in r) graph_of_term (F e).
-Admitted.
-
-Lemma big_par2_iso_cps (G G' : graph2) (T : finType) (A : {set T}) F F' : 
-  G ≈ G' -> (forall e, e \in A -> F e ≈ F' e) -> 
-  \big[par2/G]_(e in A) F e ≈ \big[par2/G']_(e in A) F' e.
 Admitted.
 
 Lemma split_pip (G : graph2) : 
@@ -711,6 +813,30 @@ Lemma split_pip (G : graph2) :
 Proof.
   move => CK4F_G Eio.
 Admitted.
+
+Lemma componentless_top (G : graph2) : 
+  @components G (~: IO) == set0 -> 
+  point (@remove_edges G (edge_set IO)) g_in g_out ≈ top2.
+Admitted.
+
+Lemma lens_io_set (G : graph2) : 
+  lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
+Admitted.
+
+
+Lemma edges2_graph_of (G : graph2) : 
+  g_in != g_out :> G ->
+  edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in] ≈ 
+  graph_of_term (\big[tmI/tmT]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
+Proof.
+  intros C1.
+  rewrite edges2_big // big_map.
+  rewrite graph_of_big_tmIs //. rewrite -big_enum_in.
+  set s := enum _. 
+  apply: big_par2_congr'.
+  move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges g_in _). 
+Qed.
+  
   
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> iso2 G (graph_of_term (term_of G)).
@@ -740,17 +866,15 @@ Proof.
         rewrite -IH //; rewrite -EC in HC. exact: measure_lens. exact: CK4F_lens.
       * rewrite EC.
         case: (boolP (_ == set0)) => C4 /=.
-        -- rewrite {1}[G]split_par_edges // -big_par2_map.
-           ++ rewrite /tmEs -map_comp. apply: big_par2_congr.
-              move => e _. rewrite /tm_ /sym2_. by case: ifP.
-           ++ apply: contraNN C3. rewrite /tmEs /nilp size_map. admit.
-        -- rewrite {1}[G]split_par_edges_rest //.
-           rewrite graph_of_bigIs_nested /=. 
-           apply: big_par2_iso_cps.
-           ++ rewrite -IH //. 
+        -- rewrite {1}[G]split_io_edges -{2}lens_io_set //.
+           rewrite componentless_top // par2_idR lens_io_set //.
+           exact: edges2_graph_of.
+        -- rewrite {1}[G]split_io_edges /=. 
+           apply: par2_congr. 
+           ++ rewrite lens_io_set //. exact: edges2_graph_of.
+           ++ rewrite -IH lens_io_set // -lens_io_set //. 
               exact: measure_remove_edges.
-              rewrite -EC in C4. exact: CK4F_remove_edges. 
-           ++ move => e. rewrite /tm_ /sym2_. by case: ifP.
+              rewrite -EC in C4. exact: CK4F_remove_edges.
     + (* petal/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [A|/negbT A].
