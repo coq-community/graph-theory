@@ -620,7 +620,7 @@ Qed.
 
 Lemma split_component (G : graph2) (C : {set G}) :
   @edge_set G IO == set0 -> C \in @components G ([set: G] :\: IO) ->
-  G ≈ par2 (component C) (induced ~: C).
+  G ≈ par2 (component C) (induced2 (~: C)).
 Admitted.
 
 Lemma split_seq_components (G : graph2) :
