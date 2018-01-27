@@ -830,6 +830,15 @@ Section CheckPoints.
     rewrite inE. exact: petal_exit Hu.
   Qed.
 
+  Lemma petal_exit_edge (U : {set G}) x u v :
+    x \in CP U -> u \in petal U x -> v \notin petal U x -> u -- v -> u = x.
+  Proof.
+    move=> x_cp u_petal vNpetal uv.
+    move/cpP'/(_ (edgep uv)): (petal_exit x_cp u_petal vNpetal).
+    rewrite mem_edgep. case/orP=> /eqP// Exv.
+    move: vNpetal. by rewrite -Exv petal_id.
+  Qed.
+
   Lemma petal_in_out (U : {set G}) x u v (p : Path G u v) :
     x \in CP U -> u \in x |: ~: petal U x -> v \in x |: ~: petal U x -> irred p -> 
                                            p \subset x |: ~: petal U x.
