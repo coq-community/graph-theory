@@ -266,6 +266,21 @@ Proof.
   by rewrite inE =>->.
 Qed.
 
+Lemma interval_petal_edge_partition (G : graph) (x y : G) :
+  connected [set: skeleton G] -> x != y ->
+  pe_partition [set edge_set (@petal G [set x; y] x);
+                    edge_set (@petal G [set x; y] y);
+                    @interval_edges G x y]
+               [set: edge G].
+Proof.
+  move=> G_conn xNy. apply/andP. split.
+  - admit.
+  - have [x_cp y_cp] : x \in @CP G [set x; y] /\ y \in @CP G [set x; y]
+      by split; apply: CP_extensive; rewrite !inE eqxx.
+    apply: trivIset3; first exact: petal_edges_disj; first rewrite interval_edges_sym;
+    exact: interval_petal_edges_disj.
+Admitted.
+
 (** ** Connecting Multigraphs and their Skeletons *)
 
 Lemma has_edge (G : graph) (x y : G) : 

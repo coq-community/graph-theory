@@ -185,6 +185,28 @@ Qed.
 Instance seq2_morphism : Proper (iso2 ==> iso2 ==> iso2) seq2.
 Proof. move => ? ? ? ? ? ?. exact: seq2_congr. Qed.
 
+Lemma seq2_injL (G1 G2 : graph2) (x y : G1) :
+  inl x = inl y %[mod_eq @seq2_eqv G1 G2] -> x = y.
+Proof.
+  move=> /eqmodP. rewrite /=/seq2_eqv/= sum_eqE. case/orP=> [/eqP//|].
+  by rewrite eq_sym eqEcard subUset -andbA andbCA !sub1set !inE.
+Qed.
+
+Lemma seq2_injR (G1 G2 : graph2) (x y : G2) :
+  inr x = inr y %[mod_eq @seq2_eqv G1 G2] -> x = y.
+Proof.
+  move=> /eqmodP. rewrite /=/seq2_eqv/= sum_eqE. case/orP=> [/eqP//|].
+  by rewrite eq_sym eqEcard subUset !sub1set !inE.
+Qed.
+
+Lemma seq2_LR (G1 G2 : graph2) (x : G1) (y : G2) :
+  inl x = inr y %[mod_eq @seq2_eqv G1 G2] -> x = g_out /\ y = g_in.
+Proof.
+  move=> /eqmodP. rewrite /=/seq2_eqv/=.
+  rewrite eq_sym eqEcard subUset !sub1set !inE orbC /= !sum_eqE.
+  by case/andP=> /andP[/eqP<- /eqP<-].
+Qed.
+
 Lemma seq2_idR G : seq2 G one2 ≈ G.
 Admitted.
 
