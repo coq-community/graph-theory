@@ -58,6 +58,12 @@ Definition hom_g2 (G1 G2:graph2) (h : h_ty G1 G2) : Prop :=
 Definition injective2 G H (h : h_ty G H) := (injective h.1 * injective h.2)%type.
 Definition surjective2 G H (h : h_ty G H) := (surjective h.1 * surjective h.2)%type.
 
+Lemma hom_gI G1 G2 (h : h_ty G1 G2) :
+  (forall e : edge G1, [/\ h.1 (source e) = source (h.2 e),
+                           h.1 (target e) = target (h.2 e) &
+                           label (h.2 e) = label e]) -> hom_g h.
+Proof. move=> H. (repeat split)=> e; by case: (H e). Qed.
+
 (** ** Quotient Graphs *)
 
 Definition merge_def (G : graph) (r : equiv_rel G) :=

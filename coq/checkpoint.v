@@ -368,6 +368,26 @@ Section CheckPoints.
       subst v. by rewrite sinterval_bounds in v_Ixy.
   Qed.
 
+  Lemma sinterval_disj_cp (x y z : G) :
+    z \in cp x y -> [disjoint sinterval x z & sinterval z y].
+  Proof.
+    move=> z_cpxy. rewrite -setI_eq0 -subset0. apply/subsetP=> u. rewrite inE.
+    case/andP=> /sintervalP2[][p _ /negbTE zNp] _ /sintervalP2[_][q _ /negbTE zNq].
+    rewrite !inE. apply: contraTT z_cpxy => _. apply/cpP' => /(_ (pcat (prev p) q)).
+    by rewrite mem_pcat mem_prev zNp zNq.
+  Qed.
+
+  Lemma sinterval_noedge_cp (x y z u v : G) :
+    u -- v -> u \in sinterval x z -> v \in sinterval z y -> z \notin cp x y.
+  Proof.
+    move=> uv /sintervalP2[][p _ /negbTE zNp] _ /sintervalP2[_][q _ /negbTE zNq].
+    apply/cpP' => /(_ (pcat (prev p) (pcat (edgep uv) q))).
+    rewrite !mem_pcat mem_prev mem_edgep zNp zNq orbF /=.
+    apply/negP. rewrite negb_or. apply/andP. split.
+    - apply: contraFneq zNp =>->. exact: nodes_start.
+    - apply: contraFneq zNq =>->. exact: nodes_start.
+  Qed.
+
   Lemma sinterval_components (C : {set G}) x y :
     C \in components (sinterval x y) ->
     (exists2 u, u \in C & x -- u) /\ (exists2 v, v \in C & y -- v).
@@ -414,6 +434,19 @@ Section CheckPoints.
 
   Lemma interval_sym x y : interval x y = interval y x.
   Proof. by rewrite /interval [[set x; y]]setUC sinterval_sym. Qed.
+
+  Lemma intervalI_cp (x y z : G) :
+    z \in cp x y -> interval x z :&: interval z y = [set z].
+  Proof.
+    move=> z_cpxy. apply/setP=> u.
+    rewrite inE ![_ \in interval _ _]inE (lock sinterval) !inE -lock -!orbA.
+    apply/idP/idP; last by move=>->.
+    case/andP=> /or3P[/eqP->|->//|u_sIxz] /or3P[->//|/eqP u_y|u_sIzy].
+    - move: z_cpxy. by rewrite -u_y cpxx inE eq_sym.
+    - move: u_sIzy. by rewrite sintervalP z_cpxy.
+    - move: u_sIxz. by rewrite u_y sintervalP (cp_sym y x) z_cpxy andbF.
+    - by case: (disjointE (sinterval_disj_cp z_cpxy) u_sIxz u_sIzy).
+  Qed.
 
   (* TODO: This should be done earlier *)
   Lemma symmetric_resrict_sedge (A : pred G) : 

@@ -201,9 +201,15 @@ Definition remove_edges (G : graph) (E : {set edge G}) :=
 
 Coercion skeleton : graph >-> sgraph.
 
+Definition interval_edges (G : graph) (x y : G) :=
+  edge_set (@interval G x y) :\: (edges x x :|: edges y y).
+
+Lemma interval_edges_sym (G : graph) (x y : G) :
+  interval_edges x y = interval_edges y x.
+Proof. by rewrite /interval_edges interval_sym setUC. Qed.
+
 Lemma igraph_proof (G : graph) (x y : skeleton G) :
-  consistent (interval x y) 
-             (edge_set (interval x y) :\: (edges x x :|: edges y y)).
+  consistent (interval x y) (interval_edges x y).
 Proof. move=> e. rewrite inE =>/andP[_]. by rewrite inE =>/andP. Qed.
 
 Definition igraph (G : graph) (x y : skeleton G) :=
@@ -216,17 +222,49 @@ Definition pgraph (G : graph) (U : {set G}) (x:G) :=
          (Sub x (@petal_id (skeleton G) U x))
          (Sub x (@petal_id (skeleton G) U x)).
 
-Lemma edge_part (G : graph) (U : {set skeleton G}) (x y z : skeleton G) :
-  x \in CP U -> y \in CP U -> z \in CP U -> checkpoint.link_rel _ x y ->
-  [disjoint val @: [set: edge (pgraph U z)] & 
-            val @: [set: edge (igraph x y)]].
+Lemma pgraph_eq_io (G : graph) (U : {set G}) (x : G) : g_in = g_out :> @pgraph G U x.
+Proof. by []. Qed.
+
+Lemma interval_petal_edges_disj (G : graph) (U : {set G}) (x y : G) :
+  connected [set: skeleton G] -> x \in @CP G U -> y \in @CP G U ->
+  [disjoint edge_set (@petal G U x) & @interval_edges G x y].
 Proof.
-  move => cp_x cp_y cp_z xy.
-  (* Assume e is some edge in G[x,y] and G[z]. Then, both [source e]
-     and [target e] are in [[x,y]] ∩ [[z]]_U. Thus z is either x or y
-     and e is either an xx-edge or an yy-edge. This contradicts that e
-     is an G[x,y] edge. *)
-Admitted.
+  move=> G_conn x_cp y_cp. rewrite -setI_eq0 -subset0. apply/subsetP => e.
+  rewrite 3!inE => /and3P[]/andP[src_p tgt_p].
+  rewrite 4!inE ![_ \in @interval G _ _]inE (lock sinterval) !inE -lock.
+  rewrite negb_or !negb_and -!orbA => /andP[eNx eNy].
+  case/andP=> /or3P[src_x|src_y|src_sI] /or3P[tgt_x|tgt_y|tgt_sI].
+  all: move: eNx eNy; rewrite ?src_x ?src_y ?tgt_x ?tgt_y ?orbF //= => eNx eNy.
+  - move: eNx. by rewrite (eqP tgt_y) -(@petal_cp G _ U) // -(eqP tgt_y) tgt_p.
+  - by case: (disjointE (@interval_petal_disj G U x y y_cp) tgt_p tgt_sI).
+  - move: eNx. by rewrite (eqP src_y) -(@petal_cp G _ U) // -(eqP src_y) src_p.
+  - by case: (disjointE (@interval_petal_disj G U x y y_cp) tgt_p tgt_sI).
+  - by case: (disjointE (@interval_petal_disj G U x y y_cp) src_p src_sI).
+  - by case: (disjointE (@interval_petal_disj G U x y y_cp) src_p src_sI).
+  - by case: (disjointE (@interval_petal_disj G U x y y_cp) src_p src_sI).
+Qed.
+
+Lemma petal_edges_disj (G : graph) (U : {set G}) (x y : G) :
+  connected [set: skeleton G] -> x \in @CP G U -> y \in @CP G U -> x != y ->
+  [disjoint edge_set (@petal G U x) & edge_set (@petal G U y)].
+Proof.
+  move=> G_conn x_cp y_cp xNy. rewrite -setI_eq0 -subset0. apply/subsetP => e.
+  rewrite 3!inE. case/andP=> /andP[src_x tgt_x] /andP[src_y tgt_y].
+  by case: (disjointE (@petal_disj G _ U x y _ _ _) src_x src_y).
+Qed.
+
+Lemma interval_edges_disj_cp (G : graph) (x y z : G) :
+  z \in @cp G x y -> [disjoint interval_edges x z & interval_edges z y].
+Proof.
+  move=> z_cpxy. rewrite -setI_eq0 -subset0. apply/subsetP => e.
+  rewrite 6!inE negb_or !negb_and. case/andP=> /and3P[_ src_Ixz tgt_Ixz].
+  rewrite 5!inE negb_or !negb_and. case/and3P=> /andP[e_z _] src_Izy tgt_Izy.
+  move: e_z.
+  have : source e \in [set z] by rewrite -(intervalI_cp z_cpxy) inE src_Ixz src_Izy.
+  rewrite inE =>->/=.
+  have : target e \in [set z] by rewrite -(intervalI_cp z_cpxy) inE tgt_Ixz tgt_Izy.
+  by rewrite inE =>->.
+Qed.
 
 (** ** Connecting Multigraphs and their Skeletons *)
 
