@@ -331,6 +331,13 @@ Proof.
     exact: interval_petal_edges_disj.
 Qed.
 
+Lemma interval_cp_edge_partition (G : graph) (x y z : G) :
+  connected [set: skeleton G] -> z \in @cp G x y :\: [set x; y] ->
+  pe_partition [set @interval_edges G x z; @interval_edges G z y;
+                    edge_set (@petal G [set x; y] z)]
+               (@interval_edges G x y).
+Admitted.
+
 (** ** Connecting Multigraphs and their Skeletons *)
 
 Lemma has_edge (G : graph) (x y : G) : 

@@ -711,11 +711,6 @@ Proof.
   { by move: u_cpio; rewrite 4!inE negb_or => /andP[]/andP[]. }
   have iNo : g_in != g_out :> G.
   { apply: contraTneq u_cpio => <-. by rewrite setUid cpxx !inE andNb. }
-  have G_intv : [set: skeleton G] = @interval G g_in g_out.
-  { case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
-    rewrite (eqP (edgeless_petal _ (CP_extensive _) pi_e0)) ?inE ?eqxx //.
-    rewrite (eqP (edgeless_petal _ (CP_extensive _) po_e0)) ?inE ?eqxx //.
-    by rewrite /cover !bigcup_setU !bigcup_set1. }
   pose f (x : G') : G :=
     match repr x with
     | inl x => val x
@@ -757,14 +752,17 @@ Proof.
   - rewrite /f. case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
     by case: piP => -[y /inRL[->]/valE|y /injR<-].
 
-  - case/andP: (sinterval_cp_partition G_conn u_cpio) => /eqP compU _.
-    have petal_node (x : G) : x \notin (g_in  |: @sinterval G g_in u) ->
+  - have petal_node (x : G) : x \notin (g_in  |: @sinterval G g_in u) ->
                               x \notin (g_out |: @sinterval G u g_out) ->
                               x \in @petal G IO u.
     { rewrite ![x \in _ |: _]inE ![x \in set1 _]inE !negb_or.
       move=> /andP[/negbTE xNi /negbTE xNl] /andP[/negbTE xNo /negbTE xNr].
       have : x \in [set : skeleton G] by [].
-      rewrite G_intv 4!inE xNi xNo -compU =>/bigcupP[?].
+      case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
+      rewrite (eqP (edgeless_petal _ (CP_extensive _) pi_e0)) ?inE ?eqxx //.
+      rewrite (eqP (edgeless_petal _ (CP_extensive _) po_e0)) ?inE ?eqxx //.
+      rewrite /cover !bigcup_setU !bigcup_set1 4!inE xNi xNo.
+      case/andP: (sinterval_cp_partition G_conn u_cpio) => /eqP<- _ /bigcupP[?].
       rewrite 5!inE -orbA => /or3P[]/eqP->; by rewrite ?xNl ?xNr. }
     have intvL_node (x : G) : x \in g_in |: @sinterval G g_in u ->
                               x \in @interval G g_in u.
@@ -843,7 +841,42 @@ Proof.
         by case: piP => -[y /inRL[->]/valE|y /injR<-].
       * case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
         by case: piP => -[y /injL<-|y /inLR[/valE?->]].
-Admitted.
+
+  - have petal_edge (e : edge G) : e \notin @interval_edges G g_in u ->
+                                   e \notin @interval_edges G u g_out ->
+                                   e \in edge_set (@petal G IO u).
+    { move=> /negbTE eNl /negbTE eNr. have : e \in [set: edge G] by [].
+      case/andP: (interval_petal_edge_partition G_conn iNo) => /eqP<- _.
+      rewrite (eqP pi_e0) (eqP po_e0) /cover !bigcup_setU !bigcup_set1 !set0U.
+      case/andP: (interval_cp_edge_partition G_conn u_cpio) => /eqP<- _.
+      by rewrite /cover !bigcup_setU !bigcup_set1 2!inE eNl eNr. }
+    pose k (e : edge G) : edge G' :=
+      match boolP (e \in @interval_edges G g_in u) with
+      | AltTrue eL => inl (Sub e eL)
+      | AltFalse eNl => match boolP (e \in @interval_edges G u g_out) with
+                        | AltTrue eR => inr (inr (Sub e eR))
+                        | AltFalse eNr => inr (inl (Sub e (petal_edge e eNl eNr)))
+                        end
+      end.
+    exists k => e; rewrite /h/k; last by repeat case: {-}_ / boolP => ?.
+    case: e => [e|[e|e]].
+
+    + have eL : val e \in @interval_edges G g_in u := valP e.
+      case: {-}_ / boolP => H1; last by have := H1; rewrite eL.
+      congr inl; exact: val_inj.
+    + have e_petal : val e \in edge_set (@petal G IO u) := valP e.
+      case: {-}_ / boolP => H1; first (have := H1; rewrite {1}interval_edges_sym).
+        by rewrite (disjointFr (interval_petal_edges_disj G_conn _ _) e_petal).
+      case: {-}_ / boolP => H2; first have := H2.
+        by rewrite (disjointFr (interval_petal_edges_disj G_conn _ _) e_petal).
+      congr (inr (inl _)); exact: val_inj.
+    + have eR : val e \in @interval_edges G u g_out := valP e.
+      case: {-}_ / boolP => H1; first have := H1.
+      { rewrite (disjointFl (@interval_edges_disj_cp G g_in g_out u _) eR) //.
+        by move: u_cpio; rewrite inE => /andP[_]. }
+      case: {-}_ / boolP => H2; last by have := H2; rewrite eR.
+      congr (inr (inr _)); exact: val_inj.
+Qed.
 
 Definition sym2_ (G : graph2) (e : edge G) :=
   if e \in edges g_in g_out then sym2 (label e) else cnv2 (sym2 (label e)).
