@@ -298,8 +298,15 @@ Lemma sskeleton_add (G : graph) (x y : G) :
   sgraph.subgraph (sskeleton (igraph x y))
                   (add_edge (sigraph G x y) istart iend).
 Proof.
-  rewrite /igraph /sigraph /sskeleton -/istart -/iend. 
-Admitted.
+  exists id => // u v uv; right; move: uv.
+  rewrite /= -!(inj_eq val_inj)/=. case/or3P=> [uv|->//|->//].
+  rewrite orbA; apply/orP; left; apply/orP; left. move: uv.
+  rewrite -[sk_rel _ u v]/(@sedge (skeleton _) u v).
+  rewrite -[sk_rel G _ _]/(@sedge (skeleton G) _ _).
+  rewrite -!adjacentE (inj_eq val_inj) => /andP[-> /=].
+  case/orP=> /existsP[e He]; apply/orP; [left|right]; apply/existsP.
+  all: by exists (val e); move: He; rewrite !inE -!(inj_eq val_inj) /=.
+Qed.
 
 Lemma CK4F_igraph (G : graph2) (x y : G) : 
   x \in cp G g_in g_out -> y \in cp G g_in g_out ->
@@ -317,7 +324,13 @@ Lemma measure_igraph (G : graph2) :
     measure (@igraph G g_in g_out) < measure G.
 Proof.
   move=> G_conn A.
-Admitted.
+  suff [e] : exists e, e \notin @interval_edges G g_in g_out
+    by exact: measure_subgraph.
+  have [i_cp o_cp] : g_in \in @CP G IO /\ g_out \in @CP G IO
+    by split; apply: CP_extensive; rewrite !inE eqxx.
+  case/orP: A => /set0Pn[e He]; exists e; last rewrite interval_edges_sym.
+  all: by rewrite (disjointFr (interval_petal_edges_disj G_conn _ _) He).
+Qed.
 
 Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
   ((val u : skeleton G) -- val v) = ((u : skeleton (induced V)) -- v).
@@ -532,7 +545,13 @@ Qed.
 
 Lemma CK4F_split_cpR z :
  z \in cp G g_in g_out :\: IO -> CK4F (igraph z g_out).
-Admitted.
+Proof.
+  move => Hz.
+  apply: CK4F_igraph => //.
+  - move: z Hz. apply/subsetP. exact: subsetDl.
+  - rewrite cp_sym; exact: mem_cpl.
+  - apply: contraTneq Hz => ->. by rewrite !inE !negb_or eqxx.
+Qed.
 
 Lemma CK4F_split_cpM z :
  z \in cp G g_in g_out :\: IO -> CK4F (@pgraph G IO z).
