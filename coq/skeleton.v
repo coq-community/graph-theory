@@ -329,7 +329,7 @@ Proof.
       by split; apply: CP_extensive; rewrite !inE eqxx.
     apply: trivIset3; first exact: petal_edges_disj; first rewrite interval_edges_sym;
     exact: interval_petal_edges_disj.
-Admitted.
+Qed.
 
 (** ** Connecting Multigraphs and their Skeletons *)
 

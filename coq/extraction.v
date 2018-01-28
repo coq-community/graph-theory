@@ -311,6 +311,14 @@ Proof.
   exact: igraph_K4F K4F_G.
 Qed.
 
+Lemma measure_igraph (G : graph2) :
+    connected [set: skeleton G] ->
+    (edge_set (@petal G IO g_in) != set0) || (edge_set (@petal G IO g_out) != set0) ->
+    measure (@igraph G g_in g_out) < measure G.
+Proof.
+  move=> G_conn A.
+Admitted.
+
 Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
   ((val u : skeleton G) -- val v) = ((u : skeleton (induced V)) -- v).
 Proof.
@@ -547,9 +555,6 @@ Admitted.
 
 End SplitCP.
 
-Definition igraph_edges (G : graph) x y := 
-  (edge_set (@interval G x y) :\: (edges x x :|: edges y y)).
-
 Definition simple_check_point_wf (f g : graph2 -> term) (G : graph2) : 
   CK4F G -> 
   g_in != g_out :> G ->
@@ -560,19 +565,18 @@ Proof.
   move => CK4F_G Eio nlens_G Efg.
   rewrite /simple_check_point_term.
   case: ifP => [A|A].
-  have {A} [e He] : exists e : edge G, e \notin igraph_edges g_in g_out.
-  { admit. }
   - (* g_out not in left petal, e notin interval, g_in not in right petal *)
     rewrite ![f (pgraph _ _)]Efg; 
       try (apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx).
     do 2 f_equal. rewrite Efg //. 
     * apply: CK4F_igraph => //=; last rewrite cp_sym; exact: (@mem_cpl G). 
-    * exact: measure_subgraph He. 
+    * apply: measure_igraph => //; by case: CK4F_G.
   - case: pickP => [z Hz|//]; repeat congr tmS.
     + rewrite Efg //. exact: CK4F_split_cpL. exact: measure_split_cpL.
-    + rewrite Efg //; apply rec_petal => //. admit. (* align assumptions *) admit.
+    + have {Hz} Hz : z \in @CP G IO by move: Hz; rewrite inE CP_set2 => /andP[_ ->].
+      by rewrite Efg //; apply rec_petal => //.
     + rewrite Efg //. exact: CK4F_split_cpR. exact: measure_split_cpR.
-Admitted.
+Qed.
 
 Lemma CK4F_remove_edges (G : graph2) : 
   CK4F G -> g_in != g_out :> G -> lens G ->
@@ -1130,8 +1134,8 @@ Proof.
           apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
           apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
         rewrite -IH; first last.
-          apply: CK4F_igraph => //. admit. admit.
-          admit.
+          apply: CK4F_igraph => //; last rewrite cp_sym; exact: mem_cpl.
+          apply: measure_igraph => //; by case: CK4F_G.
         rewrite -IH; first last. 
           apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
           apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
@@ -1148,7 +1152,7 @@ Proof.
            case/setDP : Hz => Hz _. apply/bigcupP; exists (g_in,g_out) => //. 
            by rewrite !inE !eqxx.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
-Admitted.
+Qed.
 
 (** * Minor Exclusion Corollaries *)
 
