@@ -644,6 +644,9 @@ Qed.
 
 (** * Isomorphim Properties *)
 
+Local Open Scope quotient_scope.
+Local Notation "\pi x" := (\pi_(_) x) (at level 4).
+
 Lemma comp_exit (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] ->
   g_in == g_out :> G -> C \in @components G [set~ g_in] ->
@@ -692,11 +695,154 @@ Lemma split_component (G : graph2) (C : {set G}) :
   G ≈ par2 (component C) (induced2 (~: C)).
 Admitted.
 
-Lemma split_cp (G : graph2) (z : skeleton G) : 
-  z \in @cp G g_in g_out :\: IO ->  g_in != g_out :> G -> 
+Lemma split_cp (G : graph2) (u : skeleton G) :
+  connected [set: skeleton G] -> u \in @cp G g_in g_out :\: IO ->
   edge_set (@petal G IO g_in) == set0 -> 
   edge_set (@petal G IO g_out) == set0 ->
-  G ≈ seq2 (@igraph G g_in z) (seq2 (@pgraph G IO z) (@igraph G z g_out)).
+  G ≈ seq2 (@igraph G g_in u) (seq2 (@pgraph G IO u) (@igraph G u g_out)).
+Proof.
+  move=> G_conn u_cpio pi_e0 po_e0. apply: iso2_sym. set G' := seq2 _ _.
+  have [i_cp o_cp] : g_in \in @CP G IO /\ g_out \in @CP G IO.
+  { by split; apply: CP_extensive; rewrite !inE eqxx. }
+  have u_cp : u \in @CP G IO.
+  { apply/bigcupP; exists (g_in, g_out) => /=; first by rewrite !inE !eqxx.
+    by move: u_cpio; rewrite inE => /andP[_]. }
+  have [uNi uNo] : u != g_in /\ u != g_out.
+  { by move: u_cpio; rewrite 4!inE negb_or => /andP[]/andP[]. }
+  have iNo : g_in != g_out :> G.
+  { apply: contraTneq u_cpio => <-. by rewrite setUid cpxx !inE andNb. }
+  have G_intv : [set: skeleton G] = @interval G g_in g_out.
+  { case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
+    rewrite (eqP (edgeless_petal _ (CP_extensive _) pi_e0)) ?inE ?eqxx //.
+    rewrite (eqP (edgeless_petal _ (CP_extensive _) po_e0)) ?inE ?eqxx //.
+    by rewrite /cover !bigcup_setU !bigcup_set1. }
+  pose f (x : G') : G :=
+    match repr x with
+    | inl x => val x
+    | inr x => match repr x with
+               | inl x => val x
+               | inr x => val x
+               end
+    end.
+  pose h (e : edge G') : edge G :=
+    match e with
+    | inl e => val e
+    | inr e => match e with
+               | inl e => val e
+               | inr e => val e
+               end
+    end.
+
+  pose valE := f_equal val. pose injL := seq2_injL. pose injR := seq2_injR.
+  pose inLR := seq2_LR. pose inRL := fun e => seq2_LR (esym e).
+  exists (f, h); split; first split; first apply: hom_gI => e.
+  all: rewrite -?[(f, h).1]/f -?[(f, h).2]/h.
+
+  - case: e => [e|[e|e]]; rewrite /h; split; rewrite // /f.
+    + case: piP => -[y /injL<-//|y /inLR[/valE]]. rewrite [val (source e)]/= =>->{y}->.
+      by case: piP => -[y /injL<-|y /inLR[_ ->]].
+    + case: piP => -[y /injL<-//|y /inLR[/valE]]. rewrite [val (target e)]/= =>->{y}->.
+      by case: piP => -[y /injL<-|y /inLR[_ ->]].
+    + case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
+      by case: piP => -[y /injL<-|y /inLR[/valE?->]].
+    + case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
+      by case: piP => -[y /injL<-|y /inLR[/valE?->]].
+    + case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
+      by case: piP => -[y /inRL[->]/valE|y /injR<-].
+    + case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
+      by case: piP => -[y /inRL[->]/valE|y /injR<-].
+
+  - rewrite /f. case: piP => -[y /injL<-//|y /inLR[/valE H {y}->]].
+    rewrite /= in H. by case: piP => -[y /injL<-|y /inLR[/valE?->]].
+  - rewrite /f. case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
+    by case: piP => -[y /inRL[->]/valE|y /injR<-].
+
+  - case/andP: (sinterval_cp_partition G_conn u_cpio) => /eqP compU _.
+    have petal_node (x : G) : x \notin (g_in  |: @sinterval G g_in u) ->
+                              x \notin (g_out |: @sinterval G u g_out) ->
+                              x \in @petal G IO u.
+    { rewrite ![x \in _ |: _]inE ![x \in set1 _]inE !negb_or.
+      move=> /andP[/negbTE xNi /negbTE xNl] /andP[/negbTE xNo /negbTE xNr].
+      have : x \in [set : skeleton G] by [].
+      rewrite G_intv 4!inE xNi xNo -compU =>/bigcupP[?].
+      rewrite 5!inE -orbA => /or3P[]/eqP->; by rewrite ?xNl ?xNr. }
+    have intvL_node (x : G) : x \in g_in |: @sinterval G g_in u ->
+                              x \in @interval G g_in u.
+    { by rewrite [_ \in @interval G _ _]inE (lock sinterval) !inE -lock orbAC =>->. }
+    have intvR_node (x : G) : x \in g_out |: @sinterval G u g_out ->
+                              x \in @interval G u g_out.
+    { by rewrite [_ \in @interval G _ _]inE (lock sinterval) !inE -lock -orbA =>->. }
+    pose g (x : G) : G' :=
+      match boolP (x \in g_in |: @sinterval G g_in u) with
+      | AltTrue xL => \pi (inl (Sub x (intvL_node x xL)))
+      | AltFalse xNl => match boolP (x \in g_out |: @sinterval G u g_out) with
+                        | AltTrue xR => \pi (inr (\pi (inr (Sub x (intvR_node x xR)))))
+                        | AltFalse xNr => \pi (inr (\pi (inl (Sub x (petal_node x xNl xNr)))))
+                        end
+      end.
+    exists g => x.
+
+    + rewrite /f.
+      case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z]; rewrite /g.
+      * have yL : val y \in @interval G g_in u := valP y. case: {-}_ / boolP => H1.
+        { rewrite -[x]reprK Ex; congr \pi (inl _); exact: val_inj. }
+        have Ey : val y = u.
+        { move: H1 yL. rewrite [_ \in @interval G _ _]inE (lock sinterval) !inE -lock.
+          rewrite negb_or => /andP[/negbTE-> /negbTE->]. by rewrite orbF => /eqP. }
+        case: {-}_ / boolP => H2.
+        { have := H2; rewrite {1}Ey 2!inE (@sinterval_bounds G).
+          by move: u_cpio; rewrite 4!inE negb_or => /andP[]/andP[_]/negbTE->. }
+        rewrite -[x]reprK Ex. apply/eqmodP.
+        rewrite /equiv/equiv_pack/seq2_eqv -[_ == inl y]/false.
+        rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
+        rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
+        rewrite -(inj_eq val_inj) [_ && (_ || _)]andbC {1}Ey eqxx andbT.
+        apply/eqP. apply/eqmodP. rewrite /equiv/equiv_pack/seq2_eqv sum_eqE.
+        by rewrite -(inj_eq val_inj) SubK {1}Ey eqxx.
+      * have z_petal : val z \in @petal G IO u := valP z.
+        have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
+        { rewrite 2!inE negb_or sinterval_sym. apply/andP; split.
+          - by apply: contraTneq z_petal =>->; rewrite (petal_cp G_conn) 1?eq_sym.
+          - by rewrite (disjointFr (interval_petal_disj u _) z_petal). }
+        have /negbTE zNr : val z \notin g_out |: @sinterval G u g_out.
+        { rewrite 2!inE negb_or. apply/andP; split.
+          - by apply: contraTneq z_petal =>->; rewrite (petal_cp G_conn) 1?eq_sym.
+          - by rewrite (disjointFr (interval_petal_disj u _) z_petal). }
+        case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
+        case: {-}_ / boolP => H2; first by have := H2; rewrite zNr.
+        rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inl _))).
+        exact: val_inj.
+      * have zR : val z \in @interval G u g_out := valP z.
+        have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
+        { rewrite 2!inE negb_or. move: zR. rewrite 4!inE -orbA.
+          case/or3P=> [/eqP->|/eqP->|zR]; apply/andP; split=> //.
+          - by rewrite (@sinterval_bounds G).
+          - by rewrite eq_sym.
+          - rewrite (@sintervalP G) negb_and !negbK.
+            by move: u_cpio; rewrite inE cp_sym => /andP[_]->.
+          - apply: contraTneq zR => ->. rewrite (@sintervalP G) negb_and !negbK.
+            by move: u_cpio; rewrite inE => /andP[_]->.
+          - rewrite (disjointFl (@sinterval_disj_cp G g_in g_out u _) zR) //.
+            by move: u_cpio; rewrite inE => /andP[_]. }
+        case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
+        case: {-}_ / boolP => H2.
+        { rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inr _))).
+          exact: val_inj. }
+        move: zR; rewrite 4!inE. have := H2; rewrite 2!inE negb_or.
+        case/andP=> /negbTE-> /negbTE->; rewrite !orbF => /eqP y_u.
+        rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr _). apply/eqmodP.
+        rewrite /equiv/equiv_pack/seq2_eqv -[_ == inr z]/false.
+        rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
+        rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
+        by rewrite -!(inj_eq val_inj) SubK y_u eqxx.
+
+    + rewrite /f/g. case: {-}_ / boolP => H1; last case: {-}_ / boolP => H2.
+      * case: piP => -[y /injL/valE//|y /inLR[/valE?{y}->]].
+        by case: piP => -[y /injL<-|y /inLR[_]->].
+      * case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
+        by case: piP => -[y /inRL[->]/valE|y /injR<-].
+      * case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
+        by case: piP => -[y /injL<-|y /inLR[/valE?->]].
 Admitted.
 
 Definition sym2_ (G : graph2) (e : edge G) :=
@@ -736,11 +882,6 @@ Proof.
   case: (unliftP ord0 o); last by left.
   move => o' A. right. exists o'. by rewrite A.
 Qed.
-
-Local Open Scope quotient_scope.
-Local Notation "\pi x" := (\pi_(_) x) (at level 4).
-
-
 
 Lemma edges2_cons (a : sym) (b : bool) (Ar : seq (sym * bool)) : 
   edges2 ((a, b) :: Ar) ≈ par2 (sym2b a b) (edges2 Ar).
@@ -1146,7 +1287,7 @@ Proof.
         { case:notF. apply: contraNT C2 => _. rewrite -setD_eq0. 
           apply/eqP. apply/setP => x. by rewrite C inE. }
         rewrite /=. 
-        rewrite {1}[G](split_cp Hz) //. repeat apply: seq2_congr. 
+        rewrite {1}[G](split_cp (proj1 CK4F_G) Hz) //. repeat apply: seq2_congr.
         -- rewrite -IH //. exact: measure_split_cpL. exact: CK4F_split_cpL.
         -- suff ? : z \in @CP G IO. { rewrite -IH //; by apply rec_petal. }
            case/setDP : Hz => Hz _. apply/bigcupP; exists (g_in,g_out) => //. 

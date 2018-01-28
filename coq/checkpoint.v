@@ -998,6 +998,11 @@ a clique, so [CP U] is [U]. *)
       + by rewrite interval_petal_disj.
   Qed.
 
+  Lemma sinterval_cp_partition x y z : z \in cp x y :\: [set x; y] ->
+    pe_partition [set sinterval x z; sinterval z y; petal [set x; y] z]
+                 (sinterval x y).
+  Admitted.
+
   Lemma CP_triangle_petals U (x y z : CP_ U) : 
     x -- y -> y -- z -> z -- x -> 
     let U3 : {set G} := [set val x; val y; val z] in
