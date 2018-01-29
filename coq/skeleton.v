@@ -266,77 +266,188 @@ Proof.
   by rewrite inE =>->.
 Qed.
 
-Lemma interval_petal_edge_partition (G : graph) (x y : G) :
+Lemma interval_petal_edge_cover (G : graph) (x y : G) :
   connected [set: skeleton G] -> x != y ->
-  pe_partition [set edge_set (@petal G [set x; y] x);
-                    edge_set (@petal G [set x; y] y);
-                    @interval_edges G x y]
-               [set: edge G].
+  [set: edge G] = edge_set (@petal G [set x; y] x) :|: @interval_edges G x y
+                    :|: edge_set (@petal G [set x; y] y).
 Proof.
-  move=> G_conn xNy. apply/andP. split.
-  - rewrite -subTset. apply/subsetP=> e _.
-    case/andP: (sinterval_petal_partition G_conn xNy) => /eqP compU _.
-    move: compU; rewrite /cover !bigcup_setU !bigcup_set1 2!inE setUC => /esym compU.
-    have : target e \in [set: G] by []. have : source e \in [set: G] by [].
-    rewrite !{}compU !in_setU.
-    case: (boolP (source e \in @sinterval G x y)) => [Hsrc _|Nsrc /= Hsrc].
-    + case: (boolP (target e \in @sinterval G x y)) => [Htgt _|Ntgt /= Htgt].
-      { rewrite ![e \in _]inE ![_ \in @interval G _ _]inE Hsrc Htgt.
-        rewrite !orbT negb_or !negb_and. move: Hsrc.
-        by rewrite 5!inE negb_or => /andP[]/andP[->->]. }
-      wlog Htgt : x y xNy Hsrc Ntgt {Htgt} / target e \in @petal G [set x; y] x.
-      { move=> Hyp. case/orP: Htgt; first exact: Hyp.
-        rewrite setUC [(e \in _) || (e \in _)]orbC interval_edges_sym.
-        apply: Hyp; rewrite 1?sinterval_sym //. by rewrite eq_sym. }
-      have Nsrc : source e \notin @petal G [set x; y] x.
-      { rewrite (disjointFl (@interval_petal_disj G _ x y _) Hsrc) //.
-        apply: CP_extensive. by rewrite !inE eqxx. }
-      have src_tgt : @sedge G (target e) (source e).
-      { apply/orP; right. apply/andP. split; first by apply: contraNneq Ntgt =><-.
-        apply/'exists_andP. by exists e; split. }
-      have : target e = x := petal_exit_edge G_conn _ Htgt Nsrc src_tgt.
-      move/(_ (CP_extensive _)). rewrite 3!inE eqxx => /(_ _)/Wrap[]// tgt_x.
-      rewrite ![e \in _]inE tgt_x (@intervalL G) [_ \in @interval G _ _]inE Hsrc.
-      rewrite orbT !andbT negb_or !negb_and.
-      suff [->->] : source e != x /\ source e != y by [].
-      by split; apply: contraTneq Hsrc =>->; rewrite (@sinterval_bounds G).
-    + wlog Hsrc : x y xNy {Nsrc Hsrc} / source e \in @petal G [set x; y] x.
-      { move=> Hyp. case/orP: Hsrc; first exact: Hyp.
-        rewrite setUC sinterval_sym interval_edges_sym [(e \in _) || (e \in _)]orbC.
-        rewrite [(target e \in _) || (target e \in _)]orbC.
-        by apply: Hyp; rewrite eq_sym. }
-      case: (boolP (target e \in @petal G [set x; y] x)) => Ntgt /=.
-        by rewrite [e \in _]inE Hsrc Ntgt.
-      have src_tgt : @sedge G (source e) (target e).
-      { apply/orP; left. apply/andP. split; first by apply: contraNneq Ntgt =><-.
-        apply/'exists_andP. by exists e; split. }
-      have : source e = x := petal_exit_edge G_conn _ Hsrc Ntgt src_tgt.
-      move/(_ (CP_extensive _)). rewrite 3!inE eqxx => /(_ _)/Wrap[]// src_x.
-      case/orP=> Htgt.
-      * rewrite ![e \in _]inE src_x (@intervalL G) (negbTE xNy) orbF eqxx/=.
-        have -> : target e != x.
-        { apply: contraTneq Htgt =>->. by rewrite (@sinterval_bounds G). }
-        by have -> : target e \in @interval G x y by rewrite inE Htgt.
-      * have Nsrc : source e \notin @petal G [set x; y] y.
-        { have yNx : y != x by rewrite eq_sym.
-          rewrite (disjointFl (petal_disj G_conn _ _ yNx) Hsrc) //;
-          by apply: CP_extensive; rewrite !inE eqxx. }
-        have := petal_exit_edge G_conn (CP_extensive _) Htgt Nsrc _.
-        rewrite sg_sym 3!inE eqxx => /(_ _ src_tgt)/Wrap[]// tgt_y.
-        rewrite ![e \in _]inE src_x tgt_y (@intervalL G) (@intervalR G).
-        by rewrite !eqxx eq_sym (negbTE xNy).
-  - have [x_cp y_cp] : x \in @CP G [set x; y] /\ y \in @CP G [set x; y]
-      by split; apply: CP_extensive; rewrite !inE eqxx.
-    apply: trivIset3; first exact: petal_edges_disj; first rewrite interval_edges_sym;
-    exact: interval_petal_edges_disj.
+  move=> G_conn xNy. apply/eqP. rewrite eq_sym -subTset. apply/subsetP=> e _.
+  move: (sinterval_petal_cover G_conn xNy) => compU.
+  have : target e \in [set: G] by []. have : source e \in [set: G] by [].
+  rewrite !{}compU !in_setU -!orbA.
+  case: (boolP (source e \in @sinterval G x y)) => [Hsrc _|Nsrc /= Hsrc].
+  + case: (boolP (target e \in @sinterval G x y)) => [Htgt _|Ntgt /= Htgt].
+    { rewrite ![e \in _]inE ![_ \in @interval G _ _]inE Hsrc Htgt.
+      rewrite !orbT negb_or !negb_and. move: Hsrc.
+      by rewrite 5!inE negb_or => /andP[]/andP[->->]. }
+    wlog Htgt : x y xNy Hsrc Ntgt {Htgt} / target e \in @petal G [set x; y] x.
+    { move=> Hyp. case/orP: Htgt; first exact: Hyp.
+      rewrite setUC orbC orbAC orbC interval_edges_sym.
+      apply: Hyp; rewrite 1?sinterval_sym //. by rewrite eq_sym. }
+    have Nsrc : source e \notin @petal G [set x; y] x.
+    { rewrite (disjointFl (@interval_petal_disj G _ x y _) Hsrc) //.
+      apply: CP_extensive. by rewrite !inE eqxx. }
+    have src_tgt : @sedge G (target e) (source e).
+    { apply/orP; right. apply/andP. split; first by apply: contraNneq Ntgt =><-.
+      apply/'exists_andP. by exists e; split. }
+    have : target e = x := petal_exit_edge G_conn _ Htgt Nsrc src_tgt.
+    move/(_ (CP_extensive _)). rewrite 3!inE eqxx => /(_ _)/Wrap[]// tgt_x.
+    rewrite ![e \in _]inE tgt_x (@intervalL G) [_ \in @interval G _ _]inE Hsrc.
+    rewrite orbT !andbT negb_or !negb_and.
+    suff [->->] : source e != x /\ source e != y by [].
+    by split; apply: contraTneq Hsrc =>->; rewrite (@sinterval_bounds G).
+  + wlog Hsrc : x y xNy {Nsrc Hsrc} / source e \in @petal G [set x; y] x.
+    { move=> Hyp. case/orP: Hsrc; first exact: Hyp.
+      rewrite setUC sinterval_sym interval_edges_sym orbC orbAC orbC.
+      rewrite [(e \in _) || _]orbC orbAC [_ || (e \in _)]orbC.
+      by apply: Hyp; rewrite eq_sym. }
+    case: (boolP (target e \in @petal G [set x; y] x)) => Ntgt /=.
+      by rewrite [e \in _]inE Hsrc Ntgt.
+    have src_tgt : @sedge G (source e) (target e).
+    { apply/orP; left. apply/andP. split; first by apply: contraNneq Ntgt =><-.
+      apply/'exists_andP. by exists e; split. }
+    have : source e = x := petal_exit_edge G_conn _ Hsrc Ntgt src_tgt.
+    move/(_ (CP_extensive _)). rewrite 3!inE eqxx => /(_ _)/Wrap[]// src_x.
+    case/orP=> Htgt.
+    * rewrite ![e \in _]inE src_x (@intervalL G) (negbTE xNy) orbF eqxx/=.
+      have -> : target e != x.
+      { apply: contraTneq Htgt =>->. by rewrite (@sinterval_bounds G). }
+      by have -> : target e \in @interval G x y by rewrite inE Htgt.
+    * have Nsrc : source e \notin @petal G [set x; y] y.
+      { have yNx : y != x by rewrite eq_sym.
+        rewrite (disjointFl (petal_disj G_conn _ _ yNx) Hsrc) //;
+        by apply: CP_extensive; rewrite !inE eqxx. }
+      have := petal_exit_edge G_conn (CP_extensive _) Htgt Nsrc _.
+      rewrite sg_sym 3!inE eqxx => /(_ _ src_tgt)/Wrap[]// tgt_y.
+      rewrite ![e \in _]inE src_x tgt_y (@intervalL G) (@intervalR G).
+      by rewrite !eqxx eq_sym (negbTE xNy).
 Qed.
 
-Lemma interval_cp_edge_partition (G : graph) (x y z : G) :
+Lemma interval_cp_edge_cover (G : graph) (x y z : G) :
   connected [set: skeleton G] -> z \in @cp G x y :\: [set x; y] ->
-  pe_partition [set @interval_edges G x z; @interval_edges G z y;
-                    edge_set (@petal G [set x; y] z)]
-               (@interval_edges G x y).
-Admitted.
+  @interval_edges G x y = @interval_edges G x z :|: edge_set (@petal G [set x; y] z)
+                            :|: @interval_edges G z y.
+Proof.
+  move=> G_conn zPcpxy.
+  have z_cpxy : z \in @cp G x y by move: z zPcpxy; apply/subsetP; exact: subsetDl.
+  have z_cp : z \in @CP G [set x; y].
+  { apply/bigcupP; exists (x, y); by [rewrite in_setX !in_set2 !eqxx |]. }
+  have [x_cp y_cp] : x \in @CP G [set x; y] /\ y \in @CP G [set x; y]
+    by split; apply: CP_extensive; rewrite !inE eqxx.
+  apply/eqP. rewrite eqEsubset andbC !subUset [(_ \subset _) && _ && _]andbAC.
+  apply/andP; split; first (apply/andP; split).
+  - wlog suff : x y z zPcpxy {z_cpxy x_cp y_cp z_cp} /
+                  interval_edges x z \subset interval_edges x y.
+    { move=> Hyp. rewrite (Hyp x y z zPcpxy) /=.
+      by rewrite interval_edges_sym (interval_edges_sym x) Hyp 1?cp_sym 1?setUC. }
+    move: zPcpxy. rewrite in_setD in_set2 negb_or => /andP[]/andP[zNx zNy] z_cpxy.
+    apply/subsetP=> e. rewrite ![e \in _]inE !negb_or.
+    case/and3P=> /andP[eNx eNz] Hsrc Htgt. rewrite eNx /=.
+    have -> : source e \in @interval G x y.
+    { move: Hsrc. rewrite !in_setU !in_set1 -orbA.
+      case/or3P=> [->//|/eqP->|/(subsetP (sinterval_sub G_conn z_cpxy))->//].
+      move: z_cpxy => /(subsetP (cp_sub_interval G_conn _ _)).
+      by rewrite !in_setU !in_set1. }
+    have -> : target e \in @interval G x y.
+    { move: Htgt. rewrite !in_setU !in_set1 -orbA.
+      case/or3P=> [->//|/eqP->|/(subsetP (sinterval_sub G_conn z_cpxy))->//].
+      move: z_cpxy => /(subsetP (cp_sub_interval G_conn _ _)).
+      by rewrite !in_setU !in_set1. }
+    rewrite /= andbT.
+    suff : y \notin @interval G x z by apply: contraNN => /andP[/eqP<-].
+    rewrite in_setU in_set2 [_ == z]eq_sym (negbTE zNy) orbF negb_or.
+    apply/andP; split; first by apply: contraTneq z_cpxy =>->; rewrite cpxx inE.
+    by rewrite (@sintervalP G) negb_and !negbK (@cp_sym G y x) z_cpxy.
+  - apply/subsetP=> e. rewrite ![e \in _]inE negb_or.
+    have /subsetP PsubI := petal_sub_sinterval G_conn x_cp y_cp zPcpxy.
+    case/andP=> /PsubI Hsrc /PsubI Htgt.
+    rewrite ![_ \in @interval G x y]inE Hsrc Htgt !orbT /= andbT.
+    apply/andP; split; apply: contraTN Hsrc => /andP[/eqP<-];
+    by rewrite sinterval_bounds.
+  - apply/subsetP=> e.
+    rewrite in_setD andbC !in_setU inE (interval_cp_cover G_conn zPcpxy).
+    rewrite negb_or 2!in_setU 2!(in_setU (target e)) => /andP[]/andP[].
+    rewrite [(_ \in _) || _]orbC -2!orbA. case/orP=> Hsrc Htgt.
+    + wlog Htgt : x y z zPcpxy Hsrc x_cp y_cp z_cp {z_cpxy Htgt} /
+          (target e \in @petal G [set x; y] z) || (target e \in x |: @sinterval G x z).
+      { case/or3P: Htgt => /= Htgt Hyp.
+        * apply: Hyp => //; by rewrite Htgt.
+        * apply: Hyp => //; by rewrite Htgt.
+        * rewrite andbC orbC orbCA orbC setUC (interval_edges_sym x)interval_edges_sym.
+          by apply: Hyp; rewrite setUC 1?cp_sym // sinterval_sym Htgt. }
+      case/orP: Htgt => Htgt _; first by rewrite ![e \in _]inE Hsrc Htgt.
+      case: (altP (source e =P target e)) => He.
+        by rewrite ![e \in _]inE -He Hsrc.
+      have src_tgt : @sedge G (source e) (target e).
+      { rewrite -adjacentE He. apply/orP; left; apply/existsP; exists e.
+        by rewrite !inE !eqxx. }
+      have zNx : z != x by move: zPcpxy; rewrite !inE negb_or -andbA => /and3P[].
+      have Ntgt : target e \notin @petal G [set x; y] z.
+      { move: Htgt; rewrite sinterval_sym in_setU1.
+        case/orP=> [/eqP->|Htgt]; last first.
+          by rewrite (disjointFl (interval_petal_disj _ x_cp) Htgt).
+        apply/petalPn. exists x; by [|rewrite cpxx inE]. }
+      move/cpP'/(_ (edgep src_tgt)): (petal_exit G_conn z_cp Hsrc Ntgt).
+      rewrite mem_edgep orbC. have /negbTE->/= : z != target e
+        by apply: contraNneq Ntgt =><-; rewrite (@petal_id G).
+      move=> /eqP Esrc. rewrite ![e \in _]inE -Esrc eqxx (negbTE zNx) /=.
+      rewrite {1}Esrc eq_sym He (@intervalR G) in_setU in_set2.
+      by move: Htgt; rewrite in_setU1; case/orP=>->.
+    + wlog Hsrc : x y z zPcpxy x_cp y_cp z_cp Htgt z_cpxy {Hsrc} /
+          source e \in x |: @sinterval G x z.
+      { case/orP: Hsrc => /= Hsrc; first by [apply]; move=> Hyp.
+        rewrite andbC orbC orbCA orbC setUC (interval_edges_sym x) interval_edges_sym.
+        apply: Hyp; rewrite 1?[_ |: set1 _]setUC 1?cp_sym //.
+        * by rewrite orbC orbAC orbC (@sinterval_sym G y) sinterval_sym.
+        * by rewrite sinterval_sym. }
+      case/or3P: Htgt => Htgt.
+      * case/andP=> eNx _. rewrite 2!inE negb_or eNx 2!inE negb_and.
+        have ->/= : source e != z.
+        { apply: contraTneq Hsrc => ->.
+          rewrite in_setU1 (@sinterval_bounds G) orbF.
+          move: zPcpxy; rewrite in_setD in_set2 negb_or; by case/andP=> /andP[]. }
+        have -> : source e \in @interval G x z.
+        { by move: Hsrc; rewrite !in_setU !in_set1 => /orP[]->. }
+        suff -> : target e \in @interval G x z by [].
+        by move: Htgt; rewrite !in_setU !in_set1 => /orP[]->.
+      * case: (altP (source e =P target e)) => He _.
+          by rewrite ![e \in _]inE He Htgt.
+        have tgt_src : @sedge G (target e) (source e).
+        { rewrite -adjacentE eq_sym He. apply/orP; right; apply/existsP; exists e.
+          by rewrite !inE !eqxx. }
+        have zNx : z != x by move: zPcpxy; rewrite !inE negb_or -andbA => /and3P[].
+        have Nsrc : source e \notin @petal G [set x; y] z.
+        { move: Hsrc; rewrite sinterval_sym in_setU1.
+          case/orP=> [/eqP->|Hsrc]; last first.
+            by rewrite (disjointFl (interval_petal_disj _ x_cp) Hsrc).
+          apply/petalPn. exists x; by [|rewrite cpxx inE]. }
+        move/cpP'/(_ (edgep tgt_src)): (petal_exit G_conn z_cp Htgt Nsrc).
+        rewrite mem_edgep orbC. have /negbTE->/= : z != source e
+          by apply: contraNneq Nsrc =><-; rewrite (@petal_id G).
+        move=> /eqP Etgt. rewrite ![e \in _]inE -Etgt eqxx (negbTE zNx) andbF andbT /=.
+        rewrite {1}Etgt He (@intervalR G) in_setU in_set2.
+        by move: Hsrc; rewrite in_setU1; case/orP=>->.
+      * have adj : adjacent (source e) (target e)
+          by apply/orP; left; apply/existsP; exists e; rewrite inE !eqxx.
+        case: (altP (source e =P target e)) Hsrc Htgt => [<-|He Hsrc Htgt].
+        { rewrite !in_setU1; case/orP=> [/eqP->|Hsrc].
+          - rewrite (@sintervalP G) z_cpxy /= orbF => /eqP Exy.
+            move: zPcpxy. by rewrite -Exy cpxx setUid setDv inE.
+          - rewrite (disjointFr (sinterval_disj_cp z_cpxy) Hsrc) orbF => /eqP Htgt.
+            move: Hsrc. by rewrite Htgt (@sintervalP G) (@cp_sym G y x) z_cpxy andbF. }
+        have {He adj} He : @sedge G (source e) (target e) by rewrite -adjacentE He adj.
+        have [/negbTE srcNz /negbTE tgtNz] : source e != z /\ target e != z.
+        { split; [apply: contraTneq Hsrc|apply: contraTneq Htgt]=>->.
+          all: rewrite in_setU1 negb_or (@sintervalP G) mem_cpl ?andbF andbT.
+          all: move: zPcpxy; by rewrite !inE negb_or -andbA =>/and3P[]. }
+        have {Hsrc} Hsrc : source e \in @interval G x z.
+        { move: Hsrc; rewrite /interval !in_setU !in_set1 => /orP[/eqP->|->//].
+          by rewrite eqxx. }
+        have {Htgt} Htgt : target e \in @interval G z y.
+        { move: Htgt; rewrite /interval !in_setU !in_set1 => /orP[/eqP->|->//].
+          by rewrite eqxx. }
+        have := interval_edge_cp z_cpxy He Hsrc Htgt. by rewrite srcNz tgtNz.
+Qed.
 
 (** ** Connecting Multigraphs and their Skeletons *)
 

@@ -331,6 +331,15 @@ Section CheckPoints.
         by apply: contraTN =>/eqP->.
   Qed.
 
+  Lemma sinterval_sub x y z : z \in cp x y -> sinterval x z \subset sinterval x y.
+  Proof.
+    move=> z_cpxy. apply/subsetP=> u. rewrite !sintervalP. case/andP=> xNcpuz zNcpux.
+    apply/andP; split.
+    - apply: contraNN xNcpuz => x_cpuy. exact: cp_tightenR z_cpxy x_cpuy.
+    - apply: contraNN zNcpux => y_cpux. apply: cp_widen y_cpux z_cpxy.
+      by rewrite cp_sym mem_cpl.
+  Qed.
+
   Lemma sinterval_exit x y u v : u \notin sinterval x y -> v \in sinterval x y ->
     x \in cp u v \/ y \in cp u v.
   Proof.
@@ -435,6 +444,15 @@ Section CheckPoints.
   Lemma interval_sym x y : interval x y = interval y x.
   Proof. by rewrite /interval [[set x; y]]setUC sinterval_sym. Qed.
 
+  Lemma cp_sub_interval x y : cp x y \subset interval x y.
+  Proof.
+    apply/subsetP=> z z_cpxy. rewrite !in_setU !in_set1 sintervalP -implyNb negb_or.
+    apply/implyP=> /andP[zNx zNy]. apply/andP; split.
+    - apply: contraNN zNx => /(cp_tightenR z_cpxy). by rewrite cpxx !inE eq_sym.
+    - rewrite cp_sym in z_cpxy. apply: contraNN zNy => /(cp_tightenR z_cpxy).
+      by rewrite cpxx !inE eq_sym.
+  Qed.
+
   Lemma intervalI_cp (x y z : G) :
     z \in cp x y -> interval x z :&: interval z y = [set z].
   Proof.
@@ -516,6 +534,24 @@ Section CheckPoints.
     rewrite /petal -lock inE negb_forall. apply: (iffP existsP) => [[y]|[y] A B].
     - rewrite negb_imply => /andP[? ?]. by exists y.
     - exists y. by rewrite A.
+  Qed.
+
+  Lemma petal_sub_sinterval (U : {set G}) x y z :
+    x \in CP U -> y \in CP U -> z \in cp x y :\: [set x; y] ->
+    petal U z \subset sinterval x y.
+  Proof.
+    rewrite in_setD in_set2 negb_or => x_cp y_cp /andP[]/andP[zNx zNy] z_cpxy.
+    apply/subsetP=> u /petalP u_petal.
+    move: x_cp y_cp => /u_petal z_cpux /u_petal z_cpuy.
+    rewrite sintervalP. apply/andP; split.
+    - apply: contraNN zNx => x_cpuy.
+      suff : x \in cp z z by rewrite cpxx in_set1 eq_sym.
+      suff : x \in cp z u by apply: cp_tightenR; rewrite cp_sym.
+      rewrite cp_sym; exact: cp_tightenR z_cpxy x_cpuy.
+    - apply: contraNN zNy => y_cpux.
+      suff : y \in cp z z by rewrite cpxx in_set1 eq_sym.
+      suff : y \in cp z u by apply: cp_tightenR; rewrite cp_sym.
+      rewrite cp_sym; apply: cp_tightenR y_cpux; by rewrite cp_sym.
   Qed.
 
   (* Lemma 16 *)
@@ -980,28 +1016,73 @@ a clique, so [CP U] is [U]. *)
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
-  Lemma sinterval_petal_partition x y : x != y ->
-    pe_partition [set petal [set x; y] x; petal [set x; y] y; sinterval x y] [set: G].
+  Lemma sinterval_petal_cover x y : x != y ->
+    [set: G] = petal [set x; y] x :|: sinterval x y :|: petal [set x; y] y.
   Proof.
-    move=> xNy. apply/andP; split.
-    - rewrite eqEsubset subsetT /=. apply/subsetP => p _.
-      rewrite /cover !bigcup_setU !bigcup_set1.
-      rewrite 2!inE orbC sintervalP -negb_or -implybE. apply/implyP.
-      wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in petal [set x; y] x.
-      { by case/orP => /Hyp; last rewrite setUC; move=>->. }
-      move=> x_cppy; apply/petalP => z. rewrite CP_set2 => z_cpxy.
-      exact: cp_tightenR z_cpxy x_cppy.
-    - have [x_CP y_CP] : x \in CP [set x; y] /\ y \in CP [set x; y].
-      { by split; apply: CP_extensive; rewrite !inE eqxx. }
-      apply: trivIset3; first exact: petal_disj.
-      + by rewrite sinterval_sym interval_petal_disj.
-      + by rewrite interval_petal_disj.
+    move=> xNy. apply/eqP. rewrite eqEsubset subsetT andbT. apply/subsetP => p _.
+    rewrite setUAC setUC !in_setU sintervalP -negb_or -implybE. apply/implyP.
+    wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in petal [set x; y] x.
+    { by case/orP => /Hyp; last rewrite setUC; move=>->. }
+    move=> x_cppy; apply/petalP => z. rewrite CP_set2 => z_cpxy.
+    exact: cp_tightenR z_cpxy x_cppy.
   Qed.
 
-  Lemma sinterval_cp_partition x y z : z \in cp x y :\: [set x; y] ->
-    pe_partition [set sinterval x z; sinterval z y; petal [set x; y] z]
-                 (sinterval x y).
-  Admitted.
+  Lemma sinterval_cp_cover x y z : z \in cp x y :\: [set x; y] ->
+    sinterval x y = sinterval x z :|: petal [set x; y] z :|: sinterval z y.
+  Proof.
+    rewrite 4!inE negb_or => /andP[]/andP[zNx zNy] z_cpxy. apply/eqP.
+    have [x_CP y_CP] : x \in CP [set x; y] /\ y \in CP [set x; y].
+    { by split; apply: CP_extensive; rewrite !inE eqxx. }
+    rewrite eqEsubset !subUset sinterval_sub //=.
+    rewrite {3}(sinterval_sym x y) {2}(sinterval_sym z y) sinterval_sub 1?cp_sym //.
+    rewrite petal_sub_sinterval /= ?andbT //;
+      last by rewrite in_setD in_set2 negb_or zNx zNy.
+    apply/subsetP=> u u_sIxy. rewrite !in_setU.
+    have [uNx uNy] : u != x /\ u != y.
+    { by split; apply: contraTneq u_sIxy => ->; rewrite sinterval_bounds. }
+    move: u_sIxy; rewrite sintervalP. case/andP=> xNcpuy yNcpux.
+    case: (boolP (z \in cp u x)) => Hx; case: (boolP (z \in cp u y)) => Hy.
+    + suff -> : u \in petal [set x; y] z by []. apply/petalP=> c.
+      rewrite CP_set2 => /(subsetP (cp_triangle z)). rewrite in_setU cp_sym.
+      case/orP=> c_cp; exact: cp_tightenR c_cp _.
+    + suff -> : u \in sinterval z y by []. rewrite sintervalP Hy /=.
+      apply: cpN_trans yNcpux _. apply: contraNN zNy => y_cpxz.
+      suff : z \in cp y y by rewrite cpxx in_set1 eq_sym.
+      move: y_cpxz z_cpxy. rewrite [cp x z]cp_sym [cp x y]cp_sym.
+      exact: cp_tightenR.
+    + suff -> : u \in sinterval x z by []. rewrite sintervalP Hx andbT.
+      apply: cpN_trans xNcpuy _. apply: contraNN zNx => x_cpyz.
+      suff : z \in cp x x by rewrite cpxx in_set1 eq_sym.
+      move: x_cpyz z_cpxy. rewrite [cp y z]cp_sym.
+      exact: cp_tightenR.
+    + rewrite cp_sym in Hx. have : z \notin cp x y := cpN_trans Hx Hy.
+      by rewrite z_cpxy.
+  Qed.
+
+  Lemma interval_cp_cover x y z : z \in cp x y :\: [set x; y] ->
+    interval x y = (x |: sinterval x z) :|: petal [set x; y] z :|: (y |: sinterval z y).
+  Proof.
+    rewrite /interval => /sinterval_cp_cover->.
+    by rewrite setUAC -setUA [_ :|: set1 y]setUAC !setUA.
+  Qed.
+
+  Lemma interval_edge_cp (x y z u v : G) : z \in cp x y -> u -- v ->
+    u \in interval x z -> v \in interval z y -> (u == z) || (v == z).
+  Proof.
+    move=> z_cpxy uv u_xz v_zy.
+    wlog [Hu Evy] : x y u v z_cpxy uv {u_xz v_zy} / u \in sinterval x z /\ v = y.
+    { move=> Hyp. move: u_xz v_zy. rewrite !in_setU !in_set1 -!orbA.
+      case/or3P=> [/eqP Eux|->//|Hu]; case/or3P=> [->//|/eqP Evy|Hv].
+      - move: uv; rewrite Eux Evy => xy. move/cpP'/(_ (edgep xy)): z_cpxy.
+        by rewrite mem_edgep ![z == _]eq_sym.
+      - rewrite orbC. move: (conj Hv Eux). rewrite sinterval_sym.
+        apply: Hyp; by rewrite 1?cp_sym 1?sg_sym.
+      - by apply: Hyp (conj Hu Evy).
+      - move: (sinterval_noedge_cp uv Hu Hv). by rewrite z_cpxy. }
+    move: uv Hu; rewrite {}Evy sintervalP => uy /andP[_]/cpPn'[p _ zNp].
+    move/cpP'/(_ (pcat (prev p) (edgep uy))): z_cpxy.
+    by rewrite mem_pcat mem_prev mem_edgep (negbTE zNp) /= ![z == _]eq_sym.
+  Qed.
 
   Lemma CP_triangle_petals U (x y z : CP_ U) : 
     x -- y -> y -- z -> z -- x -> 

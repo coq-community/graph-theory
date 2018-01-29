@@ -406,11 +406,8 @@ Proof.
   set T := U2 :|: _. have {T}-> : T = interval x y.
   { rewrite {}/T {-3}/U2 /interval bigcup_setU !bigcup_set1.
     congr ([set x; y] :|: _).
-    have : pe_partition [set petal U2 x; petal U2 y; sinterval x y] [set: G].
-    { exact: sinterval_petal_partition. }
-    rewrite /pe_partition =>/andP[/eqP/esym covG _]; move: covG.
-    rewrite /cover !bigcup_setU !bigcup_set1 -setTD =>->.
-    rewrite setDUl setDv set0U; apply/setDidPl.
+    rewrite -setTD (sinterval_petal_cover G_conn xNy).
+    rewrite setUAC setDUl setDv set0U; apply/setDidPl.
     rewrite disjoint_sym disjoints_subset subUset -!disjoints_subset.
     by rewrite {2}sinterval_sym !interval_petal_disj //;
     apply: CP_extensive; rewrite !inE eqxx. }

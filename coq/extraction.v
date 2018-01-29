@@ -116,8 +116,7 @@ Proof.
   rewrite !inE -setTD eqxx =>/(_ isT) petal_i.
   move=> /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
   rewrite !inE eqxx orbT =>/(_ isT) petal_o /andP[iNo _].
-  case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
-  rewrite petal_i petal_o /cover !bigcup_setU !bigcup_set1.
+  rewrite (sinterval_petal_cover G_conn iNo) petal_i petal_o setUAC.
   rewrite setDUl setDv set0U setDE. apply: esym; apply/setIidPl.
   apply/subsetP=> x x_sI. rewrite !inE negb_or.
   apply/andP; split; apply: contraTneq x_sI =>->; by rewrite sinterval_bounds.
@@ -777,12 +776,11 @@ Proof.
     { rewrite ![x \in _ |: _]inE ![x \in set1 _]inE !negb_or.
       move=> /andP[/negbTE xNi /negbTE xNl] /andP[/negbTE xNo /negbTE xNr].
       have : x \in [set : skeleton G] by [].
-      case/andP: (sinterval_petal_partition G_conn iNo) => /eqP<- _.
-      rewrite (eqP (edgeless_petal _ (CP_extensive _) pi_e0)) ?inE ?eqxx //.
-      rewrite (eqP (edgeless_petal _ (CP_extensive _) po_e0)) ?inE ?eqxx //.
-      rewrite /cover !bigcup_setU !bigcup_set1 4!inE xNi xNo.
-      case/andP: (sinterval_cp_partition G_conn u_cpio) => /eqP<- _ /bigcupP[?].
-      rewrite 5!inE -orbA => /or3P[]/eqP->; by rewrite ?xNl ?xNr. }
+      rewrite (sinterval_petal_cover G_conn iNo).
+      rewrite (eqP (edgeless_petal _ (CP_extensive _) pi_e0)) ?in_set2 ?eqxx //.
+      rewrite (eqP (edgeless_petal _ (CP_extensive _) po_e0)) ?in_set2 ?eqxx //.
+      rewrite !in_setU !in_set1 xNi xNo orbF /=.
+      by rewrite (sinterval_cp_cover G_conn u_cpio) !in_setU -orbA xNl xNr orbF. }
     have intvL_node (x : G) : x \in g_in |: @sinterval G g_in u ->
                               x \in @interval G g_in u.
     { by rewrite [_ \in @interval G _ _]inE (lock sinterval) !inE -lock orbAC =>->. }
@@ -865,10 +863,9 @@ Proof.
                                    e \notin @interval_edges G u g_out ->
                                    e \in edge_set (@petal G IO u).
     { move=> /negbTE eNl /negbTE eNr. have : e \in [set: edge G] by [].
-      case/andP: (interval_petal_edge_partition G_conn iNo) => /eqP<- _.
-      rewrite (eqP pi_e0) (eqP po_e0) /cover !bigcup_setU !bigcup_set1 !set0U.
-      case/andP: (interval_cp_edge_partition G_conn u_cpio) => /eqP<- _.
-      by rewrite /cover !bigcup_setU !bigcup_set1 2!inE eNl eNr. }
+      rewrite (interval_petal_edge_cover G_conn iNo).
+      rewrite (eqP pi_e0) (eqP po_e0) set0U setU0.
+      by rewrite (interval_cp_edge_cover G_conn u_cpio) !in_setU eNl eNr orbF. }
     pose k (e : edge G) : edge G' :=
       match boolP (e \in @interval_edges G g_in u) with
       | AltTrue eL => inl (Sub e eL)
@@ -1140,12 +1137,11 @@ Proof.
   - rewrite /f. case: piP => -[x /inRL[->]/inRL[/valE? _]//|x /injR<-{x}].
     by case: piP => -[x /inRL[->]|x /injR<-].
 
-  - case/andP: (sinterval_petal_partition G_conn Eio) => /eqP nodeU nodeI.
-    have sintv_node (x : G) : x \notin @petal G IO g_in ->
+  - have sintv_node (x : G) : x \notin @petal G IO g_in ->
                               x \notin @petal G IO g_out ->
                               x \in @sinterval G g_in g_out.
     { move=> /negbTE Npi /negbTE Npo. have : x \in [set: G] by [].
-      by rewrite -nodeU /cover !bigcup_setU !bigcup_set1 2!inE Npi Npo. }
+      by rewrite (sinterval_petal_cover G_conn Eio) !in_setU Npi Npo orbF. }
     have intv_node (x : G) : x \in @sinterval G g_in g_out ->
                              x \in  @interval G g_in g_out.
     { by rewrite [x \in @interval G _ _]inE => ->. }
@@ -1213,12 +1209,11 @@ Proof.
       * case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
         by case: piP => -[y /injL<-|y /inLR[/valE?->]].
 
-  - case/andP: (interval_petal_edge_partition G_conn Eio) => /eqP edgeU edgeI.
-    have intv_edge (e : edge G) :
+  - have intv_edge (e : edge G) :
       e \notin edge_set (@petal G IO g_in) -> e \notin edge_set (@petal G IO g_out) ->
       e \in @interval_edges G g_in g_out.
     { move=> /negbTE Npi /negbTE Npo. have : e \in [set: edge G] by [].
-        by rewrite -edgeU /cover !bigcup_setU !bigcup_set1 2!inE Npi Npo. }
+      by rewrite (interval_petal_edge_cover G_conn Eio) !in_setU Npi Npo orbF. }
     pose k (e : edge G) : edge G' :=
       match boolP (e \in edge_set (@petal G IO g_in)),
             boolP (e \in edge_set (@petal G IO g_out)) with
