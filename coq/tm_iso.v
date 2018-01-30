@@ -279,7 +279,11 @@ Lemma big_seq2_maps (I : finType) (r : {set I}) F :
 Proof. by rewrite big_seq2_map -filter_index_enum big_filter. Qed.
 
 Instance dom2_morphism : Proper (iso2 ==> iso2) dom2.
-Admitted.
+Proof. 
+  move => G G' [h /= hom_h bij_h].
+  exists (h.1,h.2) => //; repeat split => //=; rewrite ?hom_h //.
+  all: by move => e; rewrite hom_h.
+Qed.
 
 Local Notation IO := ([set g_in; g_out]).
 

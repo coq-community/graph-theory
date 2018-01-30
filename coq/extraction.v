@@ -108,6 +108,23 @@ Proof.
   apply/set0Pn. apply: get_edge xz => //. exact: petal_id.
 Qed.
 
+Lemma edge_in_set (G : graph) e (A : {set G})  x y : 
+  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
+Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
+
+Lemma lens_io_set (G : graph2) : 
+  lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
+Proof.
+  move => /and3P [A B _]. apply/setP => e. apply/idP/idP.
+  - rewrite !inE. 
+    (repeat let H := fresh in case: (boolP (_ == _)) => H) => //= _.
+    + apply: contraTT A => _. apply/set0Pn; exists e. 
+      by rewrite inE (eqP H) (eqP H1) (@petal_id G). 
+    + apply: contraTT B => _. apply/set0Pn; exists e. 
+      by rewrite inE (eqP H0) (eqP H2) (@petal_id G). 
+  - by case/setUP ; apply: edge_in_set; rewrite !inE eqxx.
+Qed.
+
 Lemma lens_sinterval (G : graph2) :
   connected [set: skeleton G] -> lens G ->
   (@sinterval G g_in g_out = ~: IO).
@@ -1273,9 +1290,6 @@ Proof.
 Qed.  
 
 
-Lemma lens_io_set (G : graph2) : 
-  lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
-Admitted.
 
 Lemma edges2_graph_of (G : graph2) : 
   edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in] ≈ 
