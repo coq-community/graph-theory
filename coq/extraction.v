@@ -924,7 +924,10 @@ Definition edges2 (As : seq (sym * bool)) : graph2 :=
   point (edges2_graph As) false true.
 
 Lemma edges2_nil : edges2 nil ≈ top2.
-Admitted.
+Proof. 
+  apply: iso_top => //; last by case. 
+  move => x. rewrite !inE. by case: x.
+Qed.
 
 Lemma ord_0Vp n (o : 'I_n.+1) : (o = ord0) + ({o' : 'I_n | o'.+1 = o :> nat}).
 Proof.
@@ -1245,10 +1248,21 @@ Proof.
       congr (inr (inr _)). exact: val_inj.
 Qed.
 
+
 Lemma componentless_top (G : graph2) : 
   g_in != g_out :> G -> @components G (~: IO) == set0 -> 
   point (@remove_edges G (edge_set IO)) g_in g_out ≈ top2.
-Admitted.
+Proof.
+  move => Dio com0.
+  have A (x: G) : x \in IO. 
+  { set C := pblock (@components G (~: IO)) x.
+    apply: contraTT com0 => Hx. apply/set0Pn. exists C. apply: pblock_mem. 
+    by rewrite (cover_partition (partition_components _)) inE. }
+  apply: iso_top => //.
+  move => [e He]. rewrite inE negb_and in He. 
+  case/orP: He; by rewrite A.
+Qed.  
+
 
 Lemma lens_io_set (G : graph2) : 
   lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
@@ -1341,6 +1355,8 @@ Proof.
            by rewrite !inE !eqxx.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
+
+Print Assumptions term_of_iso.
 
 (** * Minor Exclusion Corollaries *)
 

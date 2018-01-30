@@ -332,3 +332,28 @@ Proof.
 Qed.
 
 Definition big_par2_congr' := big_iso_congr par2_congr.
+
+Lemma iso_top (G : graph2) :
+  g_in != g_out :> G -> 
+  (forall x : G, x \in IO) -> 
+  (forall e : edge G, False) -> G ≈ top2.
+Proof.
+  move => Dio A B. 
+  pose f (x : G) : top2 := 
+    if x == g_in then g_in else g_out.
+  pose f' (x : top2) : G := 
+    if x == g_in then g_in else g_out.
+  pose g (e : edge G) : edge top2 := 
+    match (B e) with end.
+  pose g' (e : edge top2) : edge G := 
+    match e with end.
+  exists (f,g); repeat split => //=. 
+  - by rewrite /f eqxx.
+  - by rewrite /f eq_sym (negbTE Dio).
+  - apply: (Bijective (g := f')) => x; rewrite /f /f'. 
+    + case: (boolP (x == g_in)) => [/eqP <-|/=]; first by rewrite eqxx.
+      move: (A x). case/setUP => /set1P => -> //. by rewrite eqxx.
+    + case: (boolP (x == g_in)) => [/eqP <-|/=]; first by rewrite eqxx.
+      case: x => // _. by rewrite eq_sym (negbTE Dio).
+  - by apply: (Bijective (g := g')).
+Qed.
