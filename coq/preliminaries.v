@@ -223,6 +223,8 @@ Proof. by case. Qed.
 
 Canonical void_finType := FinType void (FinMixin void_enumP).
 
+Lemma card_void : #|{: void}| = 0.
+Proof. exact: eq_card0. Qed.
 
 Notation rel0 := [rel _ _ | false].
 

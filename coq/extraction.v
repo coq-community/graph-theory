@@ -496,9 +496,22 @@ Lemma measure_redirect (G : graph2) C :
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   measure (redirect C) < measure G.
 Proof.
-  (* Since G is connected and C nonempty, there must be a neighbor of i.
-  Hence, [redirect C] has distinct input an ouutput and no more edges than G. *)
-Admitted. 
+  move => CK4F_G Eio HC.
+  have D := @partition_components G [set~ g_in].
+  have Csub: C \subset [set~ g_in].
+  { rewrite -(cover_partition D). apply/subsetP => z Hz. 
+    exact: mem_cover HC _. }
+  rewrite /redirect. case: pickP => [x /andP [Hx1 Hx2]|]. 
+  - apply: measure_io => //=. 
+    + rewrite -val_eqE /=. apply: contraTN Hx1 => /eqP<-. 
+      apply: contraTN Csub => A. apply/subsetPn. exists g_in => //. by rewrite setC11. 
+    + rewrite card_sig. exact: max_card. 
+  - move => _. apply: measure_card => /=. rewrite card_void.
+    have/set0Pn [x Hx] : C != set0. 
+    { case/and3P : D => _ _. by apply: contraNN => /eqP <-. }
+    have: x != g_in. move/(subsetP Csub) in Hx. by rewrite !inE in Hx.    
+    apply: has_edge. by apply CK4F_G.
+Qed.
 
 Lemma CK4F_lens (G : graph2) C : 
   CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
