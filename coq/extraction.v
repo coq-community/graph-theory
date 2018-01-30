@@ -706,7 +706,16 @@ Qed.
 Lemma componentless_one (G : graph2) :
   g_in == g_out :> G -> @edge_set G IO == set0 ->
   @components G [set~ g_in] == set0 -> G ≈ one2.
-Admitted.
+Proof.
+  move => Eio E com0. 
+  have A (x : G) : x = g_in. 
+  { set C := pblock (@components G [set~ g_in]) x.
+    apply: contraTeq com0 => Hx. apply/set0Pn. exists C. apply: pblock_mem.
+    by rewrite (cover_partition (partition_components _)) !inE. }
+  apply: iso_one => // [x|e]; first by rewrite !inE [x]A eqxx. 
+  move/eqP/setP/(_ e) : E.  
+  by rewrite !inE [source e]A [target e]A !eqxx.
+Qed.
 
 Lemma split_component (G : graph2) (C : {set G}) :
   @edge_set G IO == set0 -> C \in @components G (~: IO) ->

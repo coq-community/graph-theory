@@ -357,3 +357,22 @@ Proof.
       case: x => // _. by rewrite eq_sym (negbTE Dio).
   - by apply: (Bijective (g := g')).
 Qed.
+
+Lemma iso_one (G : graph2) :
+  g_in == g_out :> G -> 
+  (forall x : G, x \in IO) -> 
+  (forall e : edge G, False) -> G ≈ one2.
+Proof.
+  move => Dio A B. 
+  pose f (x : G) : one2 := g_in.
+  pose f' (x : one2) : G := g_in.
+  pose g (e : edge G) : edge one2 := 
+    match (B e) with end.
+  pose g' (e : edge one2) : edge G := 
+    match e with end.
+  exists (f,g); repeat split => //=. 
+  - apply: (Bijective (g := f')) => x; rewrite /f /f'.  
+    move: (A x). rewrite !inE -(eqP Dio) => /orP. by case => /eqP->.
+    by case: x.
+  - by apply: (Bijective (g := g')).
+Qed.
