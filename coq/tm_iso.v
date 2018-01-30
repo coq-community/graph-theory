@@ -290,25 +290,91 @@ Lemma iso_split_par2 (G : graph2) (C D : {set G})
   G ≈ (par2 (point (induced C) (Sub g_in Ci) (Sub g_out Co)) 
             (point (induced D) (Sub g_in Di) (Sub g_out Do))).
 Proof.
-  move => subIO fullCD disjE fullE.
-  set G' := par2 _ _.
-  have decV (v : G) : ((v \in C) + (v \in D))%type.
-  { admit. }
-  have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
-  { admit. }
-  pose f (x : G) : G' := 
-    match decV x with 
-    | inl p => \pi_(_) (inl (Sub x p)) 
-    | inr p => \pi_(_) (inr (Sub x p))
-    end.
-  (* do NOT use simpl *)
-  pose h (e : edge G) : edge G' := 
-    match decE e with 
-    | inl p => inl (Sub e p)
-    | inr p => inr (Sub e p)
-    end.
-  exists (f,h).
-Admitted.
+  move => subIO fullCD disjE fullE. apply: iso2_sym.
+  set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2 _ _.
+
+  have injL (x y : G1) : inl x = inl y %[mod_eq @par2_eqv G1 G2] -> x = y.
+  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+    case/orP=> [/eqP|]; first exact: val_inj.
+    case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
+    all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE !orbF.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
+  have injR (x y : G2) : inr x = inr y %[mod_eq @par2_eqv G1 G2] -> x = y.
+  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+    case/orP=> [/eqP|]; first exact: val_inj.
+    case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
+    all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
+  pose valE := f_equal val. pose inLR := par2_LR.
+  pose inRL := fun e => par2_LR (esym e).
+
+  pose f (x : G') : G := match repr x with inl x => val x | inr x => val x end.
+  pose h (e : edge G') : edge G := match e with inl e => val e | inr e => val e end.
+  exists (f, h); split; first split; first apply: hom_gI => e.
+  all: rewrite -?[(f, h).1]/f -?[(f, h).2]/h.
+
+  - case: e => [e|e]; rewrite /f/h; split=> //; case: piP => -[]e'.
+    all: first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
+    all: by repeat move=> /valE/=->.
+  - rewrite /f. by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+  - rewrite /f. by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+
+  - have decV (v : G) : ((v \in C) + (v \in D))%type.
+    { have : v \in [set: G] by []. rewrite -fullCD in_setU.
+      case: (boolP (v \in C)) => HC /= HD; by [left|right]. }
+    pose g (x : G) : G' :=
+      match decV x with
+      | inl p => \pi_(_) (inl (Sub x p))
+      | inr p => \pi_(_) (inr (Sub x p))
+      end.
+    exists g => x; rewrite /f/g.
+    + case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
+      * rewrite -[x]reprK Ex. congr \pi (inl _). exact: val_inj.
+      * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
+        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
+        rewrite /equiv/equiv_pack/par2_eqv. case: ifPn => _; last first.
+        { rewrite subUset !sub1set !in_setU !in_set1.
+          by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
+        rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
+        rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
+        by rewrite /= !orbF !andbT !andbb.
+      * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
+        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
+        rewrite /equiv/equiv_pack/par2_eqv. case: ifPn => _; last first.
+        { rewrite subUset !sub1set !in_setU !in_set1.
+          by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
+        rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
+        rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
+        by rewrite /= !orbF !andbT !andbb.
+      * rewrite -[x]reprK Ex. congr \pi (inr _). exact: val_inj.
+    + case: (decV x) => Hx; case: piP => -[]y.
+      * by move=> /injL<-.
+      * by case/inLR=> -[]/valE/=->->.
+      * by case/inRL=> -[->]/valE/=->.
+      * by move=> /injR<-.
+
+  - have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
+    { have : e \in [set: edge G] by []. rewrite -fullE in_setU.
+      case: (boolP (e \in edge_set C)) => HC /= HD; by [left|right]. }
+    pose k (e : edge G) : edge G' :=
+      match decE e with
+      | inl p => inl (Sub e p)
+      | inr p => inr (Sub e p)
+      end.
+    exists k => e; rewrite /h/k; last by case: (decE e). case: e => e.
+    + have He : val e \in edge_set C := valP e.
+      case: (decE _) => H; first by congr inl; exact: val_inj.
+      suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
+      by rewrite in_setI He H.
+    + have He : val e \in edge_set D := valP e.
+      case: (decE _) => H; last by congr inr; exact: val_inj.
+      suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
+      by rewrite in_setI He H.
+Qed.
 
 
 Lemma graph_of_big_tmI (T : eqType) (r : seq T) F : 
