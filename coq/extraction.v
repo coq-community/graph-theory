@@ -720,6 +720,114 @@ Qed.
 Lemma split_component (G : graph2) (C : {set G}) :
   @edge_set G IO == set0 -> C \in @components G (~: IO) ->
   G ≈ par2 (component C) (induced2 (~: C)).
+Proof.
+  move=> NEio C_comp. apply: iso2_sym.
+  case/and3P: (@partition_components G (~: IO)) => /eqP compU compI comp0n.
+  have : C \subset ~: IO by rewrite -compU; apply/subsetP => x; exact: mem_cover.
+  rewrite subsetC subUset !sub1set => /andP[iNC oNC]. rewrite induced2_induced.
+  set G1 := component C. set G2 := point _ _ _. set G' := par2 _ _.
+
+  have injL (x y : G1) : inl x = inl y %[mod_eq @par2_eqv G1 G2] -> x = y.
+  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+    case/orP=> [/eqP|]; first exact: val_inj.
+    case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
+    all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE !orbF.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
+  have injR (x y : G2) : inr x = inr y %[mod_eq @par2_eqv G1 G2] -> x = y.
+  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+    case/orP=> [/eqP|]; first exact: val_inj.
+    case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
+    all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /andP[]/eqP->/eqP->.
+    - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
+  pose valE := f_equal val. pose inLR := par2_LR.
+  pose inRL := fun e => par2_LR (esym e).
+
+  pose f (x : G') : G := match repr x with inl x => val x | inr x => val x end.
+  pose h (e : edge G') : edge G := match e with inl e => val e | inr e => val e end.
+  exists (f, h); split; first split; first apply: hom_gI => e.
+  all: rewrite -?[(f, h).1]/f -?[(f, h).2]/h.
+
+  - case: e => [e|e]; rewrite /f/h; split=> //; case: piP => -[]e'.
+    all: first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
+    all: by repeat move=> /valE/=->.
+  - rewrite /f. by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+  - rewrite /f. by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+
+  - have node2 (x : G) : x \notin C -> x \in ~: C by rewrite in_setC.
+    pose g (x : G) : G' :=
+      match boolP (x \in C) with
+      | AltTrue xC => \pi (inl (Sub x (setU1r g_in (setU1r g_out xC))))
+      | AltFalse xNC => \pi (inr (Sub x (node2 x xNC)))
+      end.
+    exists g => x; rewrite /f/g.
+
+    + case Ex : (repr x) => [y|y]; last first.
+      { have : val y \in ~: C := valP y. rewrite in_setC =>/negbTE Ny.
+        case: {-}_ / boolP => Hy; first by have := Hy; rewrite Ny.
+        rewrite -[x]reprK Ex. congr \pi (inr _). exact: val_inj. }
+      have : val y \in g_in |: (g_out |: C) := valP y.
+      rewrite !in_setU1 -[x]reprK Ex => /or3P[/eqP|/eqP|] Hy.
+      * case: {-}_ / boolP => H;
+          first by have := H; have := iNC; rewrite inE {1}Hy =>/negbTE->.
+        set y' := Sub _ _. have {y'}-> : y' = g_in :> G2 by exact: val_inj.
+        have -> : y = g_in :> G1 by exact: val_inj.
+        apply/eqmodP. rewrite /equiv/equiv_pack/par2_eqv in_set2 setUC eqxx.
+        by rewrite subUset !sub1set !in_setU !in_set1 !eqxx if_same.
+      * case: {-}_ / boolP => H;
+          first by have := H; have := oNC; rewrite inE {1}Hy =>/negbTE->.
+        set y' := Sub _ _. have {y'}-> : y' = g_out :> G2 by exact: val_inj.
+        have -> : y = g_out :> G1 by exact: val_inj.
+        apply/eqmodP. rewrite /equiv/equiv_pack/par2_eqv in_set2 setUC eqxx orbT.
+        by rewrite subUset !sub1set !in_setU !in_set1 !eqxx orbT if_same.
+      * case: {-}_ / boolP => H; last by have := H; rewrite Hy.
+        congr \pi (inl _). exact: val_inj.
+    + case: {-}_ / boolP => Hx; case: piP => -[]y.
+      * by move=> /injL<-.
+      * by case/inLR=> -[]/valE/=->->.
+      * by case/inRL=> -[->]/valE/=->.
+      * by move=> /injR<-.
+
+  - have edge2 (e : edge G) : e \notin edge_set (~: C) ->
+                              e \in edge_set (g_in |: (g_out |: C)).
+    { rewrite !inE negb_and !negbK.
+      case: (altP (source e =P target e)) => [<-/orP[]->//|He].
+      have {He} : @sedge G (source e) (target e).
+      { rewrite -adjacentE He. apply/orP; left; apply/existsP; exists e.
+        by rewrite inE !eqxx. }
+      move: {e} (source e) (target e).
+      suff Hyp (x y : G) : @sedge G x y -> x \in C ->
+                           [|| y == g_in, y == g_out | y \in C].
+      { move=> x y xy /orP[]H; rewrite H ?orbT ?andbT /=; first exact: Hyp xy H.
+        move: H; have : @sedge G y x by rewrite sg_sym. exact: Hyp. }
+      move=> xy x_C.
+      case/(_ _)/Wrap: (component_exit _ xy C_comp x_C); last by rewrite !inE.
+      rewrite -adjacentE negb_and /adjacent negb_or !negb_exists.
+      apply/orP; right; apply/andP; split; apply/forallP=> e.
+      all: rewrite !inE; apply/negP=> /andP[Hsrc Htgt].
+      all: suff : e \in @edge_set G IO by rewrite (eqP NEio) inE.
+      all: by rewrite !inE Hsrc Htgt. }
+    pose k (e : edge G) : edge G' :=
+      match boolP (e \in edge_set (~: C)) with
+      | AltTrue He => inr (Sub e He)
+      | AltFalse He => inl (Sub e (edge2 e He))
+      end.
+    exists k => e; rewrite /h/k; last by case: {-}_ / boolP.
+    case: e => e.
+    + have /negbTE Nve : val e \notin edge_set (~: C).
+      { have : val e \in edge_set (g_in |: (g_out |: C)) := valP e.
+        rewrite !inE negb_and !negbK !orbA. case/andP.
+        case/orP=> [|->//] Hsrc. case/orP=> [|->//] Htgt.
+        suff : val e \in @edge_set G IO by rewrite (eqP NEio) inE.
+        by rewrite !inE Hsrc Htgt. }
+      case: {-}_ / boolP => He; first by have := He; rewrite Nve.
+      congr inl. exact: val_inj.
+    + have Hve : val e \in edge_set (~: C) := valP e.
+      case: {-}_ / boolP => He; last by have := He; rewrite Hve.
+      congr inr; exact: val_inj.
 Admitted.
 
 Lemma split_cp (G : graph2) (u : skeleton G) :

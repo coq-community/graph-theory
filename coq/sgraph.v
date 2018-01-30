@@ -1133,6 +1133,11 @@ Proof.
 Qed.
 
 
+Lemma component_exit (G : sgraph) (C : {set G}) (i o x y : G) :
+  ~~ (i -- o) -> x -- y ->
+  C \in components (~: [set i; o]) -> x \in C -> y \in i |: (o |: C).
+Admitted.
+
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
