@@ -545,48 +545,60 @@ Section SplitCP.
 Variables (G : graph2).
 Hypothesis CK4F_G : CK4F G.
 Hypothesis Hio : g_in != g_out :> G.
+Variable (z : G).
+Hypothesis Hz : z \in cp G g_in g_out :\: IO.
 
+Let Hz' : z \in cp G g_in g_out.
+Proof. by case/setDP: (Hz). Qed.       
+
+Let Zi : z != g_in. 
+Proof. move: Hz. rewrite !inE negb_or -andbA. by case/and3P. Qed.
+
+Let Zo : z != g_out. 
+Proof. move: Hz. rewrite !inE negb_or -andbA. by case/and3P. Qed.
 
 (* g_out not in left side, g_in not in right side *)
 (* neither g_in nor g_out is in the central petal *)
 
-Lemma CK4F_split_cpL z :
- z \in cp G g_in g_out :\: IO -> CK4F (igraph g_in z).
+Lemma CK4F_split_cpL : CK4F (igraph g_in z).
 Proof.
-  move => Hz.
-  apply: CK4F_igraph => //; first exact: (@mem_cpl G).
-  - move: z Hz. apply/subsetP. exact: subsetDl.
-  - apply: contraTN Hz => C. by rewrite !inE !negb_or (eqP C) eqxx.
+  apply: CK4F_igraph => //; first exact: (@mem_cpl G). by rewrite eq_sym.
 Qed.
 
-Lemma CK4F_split_cpR z :
- z \in cp G g_in g_out :\: IO -> CK4F (igraph z g_out).
+Lemma CK4F_split_cpR : CK4F (igraph z g_out).
 Proof.
-  move => Hz.
-  apply: CK4F_igraph => //.
-  - move: z Hz. apply/subsetP. exact: subsetDl.
-  - rewrite cp_sym; exact: mem_cpl.
-  - apply: contraTneq Hz => ->. by rewrite !inE !negb_or eqxx.
+  apply: CK4F_igraph => //. rewrite cp_sym. exact: mem_cpl. 
 Qed.
 
-Lemma CK4F_split_cpM z :
- z \in cp G g_in g_out :\: IO -> CK4F (@pgraph G IO z).
-Admitted.
+Lemma CK4F_split_cpM : CK4F (@pgraph G IO z).
+Proof. 
+  apply rec_petal => //. 
+  apply/bigcupP. exists (g_in,g_out) => //. by rewrite !inE /= !eqxx.
+Qed.
 
-Lemma measure_split_cpL z :
- z \in cp G g_in g_out :\: IO -> measure (igraph g_in z) < measure G.
+Lemma measure_split_cpL : measure (igraph g_in z) < measure G.
 Proof.
-  move => Hz. apply: (measure_node (v := g_out)); first apply CK4F_G.
-  admit.
-Admitted.
+  apply: (measure_node (v := g_out)); first apply CK4F_G.
+  have Ho: g_out \in @interval G z g_out. exact: intervalR.
+  apply: contraNN Zo => C. 
+  by rewrite eq_sym -in_set1 -(intervalI_cp Hz') inE C. 
+Qed.
 
-Lemma measure_split_cpR z :
- z \in cp G g_in g_out :\: IO -> measure (igraph z g_out) < measure G.
-Admitted.
+Lemma measure_split_cpR : measure (igraph z g_out) < measure G.
+Proof.
+  apply: (measure_node (v := g_in)); first apply CK4F_G.
+  have Hi := @intervalL G g_in z.
+  apply: contraNN Zi => C. 
+  by rewrite eq_sym -in_set1 -(intervalI_cp Hz') inE C.
+Qed.
 
-Lemma measure_split_cpM z :
- z \in cp G g_in g_out :\: IO -> measure (@pgraph G IO z) < measure G.
-Admitted.
+Lemma measure_split_cpM : measure (@pgraph G IO z) < measure G.
+Proof.
+  apply: (measure_node (v := g_in)); first apply CK4F_G.
+  rewrite (@petal_cp G) 1?eq_sym //; first apply CK4F_G.
+  - apply: CP_extensive. by rewrite !inE eqxx.
+  - apply/bigcupP. exists (g_in,g_out) => //. by rewrite !inE /= !eqxx.
+Qed.
 
 End SplitCP.
 
