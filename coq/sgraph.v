@@ -1133,6 +1133,19 @@ Proof.
 Qed.
 
 
+Lemma component_exit (G : sgraph) (V C : {set G}) (x y : G) :
+  x -- y -> C \in components V -> x \in C -> y \in ~: V :|: C.
+Proof.
+  move=> xy C_comp x_C. rewrite !inE -implybE. apply/implyP => y_V.
+  case/and3P: (partition_components V) => /eqP compU compI comp0n.
+  have x_V : x \in V by rewrite -compU; apply/bigcupP; exists C.
+  rewrite -(def_pblock compI C_comp x_C) pblock_equivalence_partition //;
+    last exact: sedge_equiv_in.
+  apply/PathRP; first by rewrite sg_edgeNeq.
+  exists (edgep xy); apply/subsetP=> z; rewrite mem_edgep.
+  by case/orP=> /eqP->.
+Qed.
+
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 

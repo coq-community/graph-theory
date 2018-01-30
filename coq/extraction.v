@@ -762,7 +762,34 @@ Qed.
 Lemma split_component (G : graph2) (C : {set G}) :
   @edge_set G IO == set0 -> C \in @components G (~: IO) ->
   G ≈ par2 (component C) (induced2 (~: C)).
-Admitted.
+Proof.
+  move=> NEio C_comp.
+  case/and3P: (@partition_components G (~: IO)) => /eqP compU compI comp0n.
+  have : C \subset ~: IO by rewrite -compU; apply/subsetP => x; exact: mem_cover.
+  rewrite subsetC subUset !sub1set => /andP[iNC oNC]. rewrite induced2_induced.
+  apply: iso_split_par2.
+  - rewrite setUA setIUl setICr setU0. exact: subsetIl.
+  - by rewrite -!setUA setUCr !setUT.
+  - rewrite -(eqP NEio). apply/setP=> e; rewrite !inE.
+    rewrite andbACA !orbA andb_orl andbN orbF.
+    rewrite [_ && (target e \notin C)]andb_orl andbN orbF andbACA.
+    apply/idP/idP => [/andP[->]//|He]. rewrite He /=.
+    rewrite !inE in iNC oNC.
+    case/andP: He => /orP[]/eqP-> /orP[]/eqP->; by rewrite ?iNC ?oNC.
+  - apply/eqP. rewrite eqEsubset subsetT /=. apply/subsetP=> e _.
+    rewrite !inE. case: (altP (source e =P target e)) => [<-|He].
+      by rewrite !andbb -!orbA orbN.
+    rewrite -negb_or orbC -implybE. apply/implyP.
+    have {He} : @sedge G (source e) (target e).
+    { rewrite -adjacentE He. apply/orP; left; apply/existsP; exists e.
+      by rewrite !inE !eqxx. }
+    move: {e} (source e) (target e).
+    suff Hyp (x y : G) : @sedge G x y -> x \in C ->
+                         [|| y == g_in, y == g_out | y \in C].
+    { move=> x y xy /orP[]H; rewrite H !orbT /= ?andbT; first exact: Hyp xy H.
+      move: H. have : @sedge G y x by rewrite sg_sym. exact: Hyp. }
+    move=> xy Hx. have := component_exit xy C_comp Hx. by rewrite !inE negbK orbA.
+Qed.
 
 Lemma split_cp (G : graph2) (u : skeleton G) :
   connected [set: skeleton G] -> u \in @cp G g_in g_out :\: IO ->
