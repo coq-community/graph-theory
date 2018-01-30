@@ -484,12 +484,23 @@ Proof.
   rewrite induced2_induced. exact: measure_node.
 Qed.
 
+
 Lemma CK4F_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
   CK4F (redirect C).
 Proof.
-  rewrite /redirect. case: pickP. 
-  - (* moving the output along an edge does not change the (strong) skeleton *)
+  move => CK4F_G Eio HC.
+  have D := @partition_components G [set~ g_in].
+  have Csub: C \subset [set~ g_in].
+  { rewrite -(cover_partition D). apply/subsetP => z Hz. 
+    exact: mem_cover HC _. }
+  rewrite /redirect. case: pickP => [z /andP [Z1 Z2]|].
+  - have iso_sskel : sg_iso (sskeleton (redirect_to C z)) (sskeleton G).
+    { admit. }
+    case: (CK4F_G) => con_G K4F_G. split.
+    + apply: iso_connected con_G. admit.
+    + exact: iso_K4_free K4F_G.
+  - admit.
 Admitted. 
 
 Lemma measure_redirect (G : graph2) C : 
@@ -1435,6 +1446,8 @@ Print Assumptions term_of_iso.
 
 (** * Minor Exclusion Corollaries *)
 
+
+
 Corollary minor_exclusion_2p (G : graph2) :
   connected [set: skeleton G] -> 
   K4_free (sskeleton G) <-> 
@@ -1462,10 +1475,10 @@ Proof.
     apply: leq_trans (width_bound _) _. by rewrite G_empty. }
   have [G' [iso_Gs iso_G]] := flesh_out x.
   have conn_G' : connected [set: skeleton G'].
-  { admit. (* lift along iso *) }
+  { exact: iso_connected conn_G. }
   have M := minor_exclusion_2p conn_G'.  
   have/M [T [B [B1 B2 B3]]] : K4_free (sskeleton G').
-  { admit. (* lift along iso *) }
+  { exact: iso_K4_free K4F_G. }
   exists T.
   have: sdecomp T (sskeleton G') B by exact: decomp_sskeleton.
   admit. (* lift along iso *)

@@ -1231,3 +1231,17 @@ Qed.
 Lemma dec_eq (P : Prop) (decP : decidable P) : decP <-> P.
 Proof. by case: decP. Qed.
 
+(* NOTE: This could be generalized to sets and their images *)
+Lemma iso_connected (G H : sgraph) : 
+  sg_iso G H -> connected [set: H] -> connected [set: G].
+Proof.
+  case => g h can_g can_h hom_g hom_h con_H x y _ _. 
+  rewrite restrictE; last by move => z; rewrite !inE.
+  have := con_H (h x) (h y). rewrite !inE => /(_ isT isT).
+  rewrite restrictE; last by move => z; rewrite !inE.
+  case/spathP => p. case/lift_spath => //. 
+  + move => {x y} x y. rewrite -{2}[x]can_h -{2}[y]can_h. exact: hom_g.
+  + exact: can_inj can_h.
+  + move => z _. apply/codomP. exists (g z). by rewrite can_g.
+  + move => p' [Hp' _]. apply/spathP. by exists p'.
+Qed.

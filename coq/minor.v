@@ -362,6 +362,10 @@ Lemma subgraph_K4_free (G H : sgraph) :
   subgraph H G -> K4_free G -> K4_free H.
 Proof. move/sub_minor. exact: minor_K4_free. Qed.
 
+Lemma iso_K4_free (G H : sgraph) : 
+  sg_iso G H -> K4_free H -> K4_free G.
+Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
+
 Lemma TW2_K4_free (G : sgraph) (T : tree) (B : T -> {set G}) : 
   sdecomp T G B -> width B <= 3 -> K4_free G.
 Proof.
