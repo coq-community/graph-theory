@@ -465,8 +465,10 @@ Lemma CK4F_remove_component (G : graph2) (C : {set G}) :
   g_in == g_out :> G -> @edge_set G IO == set0 -> C \in @components G [set~ g_in] ->
   CK4F G -> CK4F (induced2 (~: C)).
 Proof.
-  move=> Eio _ C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F).
-Admitted.
+  move=> _ _ C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn _.
+  have Hi : (@g_in G)\notin[set~ g_in] by rewrite !inE negbK.
+  apply: (@remove_component G) Hi C_comp G_conn _. rewrite setCK. exact: connected1.
+Qed.
 
 Lemma measure_remove_component (G : graph2) (C : {set G}) :
   CK4F G -> C \in @components G (~: IO) -> measure (induced2 (~: C)) < measure G.

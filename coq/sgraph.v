@@ -1146,6 +1146,38 @@ Proof.
   by case/orP=> /eqP->.
 Qed.
 
+Lemma remove_component (G : sgraph) (V C : {set G}) (x0 : G) : x0 \notin V ->
+  C \in components V -> connected [set: G] -> connected (~: V) -> connected (~: C).
+Proof.
+  move=> ? C_comp G_conn VC_conn.
+  case/and3P: (partition_components V) => /eqP compU compI _.
+  have sub : C \subset V by rewrite -compU; exact: bigcup_sup.
+  have subr : subrel (connect (restrict (mem (~: V)) sedge))
+                     (connect (restrict (mem (~: C)) sedge))
+    by apply: connect_mono; apply: restrict_mono; apply/subsetP; rewrite setCS.
+  suff to_x0 (x : G) : x \in ~: C -> connect (restrict (mem (~: C)) sedge) x x0.
+  { move=> x y /to_x0 x_x0 /to_x0. rewrite srestrict_sym. exact: connect_trans. }
+  rewrite inE => xNC. wlog x_V : x xNC / x \in V.
+  { move=> Hyp. case: (boolP (x \in V)); first exact: Hyp. move=> xNV.
+    apply: subr. apply: VC_conn; by rewrite inE. }
+  case/uPathP: (connectedTE G_conn x x0) => p Ip.
+  have x0_VC : x0 \in ~: V by rewrite inE.
+  case: (split_at_first x0_VC (nodes_end p)) => [x1][p1][p2][Ep x1_VC x1_first].
+  have {p p2 Ep Ip} Ip1 : irred p1 by move: Ip; rewrite Ep irred_cat'; case/and3P.
+  apply: connect_trans (subr _ _ (VC_conn _ _ x1_VC x0_VC)).
+  rewrite inE in x1_VC. apply/PathRP; first by apply: contraNneq x1_VC => <-.
+  exists p1. apply/subsetP=> z z_p1. rewrite inE.
+  case: (altP (z =P x1)) => [->|zNx1]; first by apply: contraNN x1_VC; apply/subsetP.
+  apply: contraNN xNC => z_C.
+  rewrite -(def_pblock compI C_comp z_C). apply/components_pblockP.
+  case/Path_split: z_p1 Ip1 => [q1][q2] Ep1.
+  rewrite Ep1 irred_cat'; case/and3P=> _ _ /eqP/setP/(_ x1).
+  rewrite !inE nodes_end eq_sym (negbTE zNx1) andbT => /negbT x1Nq1.
+  exists (prev q1). apply/subsetP=> u. rewrite mem_prev => u_q1.
+  apply: contraNT x1Nq1 => uNV. rewrite -(x1_first u) ?inE //.
+  by rewrite Ep1 mem_pcat u_q1.
+Qed.
+
 (* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
