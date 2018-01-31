@@ -177,9 +177,15 @@ Proof.
   apply/existsP; by exists (val e).
 Qed.
 
-Lemma sskeleton_adjacent (G : graph) (x y : G) :
-  adjacent x y -> sg_iso (skeleton G) (sskeleton (point G x y)).
-Admitted.
+Lemma sskeleton_adjacent (G : graph) (i o : G) :
+  adjacent i o -> sg_iso (skeleton G) (sskeleton (point G i o)).
+Proof.
+  move=> Aio. pose id_G := id : vertex G -> vertex G.
+  exists id_G id_G => // x y; last by move=> /= ->.
+  case/or3P=> [->//||] /and3P[xNy /eqP Ei /eqP Eo] //.
+  all: rewrite Ei Eo /id_G/= ?[sk_rel G o i]sk_rel_sym ?[o == i]eq_sym in xNy *.
+  all: by rewrite -[sk_rel _ _ _]adjacentE xNy Aio.
+Qed.
 
 
 
@@ -206,7 +212,18 @@ Definition remove_edges (G : graph) (E : {set edge G}) :=
 Lemma remove_loops (G : graph) (E : {set edge G}) :
   {in E, forall e, source e = target e} ->
   sg_iso (skeleton G) (skeleton (remove_edges E)).
-Admitted.
+Proof.
+  move=> Eloops. pose id_G := id : vertex G -> vertex G.
+  have {Eloops} Nloops x y : x != y ->
+      [exists e, e \in @edges G x y] = [exists e, e \in @edges (remove_edges E) x y].
+  { move=> xNy. apply/existsP/existsP; case=> e; rewrite inE;
+    case/andP=> /eqP Hsrc /eqP Htgt.
+    - have He : e \notin E by apply: contraNN xNy =>/Eloops He; rewrite -Hsrc -Htgt He.
+      exists (Sub e He). by rewrite inE /= Hsrc Htgt !eqxx.
+    - exists (val e). by rewrite inE -Hsrc -Htgt !eqxx. }
+  exists id_G id_G => // x y; rewrite /id_G -!adjacentE.
+  all: case/andP=> xNy; by rewrite xNy /adjacent/= -!Nloops // eq_sym.
+Qed.
 
 Coercion skeleton : graph >-> sgraph.
 
