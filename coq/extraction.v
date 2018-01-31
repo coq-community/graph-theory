@@ -108,10 +108,6 @@ Proof.
   apply/set0Pn. apply: get_edge xz => //. exact: petal_id.
 Qed.
 
-Lemma edge_in_set (G : graph) e (A : {set G})  x y : 
-  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
-Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
-
 Lemma lens_io_set (G : graph2) : 
   lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
 Proof.
@@ -219,8 +215,8 @@ Fact redirect_output_proof (T : finType) x y (B : {set T}) : x \in y |: (x |: B)
 Proof. by rewrite !inE eqxx. Qed.
 Arguments redirect_output_proof [T x y B].
 
-Definition redirect_to (G : graph2) (H : {set G}) (o:G) :=
-  @point (subgraph_for (@redirect_consistent G H o))
+Definition redirect_to (G : graph2) (H : {set G}) (o:G) := 
+  @point (induced (g_in |: (o |: H))) 
          (Sub g_in (setU11 _ _))
          (Sub o redirect_output_proof).
 
@@ -484,6 +480,11 @@ Proof.
   rewrite induced2_induced. exact: measure_node.
 Qed.
 
+Lemma CK4F_one : CK4F one2.
+Proof. 
+  split; last exact: (@sskel_K4_free tm1).
+  move => [] [] _ _. exact: connect0.
+Qed.
 
 Lemma CK4F_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
@@ -494,14 +495,24 @@ Proof.
   have Csub: C \subset [set~ g_in].
   { rewrite -(cover_partition D). apply/subsetP => z Hz. 
     exact: mem_cover HC _. }
-  rewrite /redirect. case: pickP => [z /andP [Z1 Z2]|].
-  - have iso_sskel : sg_iso (sskeleton (redirect_to C z)) (sskeleton G).
-    { admit. }
-    case: (CK4F_G) => con_G K4F_G. split.
-    + apply: iso_connected con_G. admit.
-    + exact: iso_K4_free K4F_G.
-  - admit.
-Admitted. 
+  rewrite /redirect. 
+  case: pickP => [z /andP [Z1 Z2]|_]; last exact: CK4F_one.
+  have conn_iC : @connected G (g_in |: C).
+  { apply: (@connectedU_edge G _ _ g_in z) => //.
+    - by rewrite set11.
+    - rewrite -adjacentE Z2 andbT. 
+      move/(subsetP Csub) in Z1. by rewrite !inE eq_sym in Z1. 
+    - apply: connected1.
+    - apply: connected_in_components HC.  }
+  split.
+  - apply: connected_induced. by rewrite [z |: C]setU1_mem.
+  - have: K4_free (induced (g_in |: C)). 
+    { apply: induced_K4_free. by apply CK4F_G. }
+    apply: iso_K4_free. apply: sg_iso_sym. 
+    apply: sg_iso_trans; last apply sskeleton_adjacent.
+      rewrite (setU1_mem Z1). exact: sg_iso_refl.
+    exact: adjacent_induced.
+Qed.
 
 Lemma measure_redirect (G : graph2) C : 
   CK4F G -> g_in == g_out :> G -> C \in @components G [set~ g_in] ->
@@ -754,11 +765,9 @@ Lemma comp_dom2_redirect (G : graph2) (C : {set G}) :
 Proof.
   move => G_conn Eio no_loops HC.
   rewrite /redirect. case: pickP => [x /andP [inC adj_x] |].
-  - apply: subgraph_for_iso => //.
-    + by rewrite (eqP Eio) setUA setUid [x |: C](setUidPr _) // sub1set. 
-    + move: no_loops. rewrite -(eqP Eio) setUA setUid edge_set1 => /eqP->.
-      by rewrite setD0 [x |: C](setUidPr _) // ?sub1set.
-    + by rewrite /= (eqP Eio).
+  have E :  g_in |: (g_out |: C) = g_in |: (x |: C).
+  { by rewrite (eqP Eio) [x |: C]setU1_mem // setUA setUid. }
+  - apply: subgraph_for_iso => //; by rewrite ?E //= (eqP Eio).
   - case: (comp_exit G_conn Eio HC) => z Z1 Z2.
     rewrite sg_sym -adjacentE in Z2. case/andP : Z2 => [A B].
     move/(_ z). by rewrite Z1 B. 

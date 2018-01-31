@@ -86,6 +86,12 @@ Proof.
   apply/subsetPn. by exists x. 
 Qed.
 
+Lemma setU1_mem (T : finType) x (A : {set T}) : x \in A -> x |: A = A.
+Proof. 
+  move => H. apply/setP => y. rewrite !inE. 
+  case: (boolP (y == x)) => // /eqP ->. by rewrite H.
+Qed.
+
 Lemma cards3 (T : finType) (a b c : T) : #|[set a;b;c]| <= 3.
 Proof. 
   rewrite !cardsU !cards1 !addn1. 

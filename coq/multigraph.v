@@ -129,6 +129,9 @@ Proof. exact: subgraph_sub. Qed.
 Definition point (G : graph) (x y : G) := 
   Eval hnf in @Graph2 G x y.
 
+Lemma point_io (G : graph2) : G = @point G g_in g_out.
+Proof. by case: G. Qed.
+
 Arguments point : clear implicits.
 
 Definition induced2 (G : graph2) (V :{set G}) := 

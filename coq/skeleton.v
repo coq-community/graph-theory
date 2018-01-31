@@ -134,8 +134,24 @@ Qed.
 Definition edges (G : graph) (x y : G) := 
   [set e : edge G | (source e == x) && (target e == y)].
 
+Lemma edge_in_set (G : graph) e (A : {set G})  x y : 
+  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
+Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
+
 Definition adjacent (G : graph) (x y : G) := 
   [exists e, e \in edges x y] || [exists e, e \in edges y x].
+
+Lemma adjacent_induced (G : graph) (x y : G) (V : {set G}) 
+  (Hx : x \in V) (Hy : y \in V) : 
+  adjacent x y -> @adjacent (induced V) (Sub x Hx) (Sub y Hy).
+Proof.
+  case/orP => /existsP [e He]. 
+  all: have He': e \in edge_set V by exact: edge_in_set He.
+  - apply/orP; left; apply/existsP. exists (Sub e He'). 
+    rewrite inE -!val_eqE /=. by rewrite inE in He.
+  - apply/orP; right; apply/existsP. exists (Sub e He'). 
+    rewrite inE -!val_eqE /=. by rewrite inE in He.
+Qed.
 
 Lemma adjacentE (G : graph) (x y : skeleton G) : 
   (x != y) && adjacent x y = x -- y.
