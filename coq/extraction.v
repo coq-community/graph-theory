@@ -536,19 +536,26 @@ Proof.
     apply: has_edge. by apply CK4F_G.
 Qed.
 
-Lemma CK4F_lens (G : graph2) C : 
-  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
-  CK4F (component C).
+Lemma connected_component_set (G : graph2) C : 
+  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) ->
+  @connected G (g_in |: (g_out |: C)).
 Proof.
   set sI := sinterval _ _. move=> [G_conn G_K4F] G_lens C_comp.
-  split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
-  apply: connected_induced.
   case: (sinterval_components C_comp) => -[u] u_C iu [v] v_C ov.
   apply: connectedU_edge iu _ _; rewrite 3?inE ?eqxx ?u_C //;
   first exact: connected1.
   apply: connectedU_edge ov _ _; rewrite 1?inE ?eqxx ?v_C //;
   first exact: connected1.
   exact: connected_in_components C_comp.
+Qed.
+
+Lemma CK4F_lens (G : graph2) C : 
+  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+  CK4F (component C).
+Proof.
+  set sI := sinterval _ _. move=> [G_conn G_K4F] G_lens C_comp.
+  split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
+  apply: connected_induced. exact: connected_component_set.
 Qed.
 
 Lemma measure_lens (G : graph2) C :
@@ -693,17 +700,25 @@ Proof.
     rewrite inE. by case/andP=> /eqP-> /eqP->.
 Qed.
 
+Lemma connected_center (G:sgraph) x (S : {set G}) : 
+  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
+  connected S.
+Proof. 
+  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz). 
+  rewrite connect_symI; by [apply: H| apply: symmetric_resrict_sedge].
+Qed.
+
 Lemma CK4F_lens_rest (G : graph2) C : 
   CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
   C \in @components G (@sinterval G g_in g_out) -> CK4F (induced2 (~: C)).
 Proof.
   set sI := sinterval _ _. case/and3P: (partition_components sI).
   set P := components _.
-  move=> /eqP compU compI comp0 G_CK4F _ G_lens Eio0 C_comp.
+  move=> /eqP compU /trivIsetP compI comp0 G_CK4F Dio G_lens Eio0 C_comp.
   (* Below is the only difference to measure_lens *)
   apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn G_K4F.
-  have iNo : g_in != g_out :> G
-    by case/and3P: G_lens => _ _ /(@sg_edgeNeq (link_graph G))->.
+  (* have iNo : g_in != g_out :> G. done. *)
+  (*   by case/and3P: G_lens => _ _ /(@sg_edgeNeq (link_graph G))->. *)
   have Nio : ~~ @adjacent G g_in g_out.
   { apply: contraTN Eio0 => io. apply/set0Pn.
     case/orP: io => /existsP[e]; rewrite inE => /andP[/eqP src_e /eqP tgt_e].
@@ -711,8 +726,28 @@ Proof.
   have : 1 < #|P| by exact: split_K4_nontrivial.
   rewrite (cardD1 C) C_comp add1n ltnS => /card_gt0P[/= D].
   rewrite !inE => /andP[DNC] D_comp.
-  have /set0Pn[x x_D] : D != set0 by apply: contraTneq D_comp =>->.
-  move/trivIsetP: compI => /(_ D C D_comp C_comp DNC)/disjointFr/(_ x_D) xNC.
+  have [Gi Go] : g_in \in ~: C /\ g_out \notin C. admit.
+  apply: connected_center (Gi) => x. 
+  case: (boolP (x == g_in)) => [/eqP-> _|Di]; first exact: connect0.
+  case: (boolP (x == g_out)) => [/eqP-> _|Do nC].
+  (* show that generally all componets of P are connected to g_in *)
+  + (* use the default component to connect *)
+    have: connect (restrict (mem (g_in |: (g_out |: D))) (@sedge G)) g_in g_out.
+    { by apply: connected_component_set => //; rewrite !inE !eqxx. }
+    apply connect_mono. apply: restrict_mono => z /= Hz. 
+    have X := compI _ _ D_comp C_comp DNC. 
+    admit. (* trivial *)
+  + (* use the component of x to connect *)
+    move => {D D_comp DNC}. rewrite inE in nC.
+    pose D := pblock P x.
+    have DNC : D != C. admit.
+    have D_comp : D \in P. admit.
+    have X := compI _ _ D_comp C_comp DNC.
+    have: connect (restrict (mem (g_in |: (g_out |: D))) (@sedge G)) g_in x.
+    { apply: connected_component_set => //; rewrite !inE ?eqxx //. 
+      by rewrite mem_pblock compU /sI lens_sinterval // !inE (negbTE Di) (negbTE Do). }
+    apply connect_mono. apply: restrict_mono => z /= Hz.  
+    admit.
 Admitted.
 
 Lemma measure_lens_rest (G : graph2) C : 
