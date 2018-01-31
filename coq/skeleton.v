@@ -177,6 +177,10 @@ Proof.
   apply/existsP; by exists (val e).
 Qed.
 
+Lemma sskeleton_adjacent (G : graph) (x y : G) :
+  adjacent x y -> sg_iso (skeleton G) (sskeleton (point G x y)).
+Admitted.
+
 
 
 (** ** Intervals and Petals *)
@@ -198,6 +202,11 @@ Definition remove_edges (G : graph) (E : {set edge G}) :=
      source e := source (val e);
      target e := target (val e);
      label e := label (val e) |}.
+
+Lemma remove_loops (G : graph) (E : {set edge G}) :
+  {in E, forall e, source e = target e} ->
+  sg_iso (skeleton G) (skeleton (remove_edges E)).
+Admitted.
 
 Coercion skeleton : graph >-> sgraph.
 
