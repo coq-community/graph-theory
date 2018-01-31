@@ -477,10 +477,33 @@ Lemma connected_skeleton' (G : graph) V E (con : @consistent G V E) :
              exists2 e, e \in E & (e \in edges x y) || (e \in edges y x)) ->
   @connected (skeleton (subgraph_for con)) U.
 Proof.
-  move => U conn_U all_edges.
-  move => x y x_U y_U. (* move: (conn_U _ _ x_U y_U). *)
-  (* ... *)
-Admitted.
+  move => U. set U' := val @: U => conn_U all_edges x y x_U y_U.
+  case/connectP: (conn_U _ _ (mem_imset val x_U) (mem_imset val y_U)) => p.
+  elim: p x x_U => [|a p IH] x x_U /=; first by move=> _ /val_inj <-; exact: connect0.
+  rewrite -!andbA. case/and4P=> _ a_U' xa.
+  have Ha : a \in V by case/imsetP: a_U' => b _ ->; exact: valP.
+  set b : subgraph_for con := Sub a Ha. rewrite -[a]/(val b) => p_path p_last.
+  have b_U : b \in U by rewrite -(inj_imset _  _ val_inj).
+  apply: connect_trans (IH b b_U p_path p_last). apply: connect1 => /=.
+  apply/andP; split; first by apply/andP; split. move: xa.
+
+  rewrite -[a]/(val b).
+  move: b x b_U x_U {p_last p_path a_U' IH p} => {a Ha} b x b_U x_U.
+  rewrite -![sk_rel _ _ _]adjacentE -(inj_eq val_inj).
+  case/andP=> xNb. rewrite xNb /= => adjv_xb.
+  wlog [e0] : b x b_U x_U xNb {adjv_xb} / exists e, e \in edges (val x) (val b).
+  { move=> Hyp. case/orP: adjv_xb => /existsP[e He].
+    - by apply: Hyp => //; exists e.
+    - rewrite /adjacent orbC. apply: Hyp => //; by [rewrite eq_sym | exists e]. }
+  rewrite inE. case/andP=> /eqP Hsrc /eqP Htgt.
+  have Ne0 : source e0 != target e0 by rewrite Hsrc Htgt.
+  have : e0 \in edge_set U'. rewrite inE Hsrc Htgt !mem_imset //.
+  case/all_edges=> [//|] e' Ee'. rewrite Hsrc Htgt => He'.
+  set e : edge (subgraph_for con) := Sub e' Ee'.
+  have : (e \in edges x b) || (e \in edges b x).
+  { move: He'. by rewrite !inE -[e']/(val e) -!(inj_eq val_inj). }
+  by case/orP=> He; apply/orP; [left|right]; apply/existsP; exists e.
+Qed.
 
 Lemma connected_skeleton (G : graph) V E (con : @consistent G V E) :
   forall U : {set subgraph_for con}, @connected (skeleton G) (val @: U) ->
