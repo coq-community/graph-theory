@@ -52,6 +52,27 @@ Lemma rename_width (T:tree) (G : graph) (D : T -> {set G}) (G' : finType) (h : G
   width (rename D h) <= width D.
 Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
 
+
+Lemma iso2_decomp (G1 G2 : graph2) (T:tree) B1 : 
+  @decomp T G1 B1 -> compatible B1 -> G1 ≈ G2 -> 
+  exists B2, [/\ @decomp T G2 B2, width B2 = width B1 & compatible B2].
+Proof.
+  move => decD compD [f hom_f bij_f].
+  case: (bij_f) => /bij_inj inj_f ?. 
+  exists (rename B1 f.1). split.
+  - case: hom_f => [[hom_f fi] fo]. 
+    apply: rename_decomp => //. 
+    + split; apply: bij_surj;by case: bij_f.
+    + move => x y /inj_f <-. case: decD => A  _ _. 
+      case: (A x) => t Ht. exists t. by rewrite Ht.
+  - rewrite /width. apply: eq_bigr => i _. by rewrite card_imset.
+  - case: bij_f => [[/= g A B] _]. 
+    case: compD => t /andP [t1 t2]. exists t.
+    rewrite /rename. rewrite -[g_in]B -[g_out]B !mem_imset //. 
+    + by rewrite -[g_out]hom_f A.
+    + by rewrite -[g_in]hom_f A.
+Qed.
+
 (** ** Disjoint Union *)
 
 Section JoinT.

@@ -253,6 +253,9 @@ Proof. move => y. by exists y. Qed.
 Lemma emb_surj (T : finType) (e : equiv_rel T) : surjective (\pi_({eq_quot e})).
 Proof. move => y. exists (repr y). by rewrite reprK. Qed.
 
+Lemma bij_surj A (B : eqType) (f : A -> B) : bijective f -> surjective f.
+Proof. case => g g1 g2 x. exists (g x). by rewrite g2. Qed.
+
 Definition cr {X : choiceType} {Y : eqType} {f : X -> Y} (Sf : surjective f) y : X :=
   xchoose (Sf y).
 

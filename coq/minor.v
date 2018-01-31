@@ -32,6 +32,27 @@ Proof.
   exact: connect0.
 Qed.
 
+Lemma sg_iso_decomp (G1 G2 : sgraph) (T : tree) B1 : 
+  sdecomp T G1 B1 -> sg_iso G1 G2 -> 
+  exists2 B2, sdecomp T G2 B2 & width B2 = width B1.
+Proof.
+  case => D1 D2 D3 [f g can_f can_g hom_f hom_g]. 
+  exists (fun t => [set g x | x in B1 t]). 
+  - split.
+    + move => x. case: (D1 (f x)) => t Ht. exists t. 
+      apply/imsetP. by exists (f x).
+    + move => x y /hom_f /D2 [t] /andP [t1 t2]. 
+      exists t. by rewrite -[x]can_f -[y]can_f !mem_imset. 
+    + move => x t1 t2 /imsetP [x1] X1 ? /imsetP [x2] X2 P. subst.
+      have ?: x1 = x2 by rewrite -[x1]can_g P can_g. subst => {P}.
+      have := D3 _ _ _ X1 X2. 
+      apply: connect_mono => t t' /=. 
+      rewrite !inE -andbA => /and3P [A B ->]. by rewrite !mem_imset.
+  - rewrite /width. apply: eq_bigr => i _. rewrite card_imset //.
+    apply: can_inj can_g.
+Qed.
+
+
 Section DecompTheory.
   Variables (G : sgraph) (T : tree) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).

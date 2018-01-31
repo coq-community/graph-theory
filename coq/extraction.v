@@ -1461,11 +1461,7 @@ Proof.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
 
-Print Assumptions term_of_iso.
-
 (** * Minor Exclusion Corollaries *)
-
-
 
 Corollary minor_exclusion_2p (G : graph2) :
   connected [set: skeleton G] -> 
@@ -1474,14 +1470,17 @@ Corollary minor_exclusion_2p (G : graph2) :
 Proof.
   move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
   - have [T [B] [B1 B2 B3]] := (graph_of_TW2 (term_of G)).
-    have [i hom_i bij_i] := term_of_iso (conj conn_G K4F_G).
-    exists T. exists (fun t => [set x | i.1 x \in B t]). 
-    (* lift decomposition along isomorphim *) 
-    admit.
+    have I := term_of_iso (conj conn_G K4F_G).
+    have [D [D1 D2 D3]] := iso2_decomp B1 B2 (iso2_sym I).
+    exists T. exists D. by rewrite D2.
   - apply: (TW2_K4_free (G := sskeleton G)) B2.
     exact: decomp_sskeleton.
-Admitted.
+Qed.
 
+
+(** Remark: contrary to the textbook definition, we do not substract 1
+in the definition of treewidth. Consequently, [width <= 3] means
+treewidth two. *) 
 
 Corollary sminor_exclusion (G : sgraph) :
   connected [set: G] -> 
@@ -1498,7 +1497,9 @@ Proof.
   have M := minor_exclusion_2p conn_G'.  
   have/M [T [B [B1 B2 B3]]] : K4_free (sskeleton G').
   { exact: iso_K4_free K4F_G. }
-  exists T.
-  have: sdecomp T (sskeleton G') B by exact: decomp_sskeleton.
-  admit. (* lift along iso *)
-Admitted.
+  have decB : sdecomp T (sskeleton G') B by exact: decomp_sskeleton.
+  have [D D1 D2] := sg_iso_decomp decB iso_Gs.
+  exists T. exists D. by rewrite D2.
+Qed.
+
+Print Assumptions sminor_exclusion.
