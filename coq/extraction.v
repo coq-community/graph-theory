@@ -458,10 +458,9 @@ Proof.
 Qed.
 
 Lemma CK4F_remove_component (G : graph2) (C : {set G}) :
-  g_in == g_out :> G -> @edge_set G IO == set0 -> C \in @components G [set~ g_in] ->
-  CK4F G -> CK4F (induced2 (~: C)).
+  C \in @components G [set~ g_in] -> CK4F G -> CK4F (induced2 (~: C)).
 Proof.
-  move=> _ _ C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn _.
+  move=> C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn _.
   have Hi : (@g_in G)\notin[set~ g_in] by rewrite !inE negbK.
   apply: (@remove_component G) Hi C_comp G_conn _. rewrite setCK. exact: connected1.
 Qed.
@@ -697,6 +696,23 @@ Qed.
 Lemma CK4F_lens_rest (G : graph2) C : 
   CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
   C \in @components G (@sinterval G g_in g_out) -> CK4F (induced2 (~: C)).
+Proof.
+  set sI := sinterval _ _. case/and3P: (partition_components sI).
+  set P := components _.
+  move=> /eqP compU compI comp0 G_CK4F _ G_lens Eio0 C_comp.
+  (* Below is the only difference to measure_lens *)
+  apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn G_K4F.
+  have iNo : g_in != g_out :> G
+    by case/and3P: G_lens => _ _ /(@sg_edgeNeq (link_graph G))->.
+  have Nio : ~~ @adjacent G g_in g_out.
+  { apply: contraTN Eio0 => io. apply/set0Pn.
+    case/orP: io => /existsP[e]; rewrite inE => /andP[/eqP src_e /eqP tgt_e].
+    all: by exists e; rewrite !inE src_e tgt_e !eqxx //. }
+  have : 1 < #|P| by exact: split_K4_nontrivial.
+  rewrite (cardD1 C) C_comp add1n ltnS => /card_gt0P[/= D].
+  rewrite !inE => /andP[DNC] D_comp.
+  have /set0Pn[x x_D] : D != set0 by apply: contraTneq D_comp =>->.
+  move/trivIsetP: compI => /(_ D C D_comp C_comp DNC)/disjointFr/(_ x_D) xNC.
 Admitted.
 
 Lemma measure_lens_rest (G : graph2) C : 
