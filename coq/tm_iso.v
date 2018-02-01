@@ -11,7 +11,7 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Isomorphim Properties for Term Graph Constructors *)
+(** * Isomorphim Properties for Graph-Algebra  *)
 
 Local Open Scope quotient_scope.
 Local Notation "\pi x" := (\pi_(_) x) (at level 4).

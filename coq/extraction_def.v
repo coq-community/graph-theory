@@ -16,12 +16,11 @@ Set Bullet Behavior "Strict Subproofs".
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.
 
-
 Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
 Proof. by []. Qed.
 Arguments consistentT [G] E.
 
-(** * Term Extraction *)
+(** * Term Extraction Function *)
 
 (** ** Termination Metric *)
 
@@ -175,17 +174,6 @@ Lemma pairs_cat (T : Type) a1 a2 (s1 s2 : seq T) :
   pairs (rcons s1 a1) ++ (a1,a2) :: pairs (a2 :: s2).
 Admitted.
 
-(** BEGIN: Temporary simplification: binary sequential split *)
-
-Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
-  let (i,o) := (g_in : G, g_out : G) in 
-  if  (edge_set (@petal G IO i) != set0) || (edge_set (@petal G IO o) != set0)
-  then g (pgraph IO i) :o: g (igraph i o) :o: g (pgraph IO o)
-  else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
-       else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
-
-(** END: Temporary simplification: binary sequential split *)
-
 
 (** list of checkpoint bewteen x and y (excluding x) *)
 (* NOTE: see insub in eqtype.v *)
@@ -240,6 +228,15 @@ Definition tm_ (G : graph2) (e : edge G) :=
 
 Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
 
+(** The Extraction Function *)
+
+Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
+  let (i,o) := (g_in : G, g_out : G) in 
+  if  (edge_set (@petal G IO i) != set0) || (edge_set (@petal G IO o) != set0)
+  then g (pgraph IO i) :o: g (igraph i o) :o: g (pgraph IO o)
+  else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
+       else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
+
 (* NOTE: we assume the input graph to be connected and K4-free *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
   if g_in == g_out :> G
@@ -268,6 +265,9 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       @simple_check_point_term term_of G.
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
+
+(** ** Termination Argument *)
+
 
 Lemma mem_pairs_sort (T : eqType) e x y (s : seq T) : 
   uniq s -> total e -> (x,y) \in pairs (sort e s) -> 

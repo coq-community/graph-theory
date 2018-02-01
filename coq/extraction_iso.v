@@ -14,8 +14,7 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 
-
-(** * Isomorphim Properties *)
+(** * Isomorphim Theorem *)
 
 Local Open Scope quotient_scope.
 Local Notation "\pi x" := (\pi_(_) x) (at level 4).
@@ -742,8 +741,6 @@ Proof.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
 
-(** * Minor Exclusion Corollaries *)
-
 Corollary minor_exclusion_2p (G : graph2) :
   connected [set: skeleton G] -> 
   K4_free (sskeleton G) <-> 
@@ -758,12 +755,13 @@ Proof.
     exact: decomp_sskeleton.
 Qed.
 
+(** ** Graph Minor Theorem for TW2 *)
 
 (** Remark: contrary to the textbook definition, we do not substract 1
 in the definition of treewidth. Consequently, [width <= 3] means
 treewidth two. *) 
 
-Corollary sminor_exclusion (G : sgraph) :
+Theorem graph_minor_TW2 (G : sgraph) :
   connected [set: G] -> 
   K4_free G <-> 
   exists (T:tree) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
@@ -783,4 +781,4 @@ Proof.
   exists T. exists D. by rewrite D2.
 Qed.
 
-Print Assumptions sminor_exclusion.
+Print Assumptions graph_minor_TW2.

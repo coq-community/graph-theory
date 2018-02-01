@@ -27,6 +27,8 @@ Hypothesis (conn_G : connected [set: G]).
 Lemma ins (T : finType) (A : pred T) x : x \in A -> x \in [set z in A].
 Proof. by rewrite inE. Qed.
 
+(** ** K4 of link triangle *)
+
 Lemma C3_of_triangle (x y z : link_graph G) : 
   x -- y -> y -- z -> z -- x -> exists2 phi : G -> option C3, 
   minor_map phi & [/\ phi x = Some ord0, phi y = Some ord1 & phi z = Some ord2].
@@ -170,6 +172,8 @@ Proof.
   by rewrite -mem_preim /= eq_v.
 Qed.
 
+(** ** Collapsing Bags *)
+
 Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :
   let T := U :|: ~: \bigcup_(x in U) petal U x in 
   let G' := sgraph.induced T in 
@@ -225,6 +229,8 @@ Qed.
 
 End CheckpointsAndMinors.
 Arguments collapse_petals [G] conn_G U u0' _.
+
+(** Neighbor Tree Lemma *)
 
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
@@ -367,6 +373,8 @@ Proof.
     by rewrite /= aNb.
 Qed.
 
+(** ** K4-freenes of Intervals *)
+
 Lemma igraph_K4F (G : sgraph) (i o x y : G) :
   connected [set: G] -> 
   x \in cp i o -> y \in cp i o -> x != y ->
@@ -487,6 +495,7 @@ Proof.
     by split; rewrite // -mem_preim.
 Qed.
 
+(** ** Parallel Split Lemma *)
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> link_rel G i o -> K4_free (add_edge G i o) -> 
