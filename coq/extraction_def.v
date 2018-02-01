@@ -160,33 +160,6 @@ Proof.
       * by case/and3P : B => ? _ _.
 Qed.
 
-Fixpoint pairs (T : Type) (s : seq T) {struct s} : seq (T * T) := 
-  if s isn't x::s' then [::] 
-  else if s' is y :: s'' then (x,y):: pairs s' else [::].
-
-Lemma pairs_cons (T : Type) a b (s : seq T) : 
-  pairs [:: a, b & s] = (a,b) :: pairs (b :: s).
-Proof. done. Qed.
-
-(* TOTHINK: this does not look easy to used *)
-Lemma pairs_cat (T : Type) a1 a2 (s1 s2 : seq T) : 
-  pairs (rcons s1 a1 ++ a2 :: s2) = 
-  pairs (rcons s1 a1) ++ (a1,a2) :: pairs (a2 :: s2).
-Admitted.
-
-
-(** list of checkpoint bewteen x and y (excluding x) *)
-(* NOTE: see insub in eqtype.v *)
-(* TOTHINK: this actually does include both x and y *)
-Definition checkpoint_seq (G : graph) (x y : G) := 
-  if @idP (connect (@sedge (skeleton G)) x y) isn't ReflectT con_xy then [::]
-  else sort (cpo con_xy) (enum (@cp (skeleton G) x y)).
-
-Definition check_point_term (t : graph2 -> term) (G : graph2) :=
-  let (i,o) := (g_in : G, g_out : G) in
-  let c := checkpoint_seq i o in
-  t (pgraph IO i) :o: 
-  \big[tmS/tm1]_(p <- pairs c) (t(igraph p.1 p.2) :o: t(pgraph IO p.2)).
 
 Fact redirect_proof1 (T : finType) x (A : {set T}) : x \in x |: A. 
 Proof. by rewrite !inE eqxx. Qed.
@@ -268,42 +241,6 @@ Definition term_of := Fix tmT term_of_measure term_of_rec.
 
 (** ** Termination Argument *)
 
-
-Lemma mem_pairs_sort (T : eqType) e x y (s : seq T) : 
-  uniq s -> total e -> (x,y) \in pairs (sort e s) -> 
-  [/\ x \in s, y \in s, x != y, e x y & forall z, z \in s -> e z x || e y z].
-Admitted.
-
-(** All pairs in the checkpoint sequence are adjacent in CP({i,o}) *)
-Lemma cp_pairs_edge (G : graph) (i o x y : G) : 
-  connected [set: skeleton G] ->
-  (x,y) \in pairs (checkpoint_seq i o) -> 
-  exists (px : x \in @CP G [set i;o]) (py : y \in @CP G [set i;o]), 
-    (Sub x px : @CP_ G [set i;o]) -- (Sub y py).
-Proof.
-  move => conn_G. move/(_ i o) : (conn_G) => conn_io'.
-  rewrite /checkpoint_seq. case: {-}_ / idP => [conn_io|].
-  - move/mem_pairs_sort. case/(_ _ _)/Wrap => [||[P1 P2 P3 P4 P5]].
-    + exact: enum_uniq. 
-    + exact: (@cpo_total (skeleton G)).
-    + rewrite !mem_enum in P1,P2.
-      suff S: cp G x y \subset [set x; y].
-      { have px: x \in @CP G [set i;o]. 
-        { apply/bigcupP. exists (i,o); by rewrite // !inE !eqxx. }
-        have py: y \in @CP G [set i;o].
-        { apply/bigcupP. exists (i,o); by rewrite // !inE !eqxx. }
-        exists px. exists py. by rewrite /= P3. }
-      apply/subsetP => z Hz. move: (P5 z). rewrite mem_enum.
-      have Hz': z \in cp G i o. { apply: cp_widen Hz => //. }
-      move/(_ Hz'). move: Hz. 
-      rewrite (cpo_cp P1 P2 P4) // !inE => /and3P[_ H1 H2].
-      case/orP => H3. 
-      * have H: cpo conn_io x z && cpo conn_io z x by rewrite H3.
-        by rewrite (cpo_antisym _ _ H) // eqxx.
-      * have H: cpo conn_io y z && cpo conn_io z y by rewrite H3.
-        by rewrite (cpo_antisym _ _ H) // eqxx.        
-  - rewrite restrictE // in conn_io'. by move => u;rewrite !inE.
-Qed.
 
 Notation sigraph := cp_minor.igraph.
 Lemma sskeleton_add (G : graph) (x y : G) : 
@@ -424,38 +361,7 @@ Proof.
       by apply CP_extensive; rewrite !inE eqxx.
 Qed.  
 
-Lemma cp_pairs_measure (G : graph2) x y :
-  CK4F G -> ~~ lens G -> (x,y) \in pairs (@checkpoint_seq G g_in g_out) ->
-  measure (igraph x y) < measure G.
-Proof. 
-  move => CK4F_G no_lens pair_xy. 
-  rewrite /lens in no_lens. 
-Admitted.
-
-Lemma cp_pairs_CK4G (G : graph2) (x y : G) :
-  CK4F G -> ~~ lens G -> (x,y) \in pairs (@checkpoint_seq G g_in g_out) ->
-  CK4F (igraph x y).
-Proof.
-  move => [G_conn G_K4F] ? Hxy.
-  move/cp_pairs_edge : (Hxy) => /(_ G_conn) [px] [py] link_xy. 
-  apply: CK4F_igraph; admit.
-Admitted.
                            
-Definition check_point_wf (f g : graph2 -> term) (G : graph2) : 
-  CK4F G -> 
-  g_in != g_out :> G ->
-  ~~ lens G -> 
-  (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) -> 
-  check_point_term f G = check_point_term g G.
-Proof. 
-  move => [G_conn G_K4F] Dio not_lens Efg.
-  congr tmS. 
-  - apply: Efg; apply rec_petal => // ; apply: CP_extensive; by rewrite !inE eqxx.
-  - apply: eq_big_seq => [[x y] Hxy /=]. congr tmS. 
-    + apply: Efg; by [apply: cp_pairs_CK4G|apply: cp_pairs_measure].
-    + move/cp_pairs_edge : Hxy => /(_ G_conn) [px] [py] _. 
-      by apply: Efg; apply rec_petal.
-Qed.
 
 Lemma CK4F_remove_component (G : graph2) (C : {set G}) :
   C \in @components G [set~ g_in] -> CK4F G -> CK4F (induced2 (~: C)).
