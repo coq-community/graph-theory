@@ -682,15 +682,35 @@ Qed.
 
 Lemma CK4F_remove_edges (G : graph2) : 
   CK4F G -> g_in != g_out :> G -> lens G ->
-  @edge_set G IO != set0 -> components (@sinterval G g_in g_out) != set0 -> 
+  components (@sinterval G g_in g_out) != set0 ->
   CK4F (point (remove_edges (@edge_set G IO)) g_in g_out).
 Proof.
-  move => CK4F_G Hio lens_G Es Ps. split.
-  - (* if there is at least one component, then this component connects g_in and g_out *)
-    admit.
-  - apply: subgraph_K4_free (proj2 CK4F_G). 
-    admit.
-Admitted.
+  move => CK4F_G Hio lens_G Ps. set E := @edge_set G IO.
+  split.
+  - case: CK4F_G => G_conn _. apply: remove_edges_connected G_conn.
+    suff io_conn : connect (sk_rel (remove_edges E)) g_in g_out.
+    { move=> e. rewrite !inE. case/andP=> /orP[]/eqP-> /orP[]/eqP-> //.
+      rewrite connect_symI //. exact: sk_rel_sym. }
+    move: Ps. set sI := sinterval _ _. case/set0Pn=> /= C C_comp.
+    case/and3P: (partition_components sI) => /eqP compU compI comp0.
+    have C_sub : C \subset sI by rewrite -compU; exact: bigcup_sup.
+    case: (@sinterval_components G C _ _ C_comp) => -[u u_C iu][v v_C ov].
+    have [uNio vNio] : u \notin IO /\ v \notin IO.
+    { have [u_sI v_sI] := (subsetP C_sub u u_C, subsetP C_sub v v_C).
+      rewrite !in_set2. split; [move: u_sI | move: v_sI];
+      apply: contraTN => /orP[]/eqP->; by rewrite (@sinterval_bounds G). }
+    have /connect1 iu_conn := remove_edges_cross (subxx E) iu uNio.
+    apply: connect_trans iu_conn _.
+    have := remove_edges_cross (subxx E) ov vNio. rewrite sk_rel_sym.
+    move/connect1. apply: connect_trans.
+    apply: remove_edges_restrict (subxx E) _.
+    have := @connected_in_components G sI C C_comp u v u_C v_C.
+    apply: connect_mono. apply: restrict_mono => z /= Hz.
+    have {Hz} Hz : z \in sI by rewrite -compU; apply/bigcupP; exists C.
+    rewrite !inE negb_or. apply/andP.
+    by split; apply: contraTneq Hz => ->; rewrite /sI (@sinterval_bounds G).
+  - case: CK4F_G => _. apply: iso_K4_free. apply: sskeleton_remove_io. exact: subxx.
+Qed.
 
 Lemma measure_remove_edges (G : graph2) (E : {set edge G}) (i o : G) :
   E != set0 -> measure (point (remove_edges E) i o) < measure G.

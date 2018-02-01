@@ -241,6 +241,25 @@ Proof.
   all: case/andP=> xNy; by rewrite xNy /adjacent/= -!Nloops // eq_sym.
 Qed.
 
+Lemma remove_edges_connected (G : graph) (E : {set edge G}) :
+  {in E, forall e : edge G, connect (sk_rel (remove_edges E)) (source e) (target e)} ->
+  connected [set: skeleton G] -> connected [set: skeleton (remove_edges E)].
+Admitted.
+
+Lemma remove_edges_restrict (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
+  E \subset edge_set V -> connect (restrict (mem (~: V)) (sk_rel G)) x y ->
+  connect (sk_rel (remove_edges E)) x y.
+Admitted.
+
+Lemma remove_edges_cross (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
+  E \subset edge_set V -> sk_rel G x y -> y \notin V -> sk_rel (remove_edges E) x y.
+Admitted.
+
+Lemma sskeleton_remove_io (G : graph2) (E : {set edge G}) :
+  E \subset @edge_set G [set g_in; g_out] ->
+  sg_iso (sskeleton (point (remove_edges E) g_in g_out)) (sskeleton G).
+Admitted.
+
 Coercion skeleton : graph >-> sgraph.
 
 Definition interval_edges (G : graph) (x y : G) :=
