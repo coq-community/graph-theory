@@ -127,7 +127,7 @@ Proof
  Qed.
 
 Lemma par2_idL G : par2 top2 G ≈ G.
-Admitted.
+Abort.
 
 Lemma big_par2_1 G : big_par2 [:: G] ≈ G.
 Proof. rewrite /big_par2 big_cons big_nil. exact: par2_idR. Qed.
@@ -143,32 +143,28 @@ Qed.
 (* TOTHINK: Do we really need to prove this ? *)
 Lemma par2_assoc G1 G2 G3 : 
   par2 (par2 G1 G2) G3 ≈ par2 G1 (par2 G2 G3).
-Admitted.
+Abort.
 
 Lemma big_par2_cat r1 r2 : 
   big_par2 (r1 ++ r2) ≈ par2 (big_par2 r1) (big_par2 r2).
 Proof. 
-  rewrite /big_par2 big_cat_nested. 
-  elim: r1 => [|G r1 IH].
-  - by rewrite !big_nil par2_idL.
-  - by rewrite !big_cons IH par2_assoc.
-Qed.
+  (* rewrite /big_par2 big_cat_nested.  *)
+  (* elim: r1 => [|G r1 IH]. *)
+  (* - by rewrite !big_nil par2_idL. *)
+  (* - by rewrite !big_cons IH par2_assoc. *)
+Abort.
 
 Lemma big_par2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_par2 [seq g1 x | x <- s] ≈ big_par2 [seq g2 x | x <- s].
-Proof. 
-  elim: s => //= a s IH. admit.
-Admitted.
-
-
+Abort.
 
 Lemma big_par2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_par2 [seq g1 x | x in s] ≈ big_par2 [seq g2 x | x in s].
 Proof. 
-  move => A. apply: big_par2_congr => x. by rewrite mem_enum => /A.
-Qed.
+  (* move => A. apply: big_par2_congr => x. by rewrite mem_enum => /A. *)
+Abort.
 
 
 (** ** Sequential Composition *)
@@ -208,10 +204,10 @@ Proof.
 Qed.
 
 Lemma seq2_idR G : seq2 G one2 ≈ G.
-Admitted.
+Abort.
 
 Lemma seq2_idL G : seq2 one2 G ≈ G.
-Admitted.
+Abort.
 
 Lemma seq2_assoc G1 G2 G3 : 
   seq2 (seq2 G1 G2) G3 ≈ seq2 G1 (seq2 G2 G3).
@@ -233,14 +229,13 @@ Proof.
               end
     | inl y => \pi (inl (\pi (inl y)))
     end.
-  (* rewrite /= in f,g. runs forever *)
   (* have Cfg : cancel f g. *)
   (* { move => x. rewrite /f /g.  *)
   (*   case e1: (repr x) => [a|a]. *)
   (*   case e2: (repr a) => [b|b]. *)
   (*   case: piP => y Hy. rewrite /= in Hy. (* why does this take to long? *) *)
   (*   case e3: y => [c|c]. *)
-Admitted.
+Abort.
 
 Definition big_seq2 (s : seq graph2) := \big[seq2/one2]_(G <- s) G.
 
@@ -252,15 +247,15 @@ Lemma big_seq2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
   big_seq2 [seq g1 x | x <- s] ≈ big_seq2 [seq g2 x | x <- s].
 Proof. 
   elim: s => //= a s IH.
-Admitted.
+Abort.
 
 
 Lemma big_seq2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_seq2 [seq g1 x | x in s] ≈ big_seq2 [seq g2 x | x in s].
 Proof. 
-  move => A. apply: big_seq2_congr => x. by rewrite mem_enum => /A.
-Qed.
+  (* move => A. apply: big_seq2_congr => x. by rewrite mem_enum => /A. *)
+Abort.
 
 Lemma big_seq2_map (I : Type) (r : seq I) F : 
   big_seq2 [seq graph_of_term (F u) | u <- r] ≈ 

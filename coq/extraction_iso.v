@@ -285,11 +285,6 @@ Qed.
 Definition sym2_ (G : graph2) (e : edge G) :=
   if e \in edges g_in g_out then sym2 (label e) else cnv2 (sym2 (label e)).
 
-Lemma split_par_top (G : graph2) : 
-  g_in != g_out :> G -> @components G (~: IO) == set0 -> @edge_set G IO == set0 ->
-  G ≈ top2.
-Admitted.
-
 (** (a,true) -> io-edge / (a,false) -> oi-edge *)
 Definition sym2b (a : sym) (b : bool) : graph2 :=
   if b then sym2 a else cnv2 (sym2 a).
@@ -475,10 +470,6 @@ Proof.
         -- case:notF. by rewrite (negbTE (valP e)) in p.
         -- congr inr. exact: val_inj.
 Qed.
-
-Lemma remove0 (G : graph2) : 
-  point (@remove_edges G set0) g_in g_out ≈ G.
-Admitted.
 
 Lemma split_pip (G : graph2) : 
   connected [set: skeleton G] -> g_in != g_out :> G ->
