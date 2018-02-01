@@ -258,7 +258,28 @@ Admitted.
 Lemma sskeleton_remove_io (G : graph2) (E : {set edge G}) :
   E \subset @edge_set G [set g_in; g_out] ->
   sg_iso (sskeleton (point (remove_edges E) g_in g_out)) (sskeleton G).
-Admitted.
+Proof.
+  move=> E_subIO. pose id_G := id : vertex G -> vertex G.
+  exists id_G id_G => //= x y; rewrite {}/id_G.
+  - suff H: sk_rel G x y -> @sedge (sskeleton (point (remove_edges E) g_in g_out)) x y.
+      by case/or3P=> [/H|->|->].
+    rewrite /= -![sk_rel _ _ _]adjacentE [y == x]eq_sym.
+    case/andP=> xNy. rewrite xNy /= => adj_xy.
+    have [e] : exists e, e \in edges x y :|: edges y x.
+    { case/orP: adj_xy => /existsP[e]; rewrite inE => /andP[/eqP Hsrc /eqP Htgt].
+      all: by exists e; rewrite !inE ?Hsrc ?Htgt !eqxx. }
+    rewrite !inE => He. case: (boolP (e \in E)) => Ee; last first.
+    + apply/orP; left. case/orP: He => /andP[/eqP<- /eqP<-]; apply/orP; [left|right].
+      all: apply/existsP; exists (Sub e Ee); by rewrite !inE !eqxx.
+    + move: Ee => /(subsetP E_subIO). rewrite !inE => /andP[Hsrc Htgt].
+      apply/orP; right. case/orP: He xNy => /andP[/eqP<- /eqP<-].
+      all: case/orP: Hsrc => /eqP->; rewrite eqxx ?andbT.
+      all: by case/orP: Htgt => /eqP->; rewrite eqxx ?andbT.
+  - case/or3P=> [xy|->//|->//]. apply/orP; left. move: xy.
+    rewrite -![sk_rel _ _ _]adjacentE => /andP[xNy]; rewrite xNy /=.
+    case/orP=> /existsP[e He]; apply/orP; [left|right]; apply/existsP; exists (val e).
+    all: by move: He; rewrite !inE.
+Qed.
 
 Coercion skeleton : graph >-> sgraph.
 
