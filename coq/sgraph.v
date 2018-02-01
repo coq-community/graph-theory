@@ -33,9 +33,14 @@ Lemma sedge_equiv (G : sgraph) :
   equivalence_rel (connect (@sedge G)).
 Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
 
+Lemma symmetric_restrict_sedge (G : sgraph) (A : pred G) :
+  symmetric (restrict A sedge).
+Proof. apply: symmetric_restrict. exact: sg_sym. Qed.
+Hint Resolve symmetric_restrict_sedge.
+
 Lemma srestrict_sym (G : sgraph) (A : pred G) : 
   connect_sym (restrict A sedge).
-Proof. apply: connect_symI. apply: symmetric_restrict. exact: sg_sym. Qed.
+Proof. apply: connect_symI. exact: symmetric_restrict_sedge. Qed.
 
 Lemma sedge_in_equiv (G : sgraph) (A : {set G}) : 
   equivalence_rel (connect (restrict (mem A) sedge)). 
@@ -1081,6 +1086,14 @@ Proof.
   case: (splitL p xNy) => [z] [xz] [p'] [_ eqi_p'].
   exists z; last by []; apply: p_S.
   by rewrite in_collective nodesE inE -eqi_p' nodes_start.
+Qed.
+
+Lemma connected_center (G:sgraph) x (S : {set G}) :
+  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
+  connected S.
+Proof.
+  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
+  rewrite connect_symI; by [apply: H | apply: symmetric_restrict_sedge].
 Qed.
 
 

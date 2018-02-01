@@ -466,12 +466,6 @@ Section CheckPoints.
     - by case: (disjointE (sinterval_disj_cp z_cpxy) u_sIxz u_sIzy).
   Qed.
 
-  (* TODO: This should be done earlier *)
-  Lemma symmetric_resrict_sedge (A : pred G) : 
-    symmetric (restrict A sedge).
-  Proof. apply: symmetric_restrict. exact: sg_sym. Qed.
-  Hint Resolve symmetric_resrict_sedge.
-
   Lemma connected_interval (x y : G) : 
     connected (interval x y).
   Proof.
