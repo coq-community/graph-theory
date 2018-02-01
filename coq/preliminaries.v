@@ -116,14 +116,6 @@ Proof.
   - move/H : (Hy) => /negPn/eqP Hy'. by subst.
 Qed.
 
-Lemma subset2 (T : finType) (A : {set T}) (x y: T) : 
-  (A \subset [set x;y]) =
-  [|| A == set0, A == [set x], A == [set y] | A == [set x;y]].
-Proof.
-  case: (boolP (x == y)) => [/eqP ?|xy].
-  - subst y. rewrite setUid subset1. by do 2  case (A == _).
-Admitted.
-
 Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
   reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
 Proof.

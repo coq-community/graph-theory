@@ -1204,7 +1204,7 @@ Proof.
 Qed.
 
 Lemma is_tree_connected : forall G : sgraph, is_tree G -> connected [set: G].
-Admitted.
+Abort.
 
 Lemma connected_not_tree (G : sgraph) (G_conn : forall x y : G, connect sedge x y) :
   ~~ is_tree G -> exists (x y : G) p q, [/\ upath x y p, upath x y q & p != q].

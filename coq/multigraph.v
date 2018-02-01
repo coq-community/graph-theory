@@ -170,10 +170,10 @@ Notation "G ≈ H" := (iso2 G H) (at level 45).
 Lemma iso2_of_iso (G1 G2 : graph2) (h : h_ty G1 G2) :
   hom_g h -> bijective2 h -> h.1 g_in = g_in -> h.1 g_out = g_out -> 
   G1 ≈ G2.
-Admitted. (* check for usage *)
+Abort.
 
 Lemma iso_of_iso2 (G1 G2 : graph2) : G1 ≈ G2 -> iso G1 G2.
-Admitted. (* check for usage *)
+Abort.
 
 Lemma iso2_trans : Transitive iso2.
 Proof.
@@ -240,7 +240,7 @@ Qed.
 
 Lemma union_congr (G1 G2 G1' G2' : graph) : 
   iso G1 G1' -> iso G2 G2' -> iso (union G1 G2) (union G1' G2').
-Admitted. (* check for usage *)
+Abort. 
 
 (* requires point *)
 Lemma merge_congr (G1 G2 : graph) (E1 : equiv_rel G1) (E2 : equiv_rel G2)
