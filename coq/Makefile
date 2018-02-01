@@ -8,6 +8,8 @@ COQDOCFLAGS:= \
   --with-header $(EXTRA_DIR)/header.html --with-footer $(EXTRA_DIR)/footer.html
 export COQDOCFLAGS
 
+-include CoqMakefile.conf
+
 all: Makefile.coq
 	+make -f Makefile.coq all
 
@@ -15,11 +17,14 @@ html: Makefile.coq
 	+make -f Makefile.coq html
 	cp $(EXTRA_DIR)/resources/* html/
 
+graph: Makefile.coq
+	$(COQBIN)coqdep $(COQMF_COQLIBS) -dyndep var -c -dumpgraph depend-graph.gv $(COQMF_VFILES) >/dev/null
+
 clean: Makefile.coq
 	+make -f Makefile.coq clean
 	rm -f Makefile.coq .*.aux
 
 Makefile.coq: _CoqProject
-	coq_makefile -f _CoqProject -arg -w -arg -notation-overridden >Makefile.coq
+	$(COQBIN)coq_makefile -f _CoqProject -arg -w -arg -notation-overridden >Makefile.coq
 
 .PHONY: all html clean
