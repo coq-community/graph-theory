@@ -750,7 +750,7 @@ Corollary minor_exclusion_2p (G : graph2) :
   exists (T:tree) (B : T -> {set G}), [/\ decomp T G B, width B <= 3 & compatible B].
 Proof.
   move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
-  - have [T [B] [B1 B2 B3]] := (graph_of_TW2 (term_of G)).
+  - have [T [B] [B1 B2 B3]] := (graph_of_TW2' (term_of G)).
     have I := term_of_iso (conj conn_G K4F_G).
     have [D [D1 D2 D3]] := iso2_decomp B1 B2 (iso2_sym I).
     exists T. exists D. by rewrite D2.

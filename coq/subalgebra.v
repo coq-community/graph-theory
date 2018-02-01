@@ -686,7 +686,7 @@ Fixpoint graph_of_term (u:term) {struct u} : graph2 :=
   | tmD u => dom2 (graph_of_term u)
   end.
 
-Theorem graph_of_TW2 (u : term) : 
+Theorem graph_of_TW2' (u : term) : 
   exists T D, [/\ decomp T (graph_of_term u) D, compatible D & width D <= 3].
 Proof.
   elim: u => [a| | | u IHu | u IHu v IHv | u IHu v IHv | u IHu ].
@@ -722,10 +722,17 @@ Qed.
 
 (** obtain that the term graphs are K4-free *)
 
+Theorem graph_of_TW2 (u : term) : 
+  exists T D, [/\ sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].
+Proof.
+  case: (graph_of_TW2' u) => T [B] [B1 B2 B3].
+  exists T. exists B. split => //. exact: decomp_sskeleton. 
+Qed.
+
 Lemma sskel_K4_free (u : term) : K4_free (sskeleton (graph_of_term u)).
 Proof.
-  case: (graph_of_TW2 u) => T [B] [B1 B2 B3].
-  exact: TW2_K4_free (decomp_sskeleton B1 B2) _.
+  case: (graph_of_TW2 u) => T [B] [B1 B2]. 
+  exact: TW2_K4_free B1 B2.
 Qed.
 
 Lemma skel_K4_free (u : term) : K4_free (skeleton (graph_of_term u)).
