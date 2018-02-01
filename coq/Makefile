@@ -19,10 +19,12 @@ html: Makefile.coq
 
 graph: Makefile.coq
 	$(COQBIN)coqdep $(COQMF_COQLIBS) -dyndep var -c -dumpgraph depend-graph.gv $(COQMF_VFILES) >/dev/null
+	dot depend-graph.gv > depend-graph.dot
+	dot -Tsvg depend-graph.dot -o depend-graph.svg
 
 clean: Makefile.coq
 	+make -f Makefile.coq clean
-	rm -f Makefile.coq .*.aux
+	rm -f Makefile.coq .*.aux depend-graph.*
 
 Makefile.coq: _CoqProject
 	$(COQBIN)coq_makefile -f _CoqProject -arg -w -arg -notation-overridden >Makefile.coq
