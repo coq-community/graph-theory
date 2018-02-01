@@ -244,12 +244,20 @@ Qed.
 Lemma remove_edges_connected (G : graph) (E : {set edge G}) :
   {in E, forall e : edge G, connect (sk_rel (remove_edges E)) (source e) (target e)} ->
   connected [set: skeleton G] -> connected [set: skeleton (remove_edges E)].
-Admitted.
-
-Lemma remove_edges_restrict (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
-  E \subset edge_set V -> connect (restrict (mem (~: V)) (sk_rel G)) x y ->
-  connect (sk_rel (remove_edges E)) x y.
-Admitted.
+Proof.
+  move=> E_conn G_conn. apply: connectedTI => x y. have := connectedTE G_conn x y.
+  apply: connect_sub x y => /= x y. rewrite -[sk_rel _ _ _]adjacentE.
+  case/andP=> xNy adj_xy.
+  have [e] : exists e, e \in edges x y :|: edges y x.
+  { case/orP: adj_xy => /existsP[e]; rewrite inE => /andP[/eqP Hsrc /eqP Htgt].
+    all: by exists e; rewrite !inE ?Hsrc ?Htgt !eqxx. }
+  rewrite !inE => e_xy. case: (boolP (e \in E)) => [/E_conn|He].
+  - case/orP: e_xy => /andP[/eqP-> /eqP->] //. rewrite connect_symI //.
+    exact: sk_rel_sym.
+  - apply: connect1. rewrite -[sk_rel _ _ _]adjacentE xNy /=.
+    case/orP: e_xy => /andP[/eqP<- /eqP<-]; apply/orP; [left|right].
+    all: by apply/existsP; exists (Sub e He); rewrite !inE !eqxx.
+Qed.
 
 Lemma remove_edges_cross (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
   E \subset edge_set V -> sk_rel G x y -> y \notin V -> sk_rel (remove_edges E) x y.
@@ -264,6 +272,14 @@ Proof.
     all: apply/existsP; exists (Sub e He); by rewrite !inE !eqxx.
   - move: He => /(subsetP E_subV). rewrite inE.
     by case/orP: e_xy => /andP[/eqP-> /eqP->]; rewrite (negbTE yNV) ?andbF.
+Qed.
+
+Lemma remove_edges_restrict (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
+  E \subset edge_set V -> connect (restrict (mem (~: V)) (sk_rel G)) x y ->
+  connect (sk_rel (remove_edges E)) x y.
+Proof.
+  move=> E_subV. apply: connect_mono x y => x y /=. rewrite !inE -andbA.
+  case/and3P=> xNV yNV xy. exact: remove_edges_cross xy yNV.
 Qed.
 
 Lemma sskeleton_remove_io (G : graph2) (E : {set edge G}) :
