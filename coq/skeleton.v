@@ -253,7 +253,18 @@ Admitted.
 
 Lemma remove_edges_cross (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
   E \subset edge_set V -> sk_rel G x y -> y \notin V -> sk_rel (remove_edges E) x y.
-Admitted.
+Proof.
+  move=> E_subV xy yNV. move: xy. rewrite -![sk_rel _ _ _]adjacentE.
+  case/andP=> xNy. rewrite xNy /= => adj_xy.
+  have [e] : exists e, e \in edges x y :|: edges y x.
+  { case/orP: adj_xy => /existsP[e]; rewrite inE => /andP[/eqP Hsrc /eqP Htgt].
+    all: by exists e; rewrite !inE ?Hsrc ?Htgt !eqxx. }
+  rewrite !inE => e_xy. case: (boolP (e \in E)) => He; last first.
+  - case/orP: e_xy => /andP[/eqP<- /eqP<-]; apply/orP; [left|right].
+    all: apply/existsP; exists (Sub e He); by rewrite !inE !eqxx.
+  - move: He => /(subsetP E_subV). rewrite inE.
+    by case/orP: e_xy => /andP[/eqP-> /eqP->]; rewrite (negbTE yNV) ?andbF.
+Qed.
 
 Lemma sskeleton_remove_io (G : graph2) (E : {set edge G}) :
   E \subset @edge_set G [set g_in; g_out] ->
