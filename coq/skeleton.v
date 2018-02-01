@@ -2,7 +2,7 @@ Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries sgraph minor checkpoint.
-Require Import multigraph subalgebra.
+Require Import multigraph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -35,13 +35,6 @@ Proof.
   move => S H x y. 
   case/orP => /= /andP [_] /existsP [e] /andP [/eqP<- /eqP <-] //.
   exact: S.
-Qed.
-
-Lemma decomp_skeleton (G : graph) (T : tree) (D : T -> {set G}) :
-  decomp T G D -> sdecomp T (skeleton G) D.
-Proof. 
-  case => D1 D2 D3. split => //. apply skelP => // x y. 
-  move => [t] A. exists t. by rewrite andbC.
 Qed.
 
 Definition ssk_rel (G : graph2) := 
@@ -104,29 +97,11 @@ Proof.
   apply: S. exact: IO.
 Qed.
 
-Lemma decomp_sskeleton (G : graph2) (T : tree) (D : T -> {set G}) :
-  decomp T G D -> compatible D -> sdecomp T (sskeleton G) D.
-Proof. 
-  case => D1 D2 D3 C. split => //. apply sskelP  => // x y. 
-  move => [t] A. exists t. by rewrite andbC.
-Qed.
-
-Lemma sskel_K4_free (u : term) : K4_free (sskeleton (graph_of_term u)).
-Proof.
-  case: (graph_of_TW2 u) => T [B] [B1 B2 B3].
-  exact: TW2_K4_free (decomp_sskeleton B1 B2) _.
-Qed.
 
 Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
 Proof.
   (* Note: This is really obsucre due to the abbiguity of [x -- y] *)
   exists id => //= x y H. right. exact: subrelUl. 
-Qed.
-
-Lemma skel_K4_free (u : term) : K4_free (skeleton (graph_of_term u)).
-Proof. 
-  apply: minor_K4_free (@sskel_K4_free u).
-  exact: sub_minor (skel_sub _).  
 Qed.
 
 (** Bridging Lemmas *)

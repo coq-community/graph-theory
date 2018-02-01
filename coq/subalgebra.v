@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph multigraph.
+Require Import edone finite_quotient preliminaries sgraph minor multigraph skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -10,9 +10,15 @@ Set Bullet Behavior "Strict Subproofs".
 
 Implicit Types (G H : graph) (U : sgraph) (T : tree).
 
-(** * Tree decompositions (Muligraphs) *)
+(** * Terms to Treewidth Two *)
 
-(** Covering is not really required, but makes the renaming theorem easier to state *)
+(** Note: Contrary to what is written in the paper, the following file
+does not use skeletons [see skeleton.v] and tree decompositions for
+simple graphs but a separate notion of tree-decomposition for labeled
+multigraphs. We plan to eliminate this redundancy *)
+
+(** Covering is not really required, but makes the renaming theorem
+easier to state *)
 Record decomp (T:tree) (G : graph) (bag : T -> {set G}) := Decomp
   { bag_cover x : exists t, x \in bag t; 
     bag_edge (e : edge G) : exists t, (source e \in bag t) && (target e \in bag t);
@@ -698,3 +704,32 @@ Proof.
 Qed.
 
 
+(** Transfer multigraph tree decomposition to the skeleton *)
+
+Lemma decomp_skeleton (G : graph) (T : tree) (D : T -> {set G}) :
+  decomp T G D -> sdecomp T (skeleton G) D.
+Proof.
+  case => D1 D2 D3. split => //. apply skelP => // x y.
+  move => [t] A. exists t. by rewrite andbC.
+Qed.
+
+Lemma decomp_sskeleton (G : graph2) (T : tree) (D : T -> {set G}) :
+  decomp T G D -> compatible D -> sdecomp T (sskeleton G) D.
+Proof.
+  case => D1 D2 D3 C. split => //. apply sskelP  => // x y.
+  move => [t] A. exists t. by rewrite andbC.
+Qed.
+
+(** obtain that the term graphs are K4-free *)
+
+Lemma sskel_K4_free (u : term) : K4_free (sskeleton (graph_of_term u)).
+Proof.
+  case: (graph_of_TW2 u) => T [B] [B1 B2 B3].
+  exact: TW2_K4_free (decomp_sskeleton B1 B2) _.
+Qed.
+
+Lemma skel_K4_free (u : term) : K4_free (skeleton (graph_of_term u)).
+Proof.
+  apply: minor_K4_free (@sskel_K4_free u).
+  exact: sub_minor (skel_sub _).
+Qed.
