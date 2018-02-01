@@ -458,10 +458,9 @@ Proof.
 Qed.
 
 Lemma CK4F_remove_component (G : graph2) (C : {set G}) :
-  g_in == g_out :> G -> @edge_set G IO == set0 -> C \in @components G [set~ g_in] ->
-  CK4F G -> CK4F (induced2 (~: C)).
+  C \in @components G [set~ g_in] -> CK4F G -> CK4F (induced2 (~: C)).
 Proof.
-  move=> _ _ C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn _.
+  move=> C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn _.
   have Hi : (@g_in G)\notin[set~ g_in] by rewrite !inE negbK.
   apply: (@remove_component G) Hi C_comp G_conn _. rewrite setCK. exact: connected1.
 Qed.
@@ -537,13 +536,11 @@ Proof.
     apply: has_edge. by apply CK4F_G.
 Qed.
 
-Lemma CK4F_lens (G : graph2) C : 
-  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
-  CK4F (component C).
+Lemma connected_component_set (G : graph2) C : 
+  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) ->
+  @connected G (g_in |: (g_out |: C)).
 Proof.
   set sI := sinterval _ _. move=> [G_conn G_K4F] G_lens C_comp.
-  split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
-  apply: connected_induced.
   case: (sinterval_components C_comp) => -[u] u_C iu [v] v_C ov.
   apply: connectedU_edge iu _ _; rewrite 3?inE ?eqxx ?u_C //;
   first exact: connected1.
@@ -552,10 +549,19 @@ Proof.
   exact: connected_in_components C_comp.
 Qed.
 
-Lemma measure_lens (G : graph2) C :
+Lemma CK4F_lens (G : graph2) C : 
+  CK4F G -> lens G -> C \in components (@sinterval (skeleton G) g_in g_out) -> 
+  CK4F (component C).
+Proof.
+  set sI := sinterval _ _. move=> [G_conn G_K4F] G_lens C_comp.
+  split; last by apply: subgraph_K4_free G_K4F; exact: sskeleton_subgraph_for.
+  apply: connected_induced. exact: connected_component_set.
+Qed.
+
+Lemma lens_components (G : graph2) C :
   CK4F G -> lens G -> @edge_set G IO == set0 ->
-  C \in components (@sinterval (skeleton G) g_in g_out) ->
-  measure (component C) < measure G.
+  C \in components (@sinterval G g_in g_out) ->
+  exists2 D, D \in components (@sinterval G g_in g_out) & D != C.
 Proof.
   set sI := sinterval _ _. case/and3P: (partition_components sI).
   set P := components _.
@@ -568,9 +574,21 @@ Proof.
     all: by exists e; rewrite !inE src_e tgt_e !eqxx //. }
   have : 1 < #|P| by exact: split_K4_nontrivial.
   rewrite (cardD1 C) C_comp add1n ltnS => /card_gt0P[/= D].
-  rewrite !inE => /andP[DNC] D_comp.
+  rewrite !inE => /andP[DNC] D_comp. by exists D.
+Qed.
+
+Lemma measure_lens (G : graph2) C :
+  CK4F G -> lens G -> @edge_set G IO == set0 ->
+  C \in components (@sinterval (skeleton G) g_in g_out) ->
+  measure (component C) < measure G.
+Proof.
+  set sI := sinterval _ _. case/and3P: (partition_components sI).
+  set P := components _.
+  move=> /eqP compU compI comp0 G_CK4F G_lens Eio0 C_comp.
+  case: (lens_components G_CK4F G_lens Eio0 C_comp) => [D] D_comp DNC.
   have /set0Pn[x x_D] : D != set0 by apply: contraTneq D_comp =>->.
   move/trivIsetP: compI => /(_ D C D_comp C_comp DNC)/disjointFr/(_ x_D) xNC.
+  have G_conn : connected [set: skeleton G] by case: G_CK4F.
   suff : x \notin g_in |: (g_out |: C) by exact: measure_node.
   have : x \in sI by rewrite -compU; apply/bigcupP; exists D.
   rewrite ![in ~~ _]inE xNC orbF.
@@ -694,10 +712,42 @@ Proof.
     rewrite inE. by case/andP=> /eqP-> /eqP->.
 Qed.
 
+Lemma connected_center (G:sgraph) x (S : {set G}) : 
+  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
+  connected S.
+Proof. 
+  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz). 
+  rewrite connect_symI; by [apply: H| apply: symmetric_resrict_sedge].
+Qed.
+
 Lemma CK4F_lens_rest (G : graph2) C : 
-  CK4F G -> g_in != g_out :> G -> lens G -> @edge_set G IO == set0 -> 
+  CK4F G -> lens G -> @edge_set G IO == set0 -> 
   C \in @components G (@sinterval G g_in g_out) -> CK4F (induced2 (~: C)).
-Admitted.
+Proof.
+  set sI := sinterval _ _. case/and3P: (partition_components sI).
+  set P := components _.
+  move=> /eqP compU /trivIsetP compI comp0 G_CK4F G_lens Eio0 C_comp.
+  apply: CK4F_induced2 (G_CK4F). have [G_conn _] := G_CK4F.
+  have : C \subset cover P := bigcup_sup _ C_comp.
+  rewrite compU /sI lens_sinterval // subsetC subUset !sub1set => /andP[Gi Go].
+  apply: connected_center (Gi) => x Hx.
+  have [D [D_comp DNC x_ioD]] :
+    exists D, [/\ D \in P, D != C & x \in g_in |: (g_out |: D)].
+  { case: (lens_components G_CK4F G_lens Eio0 C_comp) => D D_comp DNC.
+    case: (altP (x =P g_in))  => [->|Di]; last case: (altP (x =P g_out)) => [->|Do].
+    - exists D; split => //. exact: setU11.
+    - exists D; split => //. exact: (setU1r _ (setU11 _ _)).
+    - have x_cover : x \in cover P
+        by rewrite compU /sI lens_sinterval // !inE negb_or Di Do.
+      exists (pblock P x). split; first exact: pblock_mem.
+      + rewrite inE in Hx. apply: contraNneq Hx => <-. by rewrite mem_pblock.
+      + by rewrite !in_setU mem_pblock x_cover. }
+  have : connect (restrict (mem (g_in |: (g_out |: D))) (@sedge G)) g_in x.
+  { apply: connected_component_set => //. exact: setU11. }
+  apply connect_mono. apply: restrict_mono => z /=. rewrite !in_setU1.
+  case/or3P=> [/eqP->//|/eqP->//|Hz].
+  by rewrite inE (disjointFr (compI D C D_comp C_comp DNC) Hz).
+Qed.
 
 Lemma measure_lens_rest (G : graph2) C : 
   CK4F G -> lens G -> C \in @components G (@sinterval G g_in g_out) ->
