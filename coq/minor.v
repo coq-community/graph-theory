@@ -306,19 +306,6 @@ Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G
   @sdecomp T _ (rename D h).
 Abort. 
 
-(* This should hold, but there are several choices for S, the induced
-subgraph of the range of [phi] seems to be the canonical one. *)
-Lemma minor_split (G H : sgraph) : 
-  minor G H -> exists2 S, subgraph S G & strict_minor S H.
-Proof.
-  move => [phi [p1 p2 p3]].
-  set S := [set x | phi x]. 
-  exists (induced S); first exact: induced_sub.
-  wlog x0 : / H.
-  { admit. (* the empty graph is a minor of ever graph *) }
-  pose f (x : induced S) := odflt x0 (phi (val x)).
-  exists f. 
-Abort. 
 
 
 Lemma width_minor (G H : sgraph) (T : forest) (B : T -> {set G}) : 
