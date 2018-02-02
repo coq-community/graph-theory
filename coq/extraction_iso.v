@@ -103,8 +103,8 @@ Qed.
 
 Lemma split_cp (G : graph2) (u : skeleton G) :
   connected [set: skeleton G] -> u \in @cp G g_in g_out :\: IO ->
-  edge_set (@petal G IO g_in) == set0 -> 
-  edge_set (@petal G IO g_out) == set0 ->
+  edge_set (@bag G IO g_in) == set0 -> 
+  edge_set (@bag G IO g_out) == set0 ->
   G ≈ seq2 (@igraph G g_in u) (seq2 (@pgraph G IO u) (@igraph G u g_out)).
 Proof.
   move=> G_conn u_cpio pi_e0 po_e0. apply: iso2_sym. set G' := seq2 _ _.
@@ -158,15 +158,15 @@ Proof.
   - rewrite /f. case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
     by case: piP => -[y /inRL[->]/valE|y /injR<-].
 
-  - have petal_node (x : G) : x \notin (g_in  |: @sinterval G g_in u) ->
+  - have bag_node (x : G) : x \notin (g_in  |: @sinterval G g_in u) ->
                               x \notin (g_out |: @sinterval G u g_out) ->
-                              x \in @petal G IO u.
+                              x \in @bag G IO u.
     { rewrite ![x \in _ |: _]inE ![x \in set1 _]inE !negb_or.
       move=> /andP[/negbTE xNi /negbTE xNl] /andP[/negbTE xNo /negbTE xNr].
       have : x \in [set : skeleton G] by [].
-      rewrite (sinterval_petal_cover G_conn iNo).
-      rewrite (eqP (edgeless_petal _ (CP_extensive _) pi_e0)) ?in_set2 ?eqxx //.
-      rewrite (eqP (edgeless_petal _ (CP_extensive _) po_e0)) ?in_set2 ?eqxx //.
+      rewrite (sinterval_bag_cover G_conn iNo).
+      rewrite (eqP (edgeless_bag _ (CP_extensive _) pi_e0)) ?in_set2 ?eqxx //.
+      rewrite (eqP (edgeless_bag _ (CP_extensive _) po_e0)) ?in_set2 ?eqxx //.
       rewrite !in_setU !in_set1 xNi xNo orbF /=.
       by rewrite (sinterval_cp_cover G_conn u_cpio) !in_setU -orbA xNl xNr orbF. }
     have intvL_node (x : G) : x \in g_in |: @sinterval G g_in u ->
@@ -180,7 +180,7 @@ Proof.
       | AltTrue xL => \pi (inl (Sub x (intvL_node x xL)))
       | AltFalse xNl => match boolP (x \in g_out |: @sinterval G u g_out) with
                         | AltTrue xR => \pi (inr (\pi (inr (Sub x (intvR_node x xR)))))
-                        | AltFalse xNr => \pi (inr (\pi (inl (Sub x (petal_node x xNl xNr)))))
+                        | AltFalse xNr => \pi (inr (\pi (inl (Sub x (bag_node x xNl xNr)))))
                         end
       end.
     exists g => x.
@@ -202,15 +202,15 @@ Proof.
         rewrite -(inj_eq val_inj) [_ && (_ || _)]andbC {1}Ey eqxx andbT.
         apply/eqP. apply/eqmodP. rewrite /equiv/equiv_pack/seq2_eqv sum_eqE.
         by rewrite -(inj_eq val_inj) SubK {1}Ey eqxx.
-      * have z_petal : val z \in @petal G IO u := valP z.
+      * have z_bag : val z \in @bag G IO u := valP z.
         have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
         { rewrite 2!inE negb_or sinterval_sym. apply/andP; split.
-          - by apply: contraTneq z_petal =>->; rewrite (petal_cp G_conn) 1?eq_sym.
-          - by rewrite (disjointFr (interval_petal_disj u _) z_petal). }
+          - by apply: contraTneq z_bag =>->; rewrite (bag_cp G_conn) 1?eq_sym.
+          - by rewrite (disjointFr (interval_bag_disj u _) z_bag). }
         have /negbTE zNr : val z \notin g_out |: @sinterval G u g_out.
         { rewrite 2!inE negb_or. apply/andP; split.
-          - by apply: contraTneq z_petal =>->; rewrite (petal_cp G_conn) 1?eq_sym.
-          - by rewrite (disjointFr (interval_petal_disj u _) z_petal). }
+          - by apply: contraTneq z_bag =>->; rewrite (bag_cp G_conn) 1?eq_sym.
+          - by rewrite (disjointFr (interval_bag_disj u _) z_bag). }
         case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
         case: {-}_ / boolP => H2; first by have := H2; rewrite zNr.
         rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inl _))).
@@ -247,11 +247,11 @@ Proof.
       * case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
         by case: piP => -[y /injL<-|y /inLR[/valE?->]].
 
-  - have petal_edge (e : edge G) : e \notin @interval_edges G g_in u ->
+  - have bag_edge (e : edge G) : e \notin @interval_edges G g_in u ->
                                    e \notin @interval_edges G u g_out ->
-                                   e \in edge_set (@petal G IO u).
+                                   e \in edge_set (@bag G IO u).
     { move=> /negbTE eNl /negbTE eNr. have : e \in [set: edge G] by [].
-      rewrite (interval_petal_edge_cover G_conn iNo).
+      rewrite (interval_bag_edge_cover G_conn iNo).
       rewrite (eqP pi_e0) (eqP po_e0) set0U setU0.
       by rewrite (interval_cp_edge_cover G_conn u_cpio) !in_setU eNl eNr orbF. }
     pose k (e : edge G) : edge G' :=
@@ -259,7 +259,7 @@ Proof.
       | AltTrue eL => inl (Sub e eL)
       | AltFalse eNl => match boolP (e \in @interval_edges G u g_out) with
                         | AltTrue eR => inr (inr (Sub e eR))
-                        | AltFalse eNr => inr (inl (Sub e (petal_edge e eNl eNr)))
+                        | AltFalse eNr => inr (inl (Sub e (bag_edge e eNl eNr)))
                         end
       end.
     exists k => e; rewrite /h/k; last by repeat case: {-}_ / boolP => ?.
@@ -268,11 +268,11 @@ Proof.
     + have eL : val e \in @interval_edges G g_in u := valP e.
       case: {-}_ / boolP => H1; last by have := H1; rewrite eL.
       congr inl; exact: val_inj.
-    + have e_petal : val e \in edge_set (@petal G IO u) := valP e.
+    + have e_bag : val e \in edge_set (@bag G IO u) := valP e.
       case: {-}_ / boolP => H1; first (have := H1; rewrite {1}interval_edges_sym).
-        by rewrite (disjointFr (interval_petal_edges_disj G_conn _ _) e_petal).
+        by rewrite (disjointFr (interval_bag_edges_disj G_conn _ _) e_bag).
       case: {-}_ / boolP => H2; first have := H2.
-        by rewrite (disjointFr (interval_petal_edges_disj G_conn _ _) e_petal).
+        by rewrite (disjointFr (interval_bag_edges_disj G_conn _ _) e_bag).
       congr (inr (inl _)); exact: val_inj.
     + have eR : val e \in @interval_edges G u g_out := valP e.
       case: {-}_ / boolP => H1; first have := H1.
@@ -519,16 +519,16 @@ Proof.
   - rewrite /f. case: piP => -[x /inRL[->]/inRL[/valE? _]//|x /injR<-{x}].
     by case: piP => -[x /inRL[->]|x /injR<-].
 
-  - have sintv_node (x : G) : x \notin @petal G IO g_in ->
-                              x \notin @petal G IO g_out ->
+  - have sintv_node (x : G) : x \notin @bag G IO g_in ->
+                              x \notin @bag G IO g_out ->
                               x \in @sinterval G g_in g_out.
     { move=> /negbTE Npi /negbTE Npo. have : x \in [set: G] by [].
-      by rewrite (sinterval_petal_cover G_conn Eio) !in_setU Npi Npo orbF. }
+      by rewrite (sinterval_bag_cover G_conn Eio) !in_setU Npi Npo orbF. }
     have intv_node (x : G) : x \in @sinterval G g_in g_out ->
                              x \in  @interval G g_in g_out.
     { by rewrite [x \in @interval G _ _]inE => ->. }
     pose g (x : G) : G' :=
-      match boolP (x \in @petal G IO g_in), boolP (x \in @petal G IO g_out) with
+      match boolP (x \in @bag G IO g_in), boolP (x \in @bag G IO g_out) with
       | AltTrue pi, _ => \pi (inl (Sub x pi))
       | _, AltTrue po => \pi (inr (\pi (inr (Sub x po))))
       | AltFalse Npi, AltFalse Npo =>
@@ -538,13 +538,13 @@ Proof.
     exists g => x.
 
     + rewrite /f. case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z].
-      * have y_pi : val y \in @petal G IO g_in := valP y.
+      * have y_pi : val y \in @bag G IO g_in := valP y.
         rewrite /g. case: {-}_ / boolP => [?|H]; last by have := H; rewrite {1}y_pi.
         rewrite -[x]reprK Ex. congr \pi (inl _). exact: val_inj.
       * have : val z \in @interval G g_in g_out := valP z.
         rewrite 4!inE -orbA => /or3P[/eqP|/eqP|] Hz.
         -- rewrite Hz /g. case: {-}_ / boolP=> H; last first.
-             by have := H; rewrite ?{1}(@petal_id G IO g_in).
+             by have := H; rewrite ?{1}(@bag_id G IO g_in).
            rewrite -[x]reprK Ex. apply/eqmodP.
            rewrite /equiv/equiv_pack/seq2_eqv -[_ == inr y]/false.
            rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
@@ -552,12 +552,12 @@ Proof.
            rewrite -(inj_eq val_inj) eqxx sum_eqE andbT -[y]reprK Ey.
            apply/eqP. apply/eqmodP.
            by rewrite /equiv/equiv_pack/seq2_eqv sum_eqE -(inj_eq val_inj) Hz eqxx.
-        -- rewrite Hz /g. have : g_out \in @petal G IO g_out by exact: petal_id.
-           move=> /(disjointFl(petal_disj G_conn(CP_extensive _)(CP_extensive _)Eio)).
+        -- rewrite Hz /g. have : g_out \in @bag G IO g_out by exact: bag_id.
+           move=> /(disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)).
            rewrite 6!inE 2!eqxx orbT => /(_ _ _)/Wrap[]// o_pi.
            case: {-}_ / boolP=> Hi; first by have := Hi; rewrite {1}o_pi.
            case: {-}_ / boolP=> Ho; last first.
-             by have := Ho; rewrite ?{1}(@petal_id G IO g_out).
+             by have := Ho; rewrite ?{1}(@bag_id G IO g_out).
            rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr _). apply/eqmodP.
            rewrite /equiv/equiv_pack/seq2_eqv -[_ == inl z]/false.
            rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
@@ -565,18 +565,18 @@ Proof.
            rewrite -(inj_eq val_inj) eqxx sum_eqE andbT orbF.
            apply/eqP. exact: val_inj.
         -- rewrite /g.
-           have piF : val z \in @petal G IO g_in = false.
-           { apply: disjointFl Hz. apply: interval_petal_disj.
+           have piF : val z \in @bag G IO g_in = false.
+           { apply: disjointFl Hz. apply: interval_bag_disj.
              apply: CP_extensive. by rewrite !inE eqxx. }
            case: {-}_ / boolP => pi; first by have := pi; rewrite {1}piF.
-           have poF : val z \in @petal G IO g_out = false.
-           { apply: disjointFl Hz. rewrite sinterval_sym. apply: interval_petal_disj.
+           have poF : val z \in @bag G IO g_out = false.
+           { apply: disjointFl Hz. rewrite sinterval_sym. apply: interval_bag_disj.
              apply: CP_extensive. by rewrite !inE eqxx. }
            case: {-}_ / boolP => po; first by have := po; rewrite {1}poF.
            rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inl _))).
            exact: val_inj.
-      * have y_po : val z \in @petal G IO g_out := valP z.
-        have := disjointFl(petal_disj G_conn(CP_extensive _)(CP_extensive _)Eio)y_po.
+      * have y_po : val z \in @bag G IO g_out := valP z.
+        have := disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)y_po.
         rewrite !inE !eqxx orbT => /(_ _ _)/Wrap[]// y_pi.
         rewrite /g. case: {-}_ / boolP => H1; first by have := H1; rewrite {1}y_pi.
         case: {-}_ / boolP => H2; last by have := H2; rewrite {1}y_po.
@@ -592,13 +592,13 @@ Proof.
         by case: piP => -[y /injL<-|y /inLR[/valE?->]].
 
   - have intv_edge (e : edge G) :
-      e \notin edge_set (@petal G IO g_in) -> e \notin edge_set (@petal G IO g_out) ->
+      e \notin edge_set (@bag G IO g_in) -> e \notin edge_set (@bag G IO g_out) ->
       e \in @interval_edges G g_in g_out.
     { move=> /negbTE Npi /negbTE Npo. have : e \in [set: edge G] by [].
-      by rewrite (interval_petal_edge_cover G_conn Eio) !in_setU Npi Npo orbF. }
+      by rewrite (interval_bag_edge_cover G_conn Eio) !in_setU Npi Npo orbF. }
     pose k (e : edge G) : edge G' :=
-      match boolP (e \in edge_set (@petal G IO g_in)),
-            boolP (e \in edge_set (@petal G IO g_out)) with
+      match boolP (e \in edge_set (@bag G IO g_in)),
+            boolP (e \in edge_set (@bag G IO g_out)) with
       | AltTrue pi, _ => inl (Sub e pi)
       | _, AltTrue po => inr (inr (Sub e po))
       | AltFalse Npi, AltFalse Npo =>
@@ -607,21 +607,21 @@ Proof.
     exists k => e; rewrite /h/k; last by repeat case: {-}_ / boolP => ?.
     case: e => [e|[e|e]].
 
-    + have He : val e \in edge_set (@petal G IO g_in) := valP e.
+    + have He : val e \in edge_set (@bag G IO g_in) := valP e.
       case: {-}_ / boolP => H1; last by have := H1; rewrite {1}He.
       congr inl. exact: val_inj.
     + have He : val e \in @interval_edges G g_in g_out := valP e.
       case: {-}_ / boolP => H1.
-      { case: (disjointE (interval_petal_edges_disj _ _ _) H1 He) => //;
+      { case: (disjointE (interval_bag_edges_disj _ _ _) H1 He) => //;
         by apply: CP_extensive; rewrite !inE eqxx. }
       rewrite {4}interval_edges_sym in He.
       case: {-}_ / boolP => H2.
-      { case: (disjointE (interval_petal_edges_disj _ _ _) H2 He) => //;
+      { case: (disjointE (interval_bag_edges_disj _ _ _) H2 He) => //;
         by apply: CP_extensive; rewrite !inE eqxx. }
       congr (inr (inl _)). exact: val_inj.
-    + have He : val e \in edge_set (@petal G IO g_out) := valP e.
+    + have He : val e \in edge_set (@bag G IO g_out) := valP e.
       case: {-}_ / boolP => H1.
-      { case: (disjointE (petal_edges_disj _ _ _ Eio) H1 He) => //;
+      { case: (disjointE (bag_edges_disj _ _ _ Eio) H1 He) => //;
         by apply: CP_extensive; rewrite !inE eqxx. }
       case: {-}_ / boolP => H2; last by have := H2; rewrite {1}He.
       congr (inr (inr _)). exact: val_inj.
@@ -704,19 +704,19 @@ Proof.
            ++ rewrite -IH lens_io_set // -lens_io_set //. 
               exact: measure_remove_edges.
               rewrite -EC in C4. exact: CK4F_remove_edges.
-    + (* petal/sequential split *) 
+    + (* bag/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [A|/negbT A].
       * rewrite /=. (* TODO: clean this up *)
         rewrite -IH; first last. 
-          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
-          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
+          apply rec_bag => //; apply: CP_extensive; by rewrite !inE eqxx.
+          apply rec_bag => //; apply: CP_extensive; by rewrite !inE eqxx.
         rewrite -IH; first last.
           apply: CK4F_igraph => //; last rewrite cp_sym; exact: mem_cpl.
           apply: measure_igraph => //; by case: CK4F_G.
         rewrite -IH; first last. 
-          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
-          apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx.
+          apply rec_bag => //; apply: CP_extensive; by rewrite !inE eqxx.
+          apply rec_bag => //; apply: CP_extensive; by rewrite !inE eqxx.
           case: CK4F_G => G_conn _; exact: split_pip.
       * move: A. rewrite negb_or !negbK. case/andP => A B.
         rewrite /lens !negb_and A B (negbTE C1) /= in C2.
@@ -726,7 +726,7 @@ Proof.
         rewrite /=. 
         rewrite {1}[G](split_cp (proj1 CK4F_G) Hz) //. repeat apply: seq2_congr.
         -- rewrite -IH //. exact: measure_split_cpL. exact: CK4F_split_cpL.
-        -- suff ? : z \in @CP G IO. { rewrite -IH //; by apply rec_petal. }
+        -- suff ? : z \in @CP G IO. { rewrite -IH //; by apply rec_bag. }
            case/setDP : Hz => Hz _. apply/bigcupP; exists (g_in,g_out) => //. 
            by rewrite !inE !eqxx.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.

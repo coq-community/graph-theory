@@ -279,7 +279,7 @@ Section CheckPoints.
     exact: disjointNI.
   Qed.
 
-  (** ** Intervals and bags/petals *)
+  (** ** Intervals and bags *)
 
   Definition sinterval x y := 
     [set z in ~: [set x; y] | connect (restrict (predC1 y) (@sedge G)) z x && 
@@ -511,32 +511,32 @@ Section CheckPoints.
   Qed.
 
 
-  Definition petal (U : {set G}) x :=
+  Definition bag (U : {set G}) x :=
     locked [set z | [forall y in CP U, x \in cp z y]].
 
-  Lemma petal_id (U : {set G}) x : x \in petal U x.
-  Proof. rewrite /petal -lock inE. apply/forall_inP => y _. exact: mem_cpl. Qed.
+  Lemma bag_id (U : {set G}) x : x \in bag U x.
+  Proof. rewrite /bag -lock inE. apply/forall_inP => y _. exact: mem_cpl. Qed.
 
-  Lemma petalP (U : {set G}) x z : 
-    reflect (forall y, y \in CP U -> x \in cp z y) (z \in petal U x).
-  Proof. rewrite /petal -lock inE. exact: (iffP forall_inP). Qed.
-  Arguments petalP [U x z].
+  Lemma bagP (U : {set G}) x z : 
+    reflect (forall y, y \in CP U -> x \in cp z y) (z \in bag U x).
+  Proof. rewrite /bag -lock inE. exact: (iffP forall_inP). Qed.
+  Arguments bagP [U x z].
 
-  Lemma petalPn (U : {set G}) x z : 
-    reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin petal U x).
+  Lemma bagPn (U : {set G}) x z : 
+    reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin bag U x).
   Proof.
-    rewrite /petal -lock inE negb_forall. apply: (iffP existsP) => [[y]|[y] A B].
+    rewrite /bag -lock inE negb_forall. apply: (iffP existsP) => [[y]|[y] A B].
     - rewrite negb_imply => /andP[? ?]. by exists y.
     - exists y. by rewrite A.
   Qed.
 
-  Lemma petal_sub_sinterval (U : {set G}) x y z :
+  Lemma bag_sub_sinterval (U : {set G}) x y z :
     x \in CP U -> y \in CP U -> z \in cp x y :\: [set x; y] ->
-    petal U z \subset sinterval x y.
+    bag U z \subset sinterval x y.
   Proof.
     rewrite in_setD in_set2 negb_or => x_cp y_cp /andP[]/andP[zNx zNy] z_cpxy.
-    apply/subsetP=> u /petalP u_petal.
-    move: x_cp y_cp => /u_petal z_cpux /u_petal z_cpuy.
+    apply/subsetP=> u /bagP u_bag.
+    move: x_cp y_cp => /u_bag z_cpux /u_bag z_cpuy.
     rewrite sintervalP. apply/andP; split.
     - apply: contraNN zNx => x_cpuy.
       suff : x \in cp z z by rewrite cpxx in_set1 eq_sym.
@@ -779,10 +779,10 @@ Section CheckPoints.
       rewrite inE. apply/implyP => A. by rewrite [y]Hq.
   Qed.
 
-  Lemma ncp_petal (U : {set G}) (p : G) x :
-    x \in CP U -> (p \in petal U x) = (ncp U p == [set x]).
+  Lemma ncp_bag (U : {set G}) (p : G) x :
+    x \in CP U -> (p \in bag U x) = (ncp U p == [set x]).
   Proof.
-    move => Ux. apply/petalP/eq_set1P.
+    move => Ux. apply/bagP/eq_set1P.
     - move => A. split.
       + apply/ncpP; split => //.
         case/uPathP : (G_conn p x) => q irr_q. 
@@ -806,26 +806,26 @@ Section CheckPoints.
       apply: B. apply/ncpP. split => //. exists q1 => z' H1 H2. exact: Hq1.
   Qed.
       
-  Lemma petal_disj (U : {set G}) x y :
-    x \in CP U -> y \in CP U -> x != y -> [disjoint petal U x & petal U y].
+  Lemma bag_disj (U : {set G}) x y :
+    x \in CP U -> y \in CP U -> x != y -> [disjoint bag U x & bag U y].
   Proof.
     move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
-    rewrite !ncp_petal //. by move => /eqP-> /eqP/set1_inj->.
+    rewrite !ncp_bag //. by move => /eqP-> /eqP/set1_inj->.
   Qed.
 
-  Lemma petal_cp (U : {set G}) x y : 
-    x \in CP U -> y \in CP U -> x \in petal U y = (x == y).
+  Lemma bag_cp (U : {set G}) x y : 
+    x \in CP U -> y \in CP U -> x \in bag U y = (x == y).
   Proof. 
     move => cp_x cp_y. 
-    apply/idP/idP => [|/eqP <-]; last exact: petal_id.
+    apply/idP/idP => [|/eqP <-]; last exact: bag_id.
     apply: contraTT => xy. 
-    have D: [disjoint petal U x & petal U y] by apply : petal_disj.
-      by rewrite (disjointFr D) // petal_id.
+    have D: [disjoint bag U x & bag U y] by apply : bag_disj.
+      by rewrite (disjointFr D) // bag_id.
   Qed.
 
-  Lemma petal_nontrivial (U : {set G}) x : 
-    petal U x != [set x] -> exists2 y, y \in petal U x & y != x.
-  Proof. apply: setN01E. apply/set0Pn. exists x. by rewrite petal_id. Qed.
+  Lemma bag_nontrivial (U : {set G}) x : 
+    bag U x != [set x] -> exists2 y, y \in bag U x & y != x.
+  Proof. apply: setN01E. apply/set0Pn. exists x. by rewrite bag_id. Qed.
 
   Lemma ncp0 (U : {set G}) x p : 
     x \in CP U -> ncp U p == set0 = false.
@@ -837,109 +837,109 @@ Section CheckPoints.
   Qed.
   Arguments ncp0 [U] x p.
 
-  (** the root of a petal is a checkpoint separating the petal from
+  (** the root of a bag is a checkpoint separating the bag from
   the rest of the graph *)
-  Lemma petal_exit (U : {set G}) x u v : 
-    x \in CP U -> u \in petal U x -> v \notin petal U x -> x \in cp u v.
+  Lemma bag_exit (U : {set G}) x u v : 
+    x \in CP U -> u \in bag U x -> v \notin bag U x -> x \in cp u v.
   Proof.
-    move => cp_x. rewrite [v \in _]ncp_petal // => N1 N2.
+    move => cp_x. rewrite [v \in _]ncp_bag // => N1 N2.
     have [y [Y1 Y2 Y3]] : exists y, [/\ y \in CP U, x != y & y \in ncp U v].
     { case: (setN01E _ N2); first by rewrite (ncp0 x).
       move => y Y1 Y2. exists y; split => //; by [rewrite eq_sym|case/ncpP : Y1]. }
-    move/petalP : N1 => /(_ _ Y1). 
+    move/bagP : N1 => /(_ _ Y1). 
     apply: contraTT => /cpPn' [p] irr_p av_x. 
     case/ncpP : Y3 => _ [q] /(_ _ cp_x) A. 
     have {A} Hq : x \notin q. { apply/negP => /A ?. subst. by rewrite eqxx in Y2. }
     apply: (cpNI' (p := pcat p q)). by rewrite mem_pcat negb_or av_x.
   Qed.
 
-  Lemma petal_exit' (U : {set G}) x u v : 
-    x \in CP U -> u \in petal U x -> v \in x |: ~: petal U x -> x \in cp u v.
+  Lemma bag_exit' (U : {set G}) x u v : 
+    x \in CP U -> u \in bag U x -> v \in x |: ~: bag U x -> x \in cp u v.
   Proof. 
     move => cp_x Hu. case/setU1P => [->|]; first by rewrite cp_sym mem_cpl.
-    rewrite inE. exact: petal_exit Hu.
+    rewrite inE. exact: bag_exit Hu.
   Qed.
 
-  Lemma petal_exit_edge (U : {set G}) x u v :
-    x \in CP U -> u \in petal U x -> v \notin petal U x -> u -- v -> u = x.
+  Lemma bag_exit_edge (U : {set G}) x u v :
+    x \in CP U -> u \in bag U x -> v \notin bag U x -> u -- v -> u = x.
   Proof.
-    move=> x_cp u_petal vNpetal uv.
-    move/cpP'/(_ (edgep uv)): (petal_exit x_cp u_petal vNpetal).
+    move=> x_cp u_bag vNbag uv.
+    move/cpP'/(_ (edgep uv)): (bag_exit x_cp u_bag vNbag).
     rewrite mem_edgep. case/orP=> /eqP// Exv.
-    move: vNpetal. by rewrite -Exv petal_id.
+    move: vNbag. by rewrite -Exv bag_id.
   Qed.
 
-  Lemma petal_in_out (U : {set G}) x u v (p : Path G u v) :
-    x \in CP U -> u \in x |: ~: petal U x -> v \in x |: ~: petal U x -> irred p -> 
-                                           p \subset x |: ~: petal U x.
+  Lemma bag_in_out (U : {set G}) x u v (p : Path G u v) :
+    x \in CP U -> u \in x |: ~: bag U x -> v \in x |: ~: bag U x -> irred p -> 
+                                           p \subset x |: ~: bag U x.
   Proof.
     move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
     rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
     case/Path_split : in_p => w1 [w2] def_p. subst. 
     rewrite irred_cat !negb_and (disjointNI (x := x)) //.
-    + apply/cpP'. rewrite cp_sym. exact: petal_exit' Pu.
+    + apply/cpP'. rewrite cp_sym. exact: bag_exit' Pu.
     + suff: x \in prev w2 by rewrite mem_prev mem_path inE eq_sym (negbTE W1). 
-      apply/cpP'. rewrite cp_sym. exact: petal_exit' Pv.
+      apply/cpP'. rewrite cp_sym. exact: bag_exit' Pv.
   Qed.
 
-  (** This is a bit bespoke, as it only only mentions petals rooted at
+  (** This is a bit bespoke, as it only only mentions bags rooted at
 elements of [U] rather than [CP U]. At the point where we use it, U is
 a clique, so [CP U] is [U]. *)
-  Lemma petals_in_out (U : {set G}) u v (p : Path G u v) :
-    let T' := U :|: (~: \bigcup_(z in U) petal U z) in 
+  Lemma bags_in_out (U : {set G}) u v (p : Path G u v) :
+    let T' := U :|: (~: \bigcup_(z in U) bag U z) in 
     u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
   Proof. 
     move => T' uT vT irr_p. apply/subsetP/negPn/negP.  
     case/subsetPn => z zp. rewrite !inE negb_or negbK => /andP [zU].
     case/bigcupP => x xU zPx. 
-    suff HT': {subset T' <= x |: ~: petal U x}. 
+    suff HT': {subset T' <= x |: ~: bag U x}. 
     { move/HT' in uT. move/HT' in vT. 
-      move/subsetP : (petal_in_out (CP_extensive xU) uT vT irr_p) => sub.
+      move/subsetP : (bag_in_out (CP_extensive xU) uT vT irr_p) => sub.
       move/sub : zp. rewrite !inE zPx /= orbF => /eqP ?. by subst z;contrab. }
     move => w. case/setUP => [wU|H].
     + case: (altP (x =P w)) => [->|E]; rewrite !inE ?eqxx // 1?eq_sym.
-      rewrite (negbTE E) /=. apply/petalPn; exists w; first exact: CP_extensive.
+      rewrite (negbTE E) /=. apply/bagPn; exists w; first exact: CP_extensive.
         by rewrite cpxx inE. 
     + apply/setUP;right. rewrite !inE in H *. apply: contraNN H => wP. 
       apply/bigcupP. by exists x.
   Qed.
 
-  Lemma connected_petal x (U : {set G}) : x \in CP U -> connected (petal U x).
+  Lemma connected_bag x (U : {set G}) : x \in CP U -> connected (bag U x).
   Proof.
     move => cp_x.
-    suff S z : z \in petal U x -> connect (restrict (mem (petal U x)) sedge) x z.
+    suff S z : z \in bag U x -> connect (restrict (mem (bag U x)) sedge) x z.
     { move => u v Hu Hv. apply: connect_trans (S _ Hv). 
       rewrite srestrict_sym. exact: S. }
     move => Hz. case/uPathP : (G_conn z x) => p irr_p. 
-    suff/subsetP sP : p \subset petal U x.
+    suff/subsetP sP : p \subset bag U x.
     { rewrite srestrict_sym. exact: (connectRI (p := p)). }
     apply/negPn/negP. move/subsetPn => [z' in_p N]. 
     case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D]. 
     suff : x \in tail p2. 
-    { rewrite (disjointFr D) //. apply/cpP'. exact: petal_exit N. }
+    { rewrite (disjointFr D) //. apply/cpP'. exact: bag_exit N. }
     apply: in_tail => [|]; last exact: nodes_end.
-    apply: contraNN N => /eqP<-. by rewrite petal_id.
+    apply: contraNN N => /eqP<-. by rewrite bag_id.
   Qed.
 
-  Lemma petal_extension (U : {set G}) x y : 
-    x \in CP U -> y \notin petal U x -> petal U x = petal (y |: U) x.
+  Lemma bag_extension (U : {set G}) x y : 
+    x \in CP U -> y \notin bag U x -> bag U x = bag (y |: U) x.
   Proof.
-    move => CPx Hy. apply/setP => u. apply/idP/petalP.
+    move => CPx Hy. apply/setP => u. apply/idP/bagP.
     - move => A z. 
-      have cp_x : x \in cp u y by apply: petal_exit Hy.
-      case: (boolP (x == z)) => [/eqP ? _|zx]; first by subst z; apply: (petalP A).
+      have cp_x : x \in cp u y by apply: bag_exit Hy.
+      case: (boolP (x == z)) => [/eqP ? _|zx]; first by subst z; apply: (bagP A).
       case/bigcupP => [[v0 v1]] /setXP /= []. 
       have E v : v \in U -> z \in cp y v -> x \in cp u z.
       { move => Hv Hz. case: (cp_mid zx Hz) => p1 [p2] [/cpNI'|/cpNI'] C.
         * apply: contraTT cp_x => ?. exact: cpN_trans C.
-        * apply: contraTT A => ?. apply/petalPn. 
+        * apply: contraTT A => ?. apply/bagPn. 
           exists v; [exact: CP_extensive|exact: cpN_trans C]. }
       do 2 (case/setU1P => [->|?]). 
       + by rewrite cpxx inE => /eqP->. 
       + exact: E. 
       + rewrite cp_sym. exact: E.
-      + move => Hz. apply: (petalP A). apply/bigcupP; exists (v0,v1) => //. exact/setXP.
-    - move => A. apply/petalP => z Hz. apply: A. move: z Hz. apply/subsetP. 
+      + move => Hz. apply: (bagP A). apply/bigcupP; exists (v0,v1) => //. exact/setXP.
+    - move => A. apply/bagP => z Hz. apply: A. move: z Hz. apply/subsetP. 
       apply: CP_mono. exact: subsetUr.
   Qed.
   
@@ -955,12 +955,12 @@ a clique, so [CP U] is [U]. *)
   
   (** NOTE: This looks fairly specific, but it also has a fairly
   straightforward proof *)
-  Lemma interval_petal_disj U (x y : G) :
-    y \in CP U -> [disjoint petal U x & sinterval x y].
+  Lemma interval_bag_disj U (x y : G) :
+    y \in CP U -> [disjoint bag U x & sinterval x y].
   Proof.
     move => Uy. rewrite disjoint_sym disjoints_subset. apply/subsetP => z.
     rewrite 3!inE negb_or !in_set1 => /and3P [/andP [A1 A2] B C]. 
-    rewrite inE. apply:contraTN C => /petalP/(_ _ Uy). 
+    rewrite inE. apply:contraTN C => /bagP/(_ _ Uy). 
     apply: contraTN. case/uPathRP => // p _ /subsetP sub_p. 
     apply: (cpNI' (p := p)). apply/negP => /sub_p. by rewrite inE eqxx.
   Qed.
@@ -985,8 +985,8 @@ a clique, so [CP U] is [U]. *)
   Qed.
 
 
-  Lemma CP_petals U x y : link_rel x y -> x \in CP U -> y \in CP U -> 
-    exists x' y', [/\ x' \in U, y' \in U, x' \in petal [set x; y] x & y' \in petal [set x;y] y].
+  Lemma CP_bags U x y : link_rel x y -> x \in CP U -> y \in CP U -> 
+    exists x' y', [/\ x' \in U, y' \in U, x' \in bag [set x; y] x & y' \in bag [set x;y] y].
   Proof.
     move => xy xU yU. case: (CP_base xU yU) => x' [y'] [Hx' Hy' CPxy].
     case/uPathP : (G_conn x' y') => p irr_p. 
@@ -1002,41 +1002,41 @@ a clique, so [CP U] is [U]. *)
     case: (three_way_split irr_p Hx Hy x_before_y) => p1 [p2] [p3] [? P1 P3].
     have H2 : CP [set x;y] = [set x;y]. { apply: CP_clique. exact: clique2. }
     exists x';exists y'; split => //. 
-    - apply/petalP => ?. rewrite H2. case/set2P=>->; first by rewrite cp_sym mem_cpl.
+    - apply/bagP => ?. rewrite H2. case/set2P=>->; first by rewrite cp_sym mem_cpl.
       apply: contraTT CPx => C. 
       apply: cpN_trans C _. exact: (cpNI' (p := p3)).
-    - apply/petalP => ?. rewrite H2. case/set2P=>->; last by rewrite cp_sym mem_cpl.
+    - apply/bagP => ?. rewrite H2. case/set2P=>->; last by rewrite cp_sym mem_cpl.
       apply: contraTT CPy => C. rewrite cp_sym in C. 
       apply: cpN_trans C. exact: (cpNI' (p := p1)).
   Qed.
 
-  Lemma sinterval_petal_cover x y : x != y ->
-    [set: G] = petal [set x; y] x :|: sinterval x y :|: petal [set x; y] y.
+  Lemma sinterval_bag_cover x y : x != y ->
+    [set: G] = bag [set x; y] x :|: sinterval x y :|: bag [set x; y] y.
   Proof.
     move=> xNy. apply/eqP. rewrite eqEsubset subsetT andbT. apply/subsetP => p _.
     rewrite setUAC setUC !in_setU sintervalP -negb_or -implybE. apply/implyP.
-    wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in petal [set x; y] x.
+    wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in bag [set x; y] x.
     { by case/orP => /Hyp; last rewrite setUC; move=>->. }
-    move=> x_cppy; apply/petalP => z. rewrite CP_set2 => z_cpxy.
+    move=> x_cppy; apply/bagP => z. rewrite CP_set2 => z_cpxy.
     exact: cp_tightenR z_cpxy x_cppy.
   Qed.
 
   Lemma sinterval_cp_cover x y z : z \in cp x y :\: [set x; y] ->
-    sinterval x y = sinterval x z :|: petal [set x; y] z :|: sinterval z y.
+    sinterval x y = sinterval x z :|: bag [set x; y] z :|: sinterval z y.
   Proof.
     rewrite 4!inE negb_or => /andP[]/andP[zNx zNy] z_cpxy. apply/eqP.
     have [x_CP y_CP] : x \in CP [set x; y] /\ y \in CP [set x; y].
     { by split; apply: CP_extensive; rewrite !inE eqxx. }
     rewrite eqEsubset !subUset sinterval_sub //=.
     rewrite {3}(sinterval_sym x y) {2}(sinterval_sym z y) sinterval_sub 1?cp_sym //.
-    rewrite petal_sub_sinterval /= ?andbT //;
+    rewrite bag_sub_sinterval /= ?andbT //;
       last by rewrite in_setD in_set2 negb_or zNx zNy.
     apply/subsetP=> u u_sIxy. rewrite !in_setU.
     have [uNx uNy] : u != x /\ u != y.
     { by split; apply: contraTneq u_sIxy => ->; rewrite sinterval_bounds. }
     move: u_sIxy; rewrite sintervalP. case/andP=> xNcpuy yNcpux.
     case: (boolP (z \in cp u x)) => Hx; case: (boolP (z \in cp u y)) => Hy.
-    + suff -> : u \in petal [set x; y] z by []. apply/petalP=> c.
+    + suff -> : u \in bag [set x; y] z by []. apply/bagP=> c.
       rewrite CP_set2 => /(subsetP (cp_triangle z)). rewrite in_setU cp_sym.
       case/orP=> c_cp; exact: cp_tightenR c_cp _.
     + suff -> : u \in sinterval z y by []. rewrite sintervalP Hy /=.
@@ -1054,7 +1054,7 @@ a clique, so [CP U] is [U]. *)
   Qed.
 
   Lemma interval_cp_cover x y z : z \in cp x y :\: [set x; y] ->
-    interval x y = (x |: sinterval x z) :|: petal [set x; y] z :|: (y |: sinterval z y).
+    interval x y = (x |: sinterval x z) :|: bag [set x; y] z :|: (y |: sinterval z y).
   Proof.
     rewrite /interval => /sinterval_cp_cover->.
     by rewrite setUAC -setUA [_ :|: set1 y]setUAC !setUA.
@@ -1078,30 +1078,30 @@ a clique, so [CP U] is [U]. *)
     by rewrite mem_pcat mem_prev mem_edgep (negbTE zNp) /= ![z == _]eq_sym.
   Qed.
 
-  Lemma CP_triangle_petals U (x y z : CP_ U) : 
+  Lemma CP_triangle_bags U (x y z : CP_ U) : 
     x -- y -> y -- z -> z -- x -> 
     let U3 : {set G} := [set val x; val y; val z] in
     exists x' y' z' : G, 
       [/\ x' \in U, y' \in U & z' \in U] /\ 
-      [/\ x' \in petal U3 (val x), y' \in petal U3 (val y) & z' \in petal U3 (val z)].
+      [/\ x' \in bag U3 (val x), y' \in bag U3 (val y) & z' \in bag U3 (val z)].
   Proof with try (apply: CP_extensive; rewrite ?inE ?eqxx //).
     move => xy yz zx.
     gen have T,_ : x y z xy yz zx / val z \notin cp (val x) (val y).
     { case/andP : xy => _ /subsetP S. apply/negP => /S. 
       case/set2P => /val_inj ?;subst; by rewrite sg_irrefl in zx yz. }
     move => U3.
-    case: (CP_petals xy (valP x) (valP y)) => x' [y'] [xU yU Px Py].
-    case: (CP_petals yz (valP y) (valP z)) => _ [z'] [_ zU _ Pz].
-    have zPx : (val z) \notin petal [set val x;val y] (val x).
-    { apply/petalPn. exists (val y)...  apply T => //; by rewrite sg_sym. }
-    have zPy : (val z) \notin petal [set val x;val y] (val y).
-    { apply/petalPn. exists (val x)... apply T => //; by rewrite sg_sym. }
-    have xPz : (val x) \notin petal [set val y;val z] (val z).
-    { apply/petalPn. exists (val y)... exact: T. }
+    case: (CP_bags xy (valP x) (valP y)) => x' [y'] [xU yU Px Py].
+    case: (CP_bags yz (valP y) (valP z)) => _ [z'] [_ zU _ Pz].
+    have zPx : (val z) \notin bag [set val x;val y] (val x).
+    { apply/bagPn. exists (val y)...  apply T => //; by rewrite sg_sym. }
+    have zPy : (val z) \notin bag [set val x;val y] (val y).
+    { apply/bagPn. exists (val x)... apply T => //; by rewrite sg_sym. }
+    have xPz : (val x) \notin bag [set val y;val z] (val z).
+    { apply/bagPn. exists (val y)... exact: T. }
     exists x';exists y';exists z'. split => //. split.
-    - rewrite /U3 setUC -petal_extension //... 
-    - rewrite /U3 setUC -petal_extension //... 
-    - rewrite /U3 -setUA -petal_extension //...
+    - rewrite /U3 setUC -bag_extension //... 
+    - rewrite /U3 setUC -bag_extension //... 
+    - rewrite /U3 -setUA -bag_extension //...
   Qed.
  
 End CheckPoints.

@@ -174,29 +174,29 @@ Qed.
 
 (** ** Collapsing Bags *)
 
-Lemma collapse_petals (U : {set G}) u0' (inU : u0' \in U) :
-  let T := U :|: ~: \bigcup_(x in U) petal U x in 
+Lemma collapse_bags (U : {set G}) u0' (inU : u0' \in U) :
+  let T := U :|: ~: \bigcup_(x in U) bag U x in 
   let G' := sgraph.induced T in 
   exists phi : G -> G',
     [/\ total_minor_map phi,
      (forall u : G', val u \in T :\: U -> phi @^-1 u = [set val u]) &
-     (forall u : G', val u \in U -> phi @^-1 u = petal U (val u))].
+     (forall u : G', val u \in U -> phi @^-1 u = bag U (val u))].
 Proof.
   move => T G'.
   have inT0 : u0' \in T by rewrite !inE inU.
   pose u0 : G' := Sub u0' inT0.  
-  pose phi u := if [pick x in U | u \in petal U x] is Some x 
+  pose phi u := if [pick x in U | u \in bag U x] is Some x 
                 then insubd u0 x else insubd u0 u.
   exists phi.
-  have phiU (u : G') : val u \in U -> phi @^-1 u = petal U (val u).
+  have phiU (u : G') : val u \in U -> phi @^-1 u = bag U (val u).
   { move => uU. apply/setP => z. rewrite !inE /phi.
     case: pickP => [x /andP [X1 X2]|H]. 
     - rewrite -val_eqE insubdK ?inE ?X1 //. apply/eqP/idP => [<-//|].
       apply: contraTeq => C. 
-      suff S: [disjoint petal U x & petal U (val u)] by rewrite (disjointFr S).
-      apply: petal_disj => //; exact: CP_extensive. 
+      suff S: [disjoint bag U x & bag U (val u)] by rewrite (disjointFr S).
+      apply: bag_disj => //; exact: CP_extensive. 
     - move: (H (val u)). rewrite uU /= => ->. 
-      have zU : z \notin U. { move: (H z). by rewrite petal_id andbT => ->. }
+      have zU : z \notin U. { move: (H z). by rewrite bag_id andbT => ->. }
       have zT : z \in T.
       { rewrite !inE (negbTE zU) /=. apply/negP => /bigcupP [x xU xP].
         move: (H x). by rewrite xU xP. }
@@ -208,27 +208,27 @@ Proof.
       + by apply: contraNF uU => /eqP <-.
       + apply: contraTF uT => /eqP ?. subst. 
         rewrite inE (negbTE uU) /= inE negbK. by apply/bigcupP; exists x. 
-    - have zU : z \notin U. { move: (H z). by rewrite petal_id andbT => ->. }
+    - have zU : z \notin U. { move: (H z). by rewrite bag_id andbT => ->. }
       have zT : z \in T.
       { rewrite !inE (negbTE zU) /=. apply/negP => /bigcupP [x xU xP].
         move: (H x). by rewrite xU xP. }
       by rewrite -val_eqE insubdK. }
   have preim_G' (u : G') : val u \in phi @^-1 u.
-  { case: (boolP (val u \in U)) => H; first by rewrite phiU // petal_id. 
+  { case: (boolP (val u \in U)) => H; first by rewrite phiU // bag_id. 
     rewrite phiT ?set11 // inE H. exact: valP. }
   split => //.
   - split. 
     + move => y. exists (val y). apply/eqP. case: (boolP (val y \in U)) => x_inU. 
-      * by rewrite mem_preim phiU // petal_id. 
+      * by rewrite mem_preim phiU // bag_id. 
       * rewrite mem_preim phiT inE // x_inU. exact: valP.
     + move => y. case: (boolP (val y \in U)) => xU.
-      * rewrite phiU //. apply: connected_petal => //. exact: CP_extensive.
+      * rewrite phiU //. apply: connected_bag => //. exact: CP_extensive.
       * rewrite phiT; first exact: connected1. rewrite inE xU. exact: valP.
     + move => x y xy. exists (val x); exists (val y). by rewrite !preim_G'. 
 Qed.
 
 End CheckpointsAndMinors.
-Arguments collapse_petals [G] conn_G U u0' _.
+Arguments collapse_bags [G] conn_G U u0' _.
 
 (** Neighbor Tree Lemma *)
 
@@ -241,15 +241,15 @@ Proof.
   move => G_conn H_K4_free.
   suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI.
   move => [x] [y] [z] [xy yz zx]. apply: H_K4_free. 
-  move: (CP_triangle_petals G_conn xy yz zx) => 
+  move: (CP_triangle_bags G_conn xy yz zx) => 
     [x'] [y'] [z'] [[x_inU y_inU z_inU] [xX' yY' zZ']].
   set U3 : {set G} := [set val x; val y; val z] in xX' yY' zZ'. 
-  pose X := petal U3 (val x). 
-  pose Y := petal U3 (val y).
-  pose Z := petal U3 (val z).
-  have xX : val x \in X by apply: (@petal_id G).  
-  have yY : val y \in Y by apply: (@petal_id G).
-  have zZ : val z \in Z by apply: (@petal_id G).
+  pose X := bag U3 (val x). 
+  pose Y := bag U3 (val y).
+  pose Z := bag U3 (val z).
+  have xX : val x \in X by apply: (@bag_id G).  
+  have yY : val y \in Y by apply: (@bag_id G).
+  have zZ : val z \in Z by apply: (@bag_id G).
   move def_T: (~: (X :|: Y :|: Z)) => T.
   pose T' : {set G} := U3 :|: T.
   pose G' := @sgraph.induced G T'.
@@ -258,16 +258,16 @@ Proof.
   have yH' : val y \in T' by rewrite !inE eqxx. 
   have zH' : val z \in T' by rewrite !inE eqxx. 
 
-  have def_T' : T' = U3 :|: ~: (\bigcup_(v in U3) petal U3 v).
+  have def_T' : T' = U3 :|: ~: (\bigcup_(v in U3) bag U3 v).
   { by rewrite {2}/U3 !bigcup_setU !bigcup_set1 /T' -def_T. }
 
-  case: (collapse_petals _ U3 (val x) _) => //.
+  case: (collapse_bags _ U3 (val x) _) => //.
   { by rewrite !inE eqxx. }
   rewrite -def_T' -/G' => phi [mm_phi P1 P2].
 
   have irred_inT u v (p : Path G u v) : 
       u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
-  { rewrite def_T'. exact: petals_in_out. }
+  { rewrite def_T'. exact: bags_in_out. }
  
   have G'_conn : forall x y : G', connect sedge x y. 
   { apply: connectedTE. apply: connected_induced. 
@@ -399,10 +399,10 @@ Proof.
     by apply: add_edge_induced_iso; first exact: interval_sym. }
 
   pose U2 := [set x; y].
-  (* As a consequence, i (resp. o) is the the petal of x (resp. y) with
+  (* As a consequence, i (resp. o) is the the bag of x (resp. y) with
    * respect to {x, y}. *)
-  have [i_Px o_Py] : i \in petal U2 x /\ o \in petal U2 y.
-  { split; apply/petalP=> z; rewrite CP_set2 (cpo_cp x_cpio y_cpio x_le_y);
+  have [i_Px o_Py] : i \in bag U2 x /\ o \in bag U2 y.
+  { split; apply/bagP=> z; rewrite CP_set2 (cpo_cp x_cpio y_cpio x_le_y);
     move=> /andP[z_cpio] /andP[x_le_z z_le_y].
     + rewrite (cpo_cp (mem_cpl i o) z_cpio);
       repeat (apply/andP; split) => //; exact: cpo_min.
@@ -410,14 +410,14 @@ Proof.
       rewrite cp_sym (cpo_cp z_cpio o_cpio);
       repeat (apply/andP; split) => //; exact: cpo_max. }
 
-  case: (collapse_petals G_conn U2 x _); first by rewrite !inE eqxx.
+  case: (collapse_bags G_conn U2 x _); first by rewrite !inE eqxx.
   set T := U2 :|: _. have {T}-> : T = interval x y.
   { rewrite {}/T {-3}/U2 /interval bigcup_setU !bigcup_set1.
     congr ([set x; y] :|: _).
-    rewrite -setTD (sinterval_petal_cover G_conn xNy).
+    rewrite -setTD (sinterval_bag_cover G_conn xNy).
     rewrite setUAC setDUl setDv set0U; apply/setDidPl.
     rewrite disjoint_sym disjoints_subset subUset -!disjoints_subset.
-    by rewrite {2}sinterval_sym !interval_petal_disj //;
+    by rewrite {2}sinterval_sym !interval_bag_disj //;
     apply: CP_extensive; rewrite !inE eqxx. }
   rewrite -[induced _]/(igraph G x y). set Gxy := igraph G x y in I *.
 
@@ -426,7 +426,7 @@ Proof.
   + move=> u; have u_I : val u \in interval x y := valP u.
     case: (boolP (val u \in U2)) => u_xy.
     - rewrite preim_phixy //. apply: add_edge_connected.
-      apply: (@connected_petal G G_conn (val u) U2).
+      apply: (@connected_bag G G_conn (val u) U2).
       exact: CP_extensive.
     - rewrite preim_phi; first exact: connected1.
       by rewrite inE u_xy u_I.
@@ -499,10 +499,10 @@ Qed.
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> link_rel G i o -> K4_free (add_edge G i o) -> 
-  petal [set i;o] i = [set i] ->
+  bag [set i;o] i = [set i] ->
   connected [set: G] -> disconnected (sinterval i o).
 Proof.
-  move => /= io1 /andP [io2 io3] K4F petal_i conn_G. 
+  move => /= io1 /andP [io2 io3] K4F bag_i conn_G. 
   pose G' := @sgraph.induced G [set~ i].
 
   (* Ad-hoc versions of Path_to_induced/Path_from_induced. *)
@@ -527,9 +527,9 @@ Proof.
     suff /cpPn'[p _] : i \notin @cp G (val x) o.
     { case/(from_base x o') => p' _; exact: Path_connect. }
     (* if i were a checkpoint between x and o, then
-        x would be in [petal [set i; o] i] - contradiction *)
-    have : val x \in [set ~i] := valP x; rewrite inE -{4}petal_i.
-    apply: contraNN => i_cpxo. apply/petalP.
+        x would be in [bag [set i; o] i] - contradiction *)
+    have : val x \in [set ~i] := valP x; rewrite inE -{4}bag_i.
+    apply: contraNN => i_cpxo. apply/bagP.
     rewrite CP_clique; last by [apply: clique2; rewrite /= io2 io3].
     by move=> ?; rewrite !inE =>/orP[]/eqP->; rewrite // cp_sym mem_cpl. }
 

@@ -83,8 +83,8 @@ Notation "u :||: v" := (tmI u v) (at level 35, right associativity).
 Notation "u :o: v" := (tmS u v) (at level 33, right associativity).
 
 Definition lens (G : graph2) := 
-  [&& edge_set (@petal G IO g_in)  == set0 ,
-      edge_set (@petal G IO g_out) == set0 &
+  [&& edge_set (@bag G IO g_in)  == set0 ,
+      edge_set (@bag G IO g_out) == set0 &
       @link_rel (skeleton G) g_in g_out].
 
 Lemma get_edge (G : graph) (U : {set G}) (x y : skeleton G) : 
@@ -95,16 +95,16 @@ Proof.
   all: exists e; by rewrite inE S T Hx Hy.
 Qed.
 
-Lemma edgeless_petal (G : graph) (U : {set G}) x : 
+Lemma edgeless_bag (G : graph) (U : {set G}) x : 
   connected [set: skeleton G] -> x \in @CP G U ->
-  edge_set (@petal G U x)  == set0 -> @petal G U x == [set x].
+  edge_set (@bag G U x)  == set0 -> @bag G U x == [set x].
 Proof.
   move => con_G cp_x.
-  apply: contraTT => /petal_nontrivial [y Y1 Y2]. rewrite eq_sym in Y2.
-  have con_Px := connected_petal con_G cp_x.
+  apply: contraTT => /bag_nontrivial [y Y1 Y2]. rewrite eq_sym in Y2.
+  have con_Px := connected_bag con_G cp_x.
   have [||z Pz xz] := connected_card_gt1 con_Px _ _ Y2.
-    exact: petal_id. done. 
-  apply/set0Pn. apply: get_edge xz => //. exact: petal_id.
+    exact: bag_id. done. 
+  apply/set0Pn. apply: get_edge xz => //. exact: bag_id.
 Qed.
 
 Lemma lens_io_set (G : graph2) : 
@@ -114,9 +114,9 @@ Proof.
   - rewrite !inE. 
     (repeat let H := fresh in case: (boolP (_ == _)) => H) => //= _.
     + apply: contraTT A => _. apply/set0Pn; exists e. 
-      by rewrite inE (eqP H) (eqP H1) (@petal_id G). 
+      by rewrite inE (eqP H) (eqP H1) (@bag_id G). 
     + apply: contraTT B => _. apply/set0Pn; exists e. 
-      by rewrite inE (eqP H0) (eqP H2) (@petal_id G). 
+      by rewrite inE (eqP H0) (eqP H2) (@bag_id G). 
   - by case/setUP ; apply: edge_in_set; rewrite !inE eqxx.
 Qed.
 
@@ -124,11 +124,11 @@ Lemma lens_sinterval (G : graph2) :
   connected [set: skeleton G] -> lens G ->
   (@sinterval G g_in g_out = ~: IO).
 Proof.
-  move=> G_conn /and3P[] /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
-  rewrite !inE -setTD eqxx =>/(_ isT) petal_i.
-  move=> /edgeless_petal/eqP-/(_ G_conn (CP_extensive _)).
-  rewrite !inE eqxx orbT =>/(_ isT) petal_o /andP[iNo _].
-  rewrite (sinterval_petal_cover G_conn iNo) petal_i petal_o setUAC.
+  move=> G_conn /and3P[] /edgeless_bag/eqP-/(_ G_conn (CP_extensive _)).
+  rewrite !inE -setTD eqxx =>/(_ isT) bag_i.
+  move=> /edgeless_bag/eqP-/(_ G_conn (CP_extensive _)).
+  rewrite !inE eqxx orbT =>/(_ isT) bag_o /andP[iNo _].
+  rewrite (sinterval_bag_cover G_conn iNo) bag_i bag_o setUAC.
   rewrite setDUl setDv set0U setDE. apply: esym; apply/setIidPl.
   apply/subsetP=> x x_sI. rewrite !inE negb_or.
   apply/andP; split; apply: contraTneq x_sI =>->; by rewrite sinterval_bounds.
@@ -155,7 +155,7 @@ Proof.
   - set H := sinterval _ _. apply: ssplit_K4_nontrivial (E) _ (D).
     + by rewrite -adjacentE A.
     + by case/and3P : B.
-    + apply/eqP. apply: edgeless_petal => //=. 
+    + apply/eqP. apply: edgeless_bag => //=. 
       * apply: (@CP_extensive G); by rewrite !inE eqxx.
       * by case/and3P : B => ? _ _.
 Qed.
@@ -205,7 +205,7 @@ Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
 
 Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
   let (i,o) := (g_in : G, g_out : G) in 
-  if  (edge_set (@petal G IO i) != set0) || (edge_set (@petal G IO o) != set0)
+  if  (edge_set (@bag G IO i) != set0) || (edge_set (@bag G IO o) != set0)
   then g (pgraph IO i) :o: g (igraph i o) :o: g (pgraph IO o)
   else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
        else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
@@ -223,7 +223,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
          term_of (point (remove_edges E) g_in g_out)
   else (* distinct input and output *)
     if lens G
-    then (* no checkpoints and no petals on i and o *)
+    then (* no checkpoints and no bags on i and o *)
       let P := components (@sinterval (skeleton G) g_in g_out) in
       let E := @edge_set G IO in
       if E == set0 
@@ -234,7 +234,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
            then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
            else  (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||: 
                  term_of (point (remove_edges E) g_in g_out) 
-    else (* at least one nontrivial petal or checkpoint *)
+    else (* at least one nontrivial bag or checkpoint *)
       @simple_check_point_term term_of G.
 
 Definition term_of := Fix tmT term_of_measure term_of_rec.
@@ -269,7 +269,7 @@ Qed.
 
 Lemma measure_igraph (G : graph2) :
     connected [set: skeleton G] ->
-    (edge_set (@petal G IO g_in) != set0) || (edge_set (@petal G IO g_out) != set0) ->
+    (edge_set (@bag G IO g_in) != set0) || (edge_set (@bag G IO g_out) != set0) ->
     measure (@igraph G g_in g_out) < measure G.
 Proof.
   move=> G_conn A.
@@ -278,7 +278,7 @@ Proof.
   have [i_cp o_cp] : g_in \in @CP G IO /\ g_out \in @CP G IO
     by split; apply: CP_extensive; rewrite !inE eqxx.
   case/orP: A => /set0Pn[e He]; exists e; last rewrite interval_edges_sym.
-  all: by rewrite (disjointFr (interval_petal_edges_disj G_conn _ _) He).
+  all: by rewrite (disjointFr (interval_bag_edges_disj G_conn _ _) He).
 Qed.
 
 Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
@@ -348,16 +348,16 @@ Proof.
 Qed.
 
 
-Lemma rec_petal (G : graph2) (x : G) : 
+Lemma rec_bag (G : graph2) (x : G) : 
   CK4F G -> x \in @CP (skeleton G) IO -> g_in != g_out :> G ->
   CK4F (pgraph IO x) /\ measure (pgraph IO x) < measure G.
 Proof.
   move => [conn_G K4F_G] cp_x Dio. split. 
-  - apply: CK4F_sub => //. exact: connected_petal.
-  - suff: (g_in \notin @petal G IO x) || (g_out \notin @petal G IO x).
+  - apply: CK4F_sub => //. exact: connected_bag.
+  - suff: (g_in \notin @bag G IO x) || (g_out \notin @bag G IO x).
     { by case/orP; exact: measure_node. }
     rewrite -negb_and. apply:contraNN Dio => /andP[].
-    rewrite !(petal_cp conn_G) // => [/eqP-> /eqP-> //||]; 
+    rewrite !(bag_cp conn_G) // => [/eqP-> /eqP-> //||]; 
       by apply CP_extensive; rewrite !inE eqxx.
 Qed.  
 
@@ -519,7 +519,7 @@ Let Zo : z != g_out.
 Proof. move: Hz. rewrite !inE negb_or -andbA. by case/and3P. Qed.
 
 (* g_out not in left side, g_in not in right side *)
-(* neither g_in nor g_out is in the central petal *)
+(* neither g_in nor g_out is in the central bag *)
 
 Lemma CK4F_split_cpL : CK4F (igraph g_in z).
 Proof.
@@ -533,7 +533,7 @@ Qed.
 
 Lemma CK4F_split_cpM : CK4F (@pgraph G IO z).
 Proof. 
-  apply rec_petal => //. 
+  apply rec_bag => //. 
   apply/bigcupP. exists (g_in,g_out) => //. by rewrite !inE /= !eqxx.
 Qed.
 
@@ -556,7 +556,7 @@ Qed.
 Lemma measure_split_cpM : measure (@pgraph G IO z) < measure G.
 Proof.
   apply: (measure_node (v := g_in)); first apply CK4F_G.
-  rewrite (@petal_cp G) 1?eq_sym //; first apply CK4F_G.
+  rewrite (@bag_cp G) 1?eq_sym //; first apply CK4F_G.
   - apply: CP_extensive. by rewrite !inE eqxx.
   - apply/bigcupP. exists (g_in,g_out) => //. by rewrite !inE /= !eqxx.
 Qed.
@@ -573,16 +573,16 @@ Proof.
   move => CK4F_G Eio nlens_G Efg.
   rewrite /simple_check_point_term.
   case: ifP => [A|A].
-  - (* g_out not in left petal, e notin interval, g_in not in right petal *)
+  - (* g_out not in left bag, e notin interval, g_in not in right bag *)
     rewrite ![f (pgraph _ _)]Efg; 
-      try (apply rec_petal => //; apply: CP_extensive; by rewrite !inE eqxx).
+      try (apply rec_bag => //; apply: CP_extensive; by rewrite !inE eqxx).
     do 2 f_equal. rewrite Efg //. 
     * apply: CK4F_igraph => //=; last rewrite cp_sym; exact: (@mem_cpl G). 
     * apply: measure_igraph => //; by case: CK4F_G.
   - case: pickP => [z Hz|//]; repeat congr tmS.
     + rewrite Efg //. exact: CK4F_split_cpL. exact: measure_split_cpL.
     + have {Hz} Hz : z \in @CP G IO by move: Hz; rewrite inE CP_set2 => /andP[_ ->].
-      by rewrite Efg //; apply rec_petal => //.
+      by rewrite Efg //; apply rec_bag => //.
     + rewrite Efg //. exact: CK4F_split_cpR. exact: measure_split_cpR.
 Qed.
 
