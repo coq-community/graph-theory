@@ -630,6 +630,12 @@ Section CheckPoints.
 
   Definition interval x y := [set x;y] :|: sinterval x y.
 
+  Fact intervalL (x y : G) : x \in interval x y.
+  Proof. by rewrite !inE eqxx. Qed.
+
+  Fact intervalR (x y : G) : y \in interval x y.
+  Proof. by rewrite !inE eqxx !orbT. Qed.
+
   Lemma interval_sym x y : interval x y = interval y x.
   Proof. by rewrite /interval [[set x; y]]setUC sinterval_sym. Qed.
 

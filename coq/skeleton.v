@@ -40,41 +40,7 @@ Qed.
 Definition ssk_rel (G : graph2) := 
   relU (sk_rel G) (sc [rel x y | [&& x != y, x == g_in & y == g_out]]).
 
-Definition add_edge_rel (G:sgraph) (i o : G) := 
-  relU (@sedge G) (sc [rel x y | [&& x != y, x == i & y == o]]).
 
-Lemma add_edge_sym (G:sgraph) (i o : G) : symmetric (add_edge_rel i o).
-Proof. apply: relU_sym'. exact: sg_sym. exact: sc_sym. Qed.
-
-Lemma add_edge_irrefl (G:sgraph) (i o : G) : irreflexive (add_edge_rel i o).
-Proof. move => x /=. by rewrite sg_irrefl eqxx. Qed.
-
-Definition add_edge (G:sgraph) (i o : G) :=
-  {| svertex := G;
-     sedge := add_edge_rel i o;
-     sg_sym := add_edge_sym i o;
-     sg_irrefl := add_edge_irrefl i o |}.
-
-Lemma add_edge_Path (G : sgraph) (i o x y : G) (p : @Path G x y) :
-  exists q : @Path (add_edge i o) x y, nodes q = nodes p.
-Proof.
-  case: p => p p_pth.
-  have p_iopth : @spath (add_edge i o) x y p.
-  { case/andP: p_pth => p_path p_last. apply/andP; split=> //.
-    apply: sub_path p_path. by move=> u v /=->. }
-  by exists (Sub (p : seq (add_edge i o)) p_iopth).
-Qed.
-
-Lemma add_edge_connected (G : sgraph) (i o : G) (U : {set G}) :
-  @connected G U -> @connected (add_edge i o) U.
-Proof.
-  move=> U_conn x y x_U y_U; move/(_ x y x_U y_U): U_conn.
-  case: (boolP (x == y :> G)); first by move=>/eqP-> _; rewrite connect0.
-  move=> xNy /(uPathRP xNy)[p _ /subsetP pU].
-  case: (add_edge_Path i o p) => [q eq_q].
-  apply: (@connectRI _ _ x y q) => z.
-  rewrite in_collective eq_q; exact: pU.
-Qed.
 
 Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
 
@@ -177,21 +143,6 @@ Proof.
   all: rewrite Ei Eo /id_G/= ?[sk_rel G o i]sk_rel_sym ?[o == i]eq_sym in xNy *.
   all: by rewrite -[sk_rel _ _ _]adjacentE xNy Aio.
 Qed.
-
-
-
-(** ** Intervals and Petals *)
-
-(** TOTHINK: define intervals and bags on graph or sgraph, i.e.,
-where to add theskeleton casts? *)
-
-Fact intervalL (G : sgraph) (x y : G) : 
-  x \in interval x y.
-Proof. by rewrite !inE eqxx. Qed.
-
-Fact intervalR (G : sgraph) (x y : G) : 
-  y \in interval x y.
-Proof. by rewrite !inE eqxx !orbT. Qed.
 
 Definition remove_edges (G : graph) (E : {set edge G}) := 
   {| vertex := G;
