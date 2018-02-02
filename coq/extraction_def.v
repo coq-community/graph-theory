@@ -675,10 +675,11 @@ Proof.
   exact: measure_remove_component.
 Qed.
 
-Lemma term_of_eq (G : graph2) : 
-  CK4F G -> term_of G = term_of_rec term_of G.
+Lemma term_of_rec_eq (f g : graph2 -> term) (G : graph2) :
+  CK4F G -> (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) ->
+  term_of_rec f G = term_of_rec g G.
 Proof.
-  apply: Fix_eq => // {G} f g G CK4F_G Efg. rewrite /term_of_rec. 
+  move=> CK4F_G Efg. rewrite /term_of_rec.
   case: (boolP (@g_in G == g_out)) => Hio.
   - case (boolP (@edge_set G IO == set0)) => Es.
     + case: pickP => //= C HC. rewrite !Efg //.
@@ -701,3 +702,6 @@ Proof.
         -- exact: measure_remove_edges.
     + exact: simple_check_point_wf.
 Qed.
+
+Lemma term_of_eq : forall (G : graph2), CK4F G -> term_of G = term_of_rec term_of G.
+Proof. apply: Fix_eq term_of_rec_eq. Qed.
