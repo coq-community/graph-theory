@@ -670,7 +670,7 @@ Proof.
 Qed.
 
 
-(* TOTHINK: What do we do about the forest constructions, to we move to packaged paths? *)
+(* TOTHINK: What do we do about the forest constructions, do we move to packaged paths? *)
 Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
   exists p : Path a b, map f (val p) = val p'.
@@ -841,21 +841,21 @@ End PathIndexing.
 (** We define forests to be simple graphs where there exists at most one
 duplicate free path between any two nodes *)
 
-Definition tree_axiom (G:sgraph) := forall (x y : G), unique (upath x y).
+Definition forest_axiom (G:sgraph) := forall (x y : G), unique (upath x y).
   
-Record tree := Tree { sgraph_of_tree :> sgraph ; 
-                      treeP : tree_axiom sgraph_of_tree}.
+Record forest := Forest { sgraph_of_forest :> sgraph ; 
+                          forestP : forest_axiom sgraph_of_forest}.
 
-Lemma restrict_tree (T : tree) (A : pred T) : 
+Lemma restrict_forest (T : forest) (A : pred T) : 
   connect_sym (restrict A sedge).
 Proof. apply: connect_symI => x y /=. by rewrite sgP [(x \in A) && _]andbC. Qed.
 
 Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
 
-Definition unit_tree_axiom : tree_axiom (sunit).
+Definition unit_forest_axiom : forest_axiom (sunit).
 Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
 
-Definition tunit := Tree unit_tree_axiom.
+Definition tunit := Forest unit_forest_axiom.
 
 
 (** We define [width] and [rename] for tree decompositions already
@@ -1191,7 +1191,6 @@ Proof.
   by rewrite Ep1 mem_pcat u_q1.
 Qed.
 
-(* TODO: tree_axiom (for tree decompositions) actually axiomatizes forest *)
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
 Lemma tree_unique_Path (G : sgraph) (G_tree : is_tree G) (x y : G) :
@@ -1235,19 +1234,19 @@ Proof.
   by rewrite sg_sym.
 Qed.
 
-Definition subtree (T : tree) (A : {set T}) :=
+Definition subforest (T : forest) (A : {set T}) :=
   {in A&A, forall (x y : T) p, upath x y p -> {subset p <= A}}.
 
 Set Printing Implicit Defensive.
-Lemma subtree_connect (T : tree) (c : T) (a : pred T) : 
-  subtree [set c' | connect (restrict a sedge) c c'].
+Lemma subforest_connect (T : forest) (c : T) (a : pred T) : 
+  subforest [set c' | connect (restrict a sedge) c c'].
 Proof.
   move => u u' H1 H2 p H3.  
   have/upathPR [q pth_q] : connect (restrict a sedge) u u'.
   { apply: (connect_trans (y := c)).
-    - by rewrite restrict_tree inE in H1 *.
+    - by rewrite restrict_forest inE in H1 *.
     - by rewrite inE in H2. }
-  have -> : p = q. { move/restrict_upath : pth_q. exact: treeP H3. }
+  have -> : p = q. { move/restrict_upath : pth_q. exact: forestP H3. }
   move => c' /(mem_tail u) in_q. 
   case: (usplitP (G := srestrict a) in_q pth_q) => p1 p2 A _ _.
   rewrite !inE in H1 H2 *. apply: connect_trans H1 _.

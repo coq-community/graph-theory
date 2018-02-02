@@ -8,7 +8,7 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
-Implicit Types (G H : graph) (U : sgraph) (T : tree).
+Implicit Types (G H : graph) (U : sgraph) (T : forest).
 
 (** * Terms to Treewidth Two *)
 
@@ -19,19 +19,19 @@ multigraphs. We plan to eliminate this redundancy *)
 
 (** Covering is not really required, but makes the renaming theorem
 easier to state *)
-Record decomp (T:tree) (G : graph) (bag : T -> {set G}) := Decomp
-  { bag_cover x : exists t, x \in bag t; 
-    bag_edge (e : edge G) : exists t, (source e \in bag t) && (target e \in bag t);
-    bag_conn x t1 t2  : x \in bag t1 -> x \in bag t2 ->
-      connect (restrict [pred t | x \in bag t] sedge) t1 t2}.
+Record decomp (T : forest) (G : graph) (B : T -> {set G}) := Decomp
+  { bag_cover x : exists t, x \in B t; 
+    bag_edge (e : edge G) : exists t, (source e \in B t) && (target e \in B t);
+    bag_conn x t1 t2  : x \in B t1 -> x \in B t2 ->
+      connect (restrict [pred t | x \in B t] sedge) t1 t2}.
 
 
-Definition compatible (T:tree) (G : graph2) (B : T -> {set G}) := 
+Definition compatible (T : forest) (G : graph2) (B : T -> {set G}) := 
   exists t, (g_in \in B t) && (g_out \in B t).
 
 (** ** Renaming *)
 
-Lemma rename_decomp (T : tree) (G H : graph) D (dec_D : decomp D) (h : h_ty G H) : 
+Lemma rename_decomp (T : forest) (G H : graph) D (dec_D : decomp D) (h : h_ty G H) : 
   surjective2 h -> hom_g h -> 
   (forall x y, h.1 x = h.1 y -> exists t, (x \in D t) && (y \in D t)) -> 
   @decomp T _ (rename D h.1).
@@ -54,12 +54,12 @@ Proof.
       rewrite E Z andbT. apply/andP;split; by apply/imsetP;exists x1.
 Qed.
 
-Lemma rename_width (T:tree) (G : graph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
+Lemma rename_width (T : forest) (G : graph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
   width (rename D h) <= width D.
 Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
 
 
-Lemma iso2_decomp (G1 G2 : graph2) (T:tree) B1 : 
+Lemma iso2_decomp (G1 G2 : graph2) (T : forest) B1 : 
   @decomp T G1 B1 -> compatible B1 -> G1 ≈ G2 -> 
   exists B2, [/\ @decomp T G2 B2, width B2 = width B1 & compatible B2].
 Proof.
@@ -82,9 +82,9 @@ Qed.
 (** ** Disjoint Union *)
 
 Section JoinT.
-  Variables (T1 T2 : tree).
+  Variables (T1 T2 : forest).
 
-  (* This could be rephrased as "codom inl is a subtree" *)
+  (* This could be rephrased as "codom inl is a subforest" *)
   Lemma sub_inl (a b : T1) (p : seq (sjoin T1 T2)) : 
     @upath (sjoin T1 T2) (inl a) (inl b) p -> {subset p <= codom inl}.
   Proof. 
@@ -102,7 +102,7 @@ Section JoinT.
   Arguments inl_inj [A B].
   Prenex Implicits inl_inj.
 
-  Lemma join_tree_axiom : tree_axiom (sjoin T1 T2).
+  Lemma join_forest_axiom : forest_axiom (sjoin T1 T2).
   Proof.
     move => [a|a] [b|b].
     - move => p q Up Uq.
@@ -110,7 +110,7 @@ Section JoinT.
       case: (lift_upath _ _ Uq (sub_inl Uq)) => //; first exact: inl_inj. 
       move => p0 [P0 P1] q0 [Q0 Q1]. 
       suff E: p0 = q0 by congruence. 
-      exact: (@treeP _ a b).
+      exact: (@forestP _ a b).
     - move => p q U. suff: connect sedge (inl a : sjoin T1 T2) (inr b) by rewrite join_disc. 
       apply/upathP; by exists p.
     - move => p q U. suff: connect sedge (inl b : sjoin T1 T2) (inr a) by rewrite join_disc. 
@@ -120,10 +120,10 @@ Section JoinT.
       case: (lift_upath _ _ Uq (sub_inr Uq)) => //; first exact: inr_inj. 
       move => p0 [P0 P1] q0 [Q0 Q1]. 
       suff E: p0 = q0 by congruence. 
-      exact: (@treeP _ a b).
+      exact: (@forestP _ a b).
   Qed.
       
-  Definition tjoin := @Tree (sjoin T1 T2) join_tree_axiom.
+  Definition tjoin := @Forest (sjoin T1 T2) join_forest_axiom.
 
   Definition decompU G1 G2 (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : tjoin -> {set union G1 G2} := 
     [fun a => match a with 
@@ -185,7 +185,7 @@ End JoinT.
 (** ** Link Construction *)
 
 Section Link. 
-  Variables (T : tree) (t1 t2 : T).
+  Variables (T : forest) (t1 t2 : T).
   
   Hypothesis disconn_t1_t2 : ~~ connect sedge t1 t2.
 
@@ -229,7 +229,7 @@ Section Link.
     move => p q [p1 p2] [q1 q2].
     case: (lift_link_rel p1 p2) => p0 Up ->. 
     case: (lift_link_rel q1 q2) => q0 Uq ->. 
-    by rewrite (treeP Up Uq).
+    by rewrite (forestP Up Uq).
   Qed.
 
   Lemma diamond x (p q : seq link) :
@@ -291,7 +291,7 @@ Section Link.
     - apply: (@diamond y s p) => //. exact: upathW.
   Qed.
 
-  Lemma link_tree_axiom : tree_axiom link.
+  Lemma link_forest_axiom : forest_axiom link.
   Proof.
     move => [x|] [y|]; try solve [apply: unique_None]. 
     2: by apply: (upath_sym (G := link)) ; apply: unique_None.
@@ -304,7 +304,7 @@ Section Link.
       exact: (@unique_Some_aux x y). 
   Qed.
 
-  Definition tlink := @Tree link link_tree_axiom.
+  Definition tlink := @Forest link link_forest_axiom.
 
   Definition decompL G (D : T -> {set G}) A a := 
     match a with Some x => D x | None => A end.
@@ -348,7 +348,7 @@ End Link.
 
 (** ** Closure Properties for operations *)
 
-Arguments decomp T G bag : clear implicits.
+Arguments decomp T G B : clear implicits.
 
 Section Quotients. 
   Variables (G1 G2 : graph2).
@@ -358,7 +358,7 @@ Section Quotients.
   Definition admissible (eqv : rel (union G1 G2)) := 
     forall x y, eqv x y -> x = y \/ [set x;y] \subset P. 
  
-  Lemma decomp_quot (T1 T2 : tree) D1 D2 (e : equiv_rel (union G1 G2)): 
+  Lemma decomp_quot (T1 T2 : forest) D1 D2 (e : equiv_rel (union G1 G2)): 
     decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
     compatible D1 -> compatible D2 ->
     width D1 <= 3 -> width D2 <= 3 ->
@@ -506,7 +506,7 @@ Section Quotients.
     rewrite !inE => _ /orP[]/eqP->; by right; rewrite subUset !sub1set !inE !eqxx.
   Qed.
 
-  Lemma decomp_par2 (T1 T2 : tree) D1 D2 : 
+  Lemma decomp_par2 (T1 T2 : forest) D1 D2 : 
     decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
     compatible D1 -> compatible D2 ->
     width D1 <= 3 -> width D2 <= 3 ->
@@ -585,7 +585,7 @@ Section Quotients.
     by rewrite subUset !sub1set !inE !eqxx.
   Qed.
 
-  Lemma decomp_seq2 (T1 T2 : tree) D1 D2 : 
+  Lemma decomp_seq2 (T1 T2 : forest) D1 D2 : 
     decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
     compatible D1 -> compatible D2 ->
     width D1 <= 3 -> width D2 <= 3 ->
@@ -706,14 +706,14 @@ Qed.
 
 (** Transfer multigraph tree decomposition to the skeleton *)
 
-Lemma decomp_skeleton (G : graph) (T : tree) (D : T -> {set G}) :
+Lemma decomp_skeleton (G : graph) (T : forest) (D : T -> {set G}) :
   decomp T G D -> sdecomp T (skeleton G) D.
 Proof.
   case => D1 D2 D3. split => //. apply skelP => // x y.
   move => [t] A. exists t. by rewrite andbC.
 Qed.
 
-Lemma decomp_sskeleton (G : graph2) (T : tree) (D : T -> {set G}) :
+Lemma decomp_sskeleton (G : graph2) (T : forest) (D : T -> {set G}) :
   decomp T G D -> compatible D -> sdecomp T (sskeleton G) D.
 Proof.
   case => D1 D2 D3 C. split => //. apply sskelP  => // x y.

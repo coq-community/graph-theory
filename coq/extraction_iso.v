@@ -735,7 +735,7 @@ Qed.
 Corollary minor_exclusion_2p (G : graph2) :
   connected [set: skeleton G] -> 
   K4_free (sskeleton G) <-> 
-  exists (T:tree) (B : T -> {set G}), [/\ decomp T G B, width B <= 3 & compatible B].
+  exists (T : forest) (B : T -> {set G}), [/\ decomp T G B, width B <= 3 & compatible B].
 Proof.
   move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
   - have [T [B] [B1 B2 B3]] := (graph_of_TW2' (term_of G)).
@@ -755,7 +755,7 @@ treewidth two. *)
 Theorem graph_minor_TW2 (G : sgraph) :
   connected [set: G] -> 
   K4_free G <-> 
-  exists (T:tree) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
+  exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
   move => conn_G. split=> [K4F_G | [T][B][]]; last exact: TW2_K4_free.
   case: (posnP #|G|) =>[G_empty | /card_gt0P[x _]].

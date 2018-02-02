@@ -17,13 +17,13 @@ Set Bullet Behavior "Strict Subproofs".
 (** Covering is not really required, but makes the renaming theorem
 easier to state *)
 
-Record sdecomp (T:tree) (G : sgraph) (bag : T -> {set G}) := SDecomp
-  { sbag_cover x : exists t, x \in bag t; 
-    sbag_edge x y : x -- y -> exists t, (x \in bag t) && (y \in bag t);
-    sbag_conn x t1 t2  : x \in bag t1 -> x \in bag t2 ->
-      connect (restrict [pred t | x \in bag t] sedge) t1 t2}.
+Record sdecomp (T : forest) (G : sgraph) (B : T -> {set G}) := SDecomp
+  { sbag_cover x : exists t, x \in B t; 
+    sbag_edge x y : x -- y -> exists t, (x \in B t) && (y \in B t);
+    sbag_conn x t1 t2  : x \in B t1 -> x \in B t2 ->
+      connect (restrict [pred t | x \in B t] sedge) t1 t2}.
 
-Arguments sdecomp T G bag : clear implicits.
+Arguments sdecomp T G B : clear implicits.
 
 Definition triv_sdecomp (G : sgraph) :
   sdecomp tunit G (fun _ => [set: G]).
@@ -32,7 +32,7 @@ Proof.
   exact: connect0.
 Qed.
 
-Lemma sg_iso_decomp (G1 G2 : sgraph) (T : tree) B1 : 
+Lemma sg_iso_decomp (G1 G2 : sgraph) (T : forest) B1 : 
   sdecomp T G1 B1 -> sg_iso G1 G2 -> 
   exists2 B2, sdecomp T G2 B2 & width B2 = width B1.
 Proof.
@@ -54,7 +54,7 @@ Qed.
 
 
 Section DecompTheory.
-  Variables (G : sgraph) (T : tree) (B : T -> {set G}).
+  Variables (G : sgraph) (T : forest) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).
 
   Hypothesis decD : sdecomp T G B.
@@ -64,14 +64,14 @@ Section DecompTheory.
   Proof.
     move => upth_p in_p. apply/subsetP => z /setIP [z_in_u z_in_v].
     case/upathPR : (sbag_conn decD z_in_u z_in_v) => q upth_q.
-    have ? : q = p. { apply: treeP upth_p. exact: restrict_upath upth_q. }
+    have ? : q = p. { apply: forestP upth_p. exact: restrict_upath upth_q. }
     subst q. move/upathWW/path_restrict : upth_q. by apply.
   Qed.
     
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
 
-  Lemma subtree_link (C : {set T}) t0 c0 c p : 
-    subtree C -> t0 \notin C -> c0 \in C -> t0 -- c0 -> c \in C -> upath t0 c p -> c0 \in p.
+  Lemma subforest_link (C : {set T}) t0 c0 c p : 
+    subforest C -> t0 \notin C -> c0 \in C -> t0 -- c0 -> c \in C -> upath t0 c p -> c0 \in p.
   Proof.
     move => sub_C H1 H2 H3 H4 H5. 
     have [q Hq] : exists p, upath  c0 c p. 
@@ -82,7 +82,7 @@ Section DecompTheory.
     { rewrite upath_cons H3 Hq /= andbT inE. 
       apply/orP => [[/eqP X|X]]. by subst; contrab. 
       move/sub_C : Hq. case/(_ _ _)/Wrap => // /(_ _ X) ?. by contrab. }
-    rewrite (treeP H5 X). exact: mem_head.
+    rewrite (forestP H5 X). exact: mem_head.
   Qed.
 
   Lemma decomp_clique (S : {set G}) : 
@@ -116,7 +116,7 @@ Section DecompTheory.
       have [c [Hc1 Hc2]] : exists t, v \in B t /\ v0 \in B t by apply: pairs. 
       pose C := [set t | connect (restrict [predC T0] sedge) c t].
       have inC: c \in C by rewrite inE connect0. 
-      have C_subtree : subtree C by apply: subtree_connect.
+      have C_subforest : subforest C by apply: subforest_connect.
       have disC: [disjoint C & T0]. 
       { rewrite disjoints_subset. apply/subsetP => c0. rewrite 2!inE.
         case: (boolP (c == c0)) => [/eqP<- _|H].
@@ -145,7 +145,7 @@ Section DecompTheory.
               apply: connect1 => /=. rewrite !in_simpl /= Ha H1 !andbT. 
               apply/negP. exact: disjointE disC inC0. }
       have t0P p c' : c' \in C -> upath t0 c' p -> c0 \in p.
-      { apply: subtree_link tc0 => //.  apply/negP => H. exact: (disjointE disC H Ht0). }
+      { apply: subforest_link tc0 => //.  apply/negP => H. exact: (disjointE disC H Ht0). }
       suff A : c0 \in T0 by case: (disjointE disC Hc0 A).
       rewrite inE. apply/subsetP => u u_in_S0.
       have Hu: u \in B t0. { rewrite inE in Ht0. exact: (subsetP Ht0). }
@@ -175,7 +175,7 @@ Notation "''K_' n" := (complete n)
 Definition C3 := 'K_3.
 Definition K4 := 'K_4.
 
-Lemma K4_bag (T : tree) (D : T -> {set K4}) : 
+Lemma K4_bag (T : forest) (D : T -> {set K4}) : 
   sdecomp T K4 D -> exists t, 4 <= #|D t|.
 Proof.
   move => decD.
@@ -187,7 +187,7 @@ Qed.
 
 (** K4 has with at least 4 *)
 
-Lemma K4_width (T : tree) (D : T -> {set K4}) : 
+Lemma K4_width (T : forest) (D : T -> {set K4}) : 
   sdecomp T K4 D -> 4 <= width D.
 Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
 
@@ -319,7 +319,7 @@ Definition edge_surjective (G1 G2 : sgraph) (h : G1 -> G2) :=
   forall x y : G2 , x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0].
 
 (* The following should hold but does not fit the use case for minors *)
-Lemma rename_sdecomp (T : tree) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G -> H) : 
+Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G -> H) : 
   hom_s h -> surjective h -> edge_surjective h -> 
   (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
   @sdecomp T _ (rename D h).
@@ -340,7 +340,7 @@ Proof.
 Abort. 
 
 
-Lemma width_minor (G H : sgraph) (T : tree) (B : T -> {set G}) : 
+Lemma width_minor (G H : sgraph) (T : forest) (B : T -> {set G}) : 
   sdecomp T G B -> minor G H -> exists B', sdecomp T H B' /\ width B' <= width B.
 Proof.
   move => decT [phi [p1 p2 p3]].
@@ -387,7 +387,7 @@ Lemma iso_K4_free (G H : sgraph) :
   sg_iso G H -> K4_free H -> K4_free G.
 Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
 
-Lemma TW2_K4_free (G : sgraph) (T : tree) (B : T -> {set G}) : 
+Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) : 
   sdecomp T G B -> width B <= 3 -> K4_free G.
 Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
