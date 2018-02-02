@@ -93,7 +93,8 @@ Definition srestrict (G : sgraph) (A : pred G) :=
   Eval hnf in SGraph (symmetric_restrict A (@sg_sym G))
                      (irreflexive_restrict A (@sg_irrefl G)).
 
-(** Isomorphism of graphs *)
+(** *** Isomorphism of graphs *)
+
 (* TOTHINK: Will it be needed to assert that certain maps are graph isomorphisms ? *)
 CoInductive sg_iso (G H : sgraph) : Prop :=
   SgIso (g : H -> G) (h : G -> H) : cancel g h -> cancel h g ->
@@ -191,7 +192,7 @@ Lemma srev_rcons x z p : srev x (rcons p z) = rcons (rev p) x.
 Proof. by rewrite /srev belast_rcons rev_cons. Qed.
 
 (** Note that the converse of the following does not hold since [srev
-x p] forgets the last element of [p]. Consequently, doulbe reversal
+x p] forgets the last element of [p]. Consequently, double reversal
 only cancels if the right nodes are added back. *)
 Lemma spath_rev x y p : spath x y p -> spath y x (srev x p).
 Proof.
@@ -223,9 +224,13 @@ Proof.
   constructor; last rewrite -(eqP H1); exact/andP. 
 Qed.
 
+Lemma spath_shorten x y p :
+  spath x y p -> exists p', [/\ spath x y p', uniq (x::p') & {subset p' <= p}].
+Proof. case/andP. case/shortenP => p' *. by exists p'. Qed.
 
 End SimplePaths.
 Arguments spath_last [G].
+
 
 (** ** Irredundant Paths *)
 
@@ -237,6 +242,9 @@ Definition upath x y p := uniq (x::p) && spath x y p.
 
 Lemma upathW x y p : upath x y p -> spath x y p.
 Proof. by case/andP. Qed.
+
+Lemma upathWW x y p : upath x y p -> path sedge x p.
+Proof. by move/upathW/spathW. Qed.
 
 Lemma upath_uniq x y p : upath x y p -> uniq (x::p).
 Proof. by case/andP. Qed.
@@ -289,14 +297,6 @@ Proof.
   apply/negP. apply: disjointE C _. by rewrite -(spath_last z x p1) // mem_last. 
 Qed.
 
-(* CoInductive usplitr z x y : seq G -> Prop :=  *)
-(*   USplit p1 p2 : upath x z p1 -> upath z y p2 -> [disjoint x::rcons p1 z & p2] *)
-(*                  -> usplit z x y (p1 ++ p2). *)
-
-
-(* Lemma usplitPr z x y p : z \in p -> upath x y p -> usplit z x y p. *)
-
-
 Lemma upathP x y : reflect (exists p, upath x y p) (connect sedge x y).
 Proof.
   apply: (iffP connectP) => [[p p1 p2]|[p /and3P [p1 p2 /eqP p3]]]; last by exists p.
@@ -311,6 +311,11 @@ Proof.
 Qed.
 
 End Upath.
+
+Lemma upathPR (G : sgraph) (x y : G) A :
+  reflect (exists p : seq G, @upath (srestrict A) x y p)
+          (connect (restrict A sedge) x y).
+Proof. exact: (@upathP (srestrict A)). Qed.
 
 Lemma restrict_upath (G:sgraph) (x y:G) (A : pred G) (p : seq G) : 
   @upath (srestrict A) x y p -> upath x y p.
@@ -361,6 +366,7 @@ Qed.
 Ltac spath_tac :=
   repeat match goal with [H : is_true (upath _ _ _) |- _] => move/upathW : H => H end;
   eauto using spath_concat, spath_rev.
+
 
 (** ** Packaged paths *)
 
@@ -475,6 +481,51 @@ Proof. apply/val_inj=> /=. apply: srevK. exact: path_last. Qed.
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 
+Lemma irred_cat x y z (p : Path x z) (q : Path z y) :
+  irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
+Proof.
+  rewrite /irred {1}/nodes -lock /pcat SubK -cat_cons cat_uniq -disjoint_has disjoint_sym -nodesE.
+  case A : [disjoint _ & _] => //. case: (uniq (nodes p)) => //=. rewrite nodesE /=.
+  case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // nodes_end.
+Qed.
+
+Lemma irred_cat' x y z (p : Path x z) (q : Path z y) :
+  irred (pcat p q) = [&& irred p, irred q & [set u in p | u \in q] == [set z]].
+Proof.
+  rewrite /irred {1}nodesE (lock uniq) /= -lock -cat_cons -nodesE cat_uniq.
+  congr (_ && _). rewrite (nodesE q) /=. case: uniq => //; rewrite !andbT.
+  apply/hasPn/andP.
+  - move=> H. split; first by apply/negP=>/H/=; rewrite nodes_end.
+    apply/eqP/setP=> u; rewrite !inE.
+    apply/andP/eqP; last by [move=>->; rewrite nodes_start nodes_end].
+    case=> u_p. rewrite mem_path inE =>/orP[/eqP//|/H/=]. by rewrite u_p.
+  - case=> zNTq. rewrite eqEsubset =>/andP[/subsetP sub _].
+    move=> u u_q /=. apply/negP=> u_p.
+    case/(_ u _)/Wrap: sub; rewrite inE.
+    + rewrite u_p /=; exact: tailW.
+    + apply/negP; by apply: contraNneq zNTq =>{1}<-.
+Qed.
+
+Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
+Proof.
+  rewrite /irred /nodes => U. apply: leq_size_uniq U _ _.
+  - move => u. by rewrite mem_prev.
+  - by rewrite -!lock /= ltnS /srev size_rev size_belast.
+Qed.
+
+Lemma irred_rev x y (p : Path x y) : irred (prev p) = irred p.
+Proof. apply/idP/idP; first rewrite -[p as X in irred X]prevK; exact: prev_irred. Qed.
+
+Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect sedge x y).
+Proof.
+  apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]].
+  + exists (Sub p P).  by rewrite /irred nodesE.
+  + exists (val p). apply/andP;split; by [rewrite /irred nodesE in I| exact: valP].
+Qed.
+
+Lemma Path_connect x y (p : Path x y) : connect sedge x y.
+Proof. apply/spathP. exists (val p). exact: valP. Qed.
+
 (** The one-node path *)
 
 Definition idp (u : G) := Build_Path (spathxx u).
@@ -502,6 +553,8 @@ Proof. by rewrite mem_path !inE. Qed.
 
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
 Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
+
+(** *** Splitting Paths **)
 
 Lemma splitL x y (p : Path x y) : 
   x != y -> exists z xz (p' : Path z y), p = pcat (edgep xz) p' /\ p' =i tail p.
@@ -533,51 +586,6 @@ Proof.
   case/(ssplitP in_p) E : {1}(val p) / pth_p => [p1 p2 P1 P2].
   exists (Sub p1 P1). exists (Sub p2 P2). exact: val_inj. 
 Qed.
-
-Lemma irred_cat x y z (p : Path x z) (q : Path z y) : 
-  irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
-Proof.
-  rewrite /irred {1}/nodes -lock /pcat SubK -cat_cons cat_uniq -disjoint_has disjoint_sym -nodesE.
-  case A : [disjoint _ & _] => //. case: (uniq (nodes p)) => //=. rewrite nodesE /=.
-  case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // nodes_end. 
-Qed.
-
-Lemma irred_cat' x y z (p : Path x z) (q : Path z y) :
-  irred (pcat p q) = [&& irred p, irred q & [set u in p | u \in q] == [set z]].
-Proof.
-  rewrite /irred {1}nodesE (lock uniq) /= -lock -cat_cons -nodesE cat_uniq.
-  congr (_ && _). rewrite (nodesE q) /=. case: uniq => //; rewrite !andbT.
-  apply/hasPn/andP.
-  - move=> H. split; first by apply/negP=>/H/=; rewrite nodes_end.
-    apply/eqP/setP=> u; rewrite !inE.
-    apply/andP/eqP; last by [move=>->; rewrite nodes_start nodes_end].
-    case=> u_p. rewrite mem_path inE =>/orP[/eqP//|/H/=]. by rewrite u_p.
-  - case=> zNTq. rewrite eqEsubset =>/andP[/subsetP sub _].
-    move=> u u_q /=. apply/negP=> u_p.
-    case/(_ u _)/Wrap: sub; rewrite inE.
-    + rewrite u_p /=; exact: tailW.
-    + apply/negP; by apply: contraNneq zNTq =>{1}<-.
-Qed.
-
-Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
-Proof.
-  rewrite /irred /nodes => U. apply: leq_size_uniq U _ _. 
-  - move => u. by rewrite mem_prev.
-  - by rewrite -!lock /= ltnS /srev size_rev size_belast.
-Qed.
-
-Lemma irred_rev x y (p : Path x y) : irred (prev p) = irred p.
-Proof. apply/idP/idP; first rewrite -[p as X in irred X]prevK; exact: prev_irred. Qed.
- 
-Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect sedge x y).
-Proof. 
-  apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]]. 
-  + exists (Sub p P).  by rewrite /irred nodesE.
-  + exists (val p). apply/andP;split; by [rewrite /irred nodesE in I| exact: valP].
-Qed.
-
-Lemma Path_connect x y (p : Path x y) : connect sedge x y.
-Proof. apply/spathP. exists (val p). exact: valP. Qed.
 
 CoInductive isplit z x y : Path x y -> Prop := 
   ISplit (p1 : Path x z) (p2 : Path z y) : 
@@ -638,9 +646,19 @@ Proof.
   by exists (Sub p Up).
 Qed.
 
+Lemma uncycle x y (p : Path x y) :
+  exists2 p' : Path x y, {subset p' <= p} & irred p'.
+Proof.
+  case: p => p pth_p. case/spath_shorten : (pth_p) => p' [A B C].
+  exists (Build_Path A). move => z. rewrite !mem_path !SubK.
+  + rewrite !inE. case/predU1P => [->|/C ->] //. by rewrite eqxx.
+  + by rewrite /irred nodesE.
+Qed.
+
 End Pack.
 
-(** Lifting paths to induced subgraphs *)
+(** *** Transporting paths to and from induced subgraphs *)
+
 Lemma path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) p' : 
   @spath G (val x) (val y) p' -> {subset p' <= S} -> 
   exists2 p, spath x y p & p' = map val p.
@@ -680,6 +698,7 @@ Proof.
   move => p [p1 p2]. exists (Sub p p1). by rewrite -p2. 
 Qed.
 
+(** *** Path indexing and 3-way split *)
 
 Definition idx (G : sgraph) (x y : G) (p : Path x y) u := index u (nodes p).
 
@@ -836,40 +855,6 @@ Section PathIndexing.
 
 End PathIndexing.
 
-(** ** Forests *)
-
-(** We define forests to be simple graphs where there exists at most one
-duplicate free path between any two nodes *)
-
-Definition forest_axiom (G:sgraph) := forall (x y : G), unique (upath x y).
-  
-Record forest := Forest { sgraph_of_forest :> sgraph ; 
-                          forestP : forest_axiom sgraph_of_forest}.
-
-Lemma restrict_forest (T : forest) (A : pred T) : 
-  connect_sym (restrict A sedge).
-Proof. apply: connect_symI => x y /=. by rewrite sgP [(x \in A) && _]andbC. Qed.
-
-Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
-
-Definition unit_forest_axiom : forest_axiom (sunit).
-Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
-
-Definition tunit := Forest unit_forest_axiom.
-
-
-(** We define [width] and [rename] for tree decompositions already
-here, so that we can use use them for tree decompositions of simple
-graphs and directed graphs. *)
-
-(** Non-standard: we do not substract 1 *)
-Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
-
-Lemma width_bound (T G : finType) (D : T -> {set G}) : width D <= #|G|.
-Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
-
-Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') := 
-  [fun x => h @: B x].
 
 (** ** Disjoint Union *)
 
@@ -901,43 +886,13 @@ End JoinSG.
 
 Prenex Implicits join_rel.
 
-Lemma upathPR (G : sgraph) (x y : G) A : 
-  reflect (exists p : seq G, @upath (srestrict A) x y p) 
-          (connect (restrict A sedge) x y).
-Proof. exact: (@upathP (srestrict A)). Qed.
 
-(** TODO: this should be one of the first lemmas we prove *)
-Lemma connectUP (T : finType) (e : rel T) (x y : T) : 
-  reflect (exists p, [/\ path e x p, last x p = y & uniq (x::p)])
-          (connect e x y).
-Proof.
-  apply: (iffP connectP) => [[p p1 p2]|]; last by firstorder.
-  exists (shorten x p). by case/shortenP : p1 p2 => p' ? ? _ /esym ?. 
-Qed.
-Arguments connectUP [T e x y]. 
+(** ** Connectedness *)
 
-Lemma spath_shorten (G : sgraph) (x y : G) p : 
-  spath x y p -> exists p', [/\ spath x y p', uniq (x::p') & {subset p' <= p}].
-Proof. case/andP. case/shortenP => p' *. by exists p'. Qed.
-
-Lemma uncycle (G : sgraph) (x y : G) (p : Path x y) :
-  exists2 p' : Path x y, {subset p' <= p} & irred p'.
-Proof.
-  case: p => p pth_p. case/spath_shorten : (pth_p) => p' [A B C].
-  exists (Build_Path A). move => z. rewrite !mem_path !SubK. 
-  + rewrite !inE. case/predU1P => [->|/C ->] //. by rewrite eqxx.
-  + by rewrite /irred nodesE.
-Qed.
-  
-Lemma restrict_path (G : eqType) (e : rel G) (A : pred G) (x : G) (p : seq G) :
-  path e x p -> x \in A -> {subset p <= A} -> path (restrict A e) x p.
-Proof.
-  elim: p x => [//|a p IH] x /= /andP[-> pth_p] -> /subset_cons [? Ha] /=.
-  rewrite /= Ha. exact: IH.
-Qed.
+(** *** Between nodes (reflection lemmas) *)
 
 (** NOTE: need to require either x != y or x \in A since packaged
-paths are never empy *)
+paths are never empty *)
 Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
   reflect (exists2 p: Path x y, irred p & p \subset A) 
           (connect (restrict A sedge) x y).
@@ -977,11 +932,7 @@ Proof.
   exists p' => //. apply/subsetP => z /p1. exact: subA.
 Qed.
 
-Lemma upathWW (G : sgraph) (x y : G) p : upath x y p -> path (@sedge G) x p.
-Proof. by move/upathW/spathW. Qed.
-
-
-(** ** Connectedness *)
+(** *** Of subsets *)
 
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.
@@ -1010,6 +961,20 @@ Lemma connectedTI (G : sgraph) :
   (forall x y : G, connect sedge x y) -> connected [set: G].
 Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 
+(* NOTE: This could be generalized to sets and their images *)
+Lemma iso_connected (G H : sgraph) :
+  sg_iso G H -> connected [set: H] -> connected [set: G].
+Proof.
+  case => g h can_g can_h hom_g hom_h con_H x y _ _.
+  rewrite restrictE; last by move => z; rewrite !inE.
+  have := con_H (h x) (h y). rewrite !inE => /(_ isT isT).
+  rewrite restrictE; last by move => z; rewrite !inE.
+  case/spathP => p. case/lift_spath => //.
+  + move => {x y} x y. rewrite -{2}[x]can_h -{2}[y]can_h. exact: hom_g.
+  + exact: can_inj can_h.
+  + move => z _. apply/codomP. exists (g z). by rewrite can_g.
+  + move => p' [Hp' _]. apply/spathP. by exists p'.
+Qed.
 
 Lemma connected1 (G : sgraph) (x : G) : connected [set x].
 Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
@@ -1096,6 +1061,7 @@ Proof.
   rewrite connect_symI; by [apply: H | apply: symmetric_restrict_sedge].
 Qed.
 
+(** *** Connected components *)
 
 Definition components (G : sgraph) (H : {set G}) : {set {set G}} :=
   equivalence_partition (connect (restrict (mem H) sedge)) H.
@@ -1191,6 +1157,28 @@ Proof.
   by rewrite Ep1 mem_pcat u_q1.
 Qed.
 
+(** *** Cliques *)
+
+Definition clique (G : sgraph) (S : {set G}) :=
+  {in S&S, forall x y, x != y -> x -- y}.
+
+Lemma clique1 (G : sgraph) (x : G) : clique [set x].
+Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
+
+Lemma clique2 (G : sgraph) (x y : G) : x -- y -> clique [set x;y].
+Proof.
+  move => xy z z'. rewrite !inE.
+  do 2 case/orP => /eqP-> // ; try by rewrite eqxx.
+  by rewrite sg_sym.
+Qed.
+
+
+(** ** Forests and trees *)
+
+(** *** Decidable tree predicate *)
+(** This is used for the checkpoint graph, and in proofs by contradiction (see
+    for instance [CP_treeI]). *)
+
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
 Lemma tree_unique_Path (G : sgraph) (G_tree : is_tree G) (x y : G) :
@@ -1220,19 +1208,39 @@ Proof.
   by have up : UPath x y by [exists p]; exists up.
 Qed.
 
+(** *** Forests *)
 
-Definition clique (G : sgraph) (S : {set G}) :=
-  {in S&S, forall x y, x != y -> x -- y}.
+(** We define forests to be simple graphs where there exists at most one
+duplicate free path between any two nodes *)
 
-Lemma clique1 (G : sgraph) (x : G) : clique [set x].
-Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
+Definition forest_axiom (G:sgraph) := forall (x y : G), unique (upath x y).
 
-Lemma clique2 (G : sgraph) (x y : G) : x -- y -> clique [set x;y].
-Proof. 
-  move => xy z z'. rewrite !inE. 
-  do 2 case/orP => /eqP-> // ; try by rewrite eqxx. 
-  by rewrite sg_sym.
-Qed.
+Record forest := Forest { sgraph_of_forest :> sgraph ;
+                          forestP : forest_axiom sgraph_of_forest}.
+
+Lemma restrict_forest (T : forest) (A : pred T) :
+  connect_sym (restrict A sedge).
+Proof. apply: connect_symI => x y /=. by rewrite sgP [(x \in A) && _]andbC. Qed.
+
+Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
+
+Definition unit_forest_axiom : forest_axiom (sunit).
+Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
+
+Definition tunit := Forest unit_forest_axiom.
+
+(** We define [width] and [rename] for tree decompositions already
+here, so that we can use use them for tree decompositions of simple
+graphs and directed graphs. *)
+
+(** Non-standard: we do not substract 1 *)
+Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
+
+Lemma width_bound (T G : finType) (D : T -> {set G}) : width D <= #|G|.
+Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
+
+Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') :=
+  [fun x => h @: B x].
 
 Definition subforest (T : forest) (A : {set T}) :=
   {in A&A, forall (x y : T) p, upath x y p -> {subset p <= A}}.
@@ -1251,41 +1259,4 @@ Proof.
   case: (usplitP (G := srestrict a) in_q pth_q) => p1 p2 A _ _.
   rewrite !inE in H1 H2 *. apply: connect_trans H1 _.
   apply/upathPR. by exists p1.
-Qed.
-
-(** decidability of cycle agnostic path properties - currently not used *)
-Definition short_prop (T:eqType) e (P : T -> seq T -> bool) := 
-  forall x p, path e x p -> P x (shorten x p) -> P x p.
-
-Lemma short_prop_dec (T : finType) e (P : T -> seq T -> bool) x : 
-  short_prop e P -> decidable (forall p, path e x p -> P x p).
-Proof.
-  move => spP. 
-  pose Pb := [forall n : 'I_#|T|, forall p : n.-tuple T, path e x p ==> P x p].
-  apply: (decP (b := Pb)). apply: (iffP forallP) => H.
-  - move => p pth_p. apply: spP => //. 
-    case/shortenP : pth_p => p' pth_p' uniq_p' _. 
-    have bound_p' : size p' < #|T|. 
-    { move/card_uniqP : uniq_p' => /= <-. exact: max_card. }
-    move/forall_inP: (H (Ordinal bound_p')) => /(_ (in_tuple p')). 
-    by apply.
-  - move => n. apply/forall_inP => p. exact: H.
-Qed.
-
-Lemma dec_eq (P : Prop) (decP : decidable P) : decP <-> P.
-Proof. by case: decP. Qed.
-
-(* NOTE: This could be generalized to sets and their images *)
-Lemma iso_connected (G H : sgraph) : 
-  sg_iso G H -> connected [set: H] -> connected [set: G].
-Proof.
-  case => g h can_g can_h hom_g hom_h con_H x y _ _. 
-  rewrite restrictE; last by move => z; rewrite !inE.
-  have := con_H (h x) (h y). rewrite !inE => /(_ isT isT).
-  rewrite restrictE; last by move => z; rewrite !inE.
-  case/spathP => p. case/lift_spath => //. 
-  + move => {x y} x y. rewrite -{2}[x]can_h -{2}[y]can_h. exact: hom_g.
-  + exact: can_inj can_h.
-  + move => z _. apply/codomP. exists (g z). by rewrite can_g.
-  + move => p' [Hp' _]. apply/spathP. by exists p'.
 Qed.

@@ -392,6 +392,13 @@ Proof.
   apply/subset_cons. by split; eauto.
 Qed.
 
+Lemma restrict_path (T : eqType) (e : rel T) (A : pred T) x p :
+  path e x p -> x \in A -> {subset p <= A} -> path (restrict A e) x p.
+Proof.
+  elim: p x => [//|a p IH] x /= /andP[-> pth_p] -> /subset_cons [? Ha] /=.
+  rewrite /= Ha. exact: IH.
+Qed.
+
 Lemma last_take (T : eqType) (x : T) (p : seq T) (n : nat): 
   n <= size p -> last x (take n p) = nth x (x :: p) n.
 Proof.
@@ -463,6 +470,15 @@ Proof.
 Qed.
 
 (** *** Reflexive Transitive Closure *)
+
+Lemma connectUP (T : finType) (e : rel T) (x y : T) :
+  reflect (exists p, [/\ path e x p, last x p = y & uniq (x::p)])
+          (connect e x y).
+Proof.
+  apply: (iffP connectP) => [[p p1 p2]|]; last by firstorder.
+  exists (shorten x p). by case/shortenP : p1 p2 => p' ? ? _ /esym ?.
+Qed.
+Arguments connectUP [T e x y].
 
 Lemma sub_connect (T : finType) (e : rel T) : subrel e (connect e).
 Proof. exact: connect1. Qed.
@@ -557,7 +573,31 @@ Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj.
 
+
+(** *** Set preimage *)
+
+Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.  
+
+Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
+  (f x == y) = (x \in f @^-1 y).
+Proof. by rewrite !inE. Qed.
+
+Lemma preim_omap_Some (aT rT : finType) (f : aT -> rT) y :
+  (omap f @^-1 Some y) = Some @: (f @^-1 y).
+Proof.
+  apply/setP => [[x|]] //=; rewrite !inE /= ?Some_eqE.
+  - apply/idP/imsetP => E. exists x => //. by rewrite -mem_preim.
+    case: E => x0 ? [->]. by rewrite mem_preim.
+  - by apply/idP/imsetP => // [[?]] //.
+Qed.
+
+Lemma preim_omap_None (aT rT : finType) (f : aT -> rT) :
+  (omap f @^-1 None) = [set None].
+Proof. apply/setP => x. rewrite -mem_preim !inE. by case: x => [x|]. Qed.
+
+
 (** *** Set image *)
+
 Lemma inj_imset (aT rT : finType) (f : aT -> rT) (A : {set aT}) (x : aT) :
   injective f -> (f x \in f @: A) = (x \in A).
 Proof.

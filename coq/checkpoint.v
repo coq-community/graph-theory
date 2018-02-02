@@ -161,6 +161,15 @@ Section CheckPoints.
    * because [o \in cp p z] but [pi_o] is assumed to be irredundant. A
    * symmetrical reasoning for [pi_i] shows that [p \in pi].             Qed. *)
   Abort.
+  
+  Lemma cp_neighbours (x y : G) z : 
+    x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
+  Proof.
+    move => A B. apply/cpP => p. case: p => [|x' p].
+    - move/spath_nil/eqP => ?. by contrab.
+    - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
+      apply/(cpP (y := y)) => //. exact: B. 
+  Qed.
 
   (** ** CP Closure Operator *)
 
@@ -212,6 +221,40 @@ Section CheckPoints.
     apply: contraTT t_cp => /cpPn' [s _ Hs]. 
     suff: t \notin (pcat p1 (pcat s (prev q1))) by apply: cpNI'.
     by rewrite !mem_pcat !mem_prev (negbTE P1) (negbTE P2) (negbTE Hs).
+  Qed.
+
+  (* Lemma 16 *)
+  Lemma CP_base U x y : x \in CP U -> y \in CP U ->
+    exists x' y':G, [/\ x' \in U, y' \in U & [set x;y] \subset cp x' y'].
+  Proof.
+    move => U1 U2. case/bigcupP : U1 => [[x1 x2]]. case/bigcupP : U2 => [[y1 y2]] /=.
+    rewrite !inE /= => /andP[Uy1 Uy2] cp_y /andP[Ux1 Ux2] cp_x.
+    case: (boolP (x \in cp y1 y2)) => [C|Wx]; first by exists y1; exists y2; rewrite subUset !sub1set C.
+    case: (boolP (y \in cp x1 x2)) => [C|Wy]; first by exists x1; exists x2; rewrite subUset !sub1set C.
+    gen have H,A: x x1 x2 y1 y2 {Ux1 Ux2 Uy1 Uy2 Wy cp_y} Wx cp_x /
+      (x \in cp x1 y1) || (x \in cp x2 y2).
+    { (* TODO: use transitivity *)
+      case/cpPn' : Wx => p irr_p av_x. 
+      apply: contraTT cp_x. rewrite negb_or => /andP[/cpPn' [s s1 s2] /cpPn' [t t1 t2]].
+      apply (cpNI' (p := pcat s (pcat p (prev t)))). 
+      by rewrite !mem_pcat !mem_prev (negbTE av_x) (negbTE s2) (negbTE t2). }
+    have {H} B : (y \in cp x1 y1) || (y \in cp x2 y2).
+    { rewrite -(cp_sym y1 x1) -(cp_sym y2 x2). exact: H. }
+    wlog {A} /andP [Hx Hy] : x1 x2 y1 y2 A B cp_x cp_y Ux1 Ux2 Uy1 Uy2 Wx Wy
+        / (x \in cp x1 y1) && (y \notin cp x1 y1).
+    { case: (boolP (y \in cp x1 y1)) A B => A; case: (boolP (x \in cp x1 y1)) => /= B C D W. 
+      - by exists x1; exists y1; rewrite subUset !sub1set B. 
+      - (* TOTHINK: why the second case anlysis in this case? *)
+        case: (boolP (y \in cp x2 y2)) => E. 
+        + exists x2; exists y2; by rewrite subUset !sub1set C.
+        + move: (W x2 x1 y2 y1). rewrite (cp_sym x2 x1) (cp_sym y2 y1) A C /= orbT. exact.
+      - apply: (W x1 x2 y1 y2) => //. by rewrite B. by rewrite D.
+      - exists x2; exists y2; by rewrite subUset !sub1set C D. }
+    rewrite (negbTE Hy) /= in B.
+    case: (boolP (x \in cp x2 y2)) => [C|Wx']; first by exists x2; exists y2; rewrite subUset !sub1set C.
+    exists x1. exists y2. rewrite subUset !sub1set. split => //. apply/andP; split.
+    - apply: contraTT cp_x => C. apply: cpN_trans C _. by rewrite cp_sym.
+    - apply: contraTT cp_y. apply: cpN_trans. by rewrite cp_sym.
   Qed.
 
   (** ** Link Graph *)
@@ -279,7 +322,151 @@ Section CheckPoints.
     exact: disjointNI.
   Qed.
 
+  Lemma CP_clique U : @clique link_graph U -> CP U = U.
+  Proof.
+    move => clique_U. apply/setP => x. apply/bigcupP/idP. 
+    - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
+      move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
+      + rewrite (eqP A) cpxx inE. by move/eqP->.
+      + case/andP: (B erefl) => _ /subsetP => S /S. by case/setUP => /set1P->.
+    - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
+  Qed.
+
+  (** *** Checkpoint graph *)
+
+  (* TOTHINK: Is it really worthwile to have this as a graph in addition to the set [CP U]? *)
+  Definition CP_ U := @induced link_graph (CP U).
+  Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
+  Arguments Path : clear implicits.
+  Arguments spath : clear implicits.
+
+  Lemma CP_base_ U (x y : CP_ U) : 
+    exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
+  Proof. exact: CP_base  (svalP x) (svalP y). Qed.
+
+  (* Lemma 14 *)
+  Lemma CP_path (U : {set G}) (x y : CP_ U) (p : Path G (val x) (val y)) :
+    irred p -> 
+    exists2 q : Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
+  Proof.
+    (* The proof goes by strong induction on the size of p. *)
+    move: {2}#|p|.+1 (ltnSn #|p|) => n.
+    elim: n x y p => [//|n IHn] x y p.
+    rewrite ltnS leq_eqVlt => /orP[/eqP size_p Ip|]; last exact: IHn.
+    case: (x =P y) => [x_y | /eqP xNy].
+      (* When x = y, the empty path works. (Actually, p is empty too.) *)
+      move: x_y p size_p Ip => {y}<- [p p_pth] _ _.
+      exists (idp x); first by rewrite irredE.
+      rewrite sub_imset_pre. apply/subsetP => z.
+      rewrite /preimset inE /in_nodes !in_collective !nodesE /= !inE.
+      by move=> /eqP->; rewrite eqxx.
+    (* When x != y, split the path and apply the induction hypothesis. To avoid
+     * getting a useless decomposition, x is excluded from the predicate. *)
+    pose C := CP U :\ val x.
+    (* TOTHINK: Can all_C and all_CP be factored out ? Is it worth ? *)
+    have all_CP (P : G -> Prop) :
+        {in C, forall z, P z} -> forall z : CP_ U, z != x -> P (val z).
+    { move=> H z zNx. apply: H.
+      rewrite /C !inE (inj_eq val_inj) zNx /=.
+      exact: svalP z. }
+    have all_C (P : G -> Prop) :
+        (forall z : CP_ U, z != x -> P (val z)) -> {in C, forall z, P z}.
+    { move=> H z. rewrite /C in_setD1 => /andP[zNx z_cpu].
+      apply: (H (Sub z z_cpu)). apply: contraNN zNx.
+      by rewrite -(inj_eq val_inj). }
+    (* Use y as a witness of the existence of a splitting point. *)
+    have {xNy} : val y \in C.
+      move: xNy. rewrite eq_sym. exact: (all_CP (fun z => z \in C)).
+    move=> /(fun H => split_at_first H (nodes_end p)).
+    (* Let z be the first element in CP(U) after x on p. Call p1 and p2 the
+     * parts of p respectively before and after z. *)
+    case=> [z [p1 [p2 [eq_p z_C]]]].
+    move: z z_C p1 p2 eq_p. apply: (all_C).
+    move=> z zNx p1 p2 eq_p /all_CP z_1st.
+    move: (eq_p) (Ip) => ->.
+    rewrite irred_cat => /andP[Ip1 /andP[Ip2 p1_p2]].
+    (* Apply the induction hypothesis to get an irreducible path q using only
+     * vertices in p2. *)
+    have /IHn /(_ Ip2) [q Iq /subsetP qSp2] : #|p2| < n. {
+      (* The size decreases because x cannot be a splitting point. *)
+      rewrite -size_p. apply: proper_card. apply/properP. split; last exists (val x).
+      - by apply/subsetP => a; rewrite eq_p mem_pcat => ->.
+      - exact: nodes_start.
+      - have {zNx p1_p2} /andP := conj zNx p1_p2. apply/contraTN.
+        rewrite negb_and negbK in_collective nodesE inE.
+        case/orP => [/eqP/val_inj x_z | x_p2].
+        * by apply/orP; left; apply/eqP.
+        * apply/orP; right. apply: disjointNI x_p2. exact: nodes_start.
+    }
+    (* All checkpoints for (x, z) are in p1 (by definition of a checkpoint) and
+     * in CP(U) (by closure). Finally, z is by definition the only vertex on p1
+     * and in CP(U) that isn't x. *)
+    have xz : @sedge (CP_ U) x z. {
+      rewrite /= (inj_eq val_inj) eq_sym zNx /=. apply/subsetP => a a_cp.
+      rewrite !inE -implyNb. apply/implyP => aNx. apply/eqP.
+      suff a_c : a \in C.
+        move: {aNx} a a_c a_cp. apply: all_C => a aNx /cpP'/(_ p1).
+        exact: z_1st a aNx.
+      rewrite /C !inE {}aNx /=.
+      have x_cpu : sval x \in CP U by exact: svalP x.
+      have z_cpu : sval z \in CP U by exact: svalP z.
+      by have /subsetP/(_ a a_cp) := CP_closed x_cpu z_cpu.
+    }
+    (* Thus there is an x -- z edge in CP(U) that can be prepended to q.
+     * That's the path that was looked for. *)
+    exists (pcat (edgep xz) q); last first.
+    + apply/subsetP => /= ? /imsetP[a].
+      rewrite in_collective !mem_pcat in_collective nodesE /= !inE.
+      move=> /orP[/orP[]/eqP->-> | /(mem_imset val)/qSp2 a_q->].
+      - by rewrite nodes_start.
+      - by rewrite nodes_end.
+      - by rewrite a_q.
+    + rewrite irred_cat irred_edge Iq /=.
+      have /eq_disjoint-> : edgep xz =i [:: x; z].
+        by move=> a; rewrite in_collective nodesE /=.
+      rewrite !disjoint_cons eq_disjoint0 // andbT.
+      apply/andP; split; last first.
+        by move: Iq; rewrite /tail irredE /= => /andP[].
+      apply/negP => /tailW/(mem_imset val)/qSp2.
+      rewrite in_collective nodesE inE (inj_eq val_inj) eq_sym (negbTE zNx) /=.
+      have := nodes_start p1.
+      exact: disjointE.
+  Qed.
+
+  Lemma CP_connected (U : {set G}) : connected [set: CP_ U].
+  Proof.
+    apply: connectedTI => x y.
+    have /uPathP[? /CP_path[q Iq _]] := G_conn (val x) (val y).
+    by apply/uPathP; exists q.
+  Qed.
+
+  Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
+    val z \in cp (val x) (val y) -> z \in p.
+  Proof. 
+    case: (Path_from_induced p) => q _ eq_q /link_path_cp-/(_ q).
+    rewrite in_collective eq_q mem_map //. exact: val_inj.
+  Qed.
+
+  (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
+  two nodes contains exactly the checkpoints bewteen these nodes *)
+  Lemma CP_tree_paths (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
+    is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in cp (val x) (val y)).
+  Proof.
+    move => /tree_unique_Path tree_U irr_p. split.
+    - move => z_in_p. apply/negPn. apply/negP => /=. 
+      case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
+      have zr : z \notin r. 
+      { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
+      have := tree_U x y p r. case/(_ _ _)/Wrap => // ?. subst. by contrab.
+    - simpl. exact: CP_path_cp.
+  Qed.
+
+  Arguments Path : default implicits.
+  Arguments spath : default implicits.
+
   (** ** Intervals and bags *)
+
+  (** *** Strict intervals *)
 
   Definition sinterval x y := 
     [set z in ~: [set x; y] | connect (restrict (predC1 y) (@sedge G)) z x && 
@@ -439,6 +626,8 @@ Section CheckPoints.
         by rewrite !mem_pcat mem_prev negb_or yNq1 yNp.
   Qed.
 
+  (** *** Intervals *)
+
   Definition interval x y := [set x;y] :|: sinterval x y.
 
   Lemma interval_sym x y : interval x y = interval y x.
@@ -510,12 +699,17 @@ Section CheckPoints.
     - by rewrite y_up2.
   Qed.
 
+  (** *** Bags *)
 
   Definition bag (U : {set G}) x :=
     locked [set z | [forall y in CP U, x \in cp z y]].
 
   Lemma bag_id (U : {set G}) x : x \in bag U x.
   Proof. rewrite /bag -lock inE. apply/forall_inP => y _. exact: mem_cpl. Qed.
+
+  Lemma bag_nontrivial (U : {set G}) x : 
+    bag U x != [set x] -> exists2 y, y \in bag U x & y != x.
+  Proof. apply: setN01E. apply/set0Pn. exists x. by rewrite bag_id. Qed.
 
   Lemma bagP (U : {set G}) x z : 
     reflect (forall y, y \in CP U -> x \in cp z y) (z \in bag U x).
@@ -548,217 +742,6 @@ Section CheckPoints.
       rewrite cp_sym; apply: cp_tightenR y_cpux; by rewrite cp_sym.
   Qed.
 
-  (* Lemma 16 *)
-  Lemma CP_base U x y : x \in CP U -> y \in CP U ->
-    exists x' y':G, [/\ x' \in U, y' \in U & [set x;y] \subset cp x' y'].
-  Proof.
-    move => U1 U2. case/bigcupP : U1 => [[x1 x2]]. case/bigcupP : U2 => [[y1 y2]] /=.
-    rewrite !inE /= => /andP[Uy1 Uy2] cp_y /andP[Ux1 Ux2] cp_x.
-    case: (boolP (x \in cp y1 y2)) => [C|Wx]; first by exists y1; exists y2; rewrite subUset !sub1set C.
-    case: (boolP (y \in cp x1 x2)) => [C|Wy]; first by exists x1; exists x2; rewrite subUset !sub1set C.
-    gen have H,A: x x1 x2 y1 y2 {Ux1 Ux2 Uy1 Uy2 Wy cp_y} Wx cp_x /
-      (x \in cp x1 y1) || (x \in cp x2 y2).
-    { (* TODO: use transitivity *)
-      case/cpPn' : Wx => p irr_p av_x. 
-      apply: contraTT cp_x. rewrite negb_or => /andP[/cpPn' [s s1 s2] /cpPn' [t t1 t2]].
-      apply (cpNI' (p := pcat s (pcat p (prev t)))). 
-      by rewrite !mem_pcat !mem_prev (negbTE av_x) (negbTE s2) (negbTE t2). }
-    have {H} B : (y \in cp x1 y1) || (y \in cp x2 y2).
-    { rewrite -(cp_sym y1 x1) -(cp_sym y2 x2). exact: H. }
-    wlog {A} /andP [Hx Hy] : x1 x2 y1 y2 A B cp_x cp_y Ux1 Ux2 Uy1 Uy2 Wx Wy
-        / (x \in cp x1 y1) && (y \notin cp x1 y1).
-    { case: (boolP (y \in cp x1 y1)) A B => A; case: (boolP (x \in cp x1 y1)) => /= B C D W. 
-      - by exists x1; exists y1; rewrite subUset !sub1set B. 
-      - (* TOTHINK: why the second case anlysis in this case? *)
-        case: (boolP (y \in cp x2 y2)) => E. 
-        + exists x2; exists y2; by rewrite subUset !sub1set C.
-        + move: (W x2 x1 y2 y1). rewrite (cp_sym x2 x1) (cp_sym y2 y1) A C /= orbT. exact.
-      - apply: (W x1 x2 y1 y2) => //. by rewrite B. by rewrite D.
-      - exists x2; exists y2; by rewrite subUset !sub1set C D. }
-    rewrite (negbTE Hy) /= in B.
-    case: (boolP (x \in cp x2 y2)) => [C|Wx']; first by exists x2; exists y2; rewrite subUset !sub1set C.
-    exists x1. exists y2. rewrite subUset !sub1set. split => //. apply/andP; split.
-    - apply: contraTT cp_x => C. apply: cpN_trans C _. by rewrite cp_sym.
-    - apply: contraTT cp_y. apply: cpN_trans. by rewrite cp_sym.
-  Qed.
-
-  (* TOTHINK: Is it really worthwile to have this as a graph in addition to the set [CP U]? *)
-  Definition CP_ U := @induced link_graph (CP U).
-  Local Notation "x ⋄ y" := (@sedge (CP_ _) x y) (at level 30).
-  Arguments Path : clear implicits.
-  Arguments spath : clear implicits.
-
-  (* Lemma 14 *)
-  Lemma CP_path (U : {set G}) (x y : CP_ U) (p : Path G (val x) (val y)) :
-    irred p -> 
-    exists2 q : Path (CP_ U) x y, irred q & [set val z | z in q] \subset p.
-  Proof.
-    (* The proof goes by strong induction on the size of p. *)
-    move: {2}#|p|.+1 (ltnSn #|p|) => n.
-    elim: n x y p => [//|n IHn] x y p.
-    rewrite ltnS leq_eqVlt => /orP[/eqP size_p Ip|]; last exact: IHn.
-    case: (x =P y) => [x_y | /eqP xNy].
-      (* When x = y, the empty path works. (Actually, p is empty too.) *)
-      move: x_y p size_p Ip => {y}<- [p p_pth] _ _.
-      exists (idp x); first by rewrite irredE.
-      rewrite sub_imset_pre. apply/subsetP => z.
-      rewrite /preimset inE /in_nodes !in_collective !nodesE /= !inE.
-      by move=> /eqP->; rewrite eqxx.
-    (* When x != y, split the path and apply the induction hypothesis. To avoid
-     * getting a useless decomposition, x is excluded from the predicate. *)
-    pose C := CP U :\ val x.
-    (* TOTHINK: Can all_C and all_CP be factored out ? Is it worth ? *)
-    have all_CP (P : G -> Prop) :
-        {in C, forall z, P z} -> forall z : CP_ U, z != x -> P (val z).
-    { move=> H z zNx. apply: H.
-      rewrite /C !inE (inj_eq val_inj) zNx /=.
-      exact: svalP z. }
-    have all_C (P : G -> Prop) :
-        (forall z : CP_ U, z != x -> P (val z)) -> {in C, forall z, P z}.
-    { move=> H z. rewrite /C in_setD1 => /andP[zNx z_cpu].
-      apply: (H (Sub z z_cpu)). apply: contraNN zNx.
-      by rewrite -(inj_eq val_inj). }
-    (* Use y as a witness of the existence of a splitting point. *)
-    have {xNy} : val y \in C.
-      move: xNy. rewrite eq_sym. exact: (all_CP (fun z => z \in C)).
-    move=> /(fun H => split_at_first H (nodes_end p)).
-    (* Let z be the first element in CP(U) after x on p. Call p1 and p2 the
-     * parts of p respectively before and after z. *)
-    case=> [z [p1 [p2 [eq_p z_C]]]].
-    move: z z_C p1 p2 eq_p. apply: (all_C).
-    move=> z zNx p1 p2 eq_p /all_CP z_1st.
-    move: (eq_p) (Ip) => ->.
-    rewrite irred_cat => /andP[Ip1 /andP[Ip2 p1_p2]].
-    (* Apply the induction hypothesis to get an irreducible path q using only
-     * vertices in p2. *)
-    have /IHn /(_ Ip2) [q Iq /subsetP qSp2] : #|p2| < n. {
-      (* The size decreases because x cannot be a splitting point. *)
-      rewrite -size_p. apply: proper_card. apply/properP. split; last exists (val x).
-      - by apply/subsetP => a; rewrite eq_p mem_pcat => ->.
-      - exact: nodes_start.
-      - have {zNx p1_p2} /andP := conj zNx p1_p2. apply/contraTN.
-        rewrite negb_and negbK in_collective nodesE inE.
-        case/orP => [/eqP/val_inj x_z | x_p2].
-        * by apply/orP; left; apply/eqP.
-        * apply/orP; right. apply: disjointNI x_p2. exact: nodes_start.
-    }
-    (* All checkpoints for (x, z) are in p1 (by definition of a checkpoint) and
-     * in CP(U) (by closure). Finally, z is by definition the only vertex on p1
-     * and in CP(U) that isn't x. *)
-    have xz : @sedge (CP_ U) x z. {
-      rewrite /= (inj_eq val_inj) eq_sym zNx /=. apply/subsetP => a a_cp.
-      rewrite !inE -implyNb. apply/implyP => aNx. apply/eqP.
-      suff a_c : a \in C.
-        move: {aNx} a a_c a_cp. apply: all_C => a aNx /cpP'/(_ p1).
-        exact: z_1st a aNx.
-      rewrite /C !inE {}aNx /=.
-      have x_cpu : sval x \in CP U by exact: svalP x.
-      have z_cpu : sval z \in CP U by exact: svalP z.
-      by have /subsetP/(_ a a_cp) := CP_closed x_cpu z_cpu.
-    }
-    (* Thus there is an x -- z edge in CP(U) that can be prepended to q.
-     * That's the path that was looked for. *)
-    exists (pcat (edgep xz) q); last first.
-    + apply/subsetP => /= ? /imsetP[a].
-      rewrite in_collective !mem_pcat in_collective nodesE /= !inE.
-      move=> /orP[/orP[]/eqP->-> | /(mem_imset val)/qSp2 a_q->].
-      - by rewrite nodes_start.
-      - by rewrite nodes_end.
-      - by rewrite a_q.
-    + rewrite irred_cat irred_edge Iq /=.
-      have /eq_disjoint-> : edgep xz =i [:: x; z].
-        by move=> a; rewrite in_collective nodesE /=.
-      rewrite !disjoint_cons eq_disjoint0 // andbT.
-      apply/andP; split; last first.
-        by move: Iq; rewrite /tail irredE /= => /andP[].
-      apply/negP => /tailW/(mem_imset val)/qSp2.
-      rewrite in_collective nodesE inE (inj_eq val_inj) eq_sym (negbTE zNx) /=.
-      have := nodes_start p1.
-      exact: disjointE.
-  Qed.
-
-  Lemma CP_connected (U : {set G}) : connected [set: CP_ U].
-  Proof.
-    apply: connectedTI => x y.
-    have /uPathP[? /CP_path[q Iq _]] := G_conn (val x) (val y).
-    by apply/uPathP; exists q.
-  Qed.
-
-  Lemma CP_path_cp (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
-    val z \in cp (val x) (val y) -> z \in p.
-  Proof. 
-    case: (Path_from_induced p) => q _ eq_q /link_path_cp-/(_ q).
-    rewrite in_collective eq_q mem_map //. exact: val_inj.
-  Qed.
-
-  (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
-  two nodes contains exactly the checkpoints bewteen these nodes *)
-  Lemma CP_tree_paths (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
-    is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in cp (val x) (val y)).
-  Proof.
-    move => /tree_unique_Path tree_U irr_p. split.
-    - move => z_in_p. apply/negPn. apply/negP => /=. 
-      case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
-      have zr : z \notin r. 
-      { apply: contraNN av_z => in_r. apply: sub_q. by rewrite mem_imset. }
-      have := tree_U x y p r. case/(_ _ _)/Wrap => // ?. subst. by contrab.
-    - simpl. exact: CP_path_cp.
-  Qed.
-
-  (** A small part of Proposition 20. *)
-  Lemma CP_tree_sinterval (U : {set G}) (x y : CP_ U) :
-    is_tree (CP_ U) -> x -- y -> [disjoint CP U & sinterval (val x) (val y)].
-  Proof.
-    move=> CP_tree xy.
-    rewrite -setI_eq0 -subset0; apply/subsetP => u.
-    rewrite inE [u \in set0]inE =>/andP[u_CP].
-    set u_ := Sub u u_CP : CP_ U; rewrite -[u]/(val u_).
-    move: {u u_CP} u_ => u /sintervalP2[] -[p] Ip yNp [q] Iq xNq.
-    case: (CP_path Ip) => p_ Ip_ /subsetP/(_ (val y)) p_p.
-    case: (CP_path Iq) => q_ Iq_ /subsetP/(_ (val x)) q_q.
-    have {p Ip yNp p_p} yNp_ : y \notin p_.
-      by apply: contraNN yNp => ?; apply: p_p; exact: mem_imset.
-    have {q Iq xNq q_q} xNq_ : x \notin q_.
-      by apply: contraNN xNq => ?; apply: q_q; exact: mem_imset.
-    have Ip_xy : irred (pcat p_ (edgep xy)).
-      by [rewrite irred_cat Ip_ irred_edge /tail/=;
-          rewrite disjoint_sym disjoint_cons eq_disjoint0].
-    have eq_ : q_ = pcat p_ (edgep xy) := tree_unique_Path CP_tree Iq_ Ip_xy.
-    apply: contraNT xNq_ => _.
-    by rewrite eq_ mem_pcat !in_collective !nodesE/= !inE eqxx.
-  Qed.
-
-  Lemma index_uniq_inj (T:eqType) (s : seq T) : 
-    {in s, injective (index^~ s)}. 
-  Proof. 
-    move => x in_s y E. 
-    have A : y \in s by rewrite -index_mem -E index_mem.
-    by rewrite -(nth_index x in_s) E nth_index.
-  Qed.
-
-  Lemma CP_base_ U (x y : CP_ U) : 
-    exists x' y':G, [/\ x' \in U, y' \in U & [set val x;val y] \subset cp x' y'].
-  Proof. exact: CP_base  (svalP x) (svalP y). Qed.
-
-  
-  Lemma cp_neighbours (x y : G) z : 
-    x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
-  Proof.
-    move => A B. apply/cpP => p. case: p => [|x' p].
-    - move/spath_nil/eqP => ?. by contrab.
-    - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
-      apply/(cpP (y := y)) => //. exact: B. 
-  Qed.
-
-  Lemma CP_clique U : @clique link_graph U -> CP U = U.
-  Proof.
-    move => clique_U. apply/setP => x. apply/bigcupP/idP. 
-    - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
-      move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
-      + rewrite (eqP A) cpxx inE. by move/eqP->.
-      + case/andP: (B erefl) => _ /subsetP => S /S. by case/setUP => /set1P->.
-    - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
-  Qed.
 
   (** ** Neighouring Checkpoints *)
 
@@ -767,7 +750,7 @@ Section CheckPoints.
 
   (* TOTHINK: Do we also want to require [irred q] *)
   Lemma ncpP (U : {set G}) (p : G) x : 
-    reflect (x \in CP U /\ exists q : Path G p x, forall y, y \in CP U -> y \in q -> y = x) 
+    reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) 
             (x \in ncp U p).
   Proof.
     rewrite /ncp -lock inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
@@ -777,6 +760,15 @@ Section CheckPoints.
         exists q => y CPy /sub_q. by rewrite !inE CPy => /eqP.
     - apply: (connectRI (p := q)) => y y_in_q.
       rewrite inE. apply/implyP => A. by rewrite [y]Hq.
+  Qed.
+  
+  Lemma ncp_CP (U : {set G}) (u : G) :
+    u \in CP U -> ncp U u = [set u].
+  Proof. 
+    move => Hu.
+    apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
+    - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
+    - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_idp => /eqP.
   Qed.
 
   Lemma ncp_bag (U : {set G}) (p : G) x :
@@ -805,27 +797,6 @@ Section CheckPoints.
       suff ?: x' = x. { subst x'. by rewrite def_q mem_pcat nodes_end. }
       apply: B. apply/ncpP. split => //. exists q1 => z' H1 H2. exact: Hq1.
   Qed.
-      
-  Lemma bag_disj (U : {set G}) x y :
-    x \in CP U -> y \in CP U -> x != y -> [disjoint bag U x & bag U y].
-  Proof.
-    move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
-    rewrite !ncp_bag //. by move => /eqP-> /eqP/set1_inj->.
-  Qed.
-
-  Lemma bag_cp (U : {set G}) x y : 
-    x \in CP U -> y \in CP U -> x \in bag U y = (x == y).
-  Proof. 
-    move => cp_x cp_y. 
-    apply/idP/idP => [|/eqP <-]; last exact: bag_id.
-    apply: contraTT => xy. 
-    have D: [disjoint bag U x & bag U y] by apply : bag_disj.
-      by rewrite (disjointFr D) // bag_id.
-  Qed.
-
-  Lemma bag_nontrivial (U : {set G}) x : 
-    bag U x != [set x] -> exists2 y, y \in bag U x & y != x.
-  Proof. apply: setN01E. apply/set0Pn. exists x. by rewrite bag_id. Qed.
 
   Lemma ncp0 (U : {set G}) x p : 
     x \in CP U -> ncp U p == set0 = false.
@@ -836,6 +807,27 @@ Section CheckPoints.
     apply/ncpP. split => //. by exists q1. 
   Qed.
   Arguments ncp0 [U] x p.
+  
+  Lemma ncp_interval U (x y p : G) : 
+    x != y -> [set x; y] \subset ncp U p -> p \in sinterval x y.
+  Proof.
+    rewrite subUset !sub1set => xy /andP[Nx Ny]. 
+    rewrite !inE negb_or. 
+    gen have A,Ax : x y xy Nx Ny / p != x.
+    { have Ux : x \in CP U. by case/ncpP : Nx.
+      apply: contraNN xy => /eqP => ?; subst p. apply/eqP.
+      case/ncpP : Ny => Uy [q] /(_ _ Ux). rewrite nodes_start. 
+      by apply. }
+    have Ay: p != y. apply: (A y x) => //. by rewrite eq_sym.
+    rewrite Ax Ay /=. 
+    gen have S,_: x y Nx Ny xy {A Ax Ay} / connect (restrict (predC1 y) sedge) p x.
+    { case/ncpP : Nx => Ux [q Hq]. apply: (connectRI (p := q)).
+      move => z in_q. apply: contraNT xy. rewrite negbK => /eqP ?; subst z.
+      rewrite [y]Hq //. by case/ncpP : Ny. }
+    apply/andP;split; apply: S => //. by rewrite eq_sym.
+  Qed.
+
+  (** *** Application to bags *)
 
   (** the root of a bag is a checkpoint separating the bag from
   the rest of the graph *)
@@ -869,7 +861,7 @@ Section CheckPoints.
     move: vNbag. by rewrite -Exv bag_id.
   Qed.
 
-  Lemma bag_in_out (U : {set G}) x u v (p : Path G u v) :
+  Lemma bag_in_out (U : {set G}) x u v (p : Path u v) :
     x \in CP U -> u \in x |: ~: bag U x -> v \in x |: ~: bag U x -> irred p -> 
                                            p \subset x |: ~: bag U x.
   Proof.
@@ -885,7 +877,7 @@ Section CheckPoints.
   (** This is a bit bespoke, as it only only mentions bags rooted at
 elements of [U] rather than [CP U]. At the point where we use it, U is
 a clique, so [CP U] is [U]. *)
-  Lemma bags_in_out (U : {set G}) u v (p : Path G u v) :
+  Lemma bags_in_out (U : {set G}) u v (p : Path u v) :
     let T' := U :|: (~: \bigcup_(z in U) bag U z) in 
     u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
   Proof. 
@@ -942,16 +934,51 @@ a clique, so [CP U] is [U]. *)
     - move => A. apply/bagP => z Hz. apply: A. move: z Hz. apply/subsetP. 
       apply: CP_mono. exact: subsetUr.
   Qed.
-  
-  Lemma ncp_CP (U : {set G}) (u : G) :
-    u \in CP U -> ncp U u = [set u].
-  Proof. 
-    move => Hu.
-    apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
-    - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
-    - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_idp => /eqP.
+
+
+  (** ** Partitioning with intervals, bags and checkpoints *)
+
+  (** *** Disjointness statements *)
+
+  (** A small part of Proposition 20. *)
+  Lemma CP_tree_sinterval (U : {set G}) (x y : CP_ U) :
+    is_tree (CP_ U) -> x -- y -> [disjoint CP U & sinterval (val x) (val y)].
+  Proof.
+    move=> CP_tree xy.
+    rewrite -setI_eq0 -subset0; apply/subsetP => u.
+    rewrite inE [u \in set0]inE =>/andP[u_CP].
+    set u_ := Sub u u_CP : CP_ U; rewrite -[u]/(val u_).
+    move: {u u_CP} u_ => u /sintervalP2[] -[p] Ip yNp [q] Iq xNq.
+    case: (CP_path Ip) => p_ Ip_ /subsetP/(_ (val y)) p_p.
+    case: (CP_path Iq) => q_ Iq_ /subsetP/(_ (val x)) q_q.
+    have {p Ip yNp p_p} yNp_ : y \notin p_.
+      by apply: contraNN yNp => ?; apply: p_p; exact: mem_imset.
+    have {q Iq xNq q_q} xNq_ : x \notin q_.
+      by apply: contraNN xNq => ?; apply: q_q; exact: mem_imset.
+    have Ip_xy : irred (pcat p_ (edgep xy)).
+      by [rewrite irred_cat Ip_ irred_edge /tail/=;
+          rewrite disjoint_sym disjoint_cons eq_disjoint0].
+    have eq_ : q_ = pcat p_ (edgep xy) := tree_unique_Path CP_tree Iq_ Ip_xy.
+    apply: contraNT xNq_ => _.
+    by rewrite eq_ mem_pcat !in_collective !nodesE/= !inE eqxx.
   Qed.
   
+  Lemma bag_disj (U : {set G}) x y :
+    x \in CP U -> y \in CP U -> x != y -> [disjoint bag U x & bag U y].
+  Proof.
+    move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
+    rewrite !ncp_bag //. by move => /eqP-> /eqP/set1_inj->.
+  Qed.
+
+  Lemma bag_cp (U : {set G}) x y : 
+    x \in CP U -> y \in CP U -> x \in bag U y = (x == y).
+  Proof. 
+    move => cp_x cp_y. 
+    apply/idP/idP => [|/eqP <-]; last exact: bag_id.
+    apply: contraTT => xy. 
+    have D: [disjoint bag U x & bag U y] by apply : bag_disj.
+      by rewrite (disjointFr D) // bag_id.
+  Qed.
   
   (** NOTE: This looks fairly specific, but it also has a fairly
   straightforward proof *)
@@ -964,51 +991,8 @@ a clique, so [CP U] is [U]. *)
     apply: contraTN. case/uPathRP => // p _ /subsetP sub_p. 
     apply: (cpNI' (p := p)). apply/negP => /sub_p. by rewrite inE eqxx.
   Qed.
-  
-  Lemma ncp_interval U (x y p : G) : 
-    x != y -> [set x;y] \subset ncp U p  -> p \in sinterval x y.
-  Proof.
-    rewrite subUset !sub1set => xy /andP[Nx Ny]. 
-    rewrite !inE negb_or. 
-    gen have A,Ax : x y xy Nx Ny / p != x.
-    { have Ux : x \in CP U. by case/ncpP : Nx.
-      apply: contraNN xy => /eqP => ?; subst p. apply/eqP.
-      case/ncpP : Ny => Uy [q] /(_ _ Ux). rewrite nodes_start. 
-      by apply. }
-    have Ay: p != y. apply: (A y x) => //. by rewrite eq_sym.
-    rewrite Ax Ay /=. 
-    gen have S,_: x y Nx Ny xy {A Ax Ay} / connect (restrict (predC1 y) sedge) p x.
-    { case/ncpP : Nx => Ux [q Hq]. apply: (connectRI (p := q)).
-      move => z in_q. apply: contraNT xy. rewrite negbK => /eqP ?; subst z.
-      rewrite [y]Hq //. by case/ncpP : Ny. }
-    apply/andP;split; apply: S => //. by rewrite eq_sym.
-  Qed.
 
-
-  Lemma CP_bags U x y : link_rel x y -> x \in CP U -> y \in CP U -> 
-    exists x' y', [/\ x' \in U, y' \in U, x' \in bag [set x; y] x & y' \in bag [set x;y] y].
-  Proof.
-    move => xy xU yU. case: (CP_base xU yU) => x' [y'] [Hx' Hy' CPxy].
-    case/uPathP : (G_conn x' y') => p irr_p. 
-    have [Hx Hy] : x \in p /\ y \in p. 
-    { by split; apply: cpP'; apply: (subsetP CPxy); rewrite !inE eqxx. }
-    rewrite subUset !sub1set in CPxy. case/andP: CPxy => CPx CPy.
-    wlog x_before_y : x y Hx Hy xy xU yU CPx CPy / x <[p] y.
-    { move => W. 
-      case: (ltngtP (idx p x) (idx p y)) => A; first exact: W.
-      - case: (W y x) => //; first by rewrite link_sym.
-        move => x0 [y0]. rewrite setUC. move => [? ? ? ?]. by exists y0; exists x0.
-      - move/idx_inj : A. move/(_ Hx) => ?. subst y. by rewrite /link_rel /= eqxx in xy. }
-    case: (three_way_split irr_p Hx Hy x_before_y) => p1 [p2] [p3] [? P1 P3].
-    have H2 : CP [set x;y] = [set x;y]. { apply: CP_clique. exact: clique2. }
-    exists x';exists y'; split => //. 
-    - apply/bagP => ?. rewrite H2. case/set2P=>->; first by rewrite cp_sym mem_cpl.
-      apply: contraTT CPx => C. 
-      apply: cpN_trans C _. exact: (cpNI' (p := p3)).
-    - apply/bagP => ?. rewrite H2. case/set2P=>->; last by rewrite cp_sym mem_cpl.
-      apply: contraTT CPy => C. rewrite cp_sym in C. 
-      apply: cpN_trans C. exact: (cpNI' (p := p1)).
-  Qed.
+  (** *** Covering statements *)
 
   Lemma sinterval_bag_cover x y : x != y ->
     [set: G] = bag [set x; y] x :|: sinterval x y :|: bag [set x; y] y.
@@ -1078,6 +1062,32 @@ a clique, so [CP U] is [U]. *)
     by rewrite mem_pcat mem_prev mem_edgep (negbTE zNp) /= ![z == _]eq_sym.
   Qed.
 
+
+  Lemma CP_bags U x y : link_rel x y -> x \in CP U -> y \in CP U -> 
+    exists x' y', [/\ x' \in U, y' \in U, x' \in bag [set x; y] x & y' \in bag [set x;y] y].
+  Proof.
+    move => xy xU yU. case: (CP_base xU yU) => x' [y'] [Hx' Hy' CPxy].
+    case/uPathP : (G_conn x' y') => p irr_p. 
+    have [Hx Hy] : x \in p /\ y \in p. 
+    { by split; apply: cpP'; apply: (subsetP CPxy); rewrite !inE eqxx. }
+    rewrite subUset !sub1set in CPxy. case/andP: CPxy => CPx CPy.
+    wlog x_before_y : x y Hx Hy xy xU yU CPx CPy / x <[p] y.
+    { move => W. 
+      case: (ltngtP (idx p x) (idx p y)) => A; first exact: W.
+      - case: (W y x) => //; first by rewrite link_sym.
+        move => x0 [y0]. rewrite setUC. move => [? ? ? ?]. by exists y0; exists x0.
+      - move/idx_inj : A. move/(_ Hx) => ?. subst y. by rewrite /link_rel /= eqxx in xy. }
+    case: (three_way_split irr_p Hx Hy x_before_y) => p1 [p2] [p3] [? P1 P3].
+    have H2 : CP [set x;y] = [set x;y]. { apply: CP_clique. exact: clique2. }
+    exists x';exists y'; split => //. 
+    - apply/bagP => ?. rewrite H2. case/set2P=>->; first by rewrite cp_sym mem_cpl.
+      apply: contraTT CPx => C. 
+      apply: cpN_trans C _. exact: (cpNI' (p := p3)).
+    - apply/bagP => ?. rewrite H2. case/set2P=>->; last by rewrite cp_sym mem_cpl.
+      apply: contraTT CPy => C. rewrite cp_sym in C. 
+      apply: cpN_trans C. exact: (cpNI' (p := p1)).
+  Qed.
+
   Lemma CP_triangle_bags U (x y z : CP_ U) : 
     x -- y -> y -- z -> z -- x -> 
     let U3 : {set G} := [set val x; val y; val z] in
@@ -1116,8 +1126,6 @@ Section CheckpointOrder.
   Variables (G : sgraph) (i o : G).
   Hypothesis conn_io : connect sedge i o.
   Implicit Types x y : G.
-
-  (* TODO: This uses upath in a nontrivial way. *)
 
   Lemma the_uPath_proof : exists p : Path i o, irred p.
   Proof. case/uPathP: conn_io => p Ip. by exists p. Qed.

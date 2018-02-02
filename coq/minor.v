@@ -59,7 +59,7 @@ Section DecompTheory.
 
   Hypothesis decD : sdecomp T G B.
 
-  (* This lemma is not acutally used below *)
+  (* This lemma is not actually used below *)
   Lemma sbag_mid t u v p : upath u v p -> t \in p -> B u :&: B v \subset B t.
   Proof.
     move => upth_p in_p. apply/subsetP => z /setIP [z_in_u z_in_v].
@@ -162,7 +162,8 @@ Section DecompTheory.
 End DecompTheory.
 
 
-(** Complete graphs *)
+(** ** Complete graphs *)
+
 Definition complete_rel n := [rel x y : 'I_n | x != y].
 Fact complete_sym n : symmetric (complete_rel n).
 Proof. move => x y /=. by rewrite eq_sym. Qed.
@@ -191,31 +192,11 @@ Lemma K4_width (T : forest) (D : T -> {set K4}) :
   sdecomp T K4 D -> 4 <= width D.
 Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
 
+
 (** ** Minors *)
 
-Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.  
-
-Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
-  (f x == y) = (x \in f @^-1 y).
-Proof. by rewrite !inE. Qed.
-
-Lemma preim_omap_Some (aT rT : finType) (f : aT -> rT) y :
-  (omap f @^-1 Some y) = Some @: (f @^-1 y).
-Proof.
-  apply/setP => [[x|]] //=; rewrite !inE /= ?Some_eqE.
-  - apply/idP/imsetP => E. exists x => //. by rewrite -mem_preim.
-    case: E => x0 ? [->]. by rewrite mem_preim.
-  - by apply/idP/imsetP => // [[?]] //.
-Qed.
-
-Lemma preim_omap_None (aT rT : finType) (f : aT -> rT) :
-  (omap f @^-1 None) = [set None].
-Proof. apply/setP => x. rewrite -mem_preim !inE. by case: x => [x|]. Qed.
-
-
-
 (** H is a minor of G -- The order allows us to write [minor G] for the
-colletion of [G]s minors *)
+collection of [G]s minors *)
 
 Definition minor_map (G H : sgraph) (phi : G -> option H) := 
   [/\ (forall y : H, exists x : G, phi x = Some y),
