@@ -573,7 +573,31 @@ Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj.
 
+
+(** *** Set preimage *)
+
+Notation "f @^-1 x" := (preimset f (mem (pred1 x))) (at level 24) : set_scope.  
+
+Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y : 
+  (f x == y) = (x \in f @^-1 y).
+Proof. by rewrite !inE. Qed.
+
+Lemma preim_omap_Some (aT rT : finType) (f : aT -> rT) y :
+  (omap f @^-1 Some y) = Some @: (f @^-1 y).
+Proof.
+  apply/setP => [[x|]] //=; rewrite !inE /= ?Some_eqE.
+  - apply/idP/imsetP => E. exists x => //. by rewrite -mem_preim.
+    case: E => x0 ? [->]. by rewrite mem_preim.
+  - by apply/idP/imsetP => // [[?]] //.
+Qed.
+
+Lemma preim_omap_None (aT rT : finType) (f : aT -> rT) :
+  (omap f @^-1 None) = [set None].
+Proof. apply/setP => x. rewrite -mem_preim !inE. by case: x => [x|]. Qed.
+
+
 (** *** Set image *)
+
 Lemma inj_imset (aT rT : finType) (f : aT -> rT) (A : {set aT}) (x : aT) :
   injective f -> (f x \in f @: A) = (x \in A).
 Proof.
