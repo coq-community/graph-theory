@@ -232,7 +232,7 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let E := @edge_set G IO in
       if E == set0 
       then 
-        if [pick C in P] isn't Some C then tmT 
+        if [pick C in P] isn't Some C then tm1 
         else term_of (component C) :||: term_of (induced2 (~: C))
       else if P == set0 
            then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
