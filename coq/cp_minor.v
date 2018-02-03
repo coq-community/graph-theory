@@ -10,8 +10,10 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Combined Minor and Checkpoint Properties *)
 
-(* Lemma edgeNeq (G : sgraph) (x y : G) : x -- y -> x != y. *)
-(* Proof. apply: contraTN => /eqP->. by rewrite sgP. Qed. *)
+(** This file is where we combine the theory of checkpoints and the theory of
+minors and prove the lemmas underlying the correctness arguments for the term
+extraction function. *)
+
 
 Lemma linkNeq (G : sgraph) (x y : link_graph G) : x -- y -> x != y.
 Proof. move => A. by rewrite sg_edgeNeq. Qed.
@@ -307,35 +309,6 @@ Proof.
   - exists z' => //. apply/eqP. rewrite mem_preim P2 //. by rewrite !inE eqxx.  
 Qed.
 
-(* Variant of CP_tree as stated in the original paper 
-   (and the part of the proof that differs from the proof above *)
-
-(* Lemma CP_tree (H : sgraph) (i : H) (U : {set sgraph.induced [set~ i] }) : *)
-(*   connected [set: sgraph.induced [set~ i]] -> *)
-(*   K4_free H -> [set val x | x in U] = neighbours i :> {set H} -> *)
-(*   is_tree (CP_ U). *)
-(* Proof. *)
-(*   set G := sgraph.induced _ in U *. *)
-(*   move => G_conn H_K4_free UisN.  *)
-(*   suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI. *)
-(*   move => [x] [y] [z] [xy yz zx]. apply: H_K4_free.  *)
-(*   [...] *)
-(*   apply: minor_trans (K4_of_triangle link_xy link_yz link_zx). *)
-(*   idtac => {link_xy link_yz link_zx}. *)
-(*   move/map_of_total in mm_phi. *)
-(*   apply: (minor_with (i := i)) mm_phi; first by rewrite !inE eqxx. *)
-(*   move => b. rewrite !inE -orbA. case/or3P => /eqP ?; subst b. *)
-(*   - exists x'.  *)
-(*     + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx. *)
-(*     + move/setP/(_ (val x')) : UisN. by rewrite !inE mem_imset // sg_sym.  *)
-(*   - exists y'.  *)
-(*     + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx. *)
-(*     + move/setP/(_ (val y')) : UisN. by rewrite !inE mem_imset // sg_sym. *)
-(*   - exists z'.  *)
-(*     + rewrite !inE Some_eqE mem_preim P2 //; by rewrite !inE eqxx. *)
-(*     + move/setP/(_ (val z')) : UisN. by rewrite !inE mem_imset // sg_sym. *)
-(* Qed. *)
-
 (** Proposition 21(ii) *)
 Definition igraph (G : sgraph) (x y : G) : sgraph     := induced (interval  x y).
 Definition istart (G : sgraph) (x y : G) : igraph x y := Sub  x  (intervalL x y).
@@ -495,6 +468,9 @@ Proof.
 Qed.
 
 (** ** Parallel Split Lemma *)
+
+(** TODO: This proof can likely be simplified (though it will surely remain one
+of the longer proofs of the development *)
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
   ~~ i -- o -> link_rel G i o -> K4_free (add_edge G i o) -> 

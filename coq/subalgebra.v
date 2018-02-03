@@ -12,10 +12,11 @@ Implicit Types (G H : graph) (U : sgraph) (T : forest).
 
 (** * Terms to Treewidth Two *)
 
-(** Note: Contrary to what is written in the paper, the following file
-does not use skeletons [see skeleton.v] and tree decompositions for
-simple graphs but a separate notion of tree-decomposition for labeled
-multigraphs. We plan to eliminate this redundancy *)
+(** NOTE: Contrary to what is written in the paper, the this file does not use
+tree decompositions for simple graphs but a separate notion of
+tree-decomposition for labeled multigraphs. We plan to eliminate this redundancy
+for the final version. This requires transferring the results on unions and
+quotients of treedecompositions to simple graphs *)
 
 (** Covering is not really required, but makes the renaming theorem
 easier to state *)
@@ -80,6 +81,9 @@ Proof.
 Qed.
 
 (** ** Disjoint Union *)
+
+(** TODO: The graph constructions below still use unpackaged paths. Using the
+infrastructure for packaged paths should simplify the proofs *)
 
 Section JoinT.
   Variables (T1 T2 : forest).
@@ -721,6 +725,10 @@ Proof.
 Qed.
 
 (** obtain that the term graphs are K4-free *)
+
+(** NOTE: For the moment, we use separate definition of multigraph tree
+decomposition for the induction on terms. We plan to eliminate
+this redundancy and use tree decompositions of the skeletons instead *)
 
 Theorem graph_of_TW2 (u : term) : 
   exists T D, [/\ sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].

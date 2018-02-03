@@ -85,6 +85,9 @@ Section DecompTheory.
     rewrite (forestP H5 X). exact: mem_head.
   Qed.
 
+  (** TODO: Redo the proof below using packaged paths (the the infrastructure
+  coming with them) *)
+
   Lemma decomp_clique (S : {set G}) : 
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 

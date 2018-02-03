@@ -656,7 +656,7 @@ Proof.
 Qed.
 
 Theorem term_of_iso (G : graph2) : 
-  CK4F G -> iso2 G (graph_of_term (term_of G)).
+  CK4F G -> G ≈ (graph_of_term (term_of G)).
 Proof.
   elim: (wf_leq term_of_measure G) => {G} G _ IH CK4F_G.
   rewrite term_of_eq // /term_of_rec. 

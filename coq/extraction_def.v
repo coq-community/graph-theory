@@ -201,7 +201,11 @@ Definition tm_ (G : graph2) (e : edge G) :=
 
 Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
 
-(** The Extraction Function *)
+(** ** The Extraction Functional *)
+
+(** Here we define the extraction function. The case distinctions are chosen
+such that we can make use of induced subgraphs (rather than the more generic
+[subgraph_for] construction) as much as possible. *)
 
 Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
   let (i,o) := (g_in : G, g_out : G) in 
@@ -210,7 +214,7 @@ Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term :=
   else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
        else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
 
-(* NOTE: we assume the input graph to be connected and K4-free *)
+(** NOTE: we assume the input graph to be connected and K4-free *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
