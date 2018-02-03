@@ -147,7 +147,7 @@ Abort.
 
 Lemma big_par2_cat r1 r2 : 
   big_par2 (r1 ++ r2) ≈ par2 (big_par2 r1) (big_par2 r2).
-Proof. 
+(* Proof. *) 
   (* rewrite /big_par2 big_cat_nested.  *)
   (* elim: r1 => [|G r1 IH]. *)
   (* - by rewrite !big_nil par2_idL. *)
@@ -162,7 +162,7 @@ Abort.
 Lemma big_par2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_par2 [seq g1 x | x in s] ≈ big_par2 [seq g2 x | x in s].
-Proof. 
+(* Proof. *) 
   (* move => A. apply: big_par2_congr => x. by rewrite mem_enum => /A. *)
 Abort.
 
@@ -211,24 +211,24 @@ Abort.
 
 Lemma seq2_assoc G1 G2 G3 : 
   seq2 (seq2 G1 G2) G3 ≈ seq2 G1 (seq2 G2 G3).
-Proof.
-  pose x0 := (g_in : seq2 G1 (seq2 G2 G3)).
-  pose f (x : seq2 (seq2 G1 G2) G3) :  seq2 G1 (seq2 G2 G3) := 
-    match repr x with
-    | inl y => match repr y with
-              | inl z => \pi (inl z) 
-              | inr z => \pi (inr (\pi (inl z)))
-              end
-    | inr y => \pi (inr (\pi (inr y)))
-    end.
-  pose g (x :  seq2 G1 (seq2 G2 G3)) : seq2 (seq2 G1 G2) G3 := 
-    match repr x with
-    | inr y => match repr y with
-              | inl z => \pi (inl (\pi (inr z)))
-              | inr z => \pi (inr z)
-              end
-    | inl y => \pi (inl (\pi (inl y)))
-    end.
+(* Proof. *)
+  (* pose x0 := (g_in : seq2 G1 (seq2 G2 G3)). *)
+  (* pose f (x : seq2 (seq2 G1 G2) G3) :  seq2 G1 (seq2 G2 G3) :=  *)
+  (*   match repr x with *)
+  (*   | inl y => match repr y with *)
+  (*             | inl z => \pi (inl z)  *)
+  (*             | inr z => \pi (inr (\pi (inl z))) *)
+  (*             end *)
+  (*   | inr y => \pi (inr (\pi (inr y))) *)
+  (*   end. *)
+  (* pose g (x :  seq2 G1 (seq2 G2 G3)) : seq2 (seq2 G1 G2) G3 :=  *)
+  (*   match repr x with *)
+  (*   | inr y => match repr y with *)
+  (*             | inl z => \pi (inl (\pi (inr z))) *)
+  (*             | inr z => \pi (inr z) *)
+  (*             end *)
+  (*   | inl y => \pi (inl (\pi (inl y))) *)
+  (*   end. *)
   (* have Cfg : cancel f g. *)
   (* { move => x. rewrite /f /g.  *)
   (*   case e1: (repr x) => [a|a]. *)
@@ -245,15 +245,15 @@ Proof. by rewrite /big_seq2 big_cons. Qed.
 Lemma big_seq2_congr (T:finType) (s : seq T) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_seq2 [seq g1 x | x <- s] ≈ big_seq2 [seq g2 x | x <- s].
-Proof. 
-  elim: s => //= a s IH.
+(* Proof. *) 
+  (* elim: s => //= a s IH. *)
 Abort.
 
 
 Lemma big_seq2_congrs (T:finType) (s : {set T}) (g1 g2 : T -> graph2) :
   (forall x, x \in s -> g1 x ≈ g2 x) -> 
   big_seq2 [seq g1 x | x in s] ≈ big_seq2 [seq g2 x | x in s].
-Proof. 
+(* Proof.  *)
   (* move => A. apply: big_seq2_congr => x. by rewrite mem_enum => /A. *)
 Abort.
 
