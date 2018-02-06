@@ -1,39 +1,15 @@
 Errata to hal-01515752 (28/4/17)
 
-p5. Definition 3: "l' = g \circ l" should be "l = l' \circ g"
-
-p6. Lemma 10: "Any cycle in the link graph is a clique" ->
-    	      "Every duplicate free cycle in the link graph is a clique"
-
 p6. Proof of Lemma 11: "there must be a sub path of it" -> the xy-path? (presumably) \pi? \pi'?
 
 p6. Lemma 14: "...the sequence obtained by keeping only the elements in CP(U)..." ->
     	      "...the sequence obtained by keeping only the elements in CP(U)
 	       and compessing successive occurrences into a single one..."
 
-p6. Proof of Lemma 15: "every xy-path" -> "every xy-path in G" 
-
 p6. Lemma 16: "If xy is an edge in CP(U)" -> If {x,y} \subseteq CP(U)
 
-p7. Proof of Prop 20: "then could" -> "then one/we could"
-    	     	      "contract [...] and all subgraphs of the form [[x;y]] to the edge xy" ->
-		      "contract [...] and every subgraph of the form [[x;y]] to an edge xy"
-
 p7. Proposition 21(ii) appears to be not used at all
-
-p7. Proof of Prop 21: "T = ..." -> "T = ]]x;y[[ \cap ]]y;z[[ \cap ]]z;x[["
-    	     	      "proposition 20" -> "Proposition 20"
-		      "the graph G" -> "the graph H"
-
-p8. Proposition 22(i): need to require [[i]]_{i,o} = {i} for otherwise G' is not connected.
-
-p9. (2nd bullet): "Proposition 20(ii) applies" -> "Proposition 20(i) applies"
-
-p9. (middle): I could not find an explanation that "\bigcap" is used for n-ary "||" 
 
 Suggestions:
 
 p8. Use the the more specific "Proposition 21(i)" in proof of Prop. 22.
-
-(maybe:
- change CP(x,y) to cp(x,y) to make CP(x,y) and CP({x,y}) more visibly distinct.)
