@@ -589,6 +589,26 @@ Proof. by rewrite mem_path !inE. Qed.
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
 Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
 
+(** Induction principle for irredundant packaged paths *)
+
+Lemma irred_ind P (y : G) : 
+  P y y (idp y) -> 
+  (forall x z (p : Path z y) (xz : x -- z), 
+      irred p -> x \notin p -> P x y (pcat (edgep xz) p)) -> 
+  forall x (p : Path x y), irred p -> P x y p.
+Proof. 
+  move => Hbase Hstep x [p pth_p]. rewrite irredE => A.
+  have {A} A : upath x y p by rewrite /upath A.
+  rewrite (bool_irrelevance pth_p (upathW A)) => {pth_p}.
+  elim: p x A => [|z p IH] x A. 
+  - have ?: x = y. { move/upathW in A. exact: spath_nil. }
+    subst y. rewrite [Build_Path _](_ : _ = idp x) //. exact: val_inj.
+  - move: {-}(A). rewrite upath_cons => /and3P [xz B2 B3].
+    have -> : Build_Path (upathW A) = 
+             (pcat (edgep xz) (Build_Path (upathW B3))) by exact: val_inj.
+    apply: Hstep. apply: upath_irred. by rewrite mem_path. 
+Qed.
+
 (** *** Splitting Paths **)
 
 Lemma splitL x y (p : Path x y) : 
