@@ -508,6 +508,12 @@ Proof.
   apply: contraFF A => /eqP->. exact: nodes_end. 
 Qed.
 
+Lemma subset_pcatL : p \subset pcat p q.
+Proof. apply/subsetP => u. by rewrite mem_pcat => ->. Qed.
+
+Lemma subset_pcatR : q \subset pcat p q.
+Proof. apply/subsetP => u. by rewrite mem_pcat => ->. Qed.
+
 End PathTheory.
 
 Lemma prevK x y (p : Path x y) : prev (prev p) = p.
@@ -1016,6 +1022,25 @@ Lemma connectedTI (G : sgraph) :
   (forall x y : G, connect sedge x y) -> connected [set: G].
 Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 
+Lemma connected_restrict (G : sgraph) (A : pred G) x : 
+  x \in A -> 
+  connected [set y in A | connect (restrict A sedge) x y].
+Proof.
+  move => inA y1 y2. rewrite !inE. move => C1 C2. set P := mem _. 
+  wlog suff: y1 {y2} C1 {C2} / connect (restrict P sedge) x y1.
+  { move => H.  apply: (connect_trans (y := x)); last exact: H.
+    rewrite srestrict_sym. exact: H. }
+  case: (x =P y1) C1 => [-> //|/eqP H /andP [inA' C1]].
+  case/uPathRP : C1 => // p _ subA. 
+  apply: (connectRI (p := p)) => z /Path_split [p1] [p2] def_p.
+  rewrite inE. rewrite (subsetP subA) /=.
+  + apply (connectRI (p := p1)). 
+    apply/subsetP. apply: subset_trans subA. 
+    rewrite def_p. exact: subset_pcatL.
+  + by rewrite def_p mem_pcat nodes_end.
+Qed.
+
+
 (* NOTE: This could be generalized to sets and their images *)
 Lemma iso_connected (G H : sgraph) :
   sg_iso G H -> connected [set: H] -> connected [set: G].
@@ -1125,17 +1150,21 @@ Lemma partition_components (G : sgraph) (H : {set G}) :
   partition (components H) H.
 Proof. apply: equivalence_partitionP. exact: (@sedge_equiv_in G). Qed.
 
+(* This is only useful if the [x = y] case does not require [x \in A] *)
+Lemma connect_restrict_case (G : sgraph) (x y : G) (A : pred G) : 
+  connect (restrict A sedge) x y -> 
+  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A sedge) x y].
+Proof.
+  case: (altP (x =P y)) => [|? conn]; first by left. 
+  case/uPathRP : (conn) => // p _ /subsetP subA. 
+  right; split => //; by rewrite subA ?nodes_end ?nodes_start.
+Qed.
+
 Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :
   reflect (exists p : Path x y, p \subset H) (y \in pblock (components H) x).
 Proof.
   apply: (iffP idP).
-  - move=> y_block. case/and3P: (partition_components H) => /eqP compU compI comp0.
-    have same_comp := same_pblock compI y_block.
-    have := y_block. rewrite -same_comp mem_pblock compU => y_H.
-    have /eqP := same_comp.
-    rewrite eq_pblock ?compU // same_comp mem_pblock compU => x_H.
-    move: y_block.
-    rewrite (pblock_equivalence_partition _ x_H y_H); last exact: sedge_equiv_in.
+  - case/(pblock_eqvE (@sedge_equiv_in _ _)) => xH yH. 
     wlog xNy : / x != y.
     { move=> Hyp. case: (altP (x =P y)) => [<- _|]; last exact: Hyp.
       exists (idp x). apply/subsetP=> z. by rewrite mem_idp => /eqP->. }
@@ -1147,23 +1176,22 @@ Proof.
     + apply: p_sub; exact: nodes_end.
 Qed.
 
+
 Lemma connected_in_components (G : sgraph) (H C : {set G}) :
   C \in components H -> connected C.
 Proof.
-  move=> C_comp x y x_C y_C.
-  case: (altP (x =P y)) => [->|xNy]; first exact: connect0.
+  have PEQ := pblock_equivalence_partition (@sedge_equiv_in G H).
+  move => C_comp.  
   case/and3P: (partition_components H) => /eqP compU compI comp0.
-  have [x_H y_H] : x \in H /\ y \in H.
-  { rewrite -compU. split; [exact: mem_cover x_C | exact: mem_cover y_C]. }
-  have /(PathRP xNy)[p /subsetP p_sub] : connect (restrict (mem H) sedge) x y.
-  { rewrite -(pblock_equivalence_partition (@sedge_equiv_in G H)) //.
-    by rewrite (def_pblock _ C_comp) //. }
-  suff /connectRI : {subset p <= mem C} by [].
-  move=> z z_p. have z_H : z \in H := p_sub z z_p.
-  rewrite -(def_pblock compI C_comp x_C).
-  rewrite (pblock_equivalence_partition (@sedge_equiv_in G H)) //.
-  case: (Path_split z_p) => [p1] [p2] eq_p. apply: (connectRI (p := p1)).
-  move=> a a_p1; apply: p_sub; by rewrite eq_p mem_pcat a_p1.
+  have/set0Pn [x in_C] : C != set0. by apply: contraNN comp0 => /eqP<-.
+  have CH: {subset C <= H}. 
+  { move => z Hz. rewrite -compU. apply/bigcupP; by exists C. } 
+  move/CH : (in_C) => in_H. 
+  suff -> : C = [set y in H | connect (restrict (mem H) sedge) x y].
+  { exact: connected_restrict. }
+  apply/setP => y. rewrite inE. case: (boolP (y \in H)) => /= [y_in_H|y_notin_H].
+  - by rewrite -PEQ // ?(def_pblock _ C_comp).
+  - apply: contraNF y_notin_H. exact: CH.
 Qed.
 
 

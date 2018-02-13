@@ -649,6 +649,21 @@ Lemma mem_cover (T : finType) (P : {set {set T}}) (x : T) (A : {set T}) :
   A \in P -> x \in A -> x \in cover P.
 Proof. move => HP HA. apply/bigcupP. by exists A. Qed.
 
+Lemma pblock_eqvE (T : finType) (R : rel T) (D : {set T}) x y : 
+  {in D & &, equivalence_rel R} ->
+  y \in pblock (equivalence_partition R D) x -> [/\ x \in D, y \in D & R x y].
+Proof. 
+  move => eqv_R.
+  move/equivalence_partitionP : (eqv_R) => /and3P [P1 P2 P3].
+  rewrite /pblock /=. case: pickP => //=; last by rewrite inE.
+  move => B /andP [B1 xB] yB.
+  have H: {subset B <= D}. 
+  { move => z zB. rewrite -(eqP P1). by apply/bigcupP; exists B. } 
+  rewrite -(pblock_equivalence_partition eqv_R) ?H //. 
+  rewrite -eq_pblock ?(def_pblock _ _ xB,def_pblock _ _ yB) //.
+  by apply/bigcupP; exists B.
+Qed.
+
 (* TOTHINK: This proof appears to complicated/monolithic *)
 Lemma equivalence_partition_gt1P (T : finType) (R : rel T) (D : {set T}) :
    {in D & &, equivalence_rel R} ->
