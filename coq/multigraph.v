@@ -31,7 +31,19 @@ Record graph2 := Graph2 { graph_of :> graph;
 Arguments g_in [g].
 Arguments g_out [g].
 
-(** Disjoint Union *)
+(** *** Edge sets *)
+
+Definition edges (G : graph) (x y : G) :=
+  [set e | (source e == x) && (target e == y)].
+
+Definition edge_set (G:graph) (S : {set G}) :=
+  [set e | (source e \in S) && (target e \in S)].
+
+Lemma edge_in_set (G : graph) e (A : {set G}) x y :
+  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
+Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
+
+(** ** Disjoint Union *)
 
 Definition funU (aT1 aT2 rT1 rT2 : Type) (f : aT1 -> rT1) (g : aT2 -> rT2) :=
   [fun x => match x with inl a => inl (f a) | inr a => inr (g a) end].
@@ -113,9 +125,6 @@ Section Subgraphs.
   Lemma subgraph_sub : subgraph subgraph_for G.
   Proof. exists (val,val); split => //=; exact: val_inj. Qed.
 End Subgraphs.
-
-Definition edge_set (G:graph) (S : {set G}) := 
-  [set e | (source e \in S) && (target e \in S)].
 
 Definition induced_proof (G:graph) (S : {set G}) : consistent S (edge_set S).
 Proof. move => e. by rewrite inE => /andP. Qed.
