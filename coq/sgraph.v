@@ -440,6 +440,41 @@ Section Primitives.
 
 End Primitives.
 
+(** Packaged version of the finite type for irredundant paths *)
+Section IPath.
+  Variables (x y : G).
+  Record IPath : predArgType := { ival : Path x y; _ : irred ival }.
+  
+  Canonical IPath_subType := [subType for ival].
+  Definition IPath_eqMixin := Eval hnf in [eqMixin of IPath by <:].
+  Canonical IPath_eqType := Eval hnf in EqType IPath IPath_eqMixin.
+  Definition IPath_choiceMixin := Eval hnf in [choiceMixin of IPath by <:].
+  Canonical IPath_choiceType := Eval hnf in ChoiceType IPath IPath_choiceMixin.
+  Definition IPath_countMixin := Eval hnf in [countMixin of IPath by <:].
+  Canonical IPath_countType := Eval hnf in CountType IPath IPath_countMixin.
+
+  Lemma upath_irred p (Up : upath x y p) : irred (Build_Path (upathW Up)).
+  Proof. rewrite irredE. exact: upath_uniq Up. Qed.
+
+  Lemma irred_upath (p : Path x y) : irred p -> upath x y (val p).
+  Proof. 
+    move => Ip. rewrite /upath irredE in Ip *. rewrite Ip /=. 
+    by case: p {Ip}.
+  Qed.    
+
+  Definition irred_of (p0 : UPath x y) : IPath := 
+    let (p,Up) := p0 in (Sub (Build_Path (upathW Up)) (upath_irred Up)).
+  Definition upath_of (p0 : IPath) : UPath x y := 
+    let (p,Ip) := p0 in Sub (val p) (irred_upath Ip).
+
+  Lemma can_irred_of : cancel upath_of irred_of. 
+  Proof. (do 2 case) => p ? ?. by do 2 apply: val_inj. Qed.
+
+  Definition IPath_finMixin := Eval hnf in CanFinMixin can_irred_of.
+  Canonical IPath_finType := Eval hnf in FinType IPath IPath_finMixin.
+End IPath.
+
+
 Definition in_nodes x y (p : Path x y) : collective_pred G := 
   [pred u | u \in nodes p].
 Canonical Path_predType x y := 
