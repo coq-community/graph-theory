@@ -39,6 +39,9 @@ Definition edges (G : graph) (x y : G) :=
 Definition edge_set (G:graph) (S : {set G}) :=
   [set e | (source e \in S) && (target e \in S)].
 
+Lemma edge_set1 (G : graph) (x : G) : edge_set [set x] = edges x x.
+Proof. apply/setP=> e. by rewrite !inE. Qed.
+
 Lemma edge_in_set (G : graph) e (A : {set G}) x y :
   x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
 Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.

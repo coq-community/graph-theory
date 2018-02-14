@@ -104,7 +104,6 @@ Proof.
     apply/existsP. exists (Sub e He). by rewrite !inE -!val_eqE /= !eqxx.
 Qed.
 
-(* TODO: simplify edge_set, edges, adjacent, ... *)
 Lemma edge_set_adj (G : graph2) : 
   @edge_set G [set g_in; g_out] == set0 -> ~~ @adjacent G g_in g_out. 
 Proof. 
@@ -112,9 +111,6 @@ Proof.
   apply/set0Pn. exists e. rewrite !inE.
   by case/orP: He => /andP[->->]; rewrite orbT.
 Qed.
-
-Lemma edge_set1 (G : graph) (x : G) : edge_set [set x] = edges x x.
-Proof. apply/setP=> e. by rewrite !inE. Qed.
 
 Lemma sskeleton_subgraph_for (G : graph2) (V : {set G}) (E : {set edge G})
   (con : consistent V E) (i o : sig [eta mem V]) : val i = g_in -> val o = g_out ->
