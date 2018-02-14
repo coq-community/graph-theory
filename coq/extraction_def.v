@@ -279,17 +279,6 @@ Proof.
   all: by rewrite (disjointFr (interval_bag_edges_disj G_conn _ _) He).
 Qed.
 
-Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
-  ((val u : skeleton G) -- val v) = ((u : skeleton (induced V)) -- v).
-Proof.
-  rewrite /=/sk_rel. rewrite val_eqE. congr andb. apply/existsP/existsP.
-  - case => e. rewrite !inE => e_uv.
-    suff He : e \in edge_set V by exists (Sub e He); rewrite !inE -!val_eqE.
-    rewrite !inE.
-    case/orP: e_uv => /andP[/eqP-> /eqP->]; apply/andP; split; exact: valP.
-  - case => e. rewrite !inE => e_uv. by exists (val e); rewrite !inE.
-Qed.
-
 (* TOTHINK: how to align induced subgraphs for simple graphs and
 induced subgraphs for multigraphs *)
 Lemma connected_induced (G : graph) (V : {set skeleton G}) : 
@@ -302,8 +291,7 @@ Proof.
   - move/spath_nil/val_inj ->. exact: connect0.
   - rewrite spath_cons /= (lock sk_rel) -!andbA -lock => /and4P [A B C D].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
-    apply: connect1. change (u -- (Sub a B)). 
-    by rewrite -skeleton_induced_edge.
+    apply: connect1. move: C. by rewrite /sk_rel -val_eqE adjacent_induced.
 Qed.
 
 Lemma induced_K4_free (G : graph2) (V : {set G}) : 
@@ -412,7 +400,7 @@ Proof.
     apply: iso_K4_free. apply: sg_iso_sym. 
     apply: sg_iso_trans; last apply sskeleton_adjacent.
       rewrite (setU1_mem Z1). exact: sg_iso_refl.
-    exact: adjacent_induced.
+    by rewrite adjacent_induced.
 Qed.
 
 Lemma measure_redirect (G : graph2) C : 

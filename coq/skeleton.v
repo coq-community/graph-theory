@@ -94,14 +94,13 @@ Qed.
 
 (** Bridging Lemmas *)
 
-Lemma adjacent_induced (G : graph) (x y : G) (V : {set G}) 
-  (Hx : x \in V) (Hy : y \in V) : 
-  adjacent x y -> @adjacent (induced V) (Sub x Hx) (Sub y Hy).
+Lemma adjacent_induced (G : graph) (V : {set G}) (x y : induced V) :
+  adjacent x y = adjacent (val x) (val y).
 Proof.
-  move=> adj_xy. move: x y adj_xy Hx Hy. refine (adjacentP _ _).
-  - move=> x y H Hy Hx. by rewrite adjacent_sym.
-  - move=> e Hsrc Htgt. have He : e \in edge_set V  by rewrite inE Hsrc Htgt.
-    apply/existsP. exists (Sub e He). by rewrite !inE -!val_eqE /= !eqxx.
+  apply/existsP/existsP => -[e]; rewrite ?inE => He.
+  - exists (val e). move: He. by rewrite !inE -!val_eqE.
+  - suff eV : e \in edge_set V by exists (Sub e eV); rewrite !inE -!val_eqE.
+    rewrite inE. case/orP: He => /andP[/eqP-> /eqP->]; apply/andP; split; exact: valP.
 Qed.
 
 Lemma edge_set_adj (G : graph2) : 
