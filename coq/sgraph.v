@@ -1321,8 +1321,8 @@ Lemma unique_forestT :
 Proof. move => H x y _ _ p q [Ip _] [Iq _]. exact: H. Qed.
 
 Lemma forestI S : 
-  ~ (exists x y (p1 p2 : Path x y), 
-     [/\ x \in S, y \in S, p1 \subset S, p2 \subset S & p1 != p2]) ->
+  ~ (exists x y (p1 p2 : Path x y), [/\ irred p1, irred p2 & p1 != p2] /\ 
+     [/\ x \in S, y \in S, p1 \subset S & p2\subset S]) ->
   is_forest S.
 Proof.
   move => H. apply/forestP. case: (boolP (_ S)) => //.
@@ -1330,13 +1330,13 @@ Proof.
   rewrite negb_forall_in => /exists_inP [y yS].
   rewrite leqNgt negbK => /card_gt1P [p1] [p2] [A B C].
   exfalso. apply: H. exists x. exists y. exists (val p1). exists (val p2).
-  rewrite !inE val_eqE in A B *. split => //.
+  rewrite !inE val_eqE in A B *. repeat split => //; exact: valP.
 Qed.
 
 Lemma treeI S : 
   connected S -> 
-  ~ (exists x y (p1 p2 : Path x y), 
-     [/\ x \in S, y \in S, p1 \subset S, p2 \subset S & p1 != p2]) ->
+  ~ (exists x y (p1 p2 : Path x y), [/\ irred p1, irred p2 & p1 != p2] /\ 
+     [/\ x \in S, y \in S, p1 \subset S & p2\subset S]) ->
   is_tree S.
 Proof. move => A B. split => //. exact: forestI. Qed.
 

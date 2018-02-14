@@ -322,6 +322,17 @@ Section CheckPoints.
     exact: disjointNI.
   Qed.
 
+  Lemma cycle_clique (x y : link_graph) (p : Path x y) : 
+    irred p -> x -- y -> clique [set x in p].
+  Proof. 
+    have -> : [set x in p] = [set x in nodes p].
+    { apply/setP => u. by rewrite inE. }
+    case: p => p pth_p Ip xy. rewrite nodesE irredE /= in Ip *.
+    apply: link_cycle. rewrite /ucycle /= Ip andbT.
+    case/andP : pth_p => pth_p /eqP last_p. 
+    by rewrite rcons_path pth_p last_p link_sym.
+  Qed.    
+
   Lemma CP_clique U : @clique link_graph U -> CP U = U.
   Proof.
     move => clique_U. apply/setP => x. apply/bigcupP/idP. 
@@ -450,9 +461,9 @@ Section CheckPoints.
   (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
   two nodes contains exactly the checkpoints bewteen these nodes *)
   Lemma CP_tree_paths (U : {set G}) (x y z : CP_ U) (p : Path (CP_ U) x y) : 
-    is_tree (CP_ U) -> irred p -> (z \in p <-> val z \in cp (val x) (val y)).
+    is_tree [set: CP_ U] -> irred p -> (z \in p <-> val z \in cp (val x) (val y)).
   Proof.
-    move => /tree_unique_Path tree_U irr_p. split.
+    move => [/forestT_unique tree_U _] irr_p. split.
     - move => z_in_p. apply/negPn. apply/negP => /=. 
       case/cpPn' => q irr_q av_z. case: (CP_path irr_q) => r irr_r /subsetP sub_q. 
       have zr : z \notin r. 
@@ -948,9 +959,9 @@ a clique, so [CP U] is [U]. *)
 
   (** A small part of Proposition 20. *)
   Lemma CP_tree_sinterval (U : {set G}) (x y : CP_ U) :
-    is_tree (CP_ U) -> x -- y -> [disjoint CP U & sinterval (val x) (val y)].
+    is_tree [set: CP_ U] -> x -- y -> [disjoint CP U & sinterval (val x) (val y)].
   Proof.
-    move=> CP_tree xy.
+    move => CP_tree xy.
     rewrite -setI_eq0 -subset0; apply/subsetP => u.
     rewrite inE [u \in set0]inE =>/andP[u_CP].
     set u_ := Sub u u_CP : CP_ U; rewrite -[u]/(val u_).
@@ -964,7 +975,7 @@ a clique, so [CP U] is [U]. *)
     have Ip_xy : irred (pcat p_ (edgep xy)).
       by [rewrite irred_cat Ip_ irred_edge /tail/=;
           rewrite disjoint_sym disjoint_cons eq_disjoint0].
-    have eq_ : q_ = pcat p_ (edgep xy) := tree_unique_Path CP_tree Iq_ Ip_xy.
+    have eq_ : q_ = pcat p_ (edgep xy) by apply CP_tree.
     apply: contraNT xNq_ => _.
     by rewrite eq_ mem_pcat !in_collective !nodesE/= !inE eqxx.
   Qed.
@@ -1233,62 +1244,51 @@ End CheckpointOrder.
 
 Arguments ncp0 [G] G_conn [U] x p : rename.
 
+Lemma irred_edgeL (G : sgraph) (y x z1 : G) (xz1 : x -- z1) (p : Path z1 y) : 
+  irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
+Proof. case: p => p pth_p. by rewrite !irredE /= mem_path /=. Qed.
+
 Lemma CP_treeI (G : sgraph) (U : {set G}) :
   connected [set: G] ->
-  (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree (CP_ U).
+  (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree [set: CP_ U].
 Proof.
-  (* CP_ U is connected because G is. *)
-  move/CP_connected => /(_ U)/connectedTE CP_conn.
-  (* Since is_tree is decidable, prove the contraposition:
-   *    if CP_U is not a tree then it has a triangle. *)
-  case: (boolP (is_tree _)) => // CP_not_tree H; exfalso; apply: H.
-  (* There are two distinct parallel paths in CP_ U ... *)
-  move: connected_not_tree => /(_ _ CP_conn CP_not_tree) [x [y [p' [q' []]]]].
-  (* ... and their first edge is different. *)
-  wlog [z1 [z2 [p [q [-> -> z1Nz2]]]]] : x y p' q'
-    / exists z1 z2 p q, [/\ p' = z1 :: p, q' = z2 :: q & z1 != z2].
-    move=> base_case.
-    elim: p' x y q' => [|z1 p IHp'] x y q'.
-    (* If one is empty then x = y and so is the other. Contradiction ! *)
-      by move=> /upathW/spath_nil<- /upath_nil->.
-    case: q' => [|z2 q] Uzp.
-      by move=> /upathW/spath_nil pq; move: Uzp; rewrite pq => /upath_nil.
-    move=> Uzq.
-    (* If z1 != z2, the goal is done. *)
-    case: (altP (z1 =P z2)) => [eq_z | z1Nz2]; last first.
-      by apply: base_case Uzp Uzq; do 4 eexists.
-    (* Otherwise, use the induction hypothesis. *)
-    move: eq_z Uzp Uzq => <- /upath_consE[_ _ Up] /upath_consE[_ _ Uq].
-    rewrite eqseq_cons eqxx [~~ _]/=.
-    exact: IHp' z1 y q Up Uq.
-  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious. *)
-  move=> {p' q'} /upath_consE[x_z1 xNzp /upathW ps] /upath_consE[z2_x xNzq /upathW qs] _.
-  rewrite sg_sym in z2_x; do 3 eexists; split; try eassumption.
-  (* Both p and q avoid x. Package them... *)
-  move: xNzp xNzq.
-  rewrite -(mem_path (Sub p ps)) -(mem_path (Sub q qs)).
-  move: (Sub p ps) (Sub q qs); rewrite ![sub_sort _]/= => {p q ps qs} p q xNp xNq.
-  (* ...and concatenate them into a path avoiding x. *)
-  have {p q xNp xNq} [p /negP xNp] : exists p : Path z1 z2, x \notin p.
-    by exists (pcat p (prev q)); rewrite mem_pcat negb_or mem_prev.
-  (* Remove the cycles in that path, to get an irredundant path from z1 to z2
-   * avoiding x. *)
-  have {p xNp} [p Ip xNp] : exists2 p : Path z1 z2, irred p & x \notin p.
-    have [q qSp Iq] := uncycle p; exists q => //.
-    by apply/negP => /qSp.
-  (* Unpack it. *)
-  case: p Ip xNp => p pz12.
-  rewrite /irred in_collective nodesE [negb _]/= [_ :: _]/=.
-  move: pz12 => /andP[pth /eqP pz2] Uzp xNzp.
-  (* To get an irredundant cycle, prepend x and z1. *)
-  have {Uzp xNzp} Uxzp : uniq (x :: z1 :: p).
-    by move: xNzp Uzp => /= -> /=.
-  have {pth Uxzp} /induced_ucycle /link_cycle : ucycle sedge [:: x, z1 & p].
-    rewrite /ucycle {}Uxzp andbT (cycle_path z2).
-    set sedge := sedge (* prevent /= from expanding (@sedge (CP_ U)) *).
-    by rewrite /= {}/sedge x_z1 pth pz2 z2_x.
-  (* In the link graph, that cycle gives a clique which contains z1 and z2. *)
-  move=> /(_ _ _ _ _ z1Nz2). apply; rewrite inE; apply: map_f.
-    by rewrite !inE eqxx.
-  by rewrite inE -pz2 mem_last.
+  move => conn_G H'. apply: treeI => [|H] ; first exact: CP_connected. 
+  apply: H'. move: H => [x [y [p' [q' [[Ip' Iq' D] _]]]]]. 
+  (* without loss, p' and q' differ already at the second vertex *)
+  wlog : x p' q' Ip' Iq' D / exists z1 z2 (xz1 : x -- z1) (xz2 : x -- z2) p q, 
+    [/\ p' = pcat (edgep xz1) p, q' = pcat (edgep xz2) q & z1 != z2].
+  { set GOAL := exists _ _ _ , _. move => base_case. 
+    move: x p' Ip' q' Iq' D. 
+    apply: (irred_ind (* needs manual instantiation *)
+           (P := fun x y p' =>  forall q' : Path x y, irred q' -> p' != q' -> GOAL)).
+    - by move => q /irredxx ->. 
+    - move => x z p xz Ip xp IH q' Iq'. 
+      case: (altP (x =P y)) => [?|Dxy]; first by subst y; rewrite nodes_end in xp.
+      move:(splitL q' Dxy) => [z'] [xz2] [q] [E _]. rewrite E.
+      case: (altP (z =P z')) => [?|A B]. 
+      + subst. move => E. apply: (IH q). 
+        * move: Iq'. by rewrite irred_cat => /and3P[].
+        * apply: contraNneq E => ->. by rewrite -val_eqE. 
+      + apply: (base_case x (pcat (edgep xz) p) q') => //. 
+        * by rewrite irred_cat irred_edge Ip disjoint_edgep ?xp //. 
+        * by rewrite E. 
+        * exists z; exists z'; exists xz; exists xz2; exists p; exists q. by rewrite E. }
+  move => [z1] [z2] [xz1] [xz2] [p] [q] [def_p' def_q' D'].
+  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious... *)  
+  exists x; exists z1; exists z2; split => //; last by rewrite sgP.
+  (* ... and for the third edge we construct an irredundant cycle *)
+  have [r irr_r av_x] : exists2 r : Path z1 z2, irred r & x \notin r.
+  { case: (uncycle (pcat p (prev q))) => r R1 R2. exists r => //.
+    apply/negP => /R1. rewrite mem_pcat mem_prev. 
+    subst. move: Ip' Iq'. rewrite !irred_edgeL. by do 2 case (_ \in _). }
+  have I : irred (pcat (edgep xz1) r). 
+  { by rewrite irred_edgeL av_x irr_r. }
+  case: (Path_from_induced (pcat (edgep xz1) r)) => r' _ E. 
+  have/cycle_clique : irred r'. 
+  { move: irr_r. rewrite !irredE -!nodesE E map_inj_uniq //. 
+    exact: val_inj. }
+  apply => //. 
+  all: rewrite inE mem_path -nodesE E mem_map; try exact: val_inj.
+  - by rewrite mem_pcat mem_edgep eqxx.
+  - by rewrite mem_pcat nodes_end.
 Qed.
