@@ -133,7 +133,6 @@ Proof.
   by rewrite !E !inE => /eqP-> /eqP->.
 Qed. 
 
-
 Lemma card_gt1P {T : finType}  {D : pred T} : 
   reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
 Proof. 
@@ -143,6 +142,14 @@ Proof.
     rewrite !inE => /andP [? ?]. by exists v'; exists v.
   - move => [x] [y] [xD yD xy]. apply: contraNT xy.
     rewrite -leqNgt => A. by rewrite (card_le1 A xD yD).
+Qed.
+
+Lemma card_le1P (T : finType) (A : pred T) : 
+  reflect {in A &, forall x y : T, x = y} (#|A| <= 1).
+Proof.
+  apply: introP => [H x y|]; first exact: card_le1.
+  rewrite leqNgt negbK. move/card_gt1P => [x] [y] [xA yA xy] H.
+  apply:(negP xy). by rewrite (H y x).
 Qed.
 
 Lemma card12 (T : finType) (A : {set T}) :

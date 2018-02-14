@@ -595,12 +595,24 @@ Proof. by rewrite mem_path !inE. Qed.
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
 Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
 
+Lemma disjoint_edgep x y z (xy : x -- y) (p : Path y z) :
+  irred p -> 
+  [disjoint edgep xy & tail p] = (x \notin p).
+Proof. 
+  move => Ip. rewrite mem_path inE sg_edgeNeq //=. apply/idP/idP.
+  - move => D. by rewrite (disjointFr D) // mem_edgep eqxx.
+  - move => H. rewrite disjoint_subset. apply/subsetP => u.
+    rewrite mem_edgep. case/orP => /eqP-> //. rewrite !inE.
+    move: Ip. rewrite irredE /=. by case/andP.
+Qed.
+
+
 (** Induction principle for irredundant packaged paths *)
 
 Lemma irred_ind P (y : G) : 
   P y y (idp y) -> 
   (forall x z (p : Path z y) (xz : x -- z), 
-      irred p -> x \notin p -> P x y (pcat (edgep xz) p)) -> 
+      irred p -> x \notin p -> P z y p -> P x y (pcat (edgep xz) p)) -> 
   forall x (p : Path x y), irred p -> P x y p.
 Proof. 
   move => Hbase Hstep x [p pth_p]. rewrite irredE => A.
@@ -612,7 +624,10 @@ Proof.
   - move: {-}(A). rewrite upath_cons => /and3P [xz B2 B3].
     have -> : Build_Path (upathW A) = 
              (pcat (edgep xz) (Build_Path (upathW B3))) by exact: val_inj.
-    apply: Hstep. apply: upath_irred. by rewrite mem_path. 
+    apply: Hstep.
+    + apply: upath_irred. 
+    + by rewrite mem_path. 
+    + exact: IH.
 Qed.
 
 (** *** Splitting Paths **)
@@ -1256,12 +1271,95 @@ Proof.
 Qed.
 
 
-(** ** Forests and trees *)
+(** ** Forests and Trees
+
+As with connected, we define forest and set predicates for sets of
+vertices of some graph. This avoids having to package subtrees (such
+as [CP U] for neighbors U) as a graph *)
+
+Section Forests.
+
+Variables (G : sgraph).
+Implicit Types (x y : G) (S : {set G}).
+
+Definition is_forest S :=
+  {in S &, forall x y : G, unique (fun p : Path x y => irred p /\ (p \subset S))}.
+
+Definition is_tree S := is_forest S /\ connected S.
+
+Definition is_forestb S := 
+  [forall x in S, forall y in S, #|[pred p : IPath x y| val p \subset S]| <= 1] .
+
+Lemma forestP S : reflect (is_forest S) (is_forestb S).
+Proof.
+  apply: (iffP idP) => H.
+  - move => x y xS yS p q [Ip Sp] [Iq Sq]. 
+    move/forall_inP/(_ _ xS)/forall_inP/(_ _ yS) : H => H.
+    suff: Sub p Ip == Sub q Iq :> IPath x y by rewrite -val_eqE => /eqP.
+    apply/eqP. apply: card_le1 H _ _; by rewrite inE.
+  - apply/forall_inP => x xS. apply/forall_inP => y yS. 
+    apply/card_le1P => [[p Ip]] [q Iq]. rewrite !inE /= => pS qS.
+    apply: val_inj => /=. exact: H.
+Qed.
+
+Definition connectedb S := 
+  [forall x in S, forall y in S, connect (restrict (mem S) sedge) x y].
+
+Lemma connectedP S : reflect (connected S) (connectedb S).
+Proof. 
+  apply: (iffP idP) => H.
+  - move => x y xS yS. by move/forall_inP/(_ _ xS)/forall_inP/(_ _ yS) : H.
+  - do 2 apply/forall_inP => ? ?. exact: H.
+Qed.
+
+Lemma forestT_unique : 
+  is_forest [set: G] -> forall x y, unique (fun p : Path x y => irred p).
+Proof. move => H x y p q Ip Iq. exact: H. Qed.
+
+Lemma unique_forestT : 
+  (forall x y, unique (fun p : Path x y => irred p)) -> is_forest [set: G].
+Proof. move => H x y _ _ p q [Ip _] [Iq _]. exact: H. Qed.
+
+Lemma forestI S : 
+  ~ (exists x y (p1 p2 : Path x y), 
+     [/\ x \in S, y \in S, p1 \subset S, p2 \subset S & p1 != p2]) ->
+  is_forest S.
+Proof.
+  move => H. apply/forestP. case: (boolP (_ S)) => //.
+  rewrite negb_forall_in => /exists_inP [x xS].
+  rewrite negb_forall_in => /exists_inP [y yS].
+  rewrite leqNgt negbK => /card_gt1P [p1] [p2] [A B C].
+  exfalso. apply: H. exists x. exists y. exists (val p1). exists (val p2).
+  rewrite !inE val_eqE in A B *. split => //.
+Qed.
+
+Lemma treeI S : 
+  connected S -> 
+  ~ (exists x y (p1 p2 : Path x y), 
+     [/\ x \in S, y \in S, p1 \subset S, p2 \subset S & p1 != p2]) ->
+  is_tree S.
+Proof. move => A B. split => //. exact: forestI. Qed.
+
+Lemma sub_forest S S' : 
+  S' \subset S -> is_forest S -> is_forest S'.
+Proof.
+  move => subS H x y xS yS p q [Ip Sp] [Iq Sq]. 
+  apply: H; try split; 
+    try solve [ done |exact: (subsetP subS) | exact: subset_trans subS].
+Qed.
+
+Lemma in_subtree S S':
+  connected S' -> S' \subset S -> is_forest S -> 
+  {in S' &,forall x y (p : Path x y), irred p -> p \subset S'}.
+Admitted.
+ 
+End Forests.
+
 
 (** *** Decidable tree predicate *)
 (** This is used for the checkpoint graph, and in proofs by contradiction (see
     for instance [CP_treeI]). *)
-
+(* 
 Definition is_tree (G : sgraph) := [forall x : G, forall y : G, #|UPath x y| == 1].
 
 Lemma tree_unique_Path (G : sgraph) (G_tree : is_tree G) (x y : G) :
@@ -1291,26 +1389,22 @@ Proof.
   by have up : UPath x y by [exists p]; exists up.
 Qed.
 
-(** *** Forests *)
+*) 
+
+(** *** Forest Type (for tree decompositions) *)
 
 (** We define forests to be simple graphs where there exists at most one
 duplicate free path between any two nodes *)
 
-Definition forest_axiom (G:sgraph) := forall (x y : G), unique (upath x y).
-
 Record forest := Forest { sgraph_of_forest :> sgraph ;
-                          forestP : forest_axiom sgraph_of_forest}.
-
-Lemma restrict_forest (T : forest) (A : pred T) :
-  connect_sym (restrict A sedge).
-Proof. apply: connect_symI => x y /=. by rewrite sgP [(x \in A) && _]andbC. Qed.
+                          forest_is_forest :> is_forest [set: sgraph_of_forest] }.
 
 Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
 
-Definition unit_forest_axiom : forest_axiom (sunit).
-Proof. by move => [] [] p q /upath_nil -> /upath_nil -> . Qed.
+Definition unit_forest : is_forest [set: sunit].
+Proof. by move => [] [] _ _ p1 p2 [/irredxx -> _] [/irredxx -> _]. Qed.
 
-Definition tunit := Forest unit_forest_axiom.
+Definition tunit := Forest unit_forest.
 
 (** We define [width] and [rename] for tree decompositions already
 here, so that we can use use them for tree decompositions of simple
@@ -1324,25 +1418,6 @@ Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
 
 Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') :=
   [fun x => h @: B x].
-
-Definition subforest (T : forest) (A : {set T}) :=
-  {in A&A, forall (x y : T) p, upath x y p -> {subset p <= A}}.
-
-Set Printing Implicit Defensive.
-Lemma subforest_connect (T : forest) (c : T) (a : pred T) : 
-  subforest [set c' | connect (restrict a sedge) c c'].
-Proof.
-  move => u u' H1 H2 p H3.  
-  have/upathPR [q pth_q] : connect (restrict a sedge) u u'.
-  { apply: (connect_trans (y := c)).
-    - by rewrite restrict_forest inE in H1 *.
-    - by rewrite inE in H2. }
-  have -> : p = q. { move/restrict_upath : pth_q. exact: forestP H3. }
-  move => c' /(mem_tail u) in_q. 
-  case: (usplitP (G := srestrict a) in_q pth_q) => p1 p2 A _ _.
-  rewrite !inE in H1 H2 *. apply: connect_trans H1 _.
-  apply/upathPR. by exists p1.
-Qed.
 
 Definition add_edge_rel (G:sgraph) (i o : G) := 
   relU (@sedge G) (sc [rel x y | [&& x != y, x == i & y == o]]).

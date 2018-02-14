@@ -52,41 +52,13 @@ Proof.
     apply: can_inj can_g.
 Qed.
 
-
 Section DecompTheory.
   Variables (G : sgraph) (T : forest) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).
 
   Hypothesis decD : sdecomp T G B.
 
-  (* This lemma is not actually used below *)
-  Lemma sbag_mid t u v p : upath u v p -> t \in p -> B u :&: B v \subset B t.
-  Proof.
-    move => upth_p in_p. apply/subsetP => z /setIP [z_in_u z_in_v].
-    case/upathPR : (sbag_conn decD z_in_u z_in_v) => q upth_q.
-    have ? : q = p. { apply: forestP upth_p. exact: restrict_upath upth_q. }
-    subst q. move/upathWW/path_restrict : upth_q. by apply.
-  Qed.
-    
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
-
-  Lemma subforest_link (C : {set T}) t0 c0 c p : 
-    subforest C -> t0 \notin C -> c0 \in C -> t0 -- c0 -> c \in C -> upath t0 c p -> c0 \in p.
-  Proof.
-    move => sub_C H1 H2 H3 H4 H5. 
-    have [q Hq] : exists p, upath  c0 c p. 
-    { apply/upathP. apply: (connect_trans (y := t0)). 
-      + apply: connect1. by rewrite sgP.
-      + apply/upathP. by exists p. }
-    have X : upath  t0 c (c0::q). 
-    { rewrite upath_cons H3 Hq /= andbT inE. 
-      apply/orP => [[/eqP X|X]]. by subst; contrab. 
-      move/sub_C : Hq. case/(_ _ _)/Wrap => // /(_ _ X) ?. by contrab. }
-    rewrite (forestP H5 X). exact: mem_head.
-  Qed.
-
-  (** TODO: Redo the proof below using packaged paths (the the infrastructure
-  coming with them) *)
 
   Lemma decomp_clique (S : {set G}) : 
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
@@ -109,7 +81,7 @@ Section DecompTheory.
       have HT0' t : v \in B t -> ~~ (S0 \subset B t).
       { apply: contraTN => C. apply: HT0. by rewrite inE. }
       have pairs x y : x \in S -> y \in S -> exists t, x \in B t /\ y \in B t.
-      { move => xS yS.  case: (IH [set x;y]). 
+      { move => xS yS. case: (IH [set x;y]). 
         - rewrite cardsU1 cards1 addn1. case (_ \notin _) => //=. exact: ltnW.
         - by rewrite cards2. 
         - apply: sub_in11W clique_S. apply/subsetP. by rewrite subUset !sub1set xS. 
@@ -117,52 +89,55 @@ Section DecompTheory.
       (* obtain some node [c] whose bag contains [[set v,v0]] and
       consider its subtree outside of T0 *)
       have [c [Hc1 Hc2]] : exists t, v \in B t /\ v0 \in B t by apply: pairs. 
-      pose C := [set t | connect (restrict [predC T0] sedge) c t].
-      have inC: c \in C by rewrite inE connect0. 
-      have C_subforest : subforest C by apply: subforest_connect.
-      have disC: [disjoint C & T0]. 
-      { rewrite disjoints_subset. apply/subsetP => c0. rewrite 2!inE.
-        case: (boolP (c == c0)) => [/eqP<- _|H].
-        - apply/negPn. move/HT0. by rewrite Hc1.
-        - case/(uPathRP H) => p _ /subsetP. apply. exact: nodes_end. }
-      (* Let [t0 -- c0] be the link connecting [T0] to [C] *)
+      pose C := [set t in [predC T0] | connect (restrict [predC T0] sedge) c t].
+      have inC: c \in C. { rewrite !inE connect0 andbT. exact: HT0'. }
+      have con_C : connected C. 
+      { apply: connected_restrict. move: inC. rewrite inE. by case/andP. }
+      have dis_C : [disjoint C & T0]. 
+      { rewrite disjoints_subset /C. apply/subsetP => t. rewrite !inE. by case/andP. }
+      (* There exists an edge connecting [C] and [T0] *)
       have [t0 [c0 [Ht0 Hc0 tc0]]] : exists t0 c0, [/\ t0 \in T0, c0 \in C & t0 -- c0].
       { case: (IH S0 _ _) => [|||t Ht].
         - by rewrite [#|S|](cardsD1 v) Hv.
         - apply/card_gt0P. exists v0. by rewrite !inE eq_sym X.
         - apply: sub_in11W clique_S. apply/subsetP. by rewrite subD1set.
         - have A : v0 \in B t. { apply (subsetP Ht). by rewrite !inE eq_sym X. }
-          have H : connect sedge c t. 
-          { apply: connect_mono (sbag_conn decD v0 c t Hc2 A). exact: subrel_restrict. }
-          (* bespoke - is there a reasonable lemma? *)
-          (* TOTHINK: this should follow with uPathRP / split_at_first / splitL / splitR *)
-          case/connectP : H => p. generalize c inC. 
-          elim: p => /= [|a p IHp] c0 inC0.
-          + move => _ /= ?. subst c0. 
-            case: (disjointE disC inC0 _). by rewrite !inE.
-          + case/andP => H1 H2 H3. case: (boolP (a \in T0)) => Ha.
-            * exists a. exists c0. by rewrite sgP.
-            * apply: IHp H3 => //. rewrite inE. 
-              apply: (connect_trans (y := c0)).
-              by rewrite inE in inC0.
-              apply: connect1 => /=. rewrite !in_simpl /= Ha H1 !andbT. 
-              apply/negP. exact: disjointE disC inC0. }
-      have t0P p c' : c' \in C -> upath t0 c' p -> c0 \in p.
-      { apply: subforest_link tc0 => //.  apply/negP => H. exact: (disjointE disC H Ht0). }
-      suff A : c0 \in T0 by case: (disjointE disC Hc0 A).
+          have/uPathRP [|p Ip _] := (sbag_conn decD v0 c t Hc2 A).
+          { apply: contraTneq inC => ->. by rewrite !inE Ht. }
+          move: (c) p Ip (inC). apply: irred_ind; first by rewrite !inE Ht.
+          move => x z p xz Ip xp IHp xC.
+          case: (boolP (z \in C)) => [|zNC {IHp}] ; first exact: IHp.
+          exists z; exists x. rewrite sgP. split => //. apply: contraNT zNC => H.
+          rewrite 2!inE /= in xC. case/andP : xC => H1 H2.
+          rewrite 2!inE /= (negbTE H) /=. apply: connect_trans H2 _.
+          apply: connect1 => /=. by  rewrite 2!inE H1 2!inE xz H. }
+      (* In fact, every path into [C] must use this edge (and [c0]) *)
+      have t0P c' (p : Path t0 c') : irred p -> c' \in C -> c0 \in p.
+      { move => Ip inC'. 
+        case: (altP (c0 =P c')) => [-> |?]. by rewrite nodes_end.
+        have/uPathRP [//|q Iq /subsetP subC] := con_C _ _ Hc0 inC'.
+        suff -> : p = pcat (edgep tc0) q by rewrite mem_pcat nodes_end.
+        apply: forest_is_forest; (repeat split) => //. 
+        rewrite irred_cat irred_edge Iq /= disjoint_edgep //. 
+        apply: contraTN Ht0 => /subC. rewrite 2!inE /=. by case/andP. }
+      (* We show that [c0] contains the full clique *)
+      suff A : c0 \in T0 by case: (disjointE dis_C Hc0 A).
       rewrite inE. apply/subsetP => u u_in_S0.
       have Hu: u \in B t0. { rewrite inE in Ht0. exact: (subsetP Ht0). }
-      have [cu [Hcu1 Hcu2]] : exists t,  u \in B t /\ v \in B t. 
+      have [cu [Hcu1 Hcu2]] : exists t, u \in B t /\ v \in B t. 
       { apply: (pairs u v) => //. move: u_in_S0. rewrite inE. by case: (_ \notin _). }
-      move:(sbag_conn decD u t0 cu Hu Hcu1). case/upathPR => q upth_q. 
-      suff Hq : c0 \in q. { move/upathWW/path_restrict : upth_q. by apply. }
-      apply: t0P (restrict_upath upth_q).
-      rewrite inE. move: (sbag_conn decD v c cu Hc1 Hcu2).
+      move:(sbag_conn decD u t0 cu Hu Hcu1). 
+      case/uPathRP => [|q irr_p /subsetP has_u]. 
+      { apply: contraTneq Hcu2 => <-.  exact: HT0. }
+      suff Hq : c0 \in q. { move/has_u : Hq. by rewrite inE. }
+      apply: t0P irr_p _. rewrite !inE /= HT0' //=. 
+      move: (sbag_conn decD v c cu Hc1 Hcu2). 
       apply: connect_mono => t t' /=. 
       rewrite !inE -andbA => /and3P [*]. by rewrite !HT0'.
   Qed.
       
 End DecompTheory.
+
 
 
 (** ** Complete graphs *)
