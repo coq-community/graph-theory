@@ -88,48 +88,45 @@ infrastructure for packaged paths should simplify the proofs *)
 Section JoinT.
   Variables (T1 T2 : forest).
 
-  (* This could be rephrased as "codom inl is a subforest" *)
-  Lemma sub_inl (a b : T1) (p : seq (sjoin T1 T2)) : 
-    @upath (sjoin T1 T2) (inl a) (inl b) p -> {subset p <= codom inl}.
+  Lemma sub_inl (a b : T1) (p : @Path (sjoin T1 T2) (inl a) (inl b)) :
+    {subset p <= codom inl}.
   Proof. 
-    elim: p a => // c p IH a. rewrite upath_cons. case: c => // c /and3P [? ? ?].
-    apply/subset_cons. split;eauto. by rewrite codom_f. 
+    apply: path_closed; first by rewrite codom_f. 
+    do 2 case => ? //; rewrite ?codom_f //. by case/codomP => ?.
   Qed.
 
-  Lemma sub_inr (a b : T2) (p : seq (sjoin T1 T2)) : 
-    @upath (sjoin T1 T2) (inr a) (inr b) p -> {subset p <= codom inr}.
+  Lemma sub_inr (a b : T2) (p : @Path (sjoin T1 T2) (inr a) (inr b)) :
+    {subset p <= codom inr}.
   Proof. 
-    elim: p a => // c p IH a. rewrite upath_cons. case: c => // c /and3P [? ? ?].
-    apply/subset_cons. split;eauto. by rewrite codom_f. 
+    apply: path_closed; first by rewrite codom_f. 
+    do 2 case => ? //; rewrite ?codom_f //. by case/codomP => ?.
   Qed.
 
   Arguments inl_inj [A B].
   Prenex Implicits inl_inj.
 
-  Lemma join_forest_axiom : forest_axiom (sjoin T1 T2).
-  Proof.
-    move => [a|a] [b|b].
-    - move => p q Up Uq.
-      case: (lift_upath _ _ Up (sub_inl Up)) => //; first exact: inl_inj. 
-      case: (lift_upath _ _ Uq (sub_inl Uq)) => //; first exact: inl_inj. 
-      move => p0 [P0 P1] q0 [Q0 Q1]. 
-      suff E: p0 = q0 by congruence. 
-      exact: (@forestP _ a b).
-    - move => p q U. suff: connect sedge (inl a : sjoin T1 T2) (inr b) by rewrite join_disc. 
-      apply/upathP; by exists p.
-    - move => p q U. suff: connect sedge (inl b : sjoin T1 T2) (inr a) by rewrite join_disc. 
-      rewrite connect_symI; last exact: join_rel_sym. apply/upathP. by exists p.
-    - move => p q Up Uq.
-      case: (lift_upath _ _ Up (sub_inr Up)) => //; first exact: inr_inj. 
-      case: (lift_upath _ _ Uq (sub_inr Uq)) => //; first exact: inr_inj. 
-      move => p0 [P0 P1] q0 [Q0 Q1]. 
-      suff E: p0 = q0 by congruence. 
-      exact: (@forestP _ a b).
+  Lemma join_is_forest : is_forest [set: sjoin T1 T2].
+  Proof with try solve [exact: inl_inj|exact: inr_inj
+                       |exact: sub_inl|exact: sub_inr].
+    move => [a|a] [b|b] _ _ p q [Ip _] [Iq _].
+    - case: (lift_Path (p' := p)) => //...
+      case: (lift_Path (p' := q)) => //...
+      move => p' Np I q' Nq I'. 
+      have E : p' = q'. { apply: forestP; by rewrite ?I ?I'. }
+      apply/eqP. by rewrite -nodes_eqE -Nq -E Np.
+    - move: (Path_connect p). by rewrite join_disc.
+    - move: (Path_connect p). by rewrite sconnect_sym join_disc.
+    - case: (lift_Path (p' := p)) => //...
+      case: (lift_Path (p' := q)) => //...
+      move => p' Np I q' Nq I'. 
+      have E : p' = q'. { apply: forestP; by rewrite ?I ?I'. }
+      apply/eqP. by rewrite -nodes_eqE -Nq -E Np.
   Qed.
       
-  Definition tjoin := @Forest (sjoin T1 T2) join_forest_axiom.
+  Definition tjoin := @Forest (sjoin T1 T2) join_is_forest.
 
-  Definition decompU G1 G2 (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : tjoin -> {set union G1 G2} := 
+  Definition decompU G1 G2 (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : 
+    tjoin -> {set union G1 G2} := 
     [fun a => match a with 
           | inl a => [set inl x | x in D1 a]
           | inr a => [set inr x | x in D2 a]
@@ -188,161 +185,115 @@ End JoinT.
 
 (** ** Link Construction *)
 
-Section Link. 
-  Variables (T : forest) (t1 t2 : T).
+Section Link.
+  Variables (T : forest) (U : {set T}).
+  Hypothesis U_disc : {in U &,forall x y, x != y -> ~~ connect sedge x y}.
   
-  Hypothesis disconn_t1_t2 : ~~ connect sedge t1 t2.
-
-  Definition link_rel a b := 
-    match a,b with 
-    | Some x,None => (x == t1) || (x == t2) 
-    | None, Some x => (x == t1) || (x == t2)
-    | Some x,Some y => x -- y
-    | None,None => false
-    end.
-
-  Lemma link_rel_sym : symmetric link_rel.
-  Proof. move => [x|] [y|] //=; by rewrite sg_sym. Qed.
+  Definition link := add_node T U.
   
-  Lemma link_rel_irrefl : irreflexive link_rel.
-  Proof. move => [x|] //=; by rewrite sg_irrefl. Qed.
-  
-  Definition link := SGraph link_rel_sym link_rel_irrefl. 
-
-  Lemma lift_link_rel (x y : T) p : 
-    @upath link (Some x) (Some y) p -> None \notin p -> 
-    exists2 p0, upath x y p0 & p = map Some p0.
+  Lemma link_unique_lift (x y : link) : 
+    unique (fun p : Path x y => irred p /\ None \notin p).
   Proof. 
-    move => A B. case: (lift_upath _ _ A (codom_Some B))=> // [|p0 [? ?]].
-    - exact: Some_inj.
-    - by exists p0.
+    move: x y => [x|] [y|] p q [Ip Np] [Iq Nq]; 
+      try by rewrite ?(@nodes_end link) ?(@nodes_start link) in Np Nq.
+    gen have H,Hp : p Ip Np / {subset p <= codom Some}.
+    { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
+    case: (lift_Path (p' := p)) => //; first exact: Some_inj.
+    case: (lift_Path (p' := q)) => //; first exact: Some_inj. exact: H.
+    move => p0 Ep Ip0 q0 Eq Iq0. 
+    have E : p0 = q0. apply: forestP; by rewrite ?Ip0 ?Iq0.
+    apply/eqP. rewrite -nodes_eqE. by apply/eqP;congruence.
   Qed.
 
-  Lemma lift_link_spath (x y : T) p : 
-    @spath link (Some x) (Some y) p -> None \notin p -> 
-    exists2 p0, spath x y p0 & p = map Some p0.
+  Lemma link_bypass (x y : T) (p : @Path link (Some x) (Some y)) : 
+    x \in U -> y \in U -> None \notin p -> x = y.
   Proof. 
-    move => A B. case: (lift_spath _ _ A (codom_Some B))=> // [|p0 [? ?]]. 
-    - exact: Some_inj.
-    - by exists p0.
+    move => xU yU Np. apply: contraTeq isT => /U_disc. 
+    move/(_ xU yU). apply: contraNN => _.
+    have Hp: {subset p <= codom Some}.
+    { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
+    case: (lift_Path (p' := p)) => //; first exact: Some_inj.
+    move => p' _ _. exact: Path_connect p'. 
   Qed.
 
-  Lemma unique_Some_aux x y : 
-    unique (fun p => @upath link (Some x) (Some y) p /\ None \notin p).
+  Lemma link_unique_None (x : link) : 
+    unique (fun p : @Path link None x => irred p).
   Proof.
-    move => p q [p1 p2] [q1 q2].
-    case: (lift_link_rel p1 p2) => p0 Up ->. 
-    case: (lift_link_rel q1 q2) => q0 Uq ->. 
-    by rewrite (forestP Up Uq).
+    move: x => [x|] p q Ip Iq; last by rewrite (irredxx Ip) (irredxx Iq).
+    case: (splitL p) => // [] [y|] [/= xy] [p'] [P1 _] //. 
+    case: (splitL q) => // [] [z|] [/= xz] [q'] [Q1 _] //. subst. 
+    move: Ip Iq. rewrite !irred_edgeL => /andP[Np Ip] /andP[Nq Iq].
+    have ? : y = z. { 
+      apply: (link_bypass (p := pcat p' (prev q'))) => //.
+      by rewrite (@mem_pcat link) mem_prev negb_or Np Nq. }
+    subst. congr pcat; first exact: val_inj. exact: link_unique_lift.
   Qed.
 
-  Lemma diamond x (p q : seq link) :
-    @spath link (Some t1) (Some x) p -> 
-    @spath link (Some t2) (Some x) q -> 
-    None \notin p -> None \notin q -> False.
-  Proof.
-    move => pth_p pth_q Np Nq. 
-    apply: (negP disconn_t1_t2). apply: (connect_trans (y := x)). 
-    - case: (lift_link_spath pth_p Np) => p0 [P0 ?];subst.
-      apply/spathP. by exists p0.
-    - case: (lift_link_spath pth_q Nq) => p0 [P0 ?];subst.
-      rewrite connect_symI; last exact: sg_sym. 
-      apply/spathP. by exists p0.
-  Qed.
-        
-  Lemma unique_None x : unique (@upath link None x).
-  Proof.
-    case: x => [x|]; last by move => p q /upath_nil -> /upath_nil ->. 
-    case => [|a p] [|b q] //; try by [case|move => _ []].
-    rewrite !upath_cons. case: b => // b. case: a => //= a. 
-    move => /and3P [H1 /notin_tail H2 H3] /and3P [H4 /notin_tail H5 H6].
-    suff/eqP ? : a == b. { subst b. congr cons. exact: (@unique_Some_aux a x). }
-    case/orP : H1 => /eqP ?; case/orP : H4 => /eqP ?; subst => //; exfalso.
-    - apply: (@diamond x p q) => //; exact: upathW.
-    - apply: (@diamond x q p) => //; exact: upathW.
-  Qed.
-    
-  Lemma unique_None' x : unique (@upath link x None).
-  Proof. apply: (upath_sym (G := link)). exact: unique_None. Qed.
-
-  Lemma upath_None_Some x p : 
-    @upath link None (Some x) p ->  exists a p', p = Some a :: p' /\ a \in [set t1;t2].
+  Lemma link_has_None (x y : link) (p q : Path x y) : 
+    irred p -> irred q -> None \in p -> None \in q.
   Proof. 
-    case: p => // [[a|//]] p'. rewrite upath_cons /= => /and3P [H _ _]. 
-    exists a. exists p'. by rewrite !inE. 
+    move: x y p q => [x|] [y|] p q; 
+      try by rewrite ?(@nodes_end link) ?(@nodes_start link).
+    move => Ip Iq Np. apply: contraTT isT => Nq. 
+    case/(isplitP Ip) def_p : _  / Np => [p1 p2 _ _ _]. subst.
+    move: Ip. rewrite irred_cat' => /and3P[Ip1 Ip2 /eqP/setP I12].
+    case: (splitL p2) => // [] [a|] [/= na] [p2'] [D _] //. 
+    case: (splitL (prev p1)) => // [] [b|] [/= nb] [p1'] [D' _] //. 
+    have ? : b = a.
+    { suff [p Hp] : exists p : @Path link (Some b) (Some a), None \notin p.
+      { exact: link_bypass Hp. }
+      exists (pcat p1' (pcat q (prev p2'))). 
+      rewrite !(@mem_pcat link) mem_prev (negbTE Nq) /= negb_or. 
+      move: Ip1 Ip2. rewrite -irred_rev D' D !irred_edgeL. by do 2 case: (_ \notin _). }    
+    subst. move: (I12 (Some a)). 
+    rewrite !inE !mem_pcat mem_edgep -mem_prev D' !eqxx /=.
+    by rewrite (@mem_pcat link) nodes_start orbT => /esym. 
   Qed.
 
-  Lemma link_none x y p q : 
-    @upath link (Some x) (Some y) p -> @upath link (Some x) (Some y) q -> 
-    None \in p -> None \in q.
+  Lemma link_is_forest : is_forest [set: link].
   Proof.
-    move => Up Uq in_p. apply: contraT => in_q. exfalso.
-    case: (usplitP (G := link) (mem_tail _ in_p) Up) => {in_p Up p} p1 p2 Upl Upr.
-    move/(rev_upath (G := link)) : (Upl) => Upl'.
-    rewrite (eq_disjoint (srev_nodes (upathW Upl))) => D'.
-    case: (upath_None_Some Upr) => a [p] [? H]. subst. 
-    case: (upath_None_Some Upl') => b [p'] [E H']. rewrite E in Upl' D' => {E Upl p1}.
-    case/upath_consE : Upr => _ /notin_tail P1 P2.
-    case/upath_consE : Upl' => _ /notin_tail Q1 Q2.
-    have {D'} X: a != b. 
-    { apply/negP => /eqP ?;subst. by rewrite !disjoint_cons mem_head /= andbF in D'. }
-    have [s S1 S2] : exists2 s, @spath link (Some b) (Some y) s & None \notin s.
-    { exists (p'++q); first by spath_tac;eapply spath_concat; eassumption. (* TODO: fix spath_tac *)
-      by rewrite mem_cat (negbTE in_q) (negbTE Q1). }
-    rewrite !inE in H H'. case/orP : H; case/orP : H' => /eqP ? /eqP ?; 
-      subst; try by rewrite eqxx in X.
-    - apply: (@diamond y p s) => //. exact: upathW.
-    - apply: (@diamond y s p) => //. exact: upathW.
+    apply: unique_forestT => x y p q Ip Iq. 
+    case: (boolP (None \in p)) => Np.
+    - have Nq := link_has_None Ip Iq Np.
+      case/(isplitP Ip) def_p : _ / Np => [p1 p2 Ip1 Ip2 _].
+      case/(isplitP Iq) def_q : _ / Nq => [q1 q2 Iq1 Iq2 _].
+      congr pcat. 
+      + apply: srev_inj. apply: link_unique_None; by rewrite irred_rev.
+      + exact: link_unique_None.
+    - suff Nq : None \notin q by apply: link_unique_lift. 
+      apply: contraNN Np. exact: link_has_None.
   Qed.
-
-  Lemma link_forest_axiom : forest_axiom link.
-  Proof.
-    move => [x|] [y|]; try solve [apply: unique_None]. 
-    2: by apply: (upath_sym (G := link)) ; apply: unique_None.
-    move => p q.  case: (boolP (None \in p)) => in_p Up Uq.
-    - have in_q : None \in q by apply: link_none Uq in_p.
-      case:(usplitP (G := link) (mem_tail _ in_p) Up) => pl pr Upl Upr _.
-      case:(usplitP (G := link) (mem_tail _ in_q) Uq) => ql qr Uql Uqr _.
-      by rewrite (unique_None Upr Uqr) (unique_None' Upl Uql).
-    - have in_q : None \notin q. apply: contraNN in_p. exact: link_none Up.
-      exact: (@unique_Some_aux x y). 
-  Qed.
-
-  Definition tlink := @Forest link link_forest_axiom.
+      
+  Definition tlink := @Forest link link_is_forest.
 
   Definition decompL G (D : T -> {set G}) A a := 
     match a with Some x => D x | None => A end.
 
-  
   Lemma decomp_link (G : graph) (D : T -> {set G}) (A  : {set G}) : 
-    A \subset D t1 :|: D t2 ->
+    A \subset \bigcup_(t in U) D t ->
     decomp D -> @decomp tlink G (decompL D A).
   Proof.
     move => HA decD. split => //.
     - move => x. case: (bag_cover decD x) => t Ht. by exists (Some t). 
     - move => e. case: (bag_edge decD e) => t Ht. by exists (Some t).
-    - have X x a : x \in D a -> x \in A -> 
-        connect (restrict [pred t | x \in decompL D A t] link_rel) (Some a) None.
-      { move => H1 H2.  move/(subsetP HA) : (H2). case/setUP => H3.
-        - apply: (connect_trans (y := Some t1)). 
-          + move: (bag_conn decD H1 H3). exact: connect_img.
-          + apply: connect1 => /=; by rewrite !in_simpl H2 H3 !eqxx.
-        - apply: (connect_trans (y := Some t2)). 
-          + move: (bag_conn decD H1 H3). exact: connect_img.
-          + apply: connect1 => /=. by rewrite !in_simpl H2 H3 !eqxx orbT. }
+    - have X x a : x \in D a -> x \in A ->
+        connect (restrict [pred t | x \in decompL D A t] (add_node_rel U)) 
+                (Some a) None.
+      { move => H1 H2. move/(subsetP HA) : (H2) => /bigcupP [t Ht1 Ht2].
+        apply: (connect_trans (y := Some t)).
+        - move: (bag_conn decD H1 Ht2). exact: connect_img.
+        - apply: connect1 => /=; by rewrite !in_simpl H2 Ht1. }
       move => x [a|] [b|] /= H1 H2; last exact: connect0. 
       + move: (bag_conn decD H1 H2). exact: connect_img. 
       + exact: X.
-      + rewrite connect_symI; first exact: X. apply: symmetric_restrict. exact: link_rel_sym.
+      + rewrite (@srestrict_sym link). exact: X. 
   Qed.
 
   Lemma width_link (G : graph) (D : T -> {set G}) (A  : {set G}) : 
     width (decompL D A) <= maxn (width D) #|A|.
   Proof.
-    rewrite /width (bigID (pred1 None)) /= geq_max. apply/andP;split.
-    - apply: leq_trans (leq_maxr _ _). by rewrite big_pred1_eq. 
-    - rewrite (reindex Some) /= ?leq_maxl //.
-      exists (fun x => if x is Some y then y else t1) => // x0. by case: x0.
+    apply/bigmax_leqP => [] [t|] _ /=; last by rewrite ?leq_maxr. 
+    apply: leq_trans (leq_maxl _ _). exact: leq_bigmax.
   Qed.
 
 End Link.
@@ -377,11 +328,17 @@ Section Quotients.
     pose D := decompU D1 D2.
     have dec_D : decomp T (union G1 G2) D by exact: join_decomp. 
     have dis_t1_t2 : ~~ connect (@sedge T)(inl t1) (inr t2) by rewrite join_disc.
-    pose T' := tlink dis_t1_t2.
+    have dis_T12 : {in [set inl t1;inr t2] &, forall x y, x != y -> ~~ connect (@sedge T) x y}.
+    { move => [?|?] [?|?] /setUP[] /set1P-> /setUP[]/set1P ->. 
+      all: by rewrite ?eqxx // => _; rewrite sconnect_sym. }
+    pose T' := @tlink T _ dis_T12.
     pose D' := decompL D P.
     have dec_D' : decomp T' (union G1 G2) D'.
     { apply: decomp_link => //. apply/subsetP => x.
-      rewrite !inE -!orbA => /or4P [] /eqP->; by rewrite mem_imset ?orbT. }
+      rewrite !inE -!orbA => /or4P [] /eqP->.
+      all: apply/bigcupP; solve 
+        [ by exists (inl t1) => //; rewrite ?inE ?mem_imset ?eqxx 
+        | by exists (inr t2) => //; rewrite ?inE ?mem_imset ?eqxx]. }
     pose h := @hom_of (union G1 G2) e : h_ty _ (merge (union G1 G2) e).
     exists T'. exists (rename D' h.1); split; last by exists None.
     - apply: rename_decomp => //; first exact: hom_of_surj.

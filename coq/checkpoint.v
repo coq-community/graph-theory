@@ -1244,10 +1244,6 @@ End CheckpointOrder.
 
 Arguments ncp0 [G] G_conn [U] x p : rename.
 
-Lemma irred_edgeL (G : sgraph) (y x z1 : G) (xz1 : x -- z1) (p : Path z1 y) : 
-  irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
-Proof. case: p => p pth_p. by rewrite !irredE /= mem_path /=. Qed.
-
 Lemma CP_treeI (G : sgraph) (U : {set G}) :
   connected [set: G] ->
   (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree [set: CP_ U].

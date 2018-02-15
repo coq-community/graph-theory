@@ -29,6 +29,9 @@ Prenex Implicits sedge.
 Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
 Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
 
+Lemma sconnect_sym (G : sgraph) : connect_sym (@sedge G).
+Proof. apply: connect_symI. exact: sg_sym. Qed.
+
 Lemma sedge_equiv (G : sgraph) : 
   equivalence_rel (connect (@sedge G)).
 Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
@@ -474,6 +477,14 @@ Section IPath.
   Canonical IPath_finType := Eval hnf in FinType IPath IPath_finMixin.
 End IPath.
 
+Lemma irred_nodes x y (p : Path x y) : irred p = uniq (nodes p).
+Proof. by rewrite irredE nodesE. Qed.
+
+Lemma nodes_eqE x y (p q : Path x y) : (nodes p == nodes q) = (p == q).
+Proof.
+  case: q p => q pth_q [p pth_p]. 
+  by rewrite !nodesE -val_eqE /= eqseq_cons eqxx.
+Qed.
 
 Definition in_nodes x y (p : Path x y) : collective_pred G := 
   [pred u | u \in nodes p].
@@ -518,6 +529,9 @@ End PathTheory.
 
 Lemma prevK x y (p : Path x y) : prev (prev p) = p.
 Proof. apply/val_inj=> /=. apply: srevK. exact: path_last. Qed.
+
+Lemma srev_inj x y : injective (@prev x y).
+Proof. apply: (can_inj (g := (@prev y x))) => p. exact: prevK. Qed.
 
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
@@ -595,6 +609,10 @@ Proof. by rewrite mem_path !inE. Qed.
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
 Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
 
+Lemma irred_edgeL y x z1 (xz1 : x -- z1) (p : Path z1 y) : 
+  irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
+Proof. case: p => p pth_p. by rewrite !irredE /= mem_path /=. Qed.
+
 Lemma disjoint_edgep x y z (xy : x -- y) (p : Path y z) :
   irred p -> 
   [disjoint edgep xy & tail p] = (x \notin p).
@@ -607,7 +625,23 @@ Proof.
 Qed.
 
 
-(** Induction principle for irredundant packaged paths *)
+(** Induction principles for irredundant packaged paths *)
+
+Lemma Path_ind P (y : G) : 
+  P y y (idp y) -> 
+  (forall x z (p : Path z y) (xz : x -- z), 
+      P z y p -> P x y (pcat (edgep xz) p)) -> 
+  forall x (p : Path x y), P x y p.
+Proof. 
+  move => Hbase Hstep x [p pth_p]. 
+  elim: p x pth_p => [|z p IH] x A. 
+  - have ?: x = y. { exact: spath_nil. }
+    subst y. rewrite [Build_Path _](_ : _ = idp x) //. exact: val_inj.
+  - move: {-}(A). rewrite spath_cons => /andP [xz B2].
+    have -> : Build_Path A = 
+             (pcat (edgep xz) (Build_Path B2)) by exact: val_inj.
+    apply: Hstep. exact: IH.
+Qed.
 
 Lemma irred_ind P (y : G) : 
   P y y (idp y) -> 
@@ -615,19 +649,22 @@ Lemma irred_ind P (y : G) :
       irred p -> x \notin p -> P z y p -> P x y (pcat (edgep xz) p)) -> 
   forall x (p : Path x y), irred p -> P x y p.
 Proof. 
-  move => Hbase Hstep x [p pth_p]. rewrite irredE => A.
-  have {A} A : upath x y p by rewrite /upath A.
-  rewrite (bool_irrelevance pth_p (upathW A)) => {pth_p}.
-  elim: p x A => [|z p IH] x A. 
-  - have ?: x = y. { move/upathW in A. exact: spath_nil. }
-    subst y. rewrite [Build_Path _](_ : _ = idp x) //. exact: val_inj.
-  - move: {-}(A). rewrite upath_cons => /and3P [xz B2 B3].
-    have -> : Build_Path (upathW A) = 
-             (pcat (edgep xz) (Build_Path (upathW B3))) by exact: val_inj.
-    apply: Hstep.
-    + apply: upath_irred. 
-    + by rewrite mem_path. 
-    + exact: IH.
+  move => Hbase Hstep. 
+  apply: (Path_ind (P := (fun x y p => irred p -> P x y p))) => //.
+  move => x z p xz IH. rewrite irred_edgeL => /andP[A B]. 
+  by apply: Hstep; auto.
+Qed.
+
+Lemma path_closed (A : pred G) x y (p : Path x y) : 
+  x \in A -> (forall y z, y \in A -> y -- z -> z \in A) -> {subset p <= A}.
+Proof.
+  move: x p. 
+  apply (Path_ind (P := fun x y p =>  
+         x \in A -> (forall y0 z : G, y0 \in A -> y0 -- z -> z \in A) -> {subset p <= A})).
+  - move => yA _ z. by rewrite mem_idp => /eqP->.
+  - move => x z p xz IH xA clos_A u. rewrite mem_pcat mem_edgep -orbA.
+    have ? : z \in A by exact: clos_A xz.
+    case/or3P => [/eqP->|/eqP->|] //. exact: IH. 
 Qed.
 
 (** *** Splitting Paths **)
@@ -764,14 +801,16 @@ Proof.
 Qed.
 
 
-(* TOTHINK: What do we do about the forest constructions, do we move to packaged paths? *)
-Lemma lift_spath' (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
+(* TOTHINK: Use this to prove the lemmas above? *)
+Lemma lift_Path (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
-  exists p : Path a b, map f (val p) = val p'.
+  exists2 p : Path a b, map f (nodes p) = nodes p' & irred p = irred p'.
 Proof.
   move => A I S. case: (lift_spath A I (valP p') _).
-    move=> x V. apply: S. by rewrite mem_path inE V.
-  move => p [p1 p2]. exists (Sub p p1). by rewrite -p2. 
+  - move => x V. apply: S. by rewrite mem_path inE V.
+  - move => p [p1 p2]. exists (Sub p p1). 
+    + by rewrite !nodesE /= p2. 
+    + by rewrite !irredE -p2 -map_cons map_inj_uniq.
 Qed.
 
 (** *** Path indexing and 3-way split *)
@@ -1290,7 +1329,7 @@ Definition is_tree S := is_forest S /\ connected S.
 Definition is_forestb S := 
   [forall x in S, forall y in S, #|[pred p : IPath x y| val p \subset S]| <= 1] .
 
-Lemma forestP S : reflect (is_forest S) (is_forestb S).
+Lemma is_forestP S : reflect (is_forest S) (is_forestb S).
 Proof.
   apply: (iffP idP) => H.
   - move => x y xS yS p q [Ip Sp] [Iq Sq]. 
@@ -1325,7 +1364,7 @@ Lemma forestI S :
      [/\ x \in S, y \in S, p1 \subset S & p2\subset S]) ->
   is_forest S.
 Proof.
-  move => H. apply/forestP. case: (boolP (_ S)) => //.
+  move => H. apply/is_forestP. case: (boolP (_ S)) => //.
   rewrite negb_forall_in => /exists_inP [x xS].
   rewrite negb_forall_in => /exists_inP [y yS].
   rewrite leqNgt negbK => /card_gt1P [p1] [p2] [A B C].
@@ -1398,6 +1437,13 @@ duplicate free path between any two nodes *)
 
 Record forest := Forest { sgraph_of_forest :> sgraph ;
                           forest_is_forest :> is_forest [set: sgraph_of_forest] }.
+
+Lemma forestP (T : forest) (x y : T) (p q : Path x y) :
+  irred p -> irred q -> p = q.
+Proof.
+  move/forestT_unique : (@forest_is_forest T) => fP.
+  move => Ip Iq. exact: fP.
+Qed.
 
 Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
 
