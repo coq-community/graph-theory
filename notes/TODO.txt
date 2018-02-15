@@ -1,0 +1,25 @@
+* Path/Trees
+revisit uses of upath (CD)
+packaged irredundant paths (CD)
+consistent tree/forest theory (CD) 
+trees/forests as sets on graphs (like connected) (CD)
+* Checkpoints
+change checkpoints to use "connect restrict" 
+phrase sinterval in terms of checkpoints
+define CP as set on the link graph?
+prove CP_tree / K4_split_nontrivial using CP rather than CP_
+* Multigraphs
+edges / adjacent / edge_set (GC)
+- edges primitive
+- edge_set (big union of edges)
+- adjacent as exists in union
+- define sk_rel in terms of adjacent
+* Isomorphism
+iso_cases Ltac wrapper (using iso_gI)
+make (x != y) an assumption in sg_hom
+* Proofs that need cleanup
+forest properties for combinations of forests
+use skeleton in subalgebra
+K4-free-of-TW2
+CP_treeI (use packaged paths as much as possible) (GC - blocked)
+K4_split_nontrivial (GC - blocked)
