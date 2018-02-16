@@ -66,14 +66,11 @@ Proof.
   move => /connectedTE conn_G Hv. 
   case/uPathP : (conn_G v (val x)) => p _. 
   have vx: v != val x. { apply: contraNN Hv => /eqP->. exact: valP. }
-  case: (splitL p vx) => u [vu] _ {p vx}. rewrite -adjacentE in vu.
-  case/andP: vu => _ /orP[] [/existsP [e He]].
-  - refine (@measure_subgraph _ _ _ _ _ _ e _). 
-    apply: contraNN Hv. move/con => [Hs Ht]. 
-    move: He. by rewrite inE => /andP[/eqP<- _].
-  - refine (@measure_subgraph _ _ _ _ _ _ e _). 
-    apply: contraNN Hv. move/con => [Hs Ht]. 
-    move: He. by rewrite inE => /andP[_ /eqP<-].
+  case: (splitL p vx) => u [vu] _ {p vx}. move: vu.
+  rewrite /=/sk_rel. case/andP=> _ /existsP[e He].
+  refine (@measure_subgraph _ _ _ _ _ _ e _).
+  apply: contraNN Hv. move/con => [Hs Ht].
+  move: He. by rewrite !inE => /orP[/andP[/eqP<- _]|/andP[_ /eqP<-]].
 Qed.
 
 (** ** Subroutines *)
@@ -90,9 +87,9 @@ Definition lens (G : graph2) :=
 Lemma get_edge (G : graph) (U : {set G}) (x y : skeleton G) : 
   x \in U -> y \in U -> x -- y -> exists e : edge G, e \in edge_set U.
 Proof.
-  move => Hx Hy. rewrite -adjacentE => /andP [_] /orP [A|A].
-  all: case/existsP : A => e; rewrite !inE => /andP[/eqP S /eqP T].
-  all: exists e; by rewrite inE S T Hx Hy.
+  move => Hx Hy. rewrite /=/sk_rel => /andP[_].
+  case/existsP=> e He. exists e. move: He.
+  by rewrite !inE => /orP[]/andP[/eqP-> /eqP->]; rewrite Hx Hy.
 Qed.
 
 Lemma edgeless_bag (G : graph) (U : {set G}) x : 
@@ -153,7 +150,7 @@ Proof.
   apply/equivalence_partition_gt1P.
   - move => x y z _ _ _. exact: (sedge_in_equiv (G := skeleton G)).
   - set H := sinterval _ _. apply: ssplit_K4_nontrivial (E) _ (D).
-    + by rewrite -adjacentE A.
+    + by rewrite /=/sk_rel A.
     + by case/and3P : B.
     + apply/eqP. apply: edgeless_bag => //=. 
       * apply: (@CP_extensive G); by rewrite !inE eqxx.
@@ -251,14 +248,11 @@ Lemma sskeleton_add (G : graph) (x y : G) :
   sgraph.subgraph (sskeleton (igraph x y))
                   (add_edge (sigraph G x y) istart iend).
 Proof.
-  exists id => // u v uv; right; move: uv.
-  rewrite /= -!(inj_eq val_inj)/=. case/or3P=> [uv|->//|->//].
-  rewrite orbA; apply/orP; left; apply/orP; left. move: uv.
-  rewrite -[sk_rel _ u v]/(@sedge (skeleton _) u v).
-  rewrite -[sk_rel G _ _]/(@sedge (skeleton G) _ _).
-  rewrite -!adjacentE (inj_eq val_inj) => /andP[-> /=].
-  case/orP=> /existsP[e He]; apply/orP; [left|right]; apply/existsP.
-  all: by exists (val e); move: He; rewrite !inE -!(inj_eq val_inj) /=.
+  exists id => // u v uv; right; move: u v uv. apply sskelP.
+  - move=> u v. by rewrite sg_sym.
+  - move=> e sNt. rewrite /= -!val_eqE /=. apply/orP; left.
+    by rewrite /sk_rel sNt adjacent_edge.
+  - by rewrite /=/sk_rel -!val_eqE /= !eqxx => ->.
 Qed.
 
 Lemma CK4F_igraph (G : graph2) (x y : G) : 
@@ -285,20 +279,6 @@ Proof.
   all: by rewrite (disjointFr (interval_bag_edges_disj G_conn _ _) He).
 Qed.
 
-Lemma skeleton_induced_edge (G : graph) (V : {set skeleton G}) u v : 
-  ((val u : skeleton G) -- val v) = ((u : skeleton (induced V)) -- v).
-Proof.
-  rewrite /= /sk_rel. apply: sc_eq => {u v} u v /=.
-  rewrite val_eqE. case E : (_ != _) => //=. 
-  apply/existsP/existsP.
-  - case => e e_uv. 
-    have He: e \in edge_set V. 
-    { case/andP : e_uv => E1 E2. rewrite inE (eqP E1) (eqP E2).
-      apply/andP;split; exact: valP. }
-    exists (Sub e He). by rewrite -!val_eqE.
-  - case => e. rewrite -!val_eqE /= => e_uv. by exists (val e).
-Qed.
-
 (* TOTHINK: how to align induced subgraphs for simple graphs and
 induced subgraphs for multigraphs *)
 Lemma connected_induced (G : graph) (V : {set skeleton G}) : 
@@ -309,10 +289,9 @@ Proof.
   case/upathPR => p /upathW.
   elim: p u => [?|a p IH u]. 
   - move/spath_nil/val_inj ->. exact: connect0.
-  - rewrite spath_cons /= -!andbA => /and4P [A B C D]. 
+  - rewrite spath_cons /= (lock sk_rel) -!andbA -lock => /and4P [A B C D].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
-    apply: connect1. change (u -- (Sub a B)). 
-    by rewrite -skeleton_induced_edge.
+    apply: connect1. move: C. by rewrite /sk_rel -val_eqE adjacent_induced.
 Qed.
 
 Lemma induced_K4_free (G : graph2) (V : {set G}) : 
@@ -344,11 +323,10 @@ Proof.
   exists val; first exact: val_inj.
   move=> x y xy. right. move: xy. rewrite /= -!(inj_eq val_inj) /=.
   case/or3P=> [xy|->|->] //. apply/orP. left.
-  have /negbT : x == y = false := @sg_edgeNeq (induced V) x y xy.
   pattern x, y. revert x y xy.
-  apply skelP; first by move=> x y xy; rewrite eq_sym sk_rel_sym.
+  apply skelP; first by move=> x y xy; rewrite sk_rel_sym.
   move=> e. rewrite /sk_rel/= -!(inj_eq val_inj)/= => -> /=.
-  apply/orP. left. apply/'exists_andP. by exists (sval e).
+  exact: adjacent_edge.
 Qed.
 
 
@@ -411,7 +389,7 @@ Proof.
   have conn_iC : @connected G (g_in |: C).
   { apply: (@connectedU_edge G _ _ g_in z) => //.
     - by rewrite set11.
-    - rewrite -adjacentE Z2 andbT. 
+    - rewrite /=/sk_rel Z2 andbT.
       move/(subsetP Csub) in Z1. by rewrite !inE eq_sym in Z1. 
     - apply: connected1.
     - apply: connected_in_components HC.  }
@@ -422,7 +400,7 @@ Proof.
     apply: iso_K4_free. apply: sg_iso_sym. 
     apply: sg_iso_trans; last apply sskeleton_adjacent.
       rewrite (setU1_mem Z1). exact: sg_iso_refl.
-    exact: adjacent_induced.
+    by rewrite adjacent_induced.
 Qed.
 
 Lemma measure_redirect (G : graph2) C : 
@@ -480,8 +458,8 @@ Proof.
     by case/and3P: G_lens => _ _ /(@sg_edgeNeq (link_graph G))->.
   have Nio : ~~ @adjacent G g_in g_out.
   { apply: contraTN Eio0 => io. apply/set0Pn.
-    case/orP: io => /existsP[e]; rewrite inE => /andP[/eqP src_e /eqP tgt_e].
-    all: by exists e; rewrite !inE src_e tgt_e !eqxx //. }
+    case/existsP: io => e. rewrite inE => He. exists e.
+    by case/orP: He; apply: edge_in_set; rewrite in_set2 eqxx. }
   have : 1 < #|P| by exact: split_K4_nontrivial.
   rewrite (cardD1 C) C_comp add1n ltnS => /card_gt0P[/= D].
   rewrite !inE => /andP[DNC] D_comp. by exists D.

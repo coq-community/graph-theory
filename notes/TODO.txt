@@ -9,14 +9,10 @@ phrase sinterval in terms of checkpoints
 define CP as set on the link graph?
 prove CP_tree / K4_split_nontrivial using CP rather than CP_
 * Multigraphs
-edges / adjacent / edge_set (GC)
-- edges primitive
-- edge_set (big union of edges)
-- adjacent as exists in union
-- define sk_rel in terms of adjacent
+edge_set as big union of edges (GC: current def seems better)
 * Isomorphism
 iso_cases Ltac wrapper (using iso_gI)
-make (x != y) an assumption in sg_hom
+make (h x != h y) an assumption in hom_s
 * Proofs that need cleanup
 forest properties for combinations of forests
 use skeleton in subalgebra

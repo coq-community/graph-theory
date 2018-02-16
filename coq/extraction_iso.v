@@ -50,9 +50,8 @@ Proof.
   have E :  g_in |: (g_out |: C) = g_in |: (x |: C).
   { by rewrite (eqP Eio) [x |: C]setU1_mem // setUA setUid. }
   - apply: subgraph_for_iso => //; by rewrite ?E //= (eqP Eio).
-  - case: (comp_exit G_conn Eio HC) => z Z1 Z2.
-    rewrite sg_sym -adjacentE in Z2. case/andP : Z2 => [A B].
-    move/(_ z). by rewrite Z1 B. 
+  - case: (comp_exit G_conn Eio HC) => z Z1.
+    rewrite sg_sym /=/sk_rel => /andP[_ B] /(_ z). by rewrite Z1 B.
 Qed.
 
 Lemma componentless_one (G : graph2) :
@@ -90,9 +89,7 @@ Proof.
     rewrite !inE. case: (altP (source e =P target e)) => [<-|He].
       by rewrite !andbb -!orbA orbN.
     rewrite -negb_or orbC -implybE. apply/implyP.
-    have {He} : @sedge G (source e) (target e).
-    { rewrite -adjacentE He. apply/orP; left; apply/existsP; exists e.
-      by rewrite !inE !eqxx. }
+    have {He} : @sedge G (source e) (target e) by rewrite /=/sk_rel He adjacent_edge.
     move: {e} (source e) (target e).
     suff Hyp (x y : G) : @sedge G x y -> x \in C ->
                          [|| y == g_in, y == g_out | y \in C].
