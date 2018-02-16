@@ -248,7 +248,7 @@ Lemma sskeleton_add (G : graph) (x y : G) :
   sgraph.subgraph (sskeleton (igraph x y))
                   (add_edge (sigraph G x y) istart iend).
 Proof.
-  exists id => // u v uv; right; move: u v uv. apply sskelP.
+  exists id => // u v uv _; move: u v uv. apply sskelP.
   - move=> u v. by rewrite sg_sym.
   - move=> e sNt. rewrite /= -!val_eqE /=. apply/orP; left.
     by rewrite /sk_rel sNt adjacent_edge.
@@ -321,7 +321,7 @@ Proof.
   split; first exact: connected_induced.
   case: G_CK4F => _. apply: subgraph_K4_free.
   exists val; first exact: val_inj.
-  move=> x y xy. right. move: xy. rewrite /= -!(inj_eq val_inj) /=.
+  move=> x y xy _. move: xy. rewrite /= -!(inj_eq val_inj) /=.
   case/or3P=> [xy|->|->] //. apply/orP. left.
   pattern x, y. revert x y xy.
   apply skelP; first by move=> x y xy; rewrite sk_rel_sym.

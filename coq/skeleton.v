@@ -85,11 +85,9 @@ Proof.
   apply: S. exact: IO.
 Qed.
 
-
+(* Note: The proof below is a bit obsucre due to the abbiguity of [x -- y] *)
 Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
-Proof.
-  (* Note: This is really obsucre due to the abbiguity of [x -- y] *)
-  exists id => //= x y H. right. exact: subrelUl. 
+Proof. exists id => //= x y H _. exact: subrelUl. 
 Qed.
 
 (** Bridging Lemmas *)
@@ -116,8 +114,8 @@ Lemma sskeleton_subgraph_for (G : graph2) (V : {set G}) (E : {set edge G})
   sgraph.subgraph (sskeleton (point (subgraph_for con) i o)) (sskeleton G).
 Proof.
   rewrite {2}/sskeleton/= => <- <-.
-  exists val; first exact: val_inj.
-  move=> x y xy; right; move: x y xy. apply sskelP.
+  exists val; first exact: val_inj. 
+  rewrite /hom_s. move => x y xy _. move: x y xy. apply sskelP.
   - move=> x y. by rewrite sg_sym.
   - move=> e sNt. apply/orP; left. apply/andP. split=> //. exact: adjacent_edge.
   - move=> /= iNo. by rewrite iNo !eqxx.
@@ -553,7 +551,7 @@ Lemma sub_sub (G H : graph) :
   subgraph G H -> sgraph.subgraph G H.
 Proof.
   move => [[hv he]] [/= hom_h lab_h] [/= inj_hv inj_he]. 
-  exists hv => // x y xy. right. move: x y xy.
+  exists hv => // x y xy _. move: x y xy. 
   apply skelP; first by move=> x y; rewrite sg_sym.
   move=> e sNt. by rewrite /=/sk_rel (inj_eq inj_hv) sNt !hom_h adjacent_edge.
 Qed.

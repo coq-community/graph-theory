@@ -523,7 +523,7 @@ Proof.
       - move=> xy. by move: (valP x); rewrite !inE  xy eqxx.
       - move=> xy. by move: (valP y); rewrite !inE -xy eqxx.
     + suff Hyp (z : G') : z \in U' -> (i : add_edge G i o) -- val z.
-      { case=> [x|] [y|] // H; right; move: H;
+      { case=> [x|] [y|] // H _ ; move: H;
         first by [move=>/=->]; by move=>/Hyp; first rewrite sg_sym. }
       rewrite eqi_U !inE /= =>/orP[/eqP->|->//].
       by rewrite io2 !eqxx. }

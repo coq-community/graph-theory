@@ -253,10 +253,10 @@ Proof.
     case: {-}_ / idP => // q /eqP[E2]. 
     suff -> : (x0 = y0) by exact: connect0. 
     by rewrite -(f_iinv p) -(f_iinv q) E1 E2. 
-  - move => x y A. move/hom_h : (A). 
-    case => [/inj_h ?|B]; first by subst; rewrite sgP in A.
+  - move => x y A. move/hom_h : (A) => B.
     exists (h x). exists (h y). rewrite !inE /phi B. 
-    by do 2 case: {-}_ / idP => [?|]; rewrite ?codom_f ?iinv_f ?eqxx //.
+    + by do 2 case: {-}_ / idP => [?|]; rewrite ?codom_f ?iinv_f ?eqxx //.
+    + apply: contraTneq A => /inj_h ->. by rewrite sgP.
 Qed.
 
 Lemma iso_strict_minor (G H : sgraph) : sg_iso G H -> strict_minor H G.

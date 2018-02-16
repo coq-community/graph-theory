@@ -59,7 +59,7 @@ Proof. move: (sedge_in_equiv A). by firstorder. Qed.
 (** ** Homomorphisms *)
 
 Definition hom_s (G1 G2 : sgraph) (h : G1 -> G2) := 
-  forall x y, x -- y -> (h x = h y) \/ (h x -- h y).
+  forall x y, x -- y -> h x != h y -> (h x -- h y).
 
 Definition hom_s2 (G1 G2 : sgraph2) (h : G1 -> G2) :=
   [/\ hom_s h , h s_in = s_in & h s_out = s_out].
@@ -84,7 +84,7 @@ Section InducedSubgraph.
   Definition induced := SGraph induced_sym induced_irrefl.
 
   Lemma induced_sub : subgraph induced G.
-  Proof. exists val => //. exact: val_inj. by right. Qed.
+  Proof. exists val => //. exact: val_inj. Qed.
 
 End InducedSubgraph.
 
@@ -123,7 +123,7 @@ Qed.
 Lemma iso_subgraph (G H : sgraph) : sg_iso G H -> subgraph G H.
 Proof.
   case=> g h _ hK _ hH.
-  exists h; by [exact: can_inj hK | move=> x y /hH->; right].
+  exists h ; by [exact: can_inj hK | move=> x y /hH->].
 Qed.
 
 
