@@ -236,7 +236,7 @@ Arguments collapse_bags [G] conn_G U u0' _.
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
 Lemma CP_tree (G : sgraph) (U : {set G}) :
-  connected [set: G] -> K4_free (add_node G U) -> is_tree (CP_ U).
+  connected [set: G] -> K4_free (add_node G U) -> is_tree [set: CP_ U].
 Proof.
   set H := add_node G U.
   move => G_conn H_K4_free.
@@ -516,7 +516,7 @@ Proof.
       apply: contraTneq =>->; by rewrite negb_or io2 sgP.
     + by move=> z_U; exists (val z); last rewrite valKd. }
 
-  have tree_CPU' : is_tree (CP_ U').
+  have tree_CPU' : is_tree [set: CP_ U'].
   { apply: CP_tree conn_G' _. apply: subgraph_K4_free K4F.
     exists (fun z => if z is Some x then val x else i).
     + case=> [x|] [y|] //; first by move=> /val_inj->.
