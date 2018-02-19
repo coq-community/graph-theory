@@ -236,33 +236,33 @@ Arguments collapse_bags [G] conn_G U u0' _.
 Definition neighbours (G : sgraph) (x : G) := [set y | x -- y].
 
 Lemma CP_tree (G : sgraph) (U : {set G}) :
-  connected [set: G] -> K4_free (add_node G U) -> is_tree [set: CP_ U].
+  connected [set: G] -> K4_free (add_node G U) -> is_tree (CP U).
 Proof.
   set H := add_node G U.
   move => G_conn H_K4_free.
-  suff: ~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x] by apply CP_treeI.
-  move => [x] [y] [z] [xy yz zx]. apply: H_K4_free. 
-  move: (CP_triangle_bags G_conn xy yz zx) => 
+  apply: CP_treeI => // x y z x_cp y_cp z_cp xy yz zx.
+  apply: H_K4_free.
+  move: (CP_triangle_bags G_conn x_cp y_cp z_cp xy yz zx) =>
     [x'] [y'] [z'] [[x_inU y_inU z_inU] [xX' yY' zZ']].
-  set U3 : {set G} := [set val x; val y; val z] in xX' yY' zZ'. 
-  pose X := bag U3 (val x). 
-  pose Y := bag U3 (val y).
-  pose Z := bag U3 (val z).
-  have xX : val x \in X by apply: (@bag_id G).  
-  have yY : val y \in Y by apply: (@bag_id G).
-  have zZ : val z \in Z by apply: (@bag_id G).
+  set U3 : {set G} := [set x; y; z] in xX' yY' zZ'.
+  pose X := bag U3 x.
+  pose Y := bag U3 y.
+  pose Z := bag U3 z.
+  have xX : x \in X by apply: (@bag_id G).
+  have yY : y \in Y by apply: (@bag_id G).
+  have zZ : z \in Z by apply: (@bag_id G).
   move def_T: (~: (X :|: Y :|: Z)) => T.
   pose T' : {set G} := U3 :|: T.
   pose G' := @sgraph.induced G T'.
   
-  have xH' : val x \in T' by rewrite !inE eqxx. 
-  have yH' : val y \in T' by rewrite !inE eqxx. 
-  have zH' : val z \in T' by rewrite !inE eqxx. 
+  have xH' : x \in T' by rewrite !inE eqxx.
+  have yH' : y \in T' by rewrite !inE eqxx.
+  have zH' : z \in T' by rewrite !inE eqxx.
 
   have def_T' : T' = U3 :|: ~: (\bigcup_(v in U3) bag U3 v).
   { by rewrite {2}/U3 !bigcup_setU !bigcup_set1 /T' -def_T. }
 
-  case: (collapse_bags _ U3 (val x) _) => //.
+  case: (collapse_bags _ U3 x _) => //.
   { by rewrite !inE eqxx. }
   rewrite -def_T' -/G' => phi [mm_phi P1 P2].
 
@@ -282,21 +282,21 @@ Proof.
     rewrite in_collective -eq_nodes (mem_map val_inj).
     exact: cpNI'. }
 
-  pose x0 : G' := Sub (val x) xH'.
-  pose y0 : G' := Sub (val y) yH'.
-  pose z0 : G' := Sub (val z) zH'.
+  pose x0 : G' := Sub x xH'.
+  pose y0 : G' := Sub y yH'.
+  pose z0 : G' := Sub z zH'.
   (* pose H' := @add_node G' [set x0;y0;z0]. *)
 
   have link_xy : @link_rel G' x0 y0.
-  { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq xy) /=. apply/subsetP.
+  { rewrite /= -val_eqE (sg_edgeNeq xy) /=. apply/subsetP.
     move => w /cp_lift. case/andP : (xy) => _ /subsetP S /S. 
     by rewrite !inE !sub_val_eq. }
   have link_yz : @link_rel G' y0 z0.
-  { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq yz) /=. apply/subsetP.
+  { rewrite /= -val_eqE (sg_edgeNeq yz) /=. apply/subsetP.
     move => w /cp_lift. case/andP : (yz) => _ /subsetP S /S. 
     by rewrite !inE !sub_val_eq. }
   have link_zx : @link_rel G' z0 x0.
-  { rewrite /= -val_eqE /= val_eqE (sg_edgeNeq zx) /=. apply/subsetP.
+  { rewrite /= -val_eqE (sg_edgeNeq zx) /=. apply/subsetP.
     move => w /cp_lift. case/andP : (zx) => _ /subsetP S /S. 
     by rewrite !inE !sub_val_eq. }
 
@@ -414,37 +414,15 @@ Proof.
       by exists i; exists o; split; rewrite //= iNo !eqxx.
 Qed.
 
-Lemma igraph_K4_free (G : sgraph) (i o : G) (x y : CP_ [set i;o]) :
-  connected [set: G] ->
-  K4_free (add_edge G i o) -> x != y ->
-  K4_free (add_edge (igraph G (val x) (val y)) istart iend).
-Proof.
-  move=> G_conn H_K4F xNy.
-  set x0 : G := val x; set y0 : G := val y.
-  have [u[]v[]] : exists u v : G, [/\ _, _ & [set x0; y0] \subset cp u v]
-    := CP_base_ x y.
-  wlog /andP[/eqP{u}-> /eqP{v}-> _ _] : u v / (u == i) && (v == o).
-  { move=> /(_ i o); rewrite !inE !eqxx orbT /=.
-    move=> /(_ isT isT isT)Hyp /orP[]/eqP->/orP[]/eqP->;
-    last 2 [rewrite cp_sym]; [ | exact: Hyp .. | ];
-    rewrite cpxx subUset !sub1set !inE => /andP[/eqP x0_i /eqP y0_i];
-    apply: Hyp; rewrite {}x0_i {}y0_i setUid sub1set;
-    last rewrite cp_sym; by rewrite mem_cpl. }
-  rewrite subUset !sub1set =>/andP[??].
-  exact: igraph_K4F H_K4F.
-Qed.
-
 Lemma igraph_K4F_add_node (G : sgraph) (U : {set G}) :
-  connected [set: G] ->
-  forall x y : CP_ U, x != y -> K4_free (add_node G U) ->
-  K4_free (add_edge (igraph G (val x) (val y)) istart iend).
+  connected [set: G] -> forall x y, x \in CP U -> y \in CP U -> x != y ->
+  K4_free (add_node G U) -> K4_free (add_edge (igraph G x y) istart iend).
 Proof.
-  set H := add_node G U => G_conn x' y' xy H_K4F.
-  set x : G := val x'. set y : G := val y'.
+  set H := add_node G U => G_conn x y x_cp y_cp xy H_K4F.
   set I := add_edge _ _ _.
 
-  case: (CP_base_ x' y') => [i][o][] i_U o_U.
-  rewrite subUset !sub1set -/x -/y =>/andP[x_cpio y_cpio].
+  case: (CP_base x_cp y_cp) => [i] [o] [i_U o_U].
+  rewrite subUset !sub1set =>/andP[x_cpio y_cpio].
   suff : K4_free (add_edge G i o) by exact: igraph_K4F => //.
   set K := add_edge G i o.
   apply: minor_K4_free H_K4F. apply: strict_is_minor.
@@ -516,7 +494,7 @@ Proof.
       apply: contraTneq =>->; by rewrite negb_or io2 sgP.
     + by move=> z_U; exists (val z); last rewrite valKd. }
 
-  have tree_CPU' : is_tree [set: CP_ U'].
+  have tree_CPU' : is_tree (CP U').
   { apply: CP_tree conn_G' _. apply: subgraph_K4_free K4F.
     exists (fun z => if z is Some x then val x else i).
     + case=> [x|] [y|] //; first by move=> /val_inj->.
