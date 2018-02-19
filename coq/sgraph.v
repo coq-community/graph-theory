@@ -1325,7 +1325,7 @@ Variables (G : sgraph).
 Implicit Types (x y : G) (S : {set G}).
 
 Definition is_forest S :=
-  {in S &, forall x y : G, unique (fun p : Path x y => irred p /\ (p \subset S))}.
+  forall x y : G, unique (fun p : Path x y => irred p /\ (p \subset S)).
 
 Definition is_tree S := is_forest S /\ connected S.
 
@@ -1335,7 +1335,8 @@ Definition is_forestb S :=
 Lemma is_forestP S : reflect (is_forest S) (is_forestb S).
 Proof.
   apply: (iffP idP) => H.
-  - move => x y xS yS p q [Ip Sp] [Iq Sq]. 
+  - move => x y p q [Ip Sp] [Iq Sq]. have [xS yS] : x \in S /\ y \in S.
+    { by split; apply: (subsetP Sp); rewrite ?nodes_start ?nodes_end. }
     move/forall_inP/(_ _ xS)/forall_inP/(_ _ yS) : H => H.
     suff: Sub p Ip == Sub q Iq :> IPath x y by rewrite -val_eqE => /eqP.
     apply/eqP. apply: card_le1 H _ _; by rewrite inE.
@@ -1360,19 +1361,17 @@ Proof. move => H x y p q Ip Iq. exact: H. Qed.
 
 Lemma unique_forestT : 
   (forall x y, unique (fun p : Path x y => irred p)) -> is_forest [set: G].
-Proof. move => H x y _ _ p q [Ip _] [Iq _]. exact: H. Qed.
+Proof. move => H x y p q [Ip _] [Iq _]. exact: H. Qed.
 
 Lemma forestI S : 
   ~ (exists x y (p1 p2 : Path x y), [/\ irred p1, irred p2 & p1 != p2] /\ 
      [/\ x \in S, y \in S, p1 \subset S & p2\subset S]) ->
   is_forest S.
 Proof.
-  move => H. apply/is_forestP. case: (boolP (_ S)) => //.
-  rewrite negb_forall_in => /exists_inP [x xS].
-  rewrite negb_forall_in => /exists_inP [y yS].
-  rewrite leqNgt negbK => /card_gt1P [p1] [p2] [A B C].
-  exfalso. apply: H. exists x. exists y. exists (val p1). exists (val p2).
-  rewrite !inE val_eqE in A B *. repeat split => //; exact: valP.
+  move=> H x y p1 p2 [Ip1 Sp1] [Ip2 Sp2]. case: (altP (p1 =P p2)) => // pN12.
+  have [xS yS] : x \in S /\ y \in S.
+  { by split; apply: (subsetP Sp1); rewrite ?nodes_start ?nodes_end. }
+  case: H. exists x; exists y; exists p1; exists p2. by repeat split.
 Qed.
 
 Lemma treeI S : 
@@ -1385,7 +1384,7 @@ Proof. move => A B. split => //. exact: forestI. Qed.
 Lemma sub_forest S S' : 
   S' \subset S -> is_forest S -> is_forest S'.
 Proof.
-  move => subS H x y xS yS p q [Ip Sp] [Iq Sq]. 
+  move => subS H x y p q [Ip Sp] [Iq Sq].
   apply: H; try split; 
     try solve [ done |exact: (subsetP subS) | exact: subset_trans subS].
 Qed.
@@ -1451,7 +1450,7 @@ Qed.
 Definition sunit := @SGraph [finType of unit] rel0 rel0_sym rel0_irrefl.
 
 Definition unit_forest : is_forest [set: sunit].
-Proof. by move => [] [] _ _ p1 p2 [/irredxx -> _] [/irredxx -> _]. Qed.
+Proof. by move => [] [] p1 p2 [/irredxx -> _] [/irredxx -> _]. Qed.
 
 Definition tunit := Forest unit_forest.
 
