@@ -92,7 +92,7 @@ Proof.
   by rewrite !inE => /orP[]/andP[/eqP-> /eqP->]; rewrite Hx Hy.
 Qed.
 
-Lemma edgeless_bag (G : graph) (U : {set G}) x : 
+Lemma edgeless_bag (G : graph) (U : {set G}) (x : skeleton G) : 
   connected [set: skeleton G] -> x \in @CP G U ->
   edge_set (@bag G U x)  == set0 -> @bag G U x == [set x].
 Proof.

@@ -108,7 +108,7 @@ Section JoinT.
   Lemma join_is_forest : is_forest [set: sjoin T1 T2].
   Proof with try solve [exact: inl_inj|exact: inr_inj
                        |exact: sub_inl|exact: sub_inr].
-    move => [a|a] [b|b] _ _ p q [Ip _] [Iq _].
+    move => [a|a] [b|b] p q [Ip _] [Iq _].
     - case: (lift_Path (p' := p)) => //...
       case: (lift_Path (p' := q)) => //...
       move => p' Np I q' Nq I'. 
