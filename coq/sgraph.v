@@ -588,6 +588,9 @@ Definition idp (u : G) := Build_Path (spathxx u).
 Lemma mem_idp (x u : G) : (x \in idp u) = (x == u).
 Proof. by rewrite mem_path !inE. Qed.
 
+Lemma irred_id (x : G) : irred (idp x).
+Proof. by rewrite irredE. Qed.
+
 Lemma irredxx (x : G) (p : Path x x) : irred p -> p = idp x.
 Proof.
   rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
