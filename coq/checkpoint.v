@@ -1197,47 +1197,48 @@ End CheckpointOrder.
 
 Arguments ncp0 [G] G_conn [U] x p : rename.
 
-Lemma CP_treeI (G : sgraph) (U : {set G}) :
-  connected [set: G] ->
-  (~ exists x y z : CP_ U, [/\ x -- y, y -- z & z -- x]) -> is_tree [set: CP_ U].
+Lemma CP_treeI (G : sgraph) (U : {set G}) : connected [set: G] ->
+  {in CP U & &, forall x y z, x -- y -> y -- z -> z -- x -> False} ->
+  is_tree (CP U).
 Proof.
-  move => conn_G H'. apply: treeI => [|H] ; first exact: CP_connected. 
-  apply: H'. move: H => [x [y [p' [q' [[Ip' Iq' D] _]]]]]. 
-  (* without loss, p' and q' differ already at the second vertex *)
-  wlog : x p' q' Ip' Iq' D / exists z1 z2 (xz1 : x -- z1) (xz2 : x -- z2) p q, 
-    [/\ p' = pcat (edgep xz1) p, q' = pcat (edgep xz2) q & z1 != z2].
-  { set GOAL := exists _ _ _ , _. move => base_case. 
-    move: x p' Ip' q' Iq' D. 
-    apply: (irred_ind (* needs manual instantiation *)
-           (P := fun x y p' =>  forall q' : Path x y, irred q' -> p' != q' -> GOAL)).
-    - by move => q /irredxx ->. 
-    - move => x z p xz Ip xp IH q' Iq'. 
-      case: (altP (x =P y)) => [?|Dxy]; first by subst y; rewrite nodes_end in xp.
-      move:(splitL q' Dxy) => [z'] [xz2] [q] [E _]. rewrite E.
-      case: (altP (z =P z')) => [?|A B]. 
-      + subst. move => E. apply: (IH q). 
-        * move: Iq'. by rewrite irred_cat => /and3P[].
-        * apply: contraNneq E => ->. by rewrite -val_eqE. 
-      + apply: (base_case x (pcat (edgep xz) p) q') => //. 
-        * by rewrite irred_cat irred_edge Ip disjoint_edgep ?xp //. 
-        * by rewrite E. 
-        * exists z; exists z'; exists xz; exists xz2; exists p; exists q. by rewrite E. }
-  move => [z1] [z2] [xz1] [xz2] [p] [q] [def_p' def_q' D'].
-  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious... *)  
-  exists x; exists z1; exists z2; split => //; last by rewrite sgP.
+  move=> G_conn noCPtri. split; last exact: CP_connected.
+  move=> x y p1 p2 [Ip1 p1_cp] [Ip2 p2_cp].
+  case: (altP (p1 =P p2)) => // pN12. exfalso.
+  (* W.l.o.g. p1 and p2 differ already at their second vertex. *)
+  wlog : x p1 p2 Ip1 Ip2 p1_cp p2_cp pN12 /
+        exists z1 z2 (xz1 : x -- z1) (xz2 : x -- z2) q1 q2,
+        [/\ z1 != z2, p1 = pcat (edgep xz1) q1 & p2 = pcat (edgep xz2) q2].
+  { move=> Hyp. move: p1_cp p2 Ip2 p2_cp pN12. pattern x, y, p1.
+    revert x p1 Ip1. apply irred_ind; first by move=> _ p2 /irredxx->.
+    move=> x z1 q1 xz1 Iq1 xNq1 IH p1_cp p2 Ip2 p2_cp pN12.
+    case: (altP (x =P y)) xNq1 => [->|xNy xNq1]; first by rewrite nodes_end.
+    case: (splitL p2 xNy) Ip2 p2_cp pN12 => [z2] [xz2] [q2] [-> _].
+    case: (altP (z1 =P z2)) xz2 q2 => [<-|zN12] xz2 q2 Ip2 p2_cp pN12.
+    - apply: (IH _ q2).
+      + by apply/subsetP=> u u_q1; apply: (subsetP p1_cp); rewrite mem_pcat u_q1.
+      + by move: Ip2; rewrite irred_cat'; case/and3P.
+      + by apply/subsetP=> u u_q2; apply: (subsetP p2_cp); rewrite mem_pcat u_q2.
+      + apply: contraNneq pN12 =>->.
+        by have -> : xz1 = xz2 by exact: bool_irrelevance.
+    - apply: (Hyp x (pcat (edgep xz1) q1) (pcat (edgep xz2) q2)) => //.
+      + rewrite irred_cat' irred_edge Iq1. apply/eqP/setP=> u.
+        rewrite inE in_set1 mem_edgep.
+        apply/andP/eqP=> [|->]; last by rewrite eqxx nodes_start.
+        case; case/orP=> /eqP-> //. by rewrite (negbTE xNq1).
+      + by repeat eexists. }
+  move=> [z1] [z2] [xz1] [xz2] [q1] [q2] [zN12 eq_p1 eq_p2].
+  have x_cp : x \in CP U by apply: (subsetP p1_cp); rewrite nodes_start.
+  have [z1_cp z2_cp] : z1 \in CP U /\ z2 \in CP U.
+  { split; [move: eq_p1 p1_cp | move: eq_p2 p2_cp]=> -> /subsetP; apply;
+    by rewrite mem_pcat nodes_start. }
+  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious... *)
+  apply: (noCPtri x z1 z2) => //; last by rewrite sg_sym.
   (* ... and for the third edge we construct an irredundant cycle *)
-  have [r irr_r av_x] : exists2 r : Path z1 z2, irred r & x \notin r.
-  { case: (uncycle (pcat p (prev q))) => r R1 R2. exists r => //.
-    apply/negP => /R1. rewrite mem_pcat mem_prev. 
-    subst. move: Ip' Iq'. rewrite !irred_edgeL. by do 2 case (_ \in _). }
-  have I : irred (pcat (edgep xz1) r). 
-  { by rewrite irred_edgeL av_x irr_r. }
-  case: (Path_from_induced (pcat (edgep xz1) r)) => r' _ E. 
-  have/cycle_clique : irred r'. 
-  { move: irr_r. rewrite !irredE -!nodesE E map_inj_uniq //. 
-    exact: val_inj. }
-  apply => //. 
-  all: rewrite inE mem_path -nodesE E mem_map; try exact: val_inj.
-  - by rewrite mem_pcat mem_edgep eqxx.
-  - by rewrite mem_pcat nodes_end.
+  have [p Ip xNp] : exists2 p : Path z1 z2, irred p & x \notin p.
+  { case: (uncycle (pcat q1 (prev q2))) => p p_sub Ip. exists p => //.
+    apply/negP=> /p_sub. rewrite mem_pcat mem_prev.
+    move: Ip1 Ip2. rewrite eq_p1 eq_p2 !irred_edgeL.
+    by do 2 case/andP=> /negbTE-> _. }
+  have /cycle_clique : irred (pcat (edgep xz1) p) by rewrite irred_edgeL xNp Ip.
+  by apply=> //; rewrite inE mem_pcat ?nodes_start ?nodes_end.
 Qed.
