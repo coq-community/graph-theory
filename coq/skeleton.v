@@ -74,6 +74,42 @@ Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
 
 (* Definition sskeleton (G : graph2) := SGraph (@ssk_sym G) (@ssk_irrefl G). *)
 
+(** Edges of skeletons of quotients *)
+Lemma sk_rel_mergeE (G : graph) (e : equiv_rel G) x y :
+  sk_rel (merge_def G e) x y <-> 
+  x != y /\ exists x0 y0 : skeleton G, [/\ \pi x0 = x, \pi y0 = y & x0 -- y0].
+Proof.
+  rewrite /= /sk_rel. 
+  case: (boolP (x != y)) => //=; last by move => _; split => [|[]]. 
+  move => xy; split.
+  - move/existsP => [e0 E]. split => //. 
+    wlog E : x y xy {E} / e0 \in edges x y.
+    { move => W. case/setUP : E; first exact: W. 
+      move => E. case: (W _ _ _ E); first by rewrite eq_sym.
+      move => y0 [x0] [? ? ?]. exists x0. exists y0. split => //. 
+      by rewrite eq_sym adjacent_sym. }
+    move: E. rewrite !inE => /andP [/eqP E1 /eqP E2].
+    exists (@source G e0). exists (@target G e0). split; last (apply/andP;split).
+    + by rewrite -E1. 
+    + by rewrite -E2.
+    + apply: contraNN xy => /eqP H. by rewrite -E1 -E2 /= eqmodE H. 
+    + apply/existsP; exists e0. by rewrite !inE !eqxx.
+  - case => _ [x0] [y0] [Px Py /andP [Dxy0]]. case/existsP => [e0 E].
+    wlog E : x0 y0 x y Dxy0 Px Py {xy E} / e0 \in edges x0 y0.
+    { move => W. case/setUP : E; first exact: W. 
+      rewrite adjacent_sym. apply: W => //. by rewrite eq_sym. }
+    rewrite inE in E. case/andP : E => [E1 E2]. 
+    apply/existsP; exists e0. by rewrite !inE /= (eqP E1) (eqP E2) Px Py !eqxx.
+Qed.
+
+Lemma pi_hom (G : graph) (e : equiv_rel G) : 
+  hom_s (\pi_{eq_quot e} : skeleton G -> skeleton (merge_def G e)).
+Proof.
+  move => x y xy Dxy. apply/sk_rel_mergeE. split => //. by exists x; exists y.
+Qed.
+Arguments pi_hom [G] e.
+
+
 Lemma sskelP (G : graph2) (P : G -> G -> Prop) : 
   Symmetric P -> 
   (forall e : edge G, source e != target e -> P (source e) (target e)) ->
@@ -89,6 +125,45 @@ Qed.
 Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
 Proof. exists id => //= x y H _. exact: subrelUl. 
 Qed.
+
+(** Isomorphim Lemmas *)
+
+Coercion skeleton : graph >-> sgraph.
+
+Lemma iso2_skel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso G1 G2.
+Proof.
+Abort.
+
+Lemma hom2_sskel (G1 G2 : graph2) h :
+  @hom_g2 G1 G2 h -> bijective h.1 ->
+  forall x y, @sedge (sskeleton G1) x y -> @sedge (sskeleton G2) (h.1 x) (h.1 y).
+Proof.
+  move => hom_h bij. apply sskelP. 
+  - move => x y. by rewrite sgP.
+  - move => e He. rewrite /= [sk_rel _ _ _](_ : _ = true) // /sk_rel.
+    rewrite bij_eq ?He //=. apply/existsP; exists (h.2 e). 
+    by rewrite !inE !hom_h !eqxx.
+  - move => H. by rewrite /= bij_eq // H !hom_h !eqxx. 
+Qed.
+
+Lemma iso2_sskel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso (sskeleton G1) (sskeleton G2).
+Proof.
+  case => h hom_h [bij1 bij2].
+  case: (bij1) => g can_g1 can_g2.
+  case: (bij2) => f can_f1 can_f2. 
+  have hom_gf : hom_g2 (g,f) by apply: iso2_inv hom_h.
+  apply: SgIso . apply can_g2. apply can_g1. 
+  - apply: hom2_sskel hom_gf _. exact: Bijective.
+  - exact: hom2_sskel hom_h _. 
+Qed.
+
+Lemma iso2_decomp (G1 G2 : graph2) (T : forest) B1 : 
+  @sdecomp T (sskeleton G1) B1 -> G1 ≈ G2 -> 
+  exists2 B2, @sdecomp T (sskeleton G2) B2 & width B2 = width B1.
+Proof.
+  move => dec iso. apply: sg_iso_decomp dec _. exact: iso2_sskel. 
+Qed.
+
 
 (** Bridging Lemmas *)
 
@@ -204,8 +279,6 @@ Proof.
   - move=> e sNt. apply/orP; left. rewrite /=/sk_rel sNt /=. exact: adjacent_edge.
   - move=> /= ->. by rewrite !eqxx.
 Qed.
-
-Coercion skeleton : graph >-> sgraph.
 
 Definition interval_edges (G : graph) (x y : G) :=
   edge_set (@interval G x y) :\: (edges x x :|: edges y y).

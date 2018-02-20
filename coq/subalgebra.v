@@ -12,73 +12,36 @@ Implicit Types (G H : graph) (U : sgraph) (T : forest).
 
 (** * Terms to Treewidth Two *)
 
-(** NOTE: Contrary to what is written in the paper, the this file does not use
-tree decompositions for simple graphs but a separate notion of
-tree-decomposition for labeled multigraphs. We plan to eliminate this redundancy
-for the final version. This requires transferring the results on unions and
-quotients of treedecompositions to simple graphs *)
-
-(** Covering is not really required, but makes the renaming theorem
-easier to state *)
-Record decomp (T : forest) (G : graph) (B : T -> {set G}) := Decomp
-  { bag_cover x : exists t, x \in B t; 
-    bag_edge (e : edge G) : exists t, (source e \in B t) && (target e \in B t);
-    bag_conn x t1 t2  : x \in B t1 -> x \in B t2 ->
-      connect (restrict [pred t | x \in B t] sedge) t1 t2}.
-
-
-Definition compatible (T : forest) (G : graph2) (B : T -> {set G}) := 
-  exists t, (g_in \in B t) && (g_out \in B t).
-
 (** ** Renaming *)
+Arguments sdecomp [T G] B.
 
-Lemma rename_decomp (T : forest) (G H : graph) D (dec_D : decomp D) (h : h_ty G H) : 
-  surjective2 h -> hom_g h -> 
-  (forall x y, h.1 x = h.1 y -> exists t, (x \in D t) && (y \in D t)) -> 
-  @decomp T _ (rename D h.1).
+Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp D) (h : G -> H) : 
+  hom_s h -> 
+  surjective h -> 
+  (forall x y : H, x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0]) ->
+  (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
+  @sdecomp T _ (rename D h).
 Proof.
-  move => [sur1 sur2] hom_h comp_h. 
-  split.
-  - move => x. pose x0 := cr sur1 x. case: (bag_cover dec_D x0) => t Ht.
+  move => hom_h sur_h sur_e comp_h. 
+  split. 
+  - move => x. pose x0 := cr sur_h x. case: (sbag_cover dec_D x0) => t Ht.
     exists t. apply/imsetP. exists x0; by rewrite ?crK. 
-  - move => e. pose e0 := cr sur2 e. case: (bag_edge dec_D e0) => t /andP [t1 t2].
-    exists t. apply/andP;split. 
-    + apply/imsetP. exists (source e0) => //. by rewrite hom_h crK.
-    + apply/imsetP. exists (target e0) => //. by rewrite hom_h crK.
+  - move => x y xy. case: (sur_e _ _ xy) => x0 [y0] [hx0 hy0 e0].
+    case: (sbag_edge dec_D e0) => t /andP [t1 t2]. 
+    exists t. apply/andP;split;apply/imsetP;by [exists x0|exists y0].
   - move => x t1 t2 bg1 bg2. 
     case/imsetP : (bg1) (bg2) => x0 A B /imsetP [x1 C E]. subst. rewrite E in bg2.
     case: (comp_h _ _ E) => t /andP [F I]. 
     apply: (connect_trans (y := t)). 
-    + apply: connect_mono (bag_conn dec_D A F) => u v /= /andP [/andP [X Y] Z]. 
+    + apply: connect_mono (sbag_conn dec_D A F) => u v /= /andP [/andP [X Y] Z]. 
       rewrite Z andbT. apply/andP;split; by apply/imsetP;exists x0.
-    + apply: connect_mono (bag_conn dec_D I C) => u v /= /andP [/andP [X Y] Z]. 
+    + apply: connect_mono (sbag_conn dec_D I C) => u v /= /andP [/andP [X Y] Z]. 
       rewrite E Z andbT. apply/andP;split; by apply/imsetP;exists x1.
 Qed.
 
 Lemma rename_width (T : forest) (G : graph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
   width (rename D h) <= width D.
 Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
-
-
-Lemma iso2_decomp (G1 G2 : graph2) (T : forest) B1 : 
-  @decomp T G1 B1 -> compatible B1 -> G1 ≈ G2 -> 
-  exists B2, [/\ @decomp T G2 B2, width B2 = width B1 & compatible B2].
-Proof.
-  move => decD compD [f hom_f bij_f].
-  case: (bij_f) => /bij_inj inj_f ?. 
-  exists (rename B1 f.1). split.
-  - case: hom_f => [[hom_f fi] fo]. 
-    apply: rename_decomp => //. 
-    + split; apply: bij_surj;by case: bij_f.
-    + move => x y /inj_f <-. case: decD => A  _ _. 
-      case: (A x) => t Ht. exists t. by rewrite Ht.
-  - rewrite /width. apply: eq_bigr => i _. by rewrite card_imset.
-  - case: bij_f => [[/= g A B] _]. 
-    case: compD => t /andP [t1 t2]. exists t.
-    rewrite /rename. rewrite -[g_in]B -[g_out]B !mem_imset //. 
-    + by rewrite -[g_out]hom_f A.
-    + by rewrite -[g_in]hom_f A.
-Qed.
 
 (** ** Disjoint Union *)
 
@@ -125,60 +88,51 @@ Section JoinT.
       
   Definition tjoin := @Forest (sjoin T1 T2) join_is_forest.
 
-  Definition decompU G1 G2 (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : 
-    tjoin -> {set union G1 G2} := 
+  Definition decompU (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : 
+    tjoin -> {set sjoin G1 G2} := 
     [fun a => match a with 
           | inl a => [set inl x | x in D1 a]
           | inr a => [set inr x | x in D2 a]
           end].
 
-  Lemma join_decomp G1 G2 (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2})  :
-    decomp D1 -> decomp D2 -> decomp (decompU D1 D2).
+  Lemma join_decomp (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2})  :
+    sdecomp D1 -> sdecomp D2 -> sdecomp (decompU D1 D2).
   Proof.
     move => dec1 dec2. split.
     - move => [x|x]. 
-      + case: (bag_cover dec1 x) => t Ht. exists (inl t) => /=. by rewrite mem_imset.
-      + case: (bag_cover dec2 x) => t Ht. exists (inr t) => /=. by rewrite mem_imset.
-    - move => [e|e]. 
-      + case: (bag_edge dec1 e) => t /andP [H1 H2]. exists (inl t) => /=. by rewrite !mem_imset.
-      + case: (bag_edge dec2 e) => t /andP [H1 H2]. exists (inr t) => /=. by rewrite !mem_imset.
+      + case: (sbag_cover dec1 x) => t Ht. exists (inl t) => /=. by rewrite mem_imset.
+      + case: (sbag_cover dec2 x) => t Ht. exists (inr t) => /=. by rewrite mem_imset.
+    - move => [x|x] [y|y] // xy. 
+      + case: (sbag_edge dec1 xy) => t /andP [H1 H2]. exists (inl t) => /=. by rewrite !mem_imset.
+      + case: (sbag_edge dec2 xy) => t /andP [H1 H2]. exists (inr t) => /=. by rewrite !mem_imset.
     - have inl_inr x t : inl x \in decompU D1 D2 (inr t) = false.
       { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
       have inr_inl x t : inr x \in decompU D1 D2 (inl t) = false.
       { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
-      move => [x|x] [t1|t1] [t2|t2] /=  ; rewrite ?inl_inr ?inr_inl // => A B. 
+      move => [x|x] [t1|t1] [t2|t2] /= ; rewrite ?inl_inr ?inr_inl // => A B. 
       + pose e := restrict [pred t | x \in D1 t] sedge.
         apply: (connect_img (e:= e) (f := inl)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
           by rewrite !mem_imset.
-        * apply: bag_conn => //. 
+        * apply: sbag_conn => //. 
           move: A. by case/imsetP => ? ? [->].
           move: B. by case/imsetP => ? ? [->].
       + pose e := restrict [pred t | x \in D2 t] sedge.
         apply: (connect_img (e:= e) (f := inr)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
           by rewrite !mem_imset.
-        * apply: bag_conn => //. 
+        * apply: sbag_conn => //. 
           move: A. by case/imsetP => ? ? [->].
           move: B. by case/imsetP => ? ? [->].
   Qed.
 
-  Lemma join_width G1 G2 (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) (t1 : T1) (t2 : T2) : 
+  Lemma join_width (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : 
     width (decompU D1 D2) <= maxn (width D1) (width D2).
-  Proof. 
-    pose p := mem (codom inl) : pred tjoin.
-    rewrite /width. rewrite (bigID p) /= geq_max. apply/andP; split.
-    - apply: leq_trans (leq_maxl _ _). apply: eq_leq.
-      rewrite (reindex inl) /=. 
-      + apply eq_big => x; first by rewrite /p /= codom_f.
-        move => _. rewrite /decompU /= card_imset //. exact: inl_inj.
-      + apply: bij_on_codom t1. exact: inl_inj.
-    - apply: leq_trans (leq_maxr _ _). apply: eq_leq.
-      rewrite (reindex inr) /=. 
-      + apply eq_big => x; first by apply/negP => /mapP [?]. 
-        move => _. rewrite /decompU /= card_imset //. exact: inr_inj.
-      + exists (fun x => if x is inr y then y else t2) => //= [[x0|//]]. 
-        by rewrite in_simpl /p /= codom_f.
+  Proof.
+    apply/bigmax_leqP => [[x|x] _]. 
+    all: rewrite /decompU /= card_imset; try solve [exact: inl_inj|exact: inr_inj].
+    - apply: leq_trans (leq_maxl _ _). exact: leq_bigmax.
+    - apply: leq_trans (leq_maxr _ _). exact: leq_bigmax.
   Qed.
 
 End JoinT.
@@ -266,30 +220,30 @@ Section Link.
       
   Definition tlink := @Forest link link_is_forest.
 
-  Definition decompL G (D : T -> {set G}) A a := 
+  Definition decompL (G:sgraph) (D : T -> {set G}) A a := 
     match a with Some x => D x | None => A end.
 
-  Lemma decomp_link (G : graph) (D : T -> {set G}) (A  : {set G}) : 
+  Lemma decomp_link (G : sgraph) (D : T -> {set G}) (A  : {set G}) : 
     A \subset \bigcup_(t in U) D t ->
-    decomp D -> @decomp tlink G (decompL D A).
+    sdecomp D -> @sdecomp tlink G (decompL D A).
   Proof.
     move => HA decD. split => //.
-    - move => x. case: (bag_cover decD x) => t Ht. by exists (Some t). 
-    - move => e. case: (bag_edge decD e) => t Ht. by exists (Some t).
+    - move => x. case: (sbag_cover decD x) => t Ht. by exists (Some t). 
+    - move => x y xy. case: (sbag_edge decD xy) => t Ht. by exists (Some t).
     - have X x a : x \in D a -> x \in A ->
         connect (restrict [pred t | x \in decompL D A t] (add_node_rel U)) 
                 (Some a) None.
       { move => H1 H2. move/(subsetP HA) : (H2) => /bigcupP [t Ht1 Ht2].
         apply: (connect_trans (y := Some t)).
-        - move: (bag_conn decD H1 Ht2). exact: connect_img.
+        - move: (sbag_conn decD H1 Ht2). exact: connect_img.
         - apply: connect1 => /=; by rewrite !in_simpl H2 Ht1. }
       move => x [a|] [b|] /= H1 H2; last exact: connect0. 
-      + move: (bag_conn decD H1 H2). exact: connect_img. 
+      + move: (sbag_conn decD H1 H2). exact: connect_img. 
       + exact: X.
       + rewrite (@srestrict_sym link). exact: X. 
   Qed.
 
-  Lemma width_link (G : graph) (D : T -> {set G}) (A  : {set G}) : 
+  Lemma width_link (G : sgraph) (D : T -> {set G}) (A  : {set G}) : 
     width (decompL D A) <= maxn (width D) #|A|.
   Proof.
     apply/bigmax_leqP => [] [t|] _ /=; last by rewrite ?leq_maxr. 
@@ -303,7 +257,49 @@ End Link.
 
 (** ** Closure Properties for operations *)
 
-Arguments decomp T G B : clear implicits.
+Arguments sdecomp T G B : clear implicits.
+
+Definition compatible (T : forest) (G : graph2) (B : T -> {set G}) := 
+  exists t, (g_in \in B t) && (g_out \in B t).
+
+Lemma sdecomp_sskel (T : forest) (G : graph2) (B : T -> {set G}) :
+  sdecomp T (sskeleton G) B <-> (sdecomp T G B /\ compatible B).
+Proof.
+  split. 
+  - case => [D1 D2 D3]. split. split => //. 
+    + move => x y /= xy. apply: D2. by rewrite /= xy. 
+    + case: (altP (g_in =P g_out :> skeleton G)) => E. 
+      * case: (D1 g_in) => t Ht. exists t. by rewrite -E !Ht.
+      * suff: (g_in : sskeleton G) -- g_out by apply: D2. by rewrite /= E !eqxx.
+  - move => [[D1 D2 D3] C]. split => //= x y. case/or3P; first exact: D2.
+    + case/and3P => ? /eqP E1 /eqP E2. by subst. 
+    + case/and3P => ? /eqP E1 /eqP E2. subst. 
+      case: C => t. rewrite andbC. by exists t.
+Qed.
+
+Lemma hom_eqL (V : finType) (e1 e2 : rel V) (G : sgraph) (h : V -> G) 
+      (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
+      (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2):
+  e1 =2 e2 ->
+  @hom_s (SGraph e1_sym e1_irrefl) G h -> 
+  @hom_s (SGraph e2_sym e2_irrefl) G h.
+Proof. move => E hom_h x y. rewrite /= -E. exact: hom_h. Qed.
+
+
+Lemma skel_union_join (G1 G2 : graph) : sk_rel (union G1 G2) =2 @join_rel G1 G2.
+Proof.
+  move => [x|x] [y|y] /=. 
+  - rewrite /sk_rel sum_eqE. 
+    case: (boolP (x == y)) => //= E. apply/existsP/existsP. 
+    + move => [[e|e]]; rewrite !inE //= !sum_eqE. by exists e; rewrite !inE.
+    + move => [e] H. exists (inl e). by rewrite !inE /= !sum_eqE in H *. 
+  - apply: contraTF isT => /andP [_ /existsP [[e|e]]]; by rewrite !inE //= andbC.
+  - apply: contraTF isT => /andP [_ /existsP [[e|e]]]; by rewrite !inE //= andbC.
+  - rewrite /sk_rel sum_eqE. 
+    case: (boolP (x == y)) => //= E. apply/existsP/existsP. 
+    + move => [[e|e]]; rewrite !inE //= !sum_eqE. by exists e; rewrite !inE.
+    + move => [e] H. exists (inr e). by rewrite !inE /= !sum_eqE in H *. 
+Qed.
 
 Section Quotients. 
   Variables (G1 G2 : graph2).
@@ -314,42 +310,46 @@ Section Quotients.
     forall x y, eqv x y -> x = y \/ [set x;y] \subset P. 
  
   Lemma decomp_quot (T1 T2 : forest) D1 D2 (e : equiv_rel (union G1 G2)): 
-    decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
-    compatible D1 -> compatible D2 ->
+    sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
-    admissible e -> #|(hom_of e).1 @: P| <= 3 ->
-    exists T D, [/\ decomp T (merge (union G1 G2) e) D, 
+    admissible e -> #|[set \pi_{eq_quot e} x | x in P]| <= 3 ->
+    exists T D, [/\ sdecomp T (skeleton (merge_def _ e)) D, 
               width D <= 3 & exists t, 
-              D t = (hom_of e).1 @: P].
-  Proof.
-    move => dec1 dec2 [t1 /andP [comp1_in comp1_out]] [t2 /andP [comp2_in comp2_out]] W1 W2.
-    move => adm_e collapse_P.
+              D t = [set \pi_{eq_quot e} x | x in P]].
+  Proof. 
+    move => /sdecomp_sskel [dec1 comp1] /sdecomp_sskel [dec2 comp2] W1 W2 adm_e collapse_P.
+    move: comp1 comp2 => [t1 /andP[t1_in t1_out]] [t2 /andP[t2_in t2_out]].
     pose T := tjoin T1 T2.
-    pose D := decompU D1 D2.
-    have dec_D : decomp T (union G1 G2) D by exact: join_decomp. 
+    pose D : tjoin T1 T2 -> {set sjoin G1 G2}:= decompU D1 D2.
+    have dec_D: sdecomp T (sjoin G1 G2) D by exact: join_decomp. 
     have dis_t1_t2 : ~~ connect (@sedge T)(inl t1) (inr t2) by rewrite join_disc.
     have dis_T12 : {in [set inl t1;inr t2] &, forall x y, x != y -> ~~ connect (@sedge T) x y}.
     { move => [?|?] [?|?] /setUP[] /set1P-> /setUP[]/set1P ->. 
       all: by rewrite ?eqxx // => _; rewrite sconnect_sym. }
     pose T' := @tlink T _ dis_T12.
-    pose D' := decompL D P.
-    have dec_D' : decomp T' (union G1 G2) D'.
-    { apply: decomp_link => //. apply/subsetP => x.
+    pose D' := decompL D P : _ -> {set sjoin G1 G2}.
+    have dec_D' : sdecomp T' (sjoin G1 G2) D'.
+    { apply: decomp_link => //.
+      apply/subsetP => x.
       rewrite !inE -!orbA => /or4P [] /eqP->.
       all: apply/bigcupP; solve 
         [ by exists (inl t1) => //; rewrite ?inE ?mem_imset ?eqxx 
         | by exists (inr t2) => //; rewrite ?inE ?mem_imset ?eqxx]. }
-    pose h := @hom_of (union G1 G2) e : h_ty _ (merge (union G1 G2) e).
-    exists T'. exists (rename D' h.1); split; last by exists None.
-    - apply: rename_decomp => //; first exact: hom_of_surj.
-      move => x y. move/eqmodP => /=. case/adm_e => [<-|A].
-      + case: (bag_cover dec_D' x) => t Ht. exists t. by rewrite Ht.
-      + exists None. rewrite /= -!sub1set -subUset. done.
+    pose h := \pi_{eq_quot e} : skeleton (union G1 G2) -> skeleton (merge_def _ e).
+    exists T'. exists (rename D' h); split; last by exists None.
+    - apply: rename_decomp => //. 
+      + apply: hom_eqL (pi_hom e). exact: skel_union_join.
+      + exact: emb_surj.
+      + move => x y. move/sk_rel_mergeE => [? [x0] [y0] /= [? ? ?]]. 
+        exists x0;exists y0. split => //. by rewrite -skel_union_join.
+      + move => x y. move/eqmodP => /=. case/adm_e => [<-|A].
+        * case: (sbag_cover dec_D' x) => t Ht. exists t. by rewrite Ht.
+        * exists None. rewrite /= -!sub1set -subUset. done.
     - rewrite /width (bigID (pred1 None)).
       rewrite big_pred1_eq. rewrite geq_max. apply/andP;split => //.
       + rewrite (reindex Some) /=.
         * apply: (@leq_trans (maxn (width D1) (width D2))); last by rewrite geq_max W1 W2.
-          apply: leq_trans (join_width _ _ t1 t2). 
+          apply: leq_trans (join_width _ _). 
           apply: max_mono => t. exact: leq_imset_card.
         * apply: subon_bij; last by apply bij_on_codom; [exact: Some_inj|exact: (inl t1)]. 
           by move => [x|]; rewrite !in_simpl // codom_f. 
@@ -468,13 +468,12 @@ Section Quotients.
   Qed.
 
   Lemma decomp_par2 (T1 T2 : forest) D1 D2 : 
-    decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
-    compatible D1 -> compatible D2 ->
+    sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
-    exists T D, [/\ decomp T (par2) D, compatible D & width D <= 3].
+    exists T D, [/\ sdecomp T (sskeleton (par2)) D & width D <= 3].
   Proof.
-    move => dec1 dec2 comp1 comp2 W1 W2.
-    case: (decomp_quot (e:= [equiv_rel of par2_eqv]) dec1 dec2 comp1 comp2 W1 W2 _ _).
+    move => dec1 dec2 W1 W2.
+    case: (decomp_quot (e:= [equiv_rel of par2_eqv]) dec1 dec2 W1 W2 _ _).
     - exact: par2_eqvP.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out].
       apply: (@leq_trans #|P'|); last by rewrite cards2; by case (_ != _).
@@ -486,8 +485,9 @@ Section Quotients.
         apply/eqmodP. by rewrite equiv_sym /= par2_eqv_io.
       * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
         apply/eqmodP. by rewrite equiv_sym /= par2_eqv_io.
-    - move => T [D] [A B [t C]]. exists T. exists D. split => //. exists t. 
-      by rewrite C !mem_imset // !inE ?eqxx ?orbT.
+    - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
+      apply/sdecomp_sskel. split => //. 
+      exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
   Qed.
 
   Definition seq2_eqv : rel (union G1 G2) :=
@@ -547,13 +547,12 @@ Section Quotients.
   Qed.
 
   Lemma decomp_seq2 (T1 T2 : forest) D1 D2 : 
-    decomp T1 G1 D1 -> decomp T2 G2 D2 -> 
-    compatible D1 -> compatible D2 ->
+    sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
-    exists T D, [/\ decomp T seq2 D, compatible D & width D <= 3].
+    exists T D, [/\ sdecomp T (sskeleton seq2) D & width D <= 3].
   Proof.
-    move => dec1 dec2 comp1 comp2 W1 W2.
-    case: (decomp_quot (e:= [equiv_rel of seq2_eqv]) dec1 dec2 comp1 comp2 W1 W2 _ _).
+    move => dec1 dec2 W1 W2.
+    case: (decomp_quot (e:= [equiv_rel of seq2_eqv]) dec1 dec2 W1 W2 _ _).
     - exact: seq2_eqvP.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out; inr g_out].
       apply: (@leq_trans #|P'|); last apply cards3.
@@ -564,8 +563,9 @@ Section Quotients.
       * by rewrite mem_imset.
       * case/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
         apply/eqmodP. by rewrite equiv_sym /= seq2_eqv_io.
-    - move => T [D] [A B [t C]]. exists T. exists D. split => //. exists t. 
-      by rewrite C !mem_imset // !inE ?eqxx ?orbT.
+    - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
+      apply/sdecomp_sskel. split => //. 
+      exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
   Qed.
 
 End Quotients.
@@ -574,28 +574,24 @@ Definition cnv2 (G : graph2) :=
   {| graph_of := G; g_in := g_out; g_out := g_in |}.
 
 Lemma decomp_cnv (G : graph2) T D : 
-  decomp T G D -> decomp T (cnv2 G) D.
-Proof. done. Qed.
-
-Lemma compat_cnv (G : graph2) T (D : T -> {set G}) : 
-  compatible D -> compatible (G := cnv2 G) D.
-Proof. move => [t] H. exists t => /=. by rewrite andbC. Qed.
+  sdecomp T (sskeleton G) D -> sdecomp T (sskeleton (cnv2 G)) D.
+Proof. 
+  move/sdecomp_sskel => [dec cmp]. apply/sdecomp_sskel; split => //. 
+  move: cmp => [t] H. exists t => /=. by rewrite andbC.
+Qed.
 
 Definition dom2 (G : graph2) := 
   {| graph_of := G; g_in := g_in; g_out := g_in |}.
 
 Lemma decomp_dom (G : graph2) T D : 
-  decomp T G D -> decomp T (dom2 G) D.
-Proof. done. Qed.
-
-Lemma compat_dom (G : graph2) T (D : T -> {set G}) : 
-  compatible D -> compatible (G := dom2 G) D.
+  sdecomp T (sskeleton G) D -> sdecomp T (sskeleton (dom2 G)) D.
 Proof. 
-  move => [t] /andP [H _]. exists t => /=. by rewrite !H. 
+  move/sdecomp_sskel => [dec cmp]. apply/sdecomp_sskel; split => //. 
+  move: cmp => [t] /andP [H _]. exists t => /=. by rewrite !H. 
 Qed.
 
-Definition triv_decomp (G : graph) :
-  decomp tunit G (fun _ => [set: G]).
+Definition triv_decomp (G : sgraph) :
+  sdecomp tunit G (fun _ => [set: G]).
 Proof. 
   split => [x|e|x [] [] _ _]; try by exists tt; rewrite !inE.
   exact: connect0.
@@ -616,11 +612,10 @@ Definition edge_graph (a : sym) :=
 Definition sym2 a := {| graph_of := edge_graph a; g_in := false; g_out := true |}.
 
 Lemma decomp_small (G : graph2) : #|G| <= 3 -> 
-  exists T D, [/\ decomp T G D, compatible D & width D <= 3].
+  exists T D, [/\ sdecomp T (sskeleton G) D & width D <= 3].
 Proof. 
   exists tunit; exists (fun => setT). split.
   - exact: triv_decomp.
-  - exists tt. by rewrite !inE.
   - by rewrite /width (big_pred1 tt _) // cardsT. 
 Qed.
 
@@ -647,51 +642,21 @@ Fixpoint graph_of_term (u:term) {struct u} : graph2 :=
   | tmD u => dom2 (graph_of_term u)
   end.
 
-Theorem graph_of_TW2' (u : term) : 
-  exists T D, [/\ decomp T (graph_of_term u) D, compatible D & width D <= 3].
+Theorem graph_of_TW2 (u : term) : 
+  exists T D, [/\ sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].
 Proof.
   elim: u => [a| | | u IHu | u IHu v IHv | u IHu v IHv | u IHu ].
   - apply: decomp_small. by rewrite card_bool.
   - apply: decomp_small. by rewrite card_unit.
   - apply: decomp_small. by rewrite card_bool.
-  - move: IHu => [T] [D] [D1 D2 D3]. exists T. exists D. split => //. 
-    exact: compat_cnv. (* FIXME: Hidden argument *)
-  - move: IHu IHv => [T1] [D1] [? ? ?] [T2] [D2] [? ? ?].
+  - move: IHu => [T] [D] [D1 D2]. exists T. exists D. split => //. 
+    exact: decomp_cnv. 
+  - move: IHu IHv => [T1] [D1] [? ?] [T2] [D2] [? ?].
     simpl graph_of_term. exact: (decomp_seq2 (D1 := D1) (D2 := D2)).
-  - move: IHu IHv => [T1] [D1] [? ? ?] [T2] [D2] [? ? ?].
+  - move: IHu IHv => [T1] [D1] [? ?] [T2] [D2] [? ?].
     simpl graph_of_term. exact: (decomp_par2 (D1 := D1) (D2 := D2)).
-  - move: IHu => [T] [D] [D1 D2 D3]. exists T. exists D. split => //. 
-    exact: compat_dom. (* FIXME: Hidden argument *)
-Qed.
-
-
-(** Transfer multigraph tree decomposition to the skeleton *)
-
-Lemma decomp_skeleton (G : graph) (T : forest) (D : T -> {set G}) :
-  decomp T G D -> sdecomp T (skeleton G) D.
-Proof.
-  case => D1 D2 D3. split => //. apply skelP => // x y.
-  move => [t] A. exists t. by rewrite andbC.
-Qed.
-
-Lemma decomp_sskeleton (G : graph2) (T : forest) (D : T -> {set G}) :
-  decomp T G D -> compatible D -> sdecomp T (sskeleton G) D.
-Proof.
-  case => D1 D2 D3 C. split => //. apply sskelP  => // x y.
-  move => [t] A. exists t. by rewrite andbC.
-Qed.
-
-(** obtain that the term graphs are K4-free *)
-
-(** NOTE: For the moment, we use separate definition of multigraph tree
-decomposition for the induction on terms. We plan to eliminate
-this redundancy and use tree decompositions of the skeletons instead *)
-
-Theorem graph_of_TW2 (u : term) : 
-  exists T D, [/\ sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].
-Proof.
-  case: (graph_of_TW2' u) => T [B] [B1 B2 B3].
-  exists T. exists B. split => //. exact: decomp_sskeleton. 
+  - move: IHu => [T] [D] [D1 D2]. exists T. exists D. split => //. 
+    exact: decomp_dom. 
 Qed.
 
 Lemma sskel_K4_free (u : term) : K4_free (sskeleton (graph_of_term u)).

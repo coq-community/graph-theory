@@ -195,16 +195,24 @@ Proof.
   by rewrite f_hom g_hom.
 Qed.
 
+Lemma iso2_inv (G1 G2 : graph2) (h : h_ty G1 G2) (g : h_ty G2 G1) :
+  cancel h.1 g.1 -> cancel h.2 g.2 -> cancel g.1 h.1 -> cancel g.2 h.2 ->
+  hom_g2 h -> hom_g2 g.
+Proof.
+  move => hg1K hg2K gh1K gh2K hom_h.
+  (repeat split)=> /= [e|e|e||].
+  - by rewrite -{1}(gh2K e) -hom_h hg1K.
+  - by rewrite -{1}(gh2K e) -hom_h hg1K.
+  - by rewrite -hom_h gh2K.
+  - by rewrite -(hg1K g_in) hom_h.
+  - by rewrite -(hg1K g_out) hom_h.
+Qed.
+
 Lemma iso2_sym : Symmetric iso2.
 Proof.
   move=> G1 G2 [f] f_hom [[f1inv] f1K f1invK [f2inv] f2K f2invK].
   exists (f1inv, f2inv); last by split=> /=; [exists f.1 | exists f.2].
-  (repeat split)=> /= [e|e|e||].
-  - by rewrite -{1}(f2invK e) -f_hom f1K.
-  - by rewrite -{1}(f2invK e) -f_hom f1K.
-  - by rewrite -f_hom f2invK.
-  - by rewrite -(f1K g_in) f_hom.
-  - by rewrite -(f1K g_out) f_hom.
+  exact: iso2_inv f_hom.
 Qed.
 
 Lemma iso2_refl G : G ≈ G.

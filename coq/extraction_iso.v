@@ -729,18 +729,18 @@ Proof.
         -- rewrite -IH //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
 
+
 Corollary minor_exclusion_2p (G : graph2) :
   connected [set: skeleton G] -> 
   K4_free (sskeleton G) <-> 
-  exists (T : forest) (B : T -> {set G}), [/\ decomp T G B, width B <= 3 & compatible B].
+  exists (T : forest) (B : T -> {set G}), [/\ sdecomp T (sskeleton G) B & width B <= 3].
 Proof.
   move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
-  - have [T [B] [B1 B2 B3]] := (graph_of_TW2' (term_of G)).
-    have I := term_of_iso (conj conn_G K4F_G).
-    have [D [D1 D2 D3]] := iso2_decomp B1 B2 (iso2_sym I).
+  - have [T [B] [B1 B2]] := (graph_of_TW2 (term_of G)).
+    have/iso2_sym/iso2_sskel I := term_of_iso (conj conn_G K4F_G).
+    have [D D1 D2] := sg_iso_decomp B1 I.
     exists T. exists D. by rewrite D2.
-  - apply: (TW2_K4_free (G := sskeleton G)) B2.
-    exact: decomp_sskeleton.
+  - exact: TW2_K4_free B1 B2 B3. 
 Qed.
 
 (** ** Graph Minor Theorem for TW2 *)
@@ -762,11 +762,10 @@ Proof.
   have conn_G' : connected [set: skeleton G'].
   { exact: iso_connected conn_G. }
   have M := minor_exclusion_2p conn_G'.  
-  have/M [T [B [B1 B2 B3]]] : K4_free (sskeleton G').
+  have K4F_G' : K4_free (sskeleton G').
   { exact: iso_K4_free K4F_G. }
-  have decB : sdecomp T (sskeleton G') B by exact: decomp_sskeleton.
-  have [D D1 D2] := sg_iso_decomp decB iso_Gs.
-  exists T. exists D. by rewrite D2.
+  case/M : K4F_G' => T [B] [B1 B2]. 
+  case: (sg_iso_decomp B1 iso_Gs) => D D1 D2. exists T. exists D. by rewrite D2.
 Qed.
 
 Print Assumptions graph_minor_TW2.
