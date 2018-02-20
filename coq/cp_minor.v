@@ -534,22 +534,14 @@ Proof.
       { move: io3 => /subsetP io3 /io3. rewrite !inE =>/orP[]; apply/negP.
         * by have := valP n; rewrite !inE.
         * by rewrite eq_o' val_eqE eq_sym (sg_edgeNeq on). }
-      apply: cp_neighbours => // z iz.
-      (* By [cpPn'], take an irredundant [p : Path G z o] and show that [n ∈ p].
-       * W.l.o.g. [i ∉ p] by cutting [p] at the unique occurence of [i]. *)
-      apply/cpPn' => -[p] Ip; apply/negP; rewrite negbK.
-      wlog iNp : z iz p Ip / i \notin p.
-      { move=> Hyp. case: (boolP (i \in p)); last exact: Hyp.
-        case/(isplitP Ip) => p1 p2 _ Ip2 _.
-        rewrite mem_pcat; apply/orP; right; clear p1.
-        case: (splitL p2 io2) Ip2 => [z'] [iz'] [p'] [-> _].
-        rewrite irred_cat' => /andP[_]/andP[Ip']/eqP/setP/(_ i).
-        rewrite in_set1 sg_edgeNeq // inE mem_edgep eqxx /= => /negbT iNp'.
-        rewrite mem_pcat; apply/orP; right; apply: Hyp => //. }
+      (* By [cpPn'], take an irredundant [p : Path G i o] and show that [n ∈ p].
+       * First cut [i] off [p]. *)
+      apply/cpPn' => -[p'] Ip'; apply/negP; rewrite negbK.
+      case: (splitL p' io2) Ip' => [z] [iz] [p] [-> _] {p'}.
+      rewrite irred_edgeL mem_pcat => /andP[iNp Ip]. apply/orP; right.
       (* Using [from_base] (i.e. [Path_to_induced]), [p] lifts to G'. *)
-      move: p Ip iNp. rewrite eq_o'.
-      case/i_link: (iz) => z' eq_z' z_cp'.
-      rewrite eq_z' => p Ip /from_base[p' eq_p'].
+      move: p Ip iNp. case/i_link: (iz) => z' eq_z' z_cp'.
+      rewrite eq_z' eq_o' => p Ip /from_base[p' eq_p'].
       suff : n \in p' by move=> /(map_f val); rewrite -eq_p'.
       have {p Ip eq_p'} Ip' : irred p'.
       { move: Ip; rewrite !irredE -!nodesE eq_p'. exact: map_uniq. }
@@ -601,7 +593,7 @@ Proof.
   { apply/subsetP=> u. rewrite mem_pcat mem_prev !mem_edgep -orbA.
     by case/or4P=> /eqP->. }
   have : o' \in q' by rewrite mem_pcat mem_prev !nodes_start.
-  rewrite (CP_tree_paths conn_G' tree_CPU' _ _ _ Iq' _) //.
+  rewrite (CP_tree_paths conn_G' tree_CPU' _ Iq' _) //.
   move/(@cpP' G')/(_ p')/(map_f val).
   by rewrite -eq_p' -eq_o' =>/p_io; rewrite sinterval_bounds.
 Qed.

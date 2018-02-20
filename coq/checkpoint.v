@@ -431,10 +431,12 @@ Section CheckPoints.
   (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
   two nodes contains exactly the checkpoints bewteen these nodes *)
   Lemma CP_tree_paths (U : {set G}) (x y : G) (p : Path link_graph x y) : 
-    is_tree (CP U) -> x \in CP U -> y \in CP U -> p \subset CP U -> irred p ->
+    is_tree (CP U) -> p \subset CP U -> irred p ->
     {in CP U, p =i cp x y}.
   Proof.
-    move=> [CPU_tree _] x_cp y_cp p_cp Ip z z_cp. apply/idP/idP; last exact: link_path_cp.
+    move=> [CPU_tree _] p_cp Ip z z_cp. apply/idP/idP; last exact: link_path_cp.
+    have [x_cp y_cp] : x \in CP U /\ y \in CP U.
+    { split; apply: (subsetP p_cp); by rewrite ?nodes_start ?nodes_end. }
     move=> z_p. apply/cpPn'=> -[q0] /(CP_path x_cp y_cp)[q] [Iq q_cp /subsetP q_sub].
     apply/negP. rewrite negbK. apply: q_sub. by have -> : q = p by exact: CPU_tree.
   Qed.
