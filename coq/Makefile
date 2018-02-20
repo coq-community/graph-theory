@@ -2,6 +2,7 @@ COQVERSION=$(shell coqc -v | grep version | cut -d' ' -f 6 )
 
 EXTRA_DIR:=coqdocjs/extra
 COQDOCFLAGS:= \
+  -R . TwoPoint \
   --external 'http://math-comp.github.io/math-comp/htmldoc/' mathcomp \
   --toc --toc-depth 2 --html --interpolate \
   --index indexpage -s --no-lib-name --parse-comments \
