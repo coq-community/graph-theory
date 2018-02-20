@@ -534,12 +534,9 @@ Proof.
       { move: io3 => /subsetP io3 /io3. rewrite !inE =>/orP[]; apply/negP.
         * by have := valP n; rewrite !inE.
         * by rewrite eq_o' val_eqE eq_sym (sg_edgeNeq on). }
-      (* By [cpPn'], take an irredundant [p : Path G i o] and show that [n ∈ p].
-       * First cut [i] off [p]. *)
-      apply/cpPn' => -[p'] Ip'; apply/negP; rewrite negbK.
-      case: (splitL p' io2) Ip' => [z] [iz] [p] [-> _] {p'}.
-      rewrite irred_edgeL mem_pcat => /andP[iNp Ip]. apply/orP; right.
-      (* Using [from_base] (i.e. [Path_to_induced]), [p] lifts to G'. *)
+      (* Take an irredundant [Path G i o] and show that it contains [n]. To lift
+       * it to [G'], first cut off [i]. *)
+      apply: cp_neighbours => // z p iz Ip iNp.
       move: p Ip iNp. case/i_link: (iz) => z' eq_z' z_cp'.
       rewrite eq_z' eq_o' => p Ip /from_base[p' eq_p'].
       suff : n \in p' by move=> /(map_f val); rewrite -eq_p'.

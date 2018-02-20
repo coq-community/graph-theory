@@ -162,13 +162,14 @@ Section CheckPoints.
    * symmetrical reasoning for [pi_i] shows that [p \in pi].             Qed. *)
   Abort.
   
-  Lemma cp_neighbours (x y : G) z : 
-    x != y -> (forall x', x -- x' -> z \in cp x' y) -> z \in cp x y.
+  Lemma cp_neighbours (x y : G) z : x != y ->
+    (forall x' (p : Path x' y), x -- x' -> irred p -> x \notin p -> z \in p) ->
+    z \in cp x y.
   Proof.
-    move => A B. apply/cpP => p. case: p => [|x' p].
-    - move/spath_nil/eqP => ?. by contrab.
-    - rewrite spath_cons in_cons => /andP [C D]. apply/orP;right. 
-      apply/(cpP (y := y)) => //. exact: B. 
+    move=> xNy H. apply/cpPn'=> -[p].
+    case: (splitL p xNy) => [x'] [xx'] [p'] [-> _].
+    rewrite irred_edgeL => /andP[xNp' Ip]. apply/negP.
+    by rewrite mem_pcat H.
   Qed.
 
   Lemma connected_cp_closed (x y : G) (V : {set G}) :
