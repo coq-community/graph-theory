@@ -447,6 +447,19 @@ Qed.
 
 (** ** Parallel Split Lemma *)
 
+Lemma connected_remove_triv_bag2 (G : sgraph) (i o : G) :
+  i != o -> bag [set i; o] i = [set i] -> connected [set: G] -> connected [set~ i].
+Proof.
+  move=> iNo bag_i conn_G.
+  have : o \in [set~ i] by rewrite !inE eq_sym.
+  apply: connected_center => x. rewrite inE -{1}bag_i => Hx.
+  suff /cpPn'[p _ iNp] : i \notin cp o x.
+  { suff : {subset p <= [set~ i]} by exact: connectRI.
+    by move=> z; rewrite !inE; apply: contraTneq =>->. }
+  rewrite cp_sym. apply: contraNN Hx => i_cpxo. apply/bagP. rewrite CP_set2.
+  move=> y y_cpio. exact: cp_tightenR y_cpio i_cpxo.
+Qed.
+
 (** TODO: This proof can likely be simplified (though it will surely remain one
 of the longer proofs of the development *)
 
@@ -469,22 +482,9 @@ Proof.
   { case: (Path_from_induced p') => [p] iNp eq_p.
     exists p; by [apply/negP=>/iNp; rewrite !inE eqxx|]. }
 
-  have [node_G' conn_G'] : prod G' (connected [set: G']).
-  { have Ho : o \in [set~ i] by rewrite !inE eq_sym.
-    pose o' : G' := Sub o Ho; split; first exact: o'.
-    suff S: forall x, connect sedge x o'.
-    { apply: connectedTI => x y.
-      apply: (connect_trans (y := o')) => //.
-      rewrite connect_symI //. exact: sg_sym. }
-    move => x.
-    suff /cpPn'[p _] : i \notin @cp G (val x) o.
-    { case/(from_base x o') => p' _; exact: Path_connect. }
-    (* if i were a checkpoint between x and o, then
-        x would be in [bag [set i; o] i] - contradiction *)
-    have : val x \in [set ~i] := valP x; rewrite inE -{4}bag_i.
-    apply: contraNN => i_cpxo. apply/bagP.
-    rewrite CP_clique; last by [apply: clique2; rewrite /= io2 io3].
-    by move=> ?; rewrite !inE =>/orP[]/eqP->; rewrite // cp_sym mem_cpl. }
+  have node_G' : G' by exists o; rewrite !inE eq_sym.
+  have conn_G' : connected [set: G'].
+  { apply: connected_induced. exact: connected_remove_triv_bag2 io2 _ _. }
 
   set U := o |: neighbours i.
   have iNU : {subset U <= [set~ i]}.
@@ -502,12 +502,13 @@ Proof.
       { by rewrite !inE /= =>/orP[/eqP->|->//]; rewrite io2 !eqxx. }
       case=> [x|] [y|] //=; [by move=>->| |]; move=> /Hyp; by [|rewrite sg_sym]. }
 
-  have U_link (x : G) : x \in U ->
-                        exists2 x' : link_graph G', x = val x' & x' \in CP U'.
-  { move=> x_U; exists (Sub x (iNU x x_U)) => //.
-    apply: (@CP_extensive G'). by rewrite inE. }
+  have i_link x : i -- x -> exists2 x' : link_graph G', x = val x' & x' \in CP U'.
+  { move=> ix. have Hx : x \in [set~ i] by rewrite in_setC1 eq_sym sg_edgeNeq.
+    exists (Sub x Hx) => //. apply: (@CP_extensive G'). by rewrite !inE ix. }
 
-  have/U_link[o' eq_o' o_cp'] : o \in U by exact: setU11.
+  have [o' eq_o' o_cp'] : exists2 o' : link_graph G', o = val o' & o' \in CP U'.
+  { have Ho : o \in [set~ i] by rewrite in_setC1 eq_sym.
+    exists (Sub o Ho) => //. apply: (@CP_extensive G'). by rewrite !inE eqxx. }
   pose N := CP U' :&: neighbours o'.
   have Ngt1: 1 < #|N|.
   { suff: 0 < #|N| /\ #|N| != 1. 
@@ -516,7 +517,7 @@ Proof.
     - apply/card_gt0P.
       (* i must have a neighbor (that is not o) and CP(U') is connected *)
       case: (connected_card_gt1 conn_G _ _ io2) => // j _ ij.
-      have /U_link[j' eq_j' j_cp'] : j \in U by rewrite !inE ij.
+      case/i_link: (ij) => j' eq_j' j_cp'.
       have conn_CPU' : connected (CP U') by apply tree_CPU'.
       have : o != j by apply: contraNneq io1 =>->.
       rewrite eq_o' eq_j' val_eqE.
@@ -547,7 +548,7 @@ Proof.
         rewrite mem_pcat; apply/orP; right; apply: Hyp => //. }
       (* Using [from_base] (i.e. [Path_to_induced]), [p] lifts to G'. *)
       move: p Ip iNp. rewrite eq_o'.
-      have /U_link[z' eq_z' z_cp'] : z \in U by rewrite !inE iz.
+      case/i_link: (iz) => z' eq_z' z_cp'.
       rewrite eq_z' => p Ip /from_base[p' eq_p'].
       suff : n \in p' by move=> /(map_f val); rewrite -eq_p'.
       have {p Ip eq_p'} Ip' : irred p'.
@@ -564,46 +565,26 @@ Proof.
   }
 
   have CPU_sinterval z : z \in CP U' :\ o' -> val z \in sinterval i o.
-  { rewrite in_setD1 andbC; case/andP.
-    case/bigcupP => -[j0 j1]/= /setXP[]. rewrite ![_ \in U']inE => j0U j1U.
-    wlog ij1 : j0 j1 j0U {j1U} / (val j1 : G) -- i.
-    { move=> Hyp. move: j1U; rewrite 3!inE sg_sym.
-      case/orP => [/eqP eq_j1|]; last exact: Hyp.
-      move: j0U; rewrite 3!inE; case/orP => [/eqP eq_j0|].
-      + move: eq_j0 eq_j1. rewrite {1 2}eq_o' =>/val_inj->/val_inj->.
-        by rewrite cpxx inE =>/eqP->; rewrite eqxx.
-      + by rewrite cp_sym sg_sym; apply: (Hyp j1 j0); rewrite eq_j1 2!inE eqxx.
-    }
-    case/uPathP: (connectedTE conn_G' j0 j1) => p' Ip'.
-    move=> /(@cpP' G')/(_ p') z_p' zNo.
-    set x := val z : G. have {zNo} xNo : x != o.
-    { by apply: contraNN zNo; rewrite eq_o' val_eqE eq_sym. }
-    have {j0 j1 p' j0U ij1 Ip' z_p'} [j [p] [j_U Ip x_p]] :
-      exists j (p : Path G j i), [/\ j \in U, irred p & x \in p].
-    { case: (into_base _ _ p') => p iNp eq_p.
-      exists (val j0); exists (pcat p (edgep ij1)); split; first exact: j0U.
-      + move: Ip'; rewrite irred_cat' irred_edge !irredE -!nodesE.
-        rewrite eq_p (map_inj_uniq val_inj) =>->. apply/eqP/setP=> u.
-        rewrite in_set1 inE mem_edgep andbC. apply/andP/eqP=> [[]|->].
-        * by case/orP=> /eqP-> //; rewrite (negbTE iNp).
-        * by rewrite eqxx nodes_end.
-      + by move: z_p'; rewrite /x mem_pcat 2!in_collective eq_p =>/map_f->. }
-    apply/sintervalP2; split; last first.
-    { case/uPathP: (connectedTE conn_G' z o') => q' Iq'.
-      case: (into_base _ _ q'); rewrite -eq_o' => q iNq eq_q.
-      exists q => //. move: Iq'; rewrite !irredE -!nodesE eq_q.
-      rewrite map_inj_uniq //; exact: val_inj. }
-    case: (isplitP Ip x_p) => {p Ip x_p} p1 p2 Ip1 Ip2 disj.
-    case: (boolP (o \in p2)) =>[|?]; last by exists p2.
-    rewrite in_collective nodesE inE eq_sym (negbTE xNo) /= -[pval]/tail.
-    move=> /(disjointFl disj).
-    move: j_U; rewrite !inE; case/orP =>[/eqP<-|]; first by rewrite nodes_start.
-    rewrite sg_sym => ij /negbT oNp1. exists (pcat (prev p1) (edgep ij)).
-    + rewrite irred_cat irred_edge prev_irred /tail //=.
-      rewrite disjoint_sym (@eq_disjoint1 G i); last by move=> ?; rewrite !inE.
-      rewrite mem_prev (disjointFl disj) // in_tail ?nodes_end //.
-      by have : x \in [set~ i] := valP z; rewrite 2!inE eq_sym.
-    + by rewrite mem_pcatT mem_prev negb_or oNp1 /tail/= inE eq_sym.
+  { rewrite in_setD1 andbC; case/andP=> z_CP.
+    suff : z \in val @^-1: (o |: sinterval i o).
+    { rewrite 3!inE -val_eqE. case/orP=> [/eqP->|//]. by rewrite -eq_o' eqxx. }
+    move: z z_CP. apply/subsetP. apply: (@connected_CP_closed G').
+    - move=> x y. rewrite ![_ \in _ @^-1: _]inE sinterval_sym => Hx Hy.
+      case: (altP (x =P y)) => [<-|xNy]; first exact: connect0.
+      case/PathRP: (sinterval_connectedL Hx Hy) => // p /subsetP p_sub.
+      have /Path_to_induced[q eq_q] : {subset p <= [set~ i]}.
+      { move=> v /p_sub. rewrite in_setC1. apply: contraTneq => {v}->.
+        by rewrite in_setU1 negb_or io2 sinterval_bounds. }
+      apply: connectRI (q) _ => v. rewrite in_collective => /(map_f val).
+      rewrite eq_q inE. exact: p_sub.
+    - apply: preimsetS. apply: setUS. apply/subsetP=> u. rewrite inE => iu.
+      rewrite sintervalP andbC. apply/andP. split.
+      + apply: cpNI' (prev (edgep iu)) _ _.
+        rewrite mem_prev mem_edgep negb_or eq_sym io2 /=.
+        by apply: contraNneq io1 =>->.
+      + case/i_link: iu => u' eq_u' _.
+        case/uPathP: (connectedTE conn_G' u' o') => p' _.
+        case/into_base: (p'); rewrite -eq_u' -eq_o'. by move=> ? /cpNI'.
   }
 
   case/card_gt1P : Ngt1 => [x] [y]. rewrite !inE {N}.

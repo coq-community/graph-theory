@@ -171,6 +171,15 @@ Section CheckPoints.
       apply/(cpP (y := y)) => //. exact: B. 
   Qed.
 
+  Lemma connected_cp_closed (x y : G) (V : {set G}) :
+    connected V -> [set x; y] \subset V -> cp x y \subset V.
+  Proof.
+    move=> V_conn. rewrite subUset !sub1set. case/andP=> Hx Hy.
+    case: (altP (x =P y)) => [<-|xNy]; first by rewrite cpxx sub1set.
+    have /(PathRP xNy)[p /subsetP pV] := V_conn x y Hx Hy.
+    by apply/subsetP=> u /cpP'/(_ p)/pV.
+  Qed.
+
   (** ** Link Graph *)
 
   Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
@@ -301,6 +310,14 @@ Section CheckPoints.
     by rewrite !mem_pcat !mem_prev (negbTE P1) (negbTE P2) (negbTE Hs).
   Qed.
 
+  Lemma connected_CP_closed (U V : {set G}) :
+    connected V -> U \subset V -> CP U \subset V.
+  Proof.
+    move=> V_conn /subsetP UV. apply/bigcupsP. case=> x y /=. rewrite in_setX.
+    case/andP=> /UV Hx /UV Hy. apply: connected_cp_closed => //.
+    by rewrite subUset !sub1set.
+  Qed.
+
   (* Lemma 16 *)
   Lemma CP_base U x y : x \in CP U -> y \in CP U ->
     exists x' y':G, [/\ x' \in U, y' \in U & [set x;y] \subset cp x' y'].
@@ -347,10 +364,8 @@ Section CheckPoints.
 
   (** *** Checkpoint graph *)
 
-  (* TOTHINK: Is it really worthwile to have this as a graph in addition to the set [CP U]? *)
   Arguments Path : clear implicits.
   Arguments spath : clear implicits.
-
 
   (* Lemma 14 *)
   Lemma CP_path (U : {set G}) (x y : G) (p : Path G x y) :
@@ -412,7 +427,6 @@ Section CheckPoints.
     have /uPathP[p /(CP_path x_cp y_cp)[q] [? q_cp _]] := G_conn x y.
     move/subsetP: q_cp. exact: connectRI.
   Qed.
-
 
   (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
   two nodes contains exactly the checkpoints bewteen these nodes *)
@@ -548,46 +562,51 @@ Section CheckPoints.
     - apply: contraFneq zNq =>->. exact: nodes_start.
   Qed.
 
+  Lemma sinterval_connectL (x y z : G) : z \in sinterval x y ->
+    exists2 u, x -- u & connect (restrict (mem (sinterval x y)) sedge) z u.
+  Proof.
+    case: (altP (z =P x)) => [->|zNx]; first by rewrite sinterval_bounds.
+    case/sintervalP2=> -[p']. case: (splitR p' zNx) => [u] [p] [ux] {p'}->.
+    rewrite irred_cat' => /and3P[? _] /eqP/setP/(_ x).
+    rewrite in_set1 in_set mem_edgep eqxx orbT andbT eq_sym (sg_edgeNeq ux).
+    move=> xNp yNp' [q'] Iq' xNq'. exists u; first by rewrite sgP.
+    apply: connectRI (p) _ => v. case/Path_split=> [p1] [p2] eq_p.
+    rewrite sintervalP. apply/andP. split.
+    - apply: (@cpNI' v y (pcat (prev p1) q')).
+      rewrite mem_pcat mem_prev negb_or xNq' andbT.
+      apply: contraFN xNp. by rewrite eq_p mem_pcat => ->.
+    - apply: (@cpNI' v x (pcat p2 (edgep ux))).
+      apply: contraNN yNp'. by rewrite eq_p !mem_pcat -orbA => ->.
+  Qed.
+
+  Lemma sinterval_connectedL (x y : G) : connected (x |: sinterval x y).
+  Proof.
+    apply: connected_center (setU11 _ _) => z Hx. have := Hx. rewrite in_setU1.
+    case/orP=> [/eqP->|/sinterval_connectL]; first exact: connect0.
+    case=> u xu /connect_restrict_case[z_u|].
+    - rewrite z_u. apply: connectRI (edgep xu) _ => v.
+      rewrite mem_edgep. case/orP=> /eqP->; by [exact: setU11 | rewrite -z_u].
+    - case=> zNu _ Hu /(PathRP zNu)[p /subsetP p_sub].
+      apply: connectRI (pcat (edgep xu) (prev p)) _ => v.
+      rewrite mem_pcat mem_edgep mem_prev in_setU1 -orbA.
+      case/or3P=> [->|/eqP->|/p_sub->] //. by rewrite Hu.
+  Qed.
+
   Lemma sinterval_components (C : {set G}) x y :
     C \in components (sinterval x y) ->
     (exists2 u, u \in C & x -- u) /\ (exists2 v, v \in C & y -- v).
   Proof.
+    move=> C_comp. wlog suff Hyp : x y C_comp / exists2 u : G, u \in C & x -- u.
+    { split; move: C_comp; last rewrite sinterval_sym; exact: Hyp. }
     case/and3P: (partition_components (sinterval x y)).
-    move=> /eqP compU compI comp0 C_comp.
+    move=> /eqP compU compI comp0.
     have /card_gt0P[a a_C] : 0 < #|C|.
     { rewrite card_gt0. by apply: contraTneq C_comp =>->. }
     have a_sI : a \in sinterval x y. { rewrite -compU. by apply/bigcupP; exists C. }
     rewrite -{C C_comp a_C}(def_pblock compI C_comp a_C).
-
-    case/sintervalP2: (a_sI) (a_sI) => -[p] Ip yNp [q] Iq xNq.
-    rewrite !inE negb_or =>/andP[] /andP[aNx aNy] _.
-    case: (splitR p aNx) Ip (yNp) => [u][p'][ux] ->.
-    case: (splitR q aNy) Iq (xNq) => [v][q'][vy] ->.
-    rewrite !irred_cat' !mem_pcat !mem_edgep !negb_or.
-    case/and3P=> Iq' _ /eqP/setP/(_ y).
-    rewrite !inE nodes_end andbT eq_sym sg_edgeNeq //.
-    move=> /negbT yNq' /and3P[xNq' xNv xNy].
-    case/and3P=> Ip' _ /eqP/setP/(_ x).
-    rewrite !inE nodes_end andbT eq_sym sg_edgeNeq //.
-    move=> /negbT xNp' /and3P[yNp' yNu yNx].
-
-    split; [exists u | exists v]; rewrite 1?sg_sym //; apply/components_pblockP.
-    - exists p'. apply/subsetP => z z_p. rewrite sintervalP.
-      case: (Path_split z_p) xNp' yNp' => [p1][p2]->.
-      rewrite !mem_pcat !negb_or => /andP[xNp1 xNp2] /andP[yNp1 yNp2].
-      apply/andP; split; apply/cpP'.
-      + move=> /(_ (pcat (prev p1) q)). apply/negP.
-        by rewrite !mem_pcat mem_prev negb_or xNp1 xNq.
-      + move=> /(_ (pcat p2 (edgep ux))). apply/negP.
-        by rewrite !mem_pcat mem_edgep !negb_or yNp2 yNu yNx.
-    - exists q'. apply/subsetP => z z_q. rewrite sintervalP.
-      case: (Path_split z_q) xNq' yNq' => [q1][q2]->.
-      rewrite !mem_pcat !negb_or => /andP[xNq1 xNq2] /andP[yNq1 yNq2].
-      apply/andP; split; apply/cpP'.
-      + move=> /(_ (pcat q2 (edgep vy))). apply/negP.
-        by rewrite !mem_pcat mem_edgep !negb_or xNq2 xNv xNy.
-      + move=> /(_ (pcat (prev q1) p)). apply/negP.
-        by rewrite !mem_pcat mem_prev negb_or yNq1 yNp.
+    case: (sinterval_connectL a_sI) => u xu u_a. exists u => //.
+    have u_sI : u \in sinterval x y by case/connect_restrict_case: u_a => [<-|[]].
+    rewrite pblock_equivalence_partition //. exact: sedge_equiv_in.
   Qed.
 
   (** *** Intervals *)
