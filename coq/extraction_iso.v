@@ -102,7 +102,7 @@ Lemma split_cp (G : graph2) (u : skeleton G) :
   connected [set: skeleton G] -> u \in @cp G g_in g_out :\: IO ->
   edge_set (@bag G IO g_in) == set0 -> 
   edge_set (@bag G IO g_out) == set0 ->
-  G ≈ seq2 (@igraph G g_in u) (seq2 (@pgraph G IO u) (@igraph G u g_out)).
+  G ≈ seq2 (@igraph G g_in u) (seq2 (@bgraph G IO u) (@igraph G u g_out)).
 Proof.
   move=> G_conn u_cpio pi_e0 po_e0. apply: iso2_sym. set G' := seq2 _ _.
   have [i_cp o_cp] : g_in \in @CP G IO /\ g_out \in @CP G IO.
@@ -470,7 +470,7 @@ Qed.
 
 Lemma split_pip (G : graph2) : 
   connected [set: skeleton G] -> g_in != g_out :> G ->
-  G ≈ seq2 (@pgraph G IO g_in) (seq2 (@igraph G g_in g_out) (@pgraph G IO g_out)).
+  G ≈ seq2 (@bgraph G IO g_in) (seq2 (@igraph G g_in g_out) (@bgraph G IO g_out)).
 Proof.
   move=> G_conn Eio. apply: iso2_sym. set G' := seq2 _ _.
   pose f (x : G') : G :=

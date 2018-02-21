@@ -207,9 +207,9 @@ such that we can make use of induced subgraphs (rather than the more generic
 Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
   let (i,o) := (g_in : G, g_out : G) in 
   if  (edge_set (@bag G IO i) != set0) || (edge_set (@bag G IO o) != set0)
-  then g (pgraph IO i) :o: g (igraph i o) :o: g (pgraph IO o)
+  then g (bgraph IO i) :o: g (igraph i o) :o: g (bgraph IO o)
   else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
-       else g (igraph i z) :o: g(pgraph IO z) :o: g(igraph z o).
+       else g (igraph i z) :o: g(bgraph IO z) :o: g(igraph z o).
 
 (** NOTE: we assume the input graph to be connected and K4-free *)
 Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
@@ -332,7 +332,7 @@ Qed.
 
 Lemma rec_bag (G : graph2) (x : G) : 
   CK4F G -> x \in @CP (skeleton G) IO -> g_in != g_out :> G ->
-  CK4F (pgraph IO x) /\ measure (pgraph IO x) < measure G.
+  CK4F (bgraph IO x) /\ measure (bgraph IO x) < measure G.
 Proof.
   move => [conn_G K4F_G] cp_x Dio. split. 
   - apply: CK4F_sub => //. exact: connected_bag.
@@ -513,7 +513,7 @@ Proof.
   apply: CK4F_igraph => //. rewrite cp_sym. exact: mem_cpl. 
 Qed.
 
-Lemma CK4F_split_cpM : CK4F (@pgraph G IO z).
+Lemma CK4F_split_cpM : CK4F (@bgraph G IO z).
 Proof. 
   apply rec_bag => //. 
   apply/bigcupP. exists (g_in,g_out) => //. by rewrite !inE /= !eqxx.
@@ -535,7 +535,7 @@ Proof.
   by rewrite eq_sym -in_set1 -(intervalI_cp Hz') inE C.
 Qed.
 
-Lemma measure_split_cpM : measure (@pgraph G IO z) < measure G.
+Lemma measure_split_cpM : measure (@bgraph G IO z) < measure G.
 Proof.
   apply: (measure_node (v := g_in)); first apply CK4F_G.
   rewrite (@bag_cp G) 1?eq_sym //; first apply CK4F_G.
@@ -556,7 +556,7 @@ Proof.
   rewrite /simple_check_point_term.
   case: ifP => [A|A].
   - (* g_out not in left bag, e notin interval, g_in not in right bag *)
-    rewrite ![f (pgraph _ _)]Efg; 
+    rewrite ![f (bgraph _ _)]Efg; 
       try (apply rec_bag => //; apply: CP_extensive; by rewrite !inE eqxx).
     do 2 f_equal. rewrite Efg //. 
     * apply: CK4F_igraph => //=; last rewrite cp_sym; exact: (@mem_cpl G). 

@@ -13,6 +13,8 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Skeletons *)
 
+(** ** Adjacency *)
+
 Definition adjacent (G : graph) (x y : G) :=
   [exists e, e \in edges x y :|: edges y x].
 
@@ -27,6 +29,9 @@ Arguments adjacentI [G x y] e _.
 Lemma adjacent_edge (G : graph) (e : edge G) : adjacent (source e) (target e).
 Proof. apply: (adjacentI e). by rewrite !inE. Qed.
 
+(** The following lemma avoids the need for without loss of generality
+reasoning (regarding the direction of the edge) when analyzing
+[adjacent x y] *)
 Lemma adjacentP (G : graph) (P : G -> G -> Prop) :
   Symmetric P ->
   (forall e : edge G, P (source e) (target e)) ->
@@ -35,7 +40,6 @@ Proof.
   move=> S H x y. case/existsP=> e. rewrite !inE.
   case/orP=> /andP[/eqP<- /eqP<-] //. exact: S.
 Qed.
-
 
 Definition sk_rel (G : graph) : rel G := fun x y => (x != y) && adjacent x y.
 
@@ -59,20 +63,7 @@ Proof.
   case/orP=> /andP[/eqP<- /eqP<-]; last rewrite eq_sym; move=> /H//. exact: S.
 Qed.
 
-(* Definition ssk_rel (G : graph2) :=  *)
-(*   relU (sk_rel G) (sc [rel x y | [&& x != y, x == g_in & y == g_out]]). *)
-
-
-
 Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
-
-(* Lemma ssk_sym (G : graph2) : symmetric (ssk_rel G). *)
-(* Proof. apply: relU_sym' (@sk_rel_sym _) _. exact: sc_sym. Qed. *)
-
-(* Lemma ssk_irrefl (G : graph2) : irreflexive (ssk_rel G). *)
-(* Proof. move => x /=. by rewrite sk_rel_irrefl eqxx. Qed. *)
-
-(* Definition sskeleton (G : graph2) := SGraph (@ssk_sym G) (@ssk_irrefl G). *)
 
 (** Edges of skeletons of quotients *)
 Lemma sk_rel_mergeE (G : graph) (e : equiv_rel G) x y :
@@ -82,18 +73,14 @@ Proof.
   rewrite /= /sk_rel. 
   case: (boolP (x != y)) => //=; last by move => _; split => [|[]]. 
   move => xy; split.
-  - move/existsP => [e0 E]. split => //. 
-    wlog E : x y xy {E} / e0 \in edges x y.
-    { move => W. case/setUP : E; first exact: W. 
-      move => E. case: (W _ _ _ E); first by rewrite eq_sym.
-      move => y0 [x0] [? ? ?]. exists x0. exists y0. split => //. 
-      by rewrite eq_sym adjacent_sym. }
-    move: E. rewrite !inE => /andP [/eqP E1 /eqP E2].
-    exists (@source G e0). exists (@target G e0). split; last (apply/andP;split).
-    + by rewrite -E1. 
-    + by rewrite -E2.
-    + apply: contraNN xy => /eqP H. by rewrite -E1 -E2 /= eqmodE H. 
-    + apply/existsP; exists e0. by rewrite !inE !eqxx.
+  - move => A. split => //. move: xy. pattern x, y. apply adjacentP => //.
+    + move => {x y A} x y H xy. 
+      case: H => [|x0 [y0] [? ? /andP [E A]]]; first by rewrite eq_sym.
+      exists y0; exists x0. by rewrite eq_sym adjacent_sym A E. 
+    + move => e0. exists (@source G e0). exists (@target G e0).
+      split => // ; last apply/andP;split => //. 
+      * apply: contraNN xy => /eqP H. by rewrite eqmodE H.
+      * apply/existsP; exists e0. by rewrite !inE !eqxx.
   - case => _ [x0] [y0] [Px Py /andP [Dxy0]]. case/existsP => [e0 E].
     wlog E : x0 y0 x y Dxy0 Px Py {xy E} / e0 \in edges x0 y0.
     { move => W. case/setUP : E; first exact: W. 
@@ -123,15 +110,15 @@ Qed.
 
 (* Note: The proof below is a bit obsucre due to the abbiguity of [x -- y] *)
 Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
-Proof. exists id => //= x y H _. exact: subrelUl. 
-Qed.
+Proof. exists id => //= x y H _. exact: subrelUl. Qed.
 
 (** Isomorphim Lemmas *)
 
 Coercion skeleton : graph >-> sgraph.
 
+(* TODO: Factor out the part shared with [iso2_sskel] *)
 Lemma iso2_skel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso G1 G2.
-Proof.
+Proof. 
 Abort.
 
 Lemma hom2_sskel (G1 G2 : graph2) h :
@@ -176,8 +163,8 @@ Proof.
     rewrite inE. case/orP: He => /andP[/eqP-> /eqP->]; apply/andP; split; exact: valP.
 Qed.
 
-Lemma edge_set_adj (G : graph2) : 
-  @edge_set G [set g_in; g_out] == set0 -> ~~ @adjacent G g_in g_out. 
+Lemma edge_set_adj (G : graph2) (x y : G) : 
+  @edge_set G [set x; y] == set0 -> ~~ @adjacent G x y. 
 Proof. 
   apply: contraTN => /existsP[e]. rewrite !inE => He.
   apply/set0Pn. exists e. rewrite !inE.
@@ -206,6 +193,9 @@ Proof.
   - by rewrite /=/sk_rel => ->.
 Qed.
 
+(** We treat [remove_edges] separately from [subgraph_for] since
+removing only edges allows us to avoid the sigma-type on for the
+vertices *)
 Definition remove_edges (G : graph) (E : {set edge G}) := 
   {| vertex := G;
      edge := [finType of { e : edge G | e \notin E }];
@@ -234,11 +224,11 @@ Lemma remove_edges_connected (G : graph) (E : {set edge G}) :
   connected [set: skeleton G] -> connected [set: skeleton (remove_edges E)].
 Proof.
   move=> E_conn G_conn. apply: connectedTI => x y. have := connectedTE G_conn x y.
-  apply: connect_sub x y. move=> /=. apply skelP;
-    first by move=> x y; rewrite connect_symI //; exact: sk_rel_sym (remove_edges E).
-  move=> e sNt. case: (boolP (e \in E)) => [/E_conn//|He].
-  apply: connect1. rewrite /sk_rel sNt /=.
-  by apply/existsP; exists (Sub e He); rewrite !inE !eqxx.
+  apply: connect_sub x y. move=> /=. apply skelP.
+  - by move=> x y; rewrite connect_symI //; exact: sk_rel_sym (remove_edges E).
+  - move=> e sNt. case: (boolP (e \in E)) => [/E_conn//|He].
+    apply: connect1. rewrite /sk_rel sNt /=.
+    by apply/existsP; exists (Sub e He); rewrite !inE !eqxx.
 Qed.
 
 Lemma remove_edges_cross (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
@@ -280,6 +270,11 @@ Proof.
   - move=> /= ->. by rewrite !eqxx.
 Qed.
 
+(** ** Interval and Bag Graphs *)
+
+(** NOTE: for interval graphs, we need to remove self loops on the
+ends, because these edges will be edges of the bag graph for the end
+nodes. *)
 Definition interval_edges (G : graph) (x y : G) :=
   edge_set (@interval G x y) :\: (edges x x :|: edges y y).
 
@@ -296,12 +291,12 @@ Definition igraph (G : graph) (x y : skeleton G) :=
          (Sub x (intervalL x y))
          (Sub y (intervalR x y)).
 
-Definition pgraph (G : graph) (U : {set G}) (x:G) :=
+Definition bgraph (G : graph) (U : {set G}) (x:G) :=
   @point (induced (@bag (skeleton G) U x))
          (Sub x (@bag_id (skeleton G) U x))
          (Sub x (@bag_id (skeleton G) U x)).
 
-Lemma pgraph_eq_io (G : graph) (U : {set G}) (x : G) : g_in = g_out :> @pgraph G U x.
+Lemma bgraph_eq_io (G : graph) (U : {set G}) (x : G) : g_in = g_out :> @bgraph G U x.
 Proof. by []. Qed.
 
 Lemma interval_bag_edges_disj (G : graph) (U : {set G}) (x y : G) :
@@ -347,8 +342,9 @@ Qed.
 
 Lemma interval_bag_edge_cover (G : graph) (x y : G) :
   connected [set: skeleton G] -> x != y ->
-  [set: edge G] = edge_set (@bag G [set x; y] x) :|: @interval_edges G x y
-                    :|: edge_set (@bag G [set x; y] y).
+  [set: edge G] = edge_set (@bag G [set x; y] x) :|: 
+                  @interval_edges G x y :|: 
+                  edge_set (@bag G [set x; y] y).
 Proof.
   move=> G_conn xNy. apply/eqP. rewrite eq_sym -subTset. apply/subsetP=> e _.
   move: (sinterval_bag_cover G_conn xNy) => compU.
@@ -403,8 +399,9 @@ Qed.
 
 Lemma interval_cp_edge_cover (G : graph) (x y z : G) :
   connected [set: skeleton G] -> z \in @cp G x y :\: [set x; y] ->
-  @interval_edges G x y = @interval_edges G x z :|: edge_set (@bag G [set x; y] z)
-                            :|: @interval_edges G z y.
+  @interval_edges G x y = @interval_edges G x z :|: 
+                          edge_set (@bag G [set x; y] z) :|: 
+                          @interval_edges G z y.
 Proof.
   move=> G_conn zPcpxy.
   have z_cpxy : z \in @cp G x y by move: z zPcpxy; apply/subsetP; exact: subsetDl.
@@ -524,8 +521,6 @@ Proof.
         have := interval_edge_cp z_cpxy He Hsrc Htgt. by rewrite srcNz tgtNz.
 Qed.
 
-(** ** Connecting Multigraphs and their Skeletons *)
-
 Lemma has_edge (G : graph) (x y : G) : 
   connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
 Proof.
@@ -587,9 +582,9 @@ Proof.
   move=> e E1 E2; exists e; rewrite ?inE ?eqxx //. exact: all_edges.
 Qed.
 
-Lemma connected_pgraph (G : graph2) (U : {set G}) (x : G) : 
+Lemma connected_bgraph (G : graph2) (U : {set G}) (x : G) : 
   connected [set: skeleton G] -> x \in @CP (skeleton G) U -> 
-  connected [set: skeleton (pgraph U x)].
+  connected [set: skeleton (bgraph U x)].
 Proof.
   move => conn_G cp_x.
   apply: connected_skeleton; rewrite imset_valT memKset //. exact: connected_bag.
