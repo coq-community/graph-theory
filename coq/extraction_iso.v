@@ -218,9 +218,9 @@ Proof.
           case/or3P=> [/eqP->|/eqP->|zR]; apply/andP; split=> //.
           - by rewrite (@sinterval_bounds G).
           - by rewrite eq_sym.
-          - rewrite (@sintervalP G) negb_and !negbK.
+          - rewrite inE negb_and !negbK.
             by move: u_cpio; rewrite inE cp_sym => /andP[_]->.
-          - apply: contraTneq zR => ->. rewrite (@sintervalP G) negb_and !negbK.
+          - apply: contraTneq zR => ->. rewrite inE negb_and !negbK.
             by move: u_cpio; rewrite inE => /andP[_]->.
           - rewrite (disjointFl (@sinterval_disj_cp G g_in g_out u _) zR) //.
             by move: u_cpio; rewrite inE => /andP[_]. }

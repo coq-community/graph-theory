@@ -100,8 +100,7 @@ Section CheckPoints.
   Lemma cp_widen (i o x y z : G) :
     x \in cp i o -> y \in cp i o -> z \in cp x y -> z \in cp i o.
   Proof.
-    move=> x_cpio y_cpio z_cpxy.
-    apply/cpPn=> -[p] Ip; apply/negP; rewrite negbK.
+    move=> x_cpio y_cpio z_cpxy. apply: cpTI => p Ip.
     move: x_cpio y_cpio => /cpP/(_ p) x_p /cpP/(_ p) y_p.
     wlog : x y z_cpxy p Ip x_p y_p / x <[p] y.
     { move=> Hyp. case: (ltngtP (idx p x) (idx p y)); first exact: Hyp.
@@ -145,10 +144,9 @@ Section CheckPoints.
     (forall x' (p : Path x' y), x -- x' -> irred p -> x \notin p -> z \in p) ->
     z \in cp x y.
   Proof.
-    move=> xNy H. apply/cpPn=> -[p].
+    move=> xNy H. apply: cpTI => p.
     case: (splitL p xNy) => [x'] [xx'] [p'] [-> _].
-    rewrite irred_edgeL => /andP[xNp' Ip]. apply/negP.
-    by rewrite mem_pcat H.
+    rewrite irred_edgeL => /andP[xNp' Ip]. by rewrite mem_pcat H.
   Qed.
 
   Lemma connected_cp_closed (x y : G) (V : {set G}) :
@@ -417,8 +415,8 @@ Section CheckPoints.
     move=> [CPU_tree _] p_cp Ip z z_cp. apply/idP/idP; last exact: link_path_cp.
     have [x_cp y_cp] : x \in CP U /\ y \in CP U.
     { split; apply: (subsetP p_cp); by rewrite ?nodes_start ?nodes_end. }
-    move=> z_p. apply/cpPn=> -[q0] /(CP_path x_cp y_cp)[q] [Iq q_cp /subsetP q_sub].
-    apply/negP. rewrite negbK. apply: q_sub. by have -> : q = p by exact: CPU_tree.
+    move=> z_p. apply: cpTI => q0 /(CP_path x_cp y_cp)[q] [Iq q_cp /subsetP q_sub].
+    apply: q_sub. by have -> : q = p by exact: CPU_tree.
   Qed.
 
   Arguments Path : default implicits.
@@ -588,45 +586,22 @@ Section CheckPoints.
   Lemma connected_interval (x y : G) : 
     connected (interval x y).
   Proof.
-    suff conn_y z : 
-      z \in interval x y -> connect (restrict (mem (interval x y)) sedge) z y.
-    { move => u v /conn_y Hu /conn_y Hv. 
-      apply: connect_trans Hu _. by rewrite connect_symI. }
-    move=> z_intv. wlog z_sintv : z {z_intv} / z \in sinterval x y.
-    { move=> Hyp. move: z_intv.
-      rewrite 4!inE -orbA => /or3P[/eqP->|/eqP->|//];
-      last exact: Hyp; last exact: connect0.
-      case: (altP (x =P y)) => [->|xNy]; first exact: connect0.
-      case/uPathP: (G_conn x y) => p.
-      case: (splitL p xNy) => [u] [xu] [p'] [-> _].
-      rewrite irred_cat' =>/and3P[_ Ip']/eqP/setP/(_ x).
-      rewrite !inE nodes_start /= sg_edgeNeq // => xNp'.
-      case: (altP (y =P u)) xu => [<- xy|yNu xu].
-      { apply/(PathRP xNy). exists (edgep xy).
-        apply/subsetP=> v. rewrite mem_edgep.
-        by case/orP=> /eqP->; rewrite !inE eqxx. }
-      have usi : u \in sinterval x y.
-      { apply/sintervalP2; split; last by exists p'; rewrite // xNp'.
-        exists (prev (edgep xu)); first by rewrite irred_rev irred_edge.
-        by rewrite mem_prev mem_edgep negb_or eq_sym xNy yNu. }
-      { apply: @connect_trans (Hyp u usi).
-        apply/PathRP; first by rewrite sg_edgeNeq.
-        exists (edgep xu); apply/subsetP=> v.
-        rewrite mem_edgep => /orP[]/eqP->.
-        - by rewrite !inE eqxx.
-        - by rewrite inE usi. }
-    }
-    case/sintervalP2: (z_sintv) => _ [p Ip xNp].
-    apply/PathRP; first by apply: contraTneq z_sintv =>->; rewrite sinterval_bounds.
-    exists p. apply/subsetP=> u u_p.
-    have uNx : u != x by apply: contraNneq xNp => <-.
-    case: (Path_split u_p) Ip xNp => [p1][p2]->.
-    rewrite irred_cat' => /and3P[_ _] /eqP/setP/(_ y).
-    rewrite 2!inE nodes_end andbT eq_sym mem_pcat negb_or => y_up2 /andP[xNp1 xNp2].
-    rewrite 4!inE (negbTE uNx) /= orbC -implyNb. apply/implyP=> uNsi.
-    case: (sinterval_exit uNsi z_sintv); rewrite cp_sym => /cpP/(_ p1).
-    - by rewrite (negbTE xNp1).
-    - by rewrite y_up2.
+    apply: connected_center (intervalL x y) => z.
+    rewrite {1}/interval set2C -setUA in_setU1 orbC.
+    case/orP=> [/(sinterval_connectedL (setU11 _ _))|/eqP{z}->].
+    { apply: connect_mono => {z}. apply: restrict_mono => z /=.
+      by rewrite /interval set2C -setUA (in_setU1 z y) => ->. }
+    case/uPathP: (G_conn x y) => p Ip. apply: connectRI (p) _ => z z_p.
+    rewrite inE -implyNb in_set2 negb_or inE. apply/implyP.
+    wlog suff Hyp : x y p Ip z_p / z != x -> x \notin cp z y.
+    { have Ip' : irred (prev p) by rewrite irred_rev.
+      have z_p' : z \in prev p by rewrite mem_prev.
+      case/andP=> zNx zNy. apply/andP; split.
+      - exact: Hyp Ip z_p zNx.
+      - exact: Hyp Ip' z_p' zNy. }
+    move=> /negbTE zNx. case/Path_split: z_p Ip => [p1] [p2] ->.
+    rewrite irred_cat'. case/and3P=> _ _ /eqP/setP/(_ x).
+    rewrite !inE nodes_start eq_sym zNx => /negbT/=. exact: cpNI.
   Qed.
 
   (** *** Bags *)
@@ -920,7 +895,7 @@ a clique, so [CP U] is [U]. *)
     [set: G] = bag [set x; y] x :|: sinterval x y :|: bag [set x; y] y.
   Proof.
     move=> xNy. apply/eqP. rewrite eqEsubset subsetT andbT. apply/subsetP => p _.
-    rewrite setUAC setUC !in_setU sintervalP -negb_or -implybE. apply/implyP.
+    rewrite setUAC setUC !in_setU inE -negb_or -implybE. apply/implyP.
     wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in bag [set x; y] x.
     { by case/orP => /Hyp; last rewrite setUC; move=>->. }
     move=> x_cppy; apply/bagP => z. rewrite CP_set2 => z_cpxy.
@@ -940,17 +915,17 @@ a clique, so [CP U] is [U]. *)
     apply/subsetP=> u u_sIxy. rewrite !in_setU.
     have [uNx uNy] : u != x /\ u != y.
     { by split; apply: contraTneq u_sIxy => ->; rewrite sinterval_bounds. }
-    move: u_sIxy; rewrite sintervalP. case/andP=> xNcpuy yNcpux.
+    move: u_sIxy; rewrite inE. case/andP=> xNcpuy yNcpux.
     case: (boolP (z \in cp u x)) => Hx; case: (boolP (z \in cp u y)) => Hy.
     + suff -> : u \in bag [set x; y] z by []. apply/bagP=> c.
       rewrite CP_set2 => /(subsetP (cp_triangle z)). rewrite in_setU cp_sym.
       case/orP=> c_cp; exact: cp_tightenR c_cp _.
-    + suff -> : u \in sinterval z y by []. rewrite sintervalP Hy /=.
+    + suff -> : u \in sinterval z y by []. rewrite inE Hy /=.
       apply: cpN_trans yNcpux _. apply: contraNN zNy => y_cpxz.
       suff : z \in cp y y by rewrite cpxx in_set1 eq_sym.
       move: y_cpxz z_cpxy. rewrite [cp x z]cp_sym [cp x y]cp_sym.
       exact: cp_tightenR.
-    + suff -> : u \in sinterval x z by []. rewrite sintervalP Hx andbT.
+    + suff -> : u \in sinterval x z by []. rewrite inE Hx andbT.
       apply: cpN_trans xNcpuy _. apply: contraNN zNx => x_cpyz.
       suff : z \in cp x x by rewrite cpxx in_set1 eq_sym.
       move: x_cpyz z_cpxy. rewrite [cp y z]cp_sym.
@@ -979,7 +954,7 @@ a clique, so [CP U] is [U]. *)
         apply: Hyp; by rewrite 1?cp_sym 1?sg_sym.
       - by apply: Hyp (conj Hu Evy).
       - move: (sinterval_noedge_cp uv Hu Hv). by rewrite z_cpxy. }
-    move: uv Hu; rewrite {}Evy sintervalP => uy /andP[_]/cpPn[p _ zNp].
+    move: uv Hu; rewrite {}Evy inE => uy /andP[_]/cpPn[p _ zNp].
     move/cpP/(_ (pcat (prev p) (edgep uy))): z_cpxy.
     by rewrite mem_pcat mem_prev mem_edgep (negbTE zNp) /= ![z == _]eq_sym.
   Qed.

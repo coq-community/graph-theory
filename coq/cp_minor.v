@@ -567,7 +567,7 @@ Proof.
       apply: connectRI (q) _ => v. rewrite in_collective => /(map_f val).
       rewrite eq_q inE. exact: p_sub.
     - apply: preimsetS. apply: setUS. apply/subsetP=> u. rewrite inE => iu.
-      rewrite sintervalP andbC. apply/andP. split.
+      rewrite inE andbC. apply/andP. split.
       + apply: cpNI (prev (edgep iu)) _ _.
         rewrite mem_prev mem_edgep negb_or eq_sym io2 /=.
         by apply: contraNneq io1 =>->.

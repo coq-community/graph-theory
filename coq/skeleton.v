@@ -353,8 +353,9 @@ Proof.
   case: (boolP (source e \in @sinterval G x y)) => [Hsrc _|Nsrc /= Hsrc].
   + case: (boolP (target e \in @sinterval G x y)) => [Htgt _|Ntgt /= Htgt].
     { rewrite ![e \in _]inE ![_ \in @interval G _ _]inE Hsrc Htgt.
-      rewrite !orbT negb_or !negb_and. move: Hsrc.
-      by rewrite 5!inE negb_or => /andP[]/andP[->->]. }
+      rewrite !orbT negb_or !negb_and.
+      suff [-> ->] : source e != x /\ source e != y by [].
+      by split; apply: contraTneq Hsrc => ->; rewrite (@sinterval_bounds G). }
     wlog Htgt : x y xNy Hsrc Ntgt {Htgt} / target e \in @bag G [set x; y] x.
     { move=> Hyp. case/orP: Htgt; first exact: Hyp.
       rewrite setUC orbC orbAC orbC interval_edges_sym.
@@ -432,7 +433,7 @@ Proof.
     suff : y \notin @interval G x z by apply: contraNN => /andP[/eqP<-].
     rewrite in_setU in_set2 [_ == z]eq_sym (negbTE zNy) orbF negb_or.
     apply/andP; split; first by apply: contraTneq z_cpxy =>->; rewrite cpxx inE.
-    by rewrite (@sintervalP G) negb_and !negbK (@cp_sym G y x) z_cpxy.
+    by rewrite inE negb_and !negbK (@cp_sym G y x) z_cpxy.
   - apply/subsetP=> e. rewrite ![e \in _]inE negb_or.
     have /subsetP PsubI := bag_sub_sinterval G_conn x_cp y_cp zPcpxy.
     case/andP=> /PsubI Hsrc /PsubI Htgt.
@@ -502,15 +503,15 @@ Proof.
         by move: Hsrc; rewrite in_setU1; case/orP=>->.
       * case: (altP (source e =P target e)) Hsrc Htgt => [<-|He Hsrc Htgt].
         { rewrite !in_setU1; case/orP=> [/eqP->|Hsrc].
-          - rewrite (@sintervalP G) z_cpxy /= orbF => /eqP Exy.
+          - rewrite inE z_cpxy /= orbF => /eqP Exy.
             move: zPcpxy. by rewrite -Exy cpxx setUid setDv inE.
           - rewrite (disjointFr (sinterval_disj_cp z_cpxy) Hsrc) orbF => /eqP Htgt.
-            move: Hsrc. by rewrite Htgt (@sintervalP G) (@cp_sym G y x) z_cpxy andbF. }
+            move: Hsrc. by rewrite Htgt inE (@cp_sym G y x) z_cpxy andbF. }
         have {He} He : @sedge G (source e) (target e).
         { by rewrite /=/sk_rel He adjacent_edge. }
         have [/negbTE srcNz /negbTE tgtNz] : source e != z /\ target e != z.
         { split; [apply: contraTneq Hsrc|apply: contraTneq Htgt]=>->.
-          all: rewrite in_setU1 negb_or (@sintervalP G) mem_cpl ?andbF andbT.
+          all: rewrite in_setU1 negb_or inE mem_cpl ?andbF andbT.
           all: move: zPcpxy; by rewrite !inE negb_or -andbA =>/and3P[]. }
         have {Hsrc} Hsrc : source e \in @interval G x z.
         { move: Hsrc; rewrite /interval !in_setU !in_set1 => /orP[/eqP->|->//].
