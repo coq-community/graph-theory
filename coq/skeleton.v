@@ -461,7 +461,7 @@ Proof.
         case/orP=> [/eqP->|Htgt]; last first.
           by rewrite (disjointFl (interval_bag_disj _ x_cp) Htgt).
         apply/bagPn. exists x; by [|rewrite cpxx inE]. }
-      move/cpP'/(_ (edgep src_tgt)): (bag_exit G_conn z_cp Hsrc Ntgt).
+      move/cpP/(_ (edgep src_tgt)): (bag_exit G_conn z_cp Hsrc Ntgt).
       rewrite mem_edgep orbC. have /negbTE->/= : z != target e
         by apply: contraNneq Ntgt =><-; rewrite (@bag_id G).
       move=> /eqP Esrc. rewrite ![e \in _]inE -Esrc eqxx (negbTE zNx) /=.
@@ -494,7 +494,7 @@ Proof.
           case/orP=> [/eqP->|Hsrc]; last first.
             by rewrite (disjointFl (interval_bag_disj _ x_cp) Hsrc).
           apply/bagPn. exists x; by [|rewrite cpxx inE]. }
-        move/cpP'/(_ (edgep tgt_src)): (bag_exit G_conn z_cp Htgt Nsrc).
+        move/cpP/(_ (edgep tgt_src)): (bag_exit G_conn z_cp Htgt Nsrc).
         rewrite mem_edgep orbC. have /negbTE->/= : z != source e
           by apply: contraNneq Nsrc =><-; rewrite (@bag_id G).
         move=> /eqP Etgt. rewrite ![e \in _]inE -Etgt eqxx (negbTE zNx) andbF andbT /=.

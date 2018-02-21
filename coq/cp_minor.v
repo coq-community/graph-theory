@@ -35,9 +35,9 @@ Lemma C3_of_triangle (x y z : link_graph G) :
   minor_map phi & [/\ phi x = Some ord0, phi y = Some ord1 & phi z = Some ord2].
 Proof.
   move => xy yz zx.
-  have/cpPn' [p irr_p av_z] : (z:G) \notin @cp G x y. 
+  have/cpPn [p irr_p av_z] : (z:G) \notin @cp G x y. 
   { apply: link_cpN => //; apply: linkNeq => //. by rewrite sg_sym. }
-  have/cpPn' [q irr_q av_x] : (x:G) \notin @cp G z y.
+  have/cpPn [q irr_q av_x] : (x:G) \notin @cp G z y.
   { apply: link_cpN => //; first (by rewrite sg_sym) ;apply: linkNeq => //. 
     by rewrite sg_sym. }
   have [Yq Yp] : y \in q /\ y \in p by split;apply: nodes_end.
@@ -46,7 +46,7 @@ Proof.
   { apply: contraNN av_x => /eqP<-. by rewrite def_q mem_pcat nodes_end. }
   have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1.
   { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
-  have/cpPn' [q irr_q av_n1] : n1 \notin @cp G z x. 
+  have/cpPn [q irr_q av_n1] : n1 \notin @cp G z x. 
   { apply link_cpN => //. apply: contraNN av_z => /eqP?. by subst n1. }
   have [Xq Xp] : x \in q /\ x \in p by split; rewrite /= ?nodes_end ?nodes_start. 
   case: (split_at_first (G := G) (A := mem p) Xp Xq) => n2 [q2] [q2'] [def_q Q3 Q4].
@@ -277,10 +277,10 @@ Proof.
 
   have cp_lift u v w : 
     w \in @cp G' u v -> val w \in @cp G (val u) (val v).
-  { apply: contraTT => /cpPn' [p] /irred_inT. move/(_ (valP u) (valP v)).
+  { apply: contraTT => /cpPn [p] /irred_inT. move/(_ (valP u) (valP v)).
     case/Path_to_induced => q eq_nodes.
     rewrite in_collective -eq_nodes (mem_map val_inj).
-    exact: cpNI'. }
+    exact: cpNI. }
 
   pose x0 : G' := Sub x xH'.
   pose y0 : G' := Sub y yH'.
@@ -453,7 +453,7 @@ Proof.
   move=> iNo bag_i conn_G.
   have : o \in [set~ i] by rewrite !inE eq_sym.
   apply: connected_center => x. rewrite inE -{1}bag_i => Hx.
-  suff /cpPn'[p _ iNp] : i \notin cp o x.
+  suff /cpPn[p _ iNp] : i \notin cp o x.
   { suff : {subset p <= [set~ i]} by exact: connectRI.
     by move=> z; rewrite !inE; apply: contraTneq =>->. }
   rewrite cp_sym. apply: contraNN Hx => i_cpxo. apply/bagP. rewrite CP_set2.
@@ -568,12 +568,12 @@ Proof.
       rewrite eq_q inE. exact: p_sub.
     - apply: preimsetS. apply: setUS. apply/subsetP=> u. rewrite inE => iu.
       rewrite sintervalP andbC. apply/andP. split.
-      + apply: cpNI' (prev (edgep iu)) _ _.
+      + apply: cpNI (prev (edgep iu)) _ _.
         rewrite mem_prev mem_edgep negb_or eq_sym io2 /=.
         by apply: contraNneq io1 =>->.
       + case/i_link: iu => u' eq_u' _.
         case/uPathP: (connectedTE conn_G' u' o') => p' _.
-        case/into_base: (p'); rewrite -eq_u' -eq_o'. by move=> ? /cpNI'.
+        case/into_base: (p'); rewrite -eq_u' -eq_o'. by move=> ? /cpNI.
   }
 
   case/card_gt1P : Ngt1 => [x] [y]. rewrite !inE {N}.
@@ -591,6 +591,6 @@ Proof.
     by case/or4P=> /eqP->. }
   have : o' \in q' by rewrite mem_pcat mem_prev !nodes_start.
   rewrite (CP_tree_paths conn_G' tree_CPU' _ Iq' _) //.
-  move/(@cpP' G')/(_ p')/(map_f val).
+  move/(@cpP G')/(_ p')/(map_f val).
   by rewrite -eq_p' -eq_o' =>/p_io; rewrite sinterval_bounds.
 Qed.
