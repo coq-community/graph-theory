@@ -45,9 +45,6 @@ Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
 
 (** ** Disjoint Union *)
 
-(** TODO: The graph constructions below still use unpackaged paths. Using the
-infrastructure for packaged paths should simplify the proofs *)
-
 Section JoinT.
   Variables (T1 T2 : forest).
 
