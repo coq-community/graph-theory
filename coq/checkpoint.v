@@ -428,59 +428,28 @@ Section CheckPoints.
 
   (** *** Strict intervals *)
 
-  Definition sinterval x y := 
-    [set z in ~: [set x; y] | connect (restrict (predC1 y) (@sedge G)) z x && 
-                              connect (restrict (predC1 x) (@sedge G)) z y ].
+  Definition sinterval x y := [set u | (x \notin cp u y) && (y \notin cp u x)].
 
   Lemma sinterval_sym x y : sinterval x y = sinterval y x.
-  Proof. apply/setP => p. by rewrite !inE orbC [_ _ _ _ && _ _ _ _]andbC. Qed.
+  Proof. apply/setP => p. by rewrite !inE andbC. Qed.
 
   Lemma sinterval_bounds x y : (x \in sinterval x y = false) * 
                                (y \in sinterval x y = false).
-  Proof. by rewrite !inE !eqxx. Qed.
-
-  Lemma sintervalP x y u :
-    u \in sinterval x y = (x \notin cp u y) && (y \notin cp u x).
-  Proof.
-    rewrite 5!inE negb_or. apply/andP/andP.
-    + case=> /andP[uNx uNy] /andP[].
-      move=> /(uPathRP uNx)[px] Ipx /subsetP/(_ y).
-      rewrite inE eqxx =>/contraTN/(_ isT) yNpx.
-      move=> /(uPathRP uNy)[py] Ipy /subsetP/(_ x).
-      rewrite inE eqxx =>/contraTN/(_ isT) xNpy.
-      by split; apply/cpPn; eexists; eassumption.
-    + case=> /cpPn[py Ipy xNpy] /cpPn[px Ipx yNpx].
-      have uNx : u != x by apply: contraNneq xNpy =><-; exact: nodes_start.
-      have uNy : u != y by apply: contraNneq yNpx =><-; exact: nodes_start.
-      split; apply/andP; split=> //; apply/PathRP => //.
-      - exists px; apply/subsetP => z ?; rewrite inE.
-        by apply: contraNneq yNpx =><-.
-      - exists py; apply/subsetP => z ?; rewrite inE.
-        by apply: contraNneq xNpy =><-.
-  Qed.
+  Proof. by rewrite !inE !mem_cpl andbF. Qed.
 
   Lemma sintervalP2 x y u :
     reflect ((exists2 p : Path u x, irred p & y \notin p) /\
-             (exists2 q : Path u y, irred q & x \notin q))    (u \in sinterval x y).
+             (exists2 q : Path u y, irred q & x \notin q)) (u \in sinterval x y).
   Proof.
     apply/(iffP idP).
-    + rewrite !inE negb_or => /andP[/andP[uNx uNy]] /andP[].
-      case/(uPathRP uNx) => [p] Ip /subsetP/memPn yNp.
-      case/(uPathRP uNy) => [q] Iq /subsetP/memPn xNq.
-      split; by [exists p | exists q].
-    + case=>- [p] Ip yNp [q] Iq xNq.
-      rewrite !inE negb_or.
-      apply/andP; split.
-      - by apply/andP; split; [move: xNq | move: yNp];
-        apply: contraNN =>/eqP<-; exact: nodes_start.
-      - apply/andP; split; move: connectRI => /(_ G _ u);
-        [ move=>/(_ _ x p) | move=>/(_ _ y q) ]; apply=> v; rewrite inE;
-        by apply: contraTN =>/eqP->.
+    + rewrite !inE => /andP[/cpPn ? /cpPn ?] //.
+    + case=>- [p] Ip yNp [q] Iq xNq. rewrite !inE. 
+      apply/andP;split; [exact: cpNI xNq|exact: cpNI yNp].
   Qed.
 
   Lemma sinterval_sub x y z : z \in cp x y -> sinterval x z \subset sinterval x y.
   Proof.
-    move=> z_cpxy. apply/subsetP=> u. rewrite !sintervalP. case/andP=> xNcpuz zNcpux.
+    move=> z_cpxy. apply/subsetP=> u. rewrite !inE. case/andP=> xNcpuz zNcpux.
     apply/andP; split.
     - apply: contraNN xNcpuz => x_cpuy. exact: cp_tightenR z_cpxy x_cpuy.
     - apply: contraNN zNcpux => y_cpux. apply: cp_widen y_cpux z_cpxy.
@@ -489,23 +458,13 @@ Section CheckPoints.
 
   Lemma sinterval_exit x y u v : u \notin sinterval x y -> v \in sinterval x y ->
     x \in cp u v \/ y \in cp u v.
-  Proof.
-    rewrite [v \in _]inE ![in _ && _]inE negb_or => uNIxy /andP[]/andP[vNx vNy].
-    case/andP => /(uPathRP vNx)[p1 Ip1 yNp1] /(uPathRP vNy)[p2 Ip2 xNp2].
-    have {yNp1 xNp2} [yNp1 xNp2] : y \notin p1 /\ x \notin p2.
-      by split; rewrite -disjoint1 disjoint_sym disjoint_subset.
-    apply/orP; apply: contraNT uNIxy.
-    rewrite negb_or =>/andP[] /cpPn[q1 Iq1 xNq1] /cpPn[q2 Iq2 yNq2].
-    have uNx : u != x by apply: contraNN xNq1 => /eqP<-; exact: nodes_start.
-    have uNy : u != y by apply: contraNN yNq2 => /eqP<-; exact: nodes_start.
-    rewrite !inE negb_or. apply/andP; split; first by rewrite uNx uNy.
-    apply/andP; split.
-    + apply/PathRP => //. exists (pcat q2 p1).
-      apply/subsetP => z. rewrite mem_pcat inE.
-      apply: contraTN =>/eqP->. by rewrite negb_or yNp1 yNq2.
-    + apply/PathRP => //. exists (pcat q1 p2).
-      apply/subsetP => z. rewrite mem_pcat inE.
-      apply: contraTN =>/eqP->. by rewrite negb_or xNp2 xNq1.
+  Proof. 
+    rewrite !inE negb_and !negbK => H.
+    wlog: x y {H} / x \in cp u y.
+    { move => W. case/orP : H; first exact: W. 
+      rewrite andbC => A B. move: (W _ _ A B). tauto. }
+    move => Hu /andP[Hv1 Hv2]. left. 
+    apply: contraTT Hu => C. exact: cpN_trans Hv1. 
   Qed.
 
   Lemma sinterval_outside x y u : u \notin sinterval x y ->
@@ -553,7 +512,7 @@ Section CheckPoints.
     rewrite in_set1 in_set mem_edgep eqxx orbT andbT eq_sym (sg_edgeNeq ux).
     move=> xNp yNp' [q'] Iq' xNq'. exists u; first by rewrite sgP.
     apply: connectRI (p) _ => v. case/Path_split=> [p1] [p2] eq_p.
-    rewrite sintervalP. apply/andP. split.
+    rewrite inE. apply/andP. split.
     - apply: (@cpNI v y (pcat (prev p1) q')).
       rewrite mem_pcat mem_prev negb_or xNq' andbT.
       apply: contraFN xNp. by rewrite eq_p mem_pcat => ->.
@@ -606,7 +565,7 @@ Section CheckPoints.
 
   Lemma cp_sub_interval x y : cp x y \subset interval x y.
   Proof.
-    apply/subsetP=> z z_cpxy. rewrite !in_setU !in_set1 sintervalP -implyNb negb_or.
+    apply/subsetP=> z z_cpxy. rewrite !in_setU !in_set1 inE -implyNb negb_or.
     apply/implyP=> /andP[zNx zNy]. apply/andP; split.
     - apply: contraNN zNx => /(cp_tightenR z_cpxy). by rewrite cpxx !inE eq_sym.
     - rewrite cp_sym in z_cpxy. apply: contraNN zNy => /(cp_tightenR z_cpxy).
@@ -621,8 +580,8 @@ Section CheckPoints.
     apply/idP/idP; last by move=>->.
     case/andP=> /or3P[/eqP->|->//|u_sIxz] /or3P[->//|/eqP u_y|u_sIzy].
     - move: z_cpxy. by rewrite -u_y cpxx inE eq_sym.
-    - move: u_sIzy. by rewrite sintervalP z_cpxy.
-    - move: u_sIxz. by rewrite u_y sintervalP (cp_sym y x) z_cpxy andbF.
+    - move: u_sIzy. by rewrite inE z_cpxy.
+    - move: u_sIxz. by rewrite u_y inE (cp_sym y x) z_cpxy andbF.
     - by case: (disjointE (sinterval_disj_cp z_cpxy) u_sIxz u_sIzy).
   Qed.
 
@@ -702,7 +661,7 @@ Section CheckPoints.
     rewrite in_setD in_set2 negb_or => x_cp y_cp /andP[]/andP[zNx zNy] z_cpxy.
     apply/subsetP=> u /bagP u_bag.
     move: x_cp y_cp => /u_bag z_cpux /u_bag z_cpuy.
-    rewrite sintervalP. apply/andP; split.
+    rewrite inE. apply/andP; split.
     - apply: contraNN zNx => x_cpuy.
       suff : x \in cp z z by rewrite cpxx in_set1 eq_sym.
       suff : x \in cp z u by apply: cp_tightenR; rewrite cp_sym.
@@ -717,14 +676,16 @@ Section CheckPoints.
   (** ** Neighouring Checkpoints *)
 
   Definition ncp (U : {set G}) (p : G) : {set G} := 
-    locked [set x in CP U | connect (restrict [pred z:G | (z \in CP U) ==> (z == x)] sedge) p x].
+    locked [set x in CP U | 
+            connect (restrict [pred z:G | (z \in CP U) ==> (z == x)] sedge) p x].
 
   (* TOTHINK: Do we also want to require [irred q] *)
   Lemma ncpP (U : {set G}) (p : G) x : 
     reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) 
             (x \in ncp U p).
   Proof.
-    rewrite /ncp -lock inE. apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
+    rewrite /ncp -lock inE. 
+    apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
     - case: (boolP (p == x)) => [/eqP ?|px]. 
       + subst p. exists (idp x) => y _ . by rewrite mem_idp => /eqP.
       + case/(uPathRP px) : A => q irr_q /subsetP sub_q. 
@@ -782,20 +743,12 @@ Section CheckPoints.
   Lemma ncp_interval U (x y p : G) : 
     x != y -> [set x; y] \subset ncp U p -> p \in sinterval x y.
   Proof.
-    rewrite subUset !sub1set => xy /andP[Nx Ny]. 
-    rewrite !inE negb_or. 
-    gen have A,Ax : x y xy Nx Ny / p != x.
-    { have Ux : x \in CP U. by case/ncpP : Nx.
-      apply: contraNN xy => /eqP => ?; subst p. apply/eqP.
-      case/ncpP : Ny => Uy [q] /(_ _ Ux). rewrite nodes_start. 
-      by apply. }
-    have Ay: p != y. apply: (A y x) => //. by rewrite eq_sym.
-    rewrite Ax Ay /=. 
-    gen have S,_: x y Nx Ny xy {A Ax Ay} / connect (restrict (predC1 y) sedge) p x.
-    { case/ncpP : Nx => Ux [q Hq]. apply: (connectRI (p := q)).
-      move => z in_q. apply: contraNT xy. rewrite negbK => /eqP ?; subst z.
-      rewrite [y]Hq //. by case/ncpP : Ny. }
-    apply/andP;split; apply: S => //. by rewrite eq_sym.
+    rewrite subUset !sub1set inE => xy /andP[Nx Ny]. 
+    wlog suff: x y xy Nx Ny / x \notin cp p y.
+    { move => W. by rewrite !W // eq_sym. }
+    have cp_x : x \in CP U. by case/ncpP : Nx. 
+    case/ncpP : Ny => cp_y [q /(_ _ cp_x) H]. 
+    apply: (cpNI (p := q)). by apply: contraNN xy => /H->.
   Qed.
 
   (** *** Application to bags *)
@@ -957,10 +910,8 @@ a clique, so [CP U] is [U]. *)
     y \in CP U -> [disjoint bag U x & sinterval x y].
   Proof.
     move => Uy. rewrite disjoint_sym disjoints_subset. apply/subsetP => z.
-    rewrite 3!inE negb_or !in_set1 => /and3P [/andP [A1 A2] B C]. 
-    rewrite inE. apply:contraTN C => /bagP/(_ _ Uy). 
-    apply: contraTN. case/uPathRP => // p _ /subsetP sub_p. 
-    apply: (cpNI (p := p)). apply/negP => /sub_p. by rewrite inE eqxx.
+    rewrite !inE => /andP[A1 A2]. 
+    apply: contraTN A1 => /bagP/(_ _ Uy). by rewrite negbK.
   Qed.
 
   (** *** Covering statements *)
