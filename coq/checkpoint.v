@@ -14,56 +14,37 @@ Section CheckPoints.
   Variables (G : sgraph).
   Implicit Types (x y z : G) (U : {set G}).
 
-  Let avoids z x y (p : seq G) := upath x y p && (z \notin x::p).
-  Definition avoidable z x y := [exists n : 'I_#|G|, exists p : n.-tuple G, avoids z x y p].
-
-  Definition cp x y := locked [set z | ~~ avoidable z x y].
-
-  Lemma cpPn {z x y} : reflect (exists2 p, upath x y p & z \notin x::p) (z \notin cp x y).
-  Proof.
-    rewrite /cp -lock inE negbK. apply: (iffP existsP) => [[n] /exists_inP|[p]].
-    - case => p ? ?. by exists p.
-    - case/andP => U S I.
-      have size_p : size p < #|G|.
-      { by rewrite -[(size p).+1]/(size (x::p)) -(card_uniqP U) max_card. }
-      exists (Ordinal size_p). by apply/exists_inP; exists (in_tuple p).
-  Qed.
-
-  Lemma cpNI z x y p : spath x y p -> z \notin x::p -> z \notin cp x y.
-  Proof.
-    case/andP. case/shortenP => p' ? ? sub_p ? E. apply/cpPn. exists p' => //.
-    apply: contraNN E. rewrite !inE. case: (_ == _) => //=. exact: sub_p.
-  Qed.
-  
-  Definition checkpoint x y z := forall p, spath x y p -> z \in x :: p.
-
-  Lemma cpP {x y z} : reflect (checkpoint x y z) (z \in cp x y).
-  Proof.
-    apply: introP.
-    - move => H p pth_p. apply: contraTT H. exact: cpNI.
-    - case/cpPn => p /upathW pth_p mem_p /(_ p pth_p). by rewrite (negbTE mem_p).
-  Qed.
-
-  (** wrapped versions of the checkpoint/path lemmas *)
-  
-  Lemma cpP' x y z : reflect (forall p : Path x y, z \in p) (z \in cp x y).
-  Proof. 
-    apply: (iffP cpP) => [H p|H p Hp]. 
-    + rewrite in_collective nodesE. apply: H. exact: valP. 
-    + move: (H (Sub p Hp)). by rewrite in_collective nodesE. 
-  Qed.
-  Arguments cpP' [x y z].
+  Definition cp x y := 
+    locked ([set z | ~~ connect (restrict (predC1 z) sedge) x y] :|: [set x;y]).
 
   Lemma cpPn' x y z : reflect (exists2 p : Path x y, irred p & z \notin p) (z \notin cp x y).
-  Proof. 
-    apply: (iffP cpPn) => [[p /andP [I Hp] N]|[p U N]]. 
-    + exists (Sub p Hp); by rewrite /irred ?in_collective nodesE. 
-    + rewrite /irred ?in_collective nodesE in U N.
-      exists (val p) => //. apply/andP. split => //. exact: valP. 
+  Proof.
+    rewrite /cp -lock !inE !negb_or negbK. apply: (iffP and3P).
+    - case: (altP (x =P y)) => [<- [_ C2 _]|Dxy [C1 C2 C3]]. 
+      + exists (idp x); by rewrite ?irred_id ?mem_idp. 
+      + case/uPathRP : C1 => // p irr_p /subsetP S. exists p => //. 
+        apply: contraTN isT => /S. by rewrite !inE eqxx.
+    - case => p irr_p av_z. 
+      split; try by apply: contraNN av_z => /eqP->; rewrite ?nodes_start ?nodes_end.
+      apply: (connectRI (p := p)) => u. rewrite inE. by apply: contraTneq => ->.
   Qed.
 
   Lemma cpNI' x y (p : Path x y) z : z \notin p -> z \notin cp x y.
-  Proof. by apply: contraNN => /cpP'. Qed.
+  Proof. 
+    case: (uncycle p) => p' S irr_p' av_z. apply/cpPn'. exists p' => //.
+    apply: contraNN av_z. exact: S.
+  Qed.
+  
+  Lemma cpP' x y z : reflect (forall p : Path x y, z \in p) (z \in cp x y).
+  Proof. 
+    apply: introP. 
+    - move => cp_z p. apply: contraTT cp_z. exact: cpNI'.
+    - case/cpPn' => p _ av_z /(_ p). exact/negP.
+  Qed.
+  Arguments cpP' [x y z].
+
+  Lemma cpTI x y z : (forall p : Path x y, irred p -> z \in p) -> z \in cp x y.
+  Proof. move => H. by apply/cpPn' => [[p] /H ->]. Qed.  
 
   Hypothesis G_conn' : connected [set: G].
   Let G_conn : forall x y:G, connect sedge x y.
@@ -73,21 +54,19 @@ Section CheckPoints.
   Proof.
     wlog suff S : x y / cp x y \subset cp y x. 
     { apply/eqP. by rewrite eqEsubset !S. }
-    apply/subsetP => z /cpP H. apply/cpP => p p_pth. 
-    rewrite (srev_nodes p_pth). apply: H. exact: spath_rev.
+    apply/subsetP => z /cpP' H. apply/cpP' => p. 
+    move: (H (prev p)). by rewrite mem_prev.
   Qed.
 
   Lemma mem_cpl x y : x \in cp x y.
-  Proof. apply/cpP => p. by rewrite mem_head. Qed.
+  Proof. apply/cpP' => p. by rewrite nodes_start. Qed.
 
   Lemma subcp x y : [set x;y] \subset cp x y.
   Proof. by rewrite subUset !sub1set {2}cp_sym !mem_cpl. Qed.
 
   Lemma cpxx x : cp x x = [set x].
   Proof. 
-    apply/setP => z; rewrite !inE. 
-    apply/idP/idP; last by move/eqP ->; rewrite mem_cpl.
-    move/cpP/(_ [::] (spathxx _)). by rewrite inE.
+    apply/setP => z; by rewrite /cp -lock !inE connect0 orbb.
   Qed.
 
   Lemma cp_triangle z {x y} : cp x y \subset cp x z :|: cp z y.
