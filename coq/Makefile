@@ -14,6 +14,13 @@ export COQDOCFLAGS
 all: Makefile.coq
 	+make -f Makefile.coq all
 
+quick: Makefile.coq
+	+make -f Makefile.coq quick
+
+vio2vo: Makefile.coq
+	+make -f Makefile.coq vio2vo
+
+
 html: Makefile.coq
 	+make -f Makefile.coq html
 	cp $(EXTRA_DIR)/resources/* html/

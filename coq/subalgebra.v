@@ -94,7 +94,7 @@ Section JoinT.
 
   Lemma join_decomp (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2})  :
     sdecomp D1 -> sdecomp D2 -> sdecomp (decompU D1 D2).
-  Proof.
+  Proof using.
     move => dec1 dec2. split.
     - move => [x|x]. 
       + case: (sbag_cover dec1 x) => t Ht. exists (inl t) => /=. by rewrite mem_imset.
@@ -182,7 +182,7 @@ Section Link.
 
   Lemma link_has_None (x y : link) (p q : Path x y) : 
     irred p -> irred q -> None \in p -> None \in q.
-  Proof. 
+  Proof using U_disc.
     move: x y p q => [x|] [y|] p q; 
       try by rewrite ?(@nodes_end link) ?(@nodes_start link).
     move => Ip Iq Np. apply: contraTT isT => Nq. 
@@ -313,7 +313,7 @@ Section Quotients.
     exists T D, [/\ sdecomp T (skeleton (merge_def _ e)) D, 
               width D <= 3 & exists t, 
               D t = [set \pi_{eq_quot e} x | x in P]].
-  Proof. 
+  Proof using. 
     move => /sdecomp_sskel [dec1 comp1] /sdecomp_sskel [dec2 comp2] W1 W2 adm_e collapse_P.
     move: comp1 comp2 => [t1 /andP[t1_in t1_out]] [t2 /andP[t2_in t2_out]].
     pose T := tjoin T1 T2.
@@ -365,7 +365,7 @@ Section Quotients.
   Proof. move=> x y. by rewrite /par2_eqv [[set y; x]]setUC [y == x]eq_sym. Qed.
 
   Definition par2_eqv_trans : transitive par2_eqv.
-  Proof.
+  Proof using.
     move=> y x z. rewrite /par2_eqv.
     case/altP: (x =P y) => [<-//|xNy/=]. case/altP: (y =P z) => [<-->//|yNz/=].
     case/boolP: ((g_in != g_out :> G1) && (g_in != g_out :> G2)).
@@ -400,7 +400,7 @@ Section Quotients.
     end.
 
   Lemma par2_equiv_of : par2_eqv =2 equiv_of par2_eq.
-  Proof.
+  Proof using.
     move=> x y. apply/idP/idP.
     - rewrite /par2_eqv. case/altP: (x =P y) => [<- _|xNy]/=; first exact: connect0.
       case: ifP => [_|/negbT].
@@ -459,7 +459,7 @@ Section Quotients.
        g_out := \pi_{eq_quot par2_eqv} (inl g_out) |}.
 
   Lemma par2_eqvP : admissible par2_eqv.
-  Proof. 
+  Proof using. 
     move=> x y. case/orP=> [/eqP|]; first by left. case: ifP; last by right.
     rewrite !inE => _ /orP[]/eqP->; by right; rewrite subUset !sub1set !inE !eqxx.
   Qed.
@@ -468,7 +468,7 @@ Section Quotients.
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
     exists T D, [/\ sdecomp T (sskeleton (par2)) D & width D <= 3].
-  Proof.
+  Proof using.
     move => dec1 dec2 W1 W2.
     case: (decomp_quot (e:= [equiv_rel of par2_eqv]) dec1 dec2 W1 W2 _ _).
     - exact: par2_eqvP.
@@ -497,7 +497,7 @@ Section Quotients.
   Proof. move=> x y. by rewrite /seq2_eqv [[set y; x]]setUC [y == x]eq_sym. Qed.
 
   Definition seq2_eqv_trans : transitive seq2_eqv.
-  Proof.
+  Proof using.
     move=> y x z. rewrite /seq2_eqv.
     case/altP: (x =P y) => [<-//|/= xNy Exy].
     case/altP: (y =P z) => [<-|/= yNz Eyz]; first by rewrite Exy.
@@ -518,7 +518,7 @@ Section Quotients.
     [rel a b | (a == inl g_out) && (b == inr g_in)].
 
   Lemma seq2_equiv_of : seq2_eqv =2 equiv_of seq2_eq.
-  Proof.
+  Proof using.
     move=> x y. apply/idP/idP.
     - case/altP: (x =P y) => [<- _|xNy]; first exact: connect0.
       rewrite /seq2_eqv (negbTE xNy) /= eqEcard subUset !sub1set !inE => /andP[H _].
@@ -547,7 +547,7 @@ Section Quotients.
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
     exists T D, [/\ sdecomp T (sskeleton seq2) D & width D <= 3].
-  Proof.
+  Proof using.
     move => dec1 dec2 W1 W2.
     case: (decomp_quot (e:= [equiv_rel of seq2_eqv]) dec1 dec2 W1 W2 _ _).
     - exact: seq2_eqvP.

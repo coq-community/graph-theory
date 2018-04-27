@@ -18,7 +18,7 @@ Section CheckPoints.
     locked ([set z | ~~ connect (restrict (predC1 z) sedge) x y] :|: [set x;y]).
 
   Lemma cpPn x y z : reflect (exists2 p : Path x y, irred p & z \notin p) (z \notin cp x y).
-  Proof.
+  Proof using.
     rewrite /cp -lock !inE !negb_or negbK. apply: (iffP and3P).
     - case: (altP (x =P y)) => [<- [_ C2 _]|Dxy [C1 C2 C3]]. 
       + exists (idp x); by rewrite ?irred_id ?mem_idp. 
@@ -30,13 +30,13 @@ Section CheckPoints.
   Qed.
 
   Lemma cpNI x y (p : Path x y) z : z \notin p -> z \notin cp x y.
-  Proof. 
+  Proof using. 
     case: (uncycle p) => p' S irr_p' av_z. apply/cpPn. exists p' => //.
     apply: contraNN av_z. exact: S.
   Qed.
   
   Lemma cpP x y z : reflect (forall p : Path x y, z \in p) (z \in cp x y).
-  Proof. 
+  Proof using. 
     apply: introP. 
     - move => cp_z p. apply: contraTT cp_z. exact: cpNI.
     - case/cpPn => p _ av_z /(_ p). exact/negP.
@@ -44,14 +44,14 @@ Section CheckPoints.
   Arguments cpP [x y z].
 
   Lemma cpTI x y z : (forall p : Path x y, irred p -> z \in p) -> z \in cp x y.
-  Proof. move => H. by apply/cpPn => [[p] /H ->]. Qed.  
+  Proof using. move => H. by apply/cpPn => [[p] /H ->]. Qed.  
 
   Hypothesis G_conn' : connected [set: G].
   Let G_conn : forall x y:G, connect sedge x y.
-  Proof. exact: connectedTE. Qed.
+  Proof using G_conn'. exact: connectedTE. Qed.
 
   Lemma cp_sym x y : cp x y = cp y x.
-  Proof.
+  Proof using.
     wlog suff S : x y / cp x y \subset cp y x. 
     { apply/eqP. by rewrite eqEsubset !S. }
     apply/subsetP => z /cpP H. apply/cpP => p. 
@@ -65,26 +65,26 @@ Section CheckPoints.
   Proof. by rewrite subUset !sub1set {2}cp_sym !mem_cpl. Qed.
 
   Lemma cpxx x : cp x x = [set x].
-  Proof. 
+  Proof using. 
     apply/setP => z; by rewrite /cp -lock !inE connect0 orbb.
   Qed.
 
   Lemma cp_triangle z {x y} : cp x y \subset cp x z :|: cp z y.
-  Proof.
+  Proof using.
     apply/subsetP => u /cpP => A. apply: contraT. 
     rewrite !inE negb_or => /andP[/cpPn [p1 _ up1]] /cpPn [p2 _ up2]. 
     move: (A (pcat p1 p2)). by rewrite mem_pcat (negbTE up1) (negbTE up2).
   Qed.
   
   Lemma cpN_trans a x z y : a \notin cp x z -> a \notin cp z y -> a \notin cp x y.
-  Proof. 
+  Proof using. 
     move => /negbTE A /negbTE B. apply/negP. move/(subsetP (cp_triangle z)). 
     by rewrite !inE A B.
   Qed.
 
   Lemma cp_mid (z x y t : G) : t != z -> z \in cp x y ->
    exists (p1 : Path z x) (p2 : Path z y), t \notin p1 \/ t \notin p2.
-  Proof. 
+  Proof using G_conn. 
     move => tNz cp_z.
     case/uPathP : (G_conn x y) => p irr_p.
     move/cpP/(_ p) : cp_z. case/(isplitP irr_p) => p1 p2 A B C.
@@ -99,7 +99,7 @@ Section CheckPoints.
 
   Lemma cp_widen (i o x y z : G) :
     x \in cp i o -> y \in cp i o -> z \in cp x y -> z \in cp i o.
-  Proof.
+  Proof using.
     move=> x_cpio y_cpio z_cpxy. apply: cpTI => p Ip.
     move: x_cpio y_cpio => /cpP/(_ p) x_p /cpP/(_ p) y_p.
     wlog : x y z_cpxy p Ip x_p y_p / x <[p] y.
@@ -112,7 +112,7 @@ Section CheckPoints.
   Qed.
 
   Lemma cp_tightenR (x y z u : G) : z \in cp x y -> x \in cp u y -> x \in cp u z.
-  Proof.
+  Proof using G_conn.
     move=> z_cpxy x_cpuy. apply/cpP => pi.
     case/uPathP: (G_conn z y) => pi_o irred_o.
     move/cpP/(_ (pcat pi pi_o)): x_cpuy.
@@ -143,7 +143,7 @@ Section CheckPoints.
   Lemma cp_neighbours (x y : G) z : x != y ->
     (forall x' (p : Path x' y), x -- x' -> irred p -> x \notin p -> z \in p) ->
     z \in cp x y.
-  Proof.
+  Proof using.
     move=> xNy H. apply: cpTI => p.
     case: (splitL p xNy) => [x'] [xx'] [p'] [-> _].
     rewrite irred_edgeL => /andP[xNp' Ip]. by rewrite mem_pcat H.
@@ -151,7 +151,7 @@ Section CheckPoints.
 
   Lemma connected_cp_closed (x y : G) (V : {set G}) :
     connected V -> [set x; y] \subset V -> cp x y \subset V.
-  Proof.
+  Proof using.
     move=> V_conn. rewrite subUset !sub1set. case/andP=> Hx Hy.
     case: (altP (x =P y)) => [<-|xNy]; first by rewrite cpxx sub1set.
     have /(PathRP xNy)[p /subsetP pV] := V_conn x y Hx Hy.
@@ -174,7 +174,7 @@ Section CheckPoints.
 
   Lemma link_cpN (x y z : G) : 
     (x : link_graph) -- y -> z != x -> z != y -> z \notin cp x y.
-  Proof.
+  Proof using.
     move => /= /andP [_ /subsetP A] B C. apply/negP => /A. 
     by rewrite !inE (negbTE B) (negbTE C).
   Qed.
@@ -185,7 +185,7 @@ Section CheckPoints.
 
   Lemma link_seq_cp (y x : G) p :
     @spath link_graph x y p -> cp x y \subset x :: p.
-  Proof.
+  Proof using.
     elim: p x => [|z p IH] x /=.
     - move/spath_nil->. rewrite cpxx. apply/subsetP => z. by rewrite !inE.
     - rewrite spath_cons => /andP [/= /andP [A B] /IH C]. 
@@ -197,14 +197,14 @@ Section CheckPoints.
 
   Lemma link_path_cp (x y : G) (p : @Path link_graph x y) : 
     {subset cp x y <= p}.
-  Proof. 
+  Proof using. 
     apply/subsetP. rewrite /in_nodes nodesE. apply: link_seq_cp.
     exact: (valP p). 
   Qed.
 
   (* Lemma 10 *)
   Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
-  Proof. 
+  Proof using. 
     move => cycle_p x y. rewrite !inE /= => xp yp xy. rewrite xy /=.
     case/andP : cycle_p => C1 C2. 
     case: (rot_to_arc C2 xp yp xy) => i p1 p2 _ _ I. 
@@ -225,7 +225,7 @@ Section CheckPoints.
 
   Lemma cycle_clique (x y : link_graph) (p : Path x y) : 
     irred p -> x -- y -> clique [set x in p].
-  Proof. 
+  Proof using. 
     have -> : [set x in p] = [set x in nodes p].
     { apply/setP => u. by rewrite inE. }
     case: p => p pth_p Ip xy. rewrite nodesE irredE /= in Ip *.
@@ -243,7 +243,7 @@ Section CheckPoints.
   Unset Printing Implicit Defensive.
 
   Lemma CP_set2 (x y : G) : CP [set x; y] = cp x y.
-  Proof.
+  Proof using.
     apply/setP => z. apply/bigcupP/idP => /=.
     + case=> -[a b] /=/setXP[].
       rewrite !inE =>/orP[]/eqP->; last rewrite (cp_sym x y);
@@ -252,19 +252,19 @@ Section CheckPoints.
   Qed.
   
   Lemma CP_extensive (U : {set G}) : {subset U <= CP U}.
-  Proof.
+  Proof using.
     move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
   Qed.
 
   Lemma CP_mono (U U' : {set G}) : U \subset U' -> CP U \subset CP U'.
-  Proof. 
+  Proof using. 
     move/subsetP => A. apply/bigcupsP => [[x y] /setXP [/A Hx /A Hy] /=].
     apply/subsetP => z Hz. apply/bigcupP; exists (x,y) => //. exact/setXP.
   Qed.
   
   Lemma CP_closed U x y : 
     x \in CP U -> y \in CP U -> cp x y \subset CP U.
-  Proof.
+  Proof using G_conn.
     case/bigcupP => [[x1 x2] /= /setXP [x1U x2U] x_cp]. 
     case/bigcupP => [[y1 y2] /= /setXP [y1U y2U] y_cp]. 
     apply/subsetP => t t_cp. 
@@ -290,7 +290,7 @@ Section CheckPoints.
 
   Lemma connected_CP_closed (U V : {set G}) :
     connected V -> U \subset V -> CP U \subset V.
-  Proof.
+  Proof using.
     move=> V_conn /subsetP UV. apply/bigcupsP. case=> x y /=. rewrite in_setX.
     case/andP=> /UV Hx /UV Hy. apply: connected_cp_closed => //.
     by rewrite subUset !sub1set.
@@ -299,7 +299,7 @@ Section CheckPoints.
   (* Lemma 16 *)
   Lemma CP_base U x y : x \in CP U -> y \in CP U ->
     exists x' y':G, [/\ x' \in U, y' \in U & [set x;y] \subset cp x' y'].
-  Proof.
+  Proof using.
     move => U1 U2. case/bigcupP : U1 => [[x1 x2]]. case/bigcupP : U2 => [[y1 y2]] /=.
     rewrite !inE /= => /andP[Uy1 Uy2] cp_y /andP[Ux1 Ux2] cp_x.
     case: (boolP (x \in cp y1 y2)) => [C|Wx]; first by exists y1; exists y2; rewrite subUset !sub1set C.
@@ -331,7 +331,7 @@ Section CheckPoints.
   Qed.
 
   Lemma CP_clique U : @clique link_graph U -> CP U = U.
-  Proof.
+  Proof using.
     move => clique_U. apply/setP => x. apply/bigcupP/idP. 
     - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
       move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
@@ -349,7 +349,7 @@ Section CheckPoints.
   Lemma CP_path (U : {set G}) (x y : G) (p : Path G x y) :
     x \in CP U -> y \in CP U -> irred p ->
     exists q : Path link_graph x y, [/\ irred q, q \subset CP U & q \subset p].
-  Proof.
+  Proof using G_conn.
     (* The proof goes by strong induction on the size of p. *)
     move: {2}#|p|.+1 (ltnSn #|p|) => n.
     elim: n x y p => [//|n IHn] x y p.
@@ -400,7 +400,7 @@ Section CheckPoints.
   Qed.
 
   Lemma CP_connected (U : {set G}) : connected (CP U).
-  Proof.
+  Proof using G_conn.
     move=> x y x_cp y_cp.
     have /uPathP[p /(CP_path x_cp y_cp)[q] [? q_cp _]] := G_conn x y.
     move/subsetP: q_cp. exact: connectRI.
@@ -411,7 +411,7 @@ Section CheckPoints.
   Lemma CP_tree_paths (U : {set G}) (x y : G) (p : Path link_graph x y) : 
     is_tree (CP U) -> p \subset CP U -> irred p ->
     {in CP U, p =i cp x y}.
-  Proof.
+  Proof using G_conn.
     move=> [CPU_tree _] p_cp Ip z z_cp. apply/idP/idP; last exact: link_path_cp.
     have [x_cp y_cp] : x \in CP U /\ y \in CP U.
     { split; apply: (subsetP p_cp); by rewrite ?nodes_start ?nodes_end. }
@@ -438,7 +438,7 @@ Section CheckPoints.
   Lemma sintervalP2 x y u :
     reflect ((exists2 p : Path u x, irred p & y \notin p) /\
              (exists2 q : Path u y, irred q & x \notin q)) (u \in sinterval x y).
-  Proof.
+  Proof using.
     apply/(iffP idP).
     + rewrite !inE => /andP[/cpPn ? /cpPn ?] //.
     + case=>- [p] Ip yNp [q] Iq xNq. rewrite !inE. 
@@ -446,7 +446,7 @@ Section CheckPoints.
   Qed.
 
   Lemma sinterval_sub x y z : z \in cp x y -> sinterval x z \subset sinterval x y.
-  Proof.
+  Proof using G_conn.
     move=> z_cpxy. apply/subsetP=> u. rewrite !inE. case/andP=> xNcpuz zNcpux.
     apply/andP; split.
     - apply: contraNN xNcpuz => x_cpuy. exact: cp_tightenR z_cpxy x_cpuy.
@@ -456,7 +456,7 @@ Section CheckPoints.
 
   Lemma sinterval_exit x y u v : u \notin sinterval x y -> v \in sinterval x y ->
     x \in cp u v \/ y \in cp u v.
-  Proof. 
+  Proof using. 
     rewrite !inE negb_and !negbK => H.
     wlog: x y {H} / x \in cp u y.
     { move => W. case/orP : H; first exact: W. 
@@ -467,7 +467,7 @@ Section CheckPoints.
 
   Lemma sinterval_outside x y u : u \notin sinterval x y ->
     forall (p : Path u x), irred p -> y \notin p -> [disjoint p & sinterval x y].
-  Proof.
+  Proof using.
     move=> uNIxy p Ip yNp.
     rewrite disjoint_subset; apply/subsetP => v.
     rewrite inE /= -[mem (in_nodes p)]/(mem p) => v_p.
@@ -483,7 +483,7 @@ Section CheckPoints.
 
   Lemma sinterval_disj_cp (x y z : G) :
     z \in cp x y -> [disjoint sinterval x z & sinterval z y].
-  Proof.
+  Proof using.
     move=> z_cpxy. rewrite -setI_eq0 -subset0. apply/subsetP=> u. rewrite inE.
     case/andP=> /sintervalP2[][p _ /negbTE zNp] _ /sintervalP2[_][q _ /negbTE zNq].
     rewrite !inE. apply: contraTT z_cpxy => _. apply/cpP => /(_ (pcat (prev p) q)).
@@ -492,7 +492,7 @@ Section CheckPoints.
 
   Lemma sinterval_noedge_cp (x y z u v : G) :
     u -- v -> u \in sinterval x z -> v \in sinterval z y -> z \notin cp x y.
-  Proof.
+  Proof using.
     move=> uv /sintervalP2[][p _ /negbTE zNp] _ /sintervalP2[_][q _ /negbTE zNq].
     apply/cpP => /(_ (pcat (prev p) (pcat (edgep uv) q))).
     rewrite !mem_pcat mem_prev mem_edgep zNp zNq orbF /=.
@@ -503,7 +503,7 @@ Section CheckPoints.
 
   Lemma sinterval_connectL (x y z : G) : z \in sinterval x y ->
     exists2 u, x -- u & connect (restrict (mem (sinterval x y)) sedge) z u.
-  Proof.
+  Proof using.
     case: (altP (z =P x)) => [->|zNx]; first by rewrite sinterval_bounds.
     case/sintervalP2=> -[p']. case: (splitR p' zNx) => [u] [p] [ux] {p'}->.
     rewrite irred_cat' => /and3P[? _] /eqP/setP/(_ x).
@@ -519,7 +519,7 @@ Section CheckPoints.
   Qed.
 
   Lemma sinterval_connectedL (x y : G) : connected (x |: sinterval x y).
-  Proof.
+  Proof using.
     apply: connected_center (setU11 _ _) => z Hx. have := Hx. rewrite in_setU1.
     case/orP=> [/eqP->|/sinterval_connectL]; first exact: connect0.
     case=> u xu /connect_restrict_case[z_u|].
@@ -534,7 +534,7 @@ Section CheckPoints.
   Lemma sinterval_components (C : {set G}) x y :
     C \in components (sinterval x y) ->
     (exists2 u, u \in C & x -- u) /\ (exists2 v, v \in C & y -- v).
-  Proof.
+  Proof using.
     move=> C_comp. wlog suff Hyp : x y C_comp / exists2 u : G, u \in C & x -- u.
     { split; move: C_comp; last rewrite sinterval_sym; exact: Hyp. }
     case/and3P: (partition_components (sinterval x y)).
@@ -562,7 +562,7 @@ Section CheckPoints.
   Proof. by rewrite /interval [[set x; y]]setUC sinterval_sym. Qed.
 
   Lemma cp_sub_interval x y : cp x y \subset interval x y.
-  Proof.
+  Proof using G_conn.
     apply/subsetP=> z z_cpxy. rewrite !in_setU !in_set1 inE -implyNb negb_or.
     apply/implyP=> /andP[zNx zNy]. apply/andP; split.
     - apply: contraNN zNx => /(cp_tightenR z_cpxy). by rewrite cpxx !inE eq_sym.
@@ -572,7 +572,7 @@ Section CheckPoints.
 
   Lemma intervalI_cp (x y z : G) :
     z \in cp x y -> interval x z :&: interval z y = [set z].
-  Proof.
+  Proof using.
     move=> z_cpxy. apply/setP=> u.
     rewrite inE ![_ \in interval _ _]inE (lock sinterval) !inE -lock -!orbA.
     apply/idP/idP; last by move=>->.
@@ -585,7 +585,7 @@ Section CheckPoints.
 
   Lemma connected_interval (x y : G) : 
     connected (interval x y).
-  Proof.
+  Proof using G_conn.
     apply: connected_center (intervalL x y) => z.
     rewrite {1}/interval set2C -setUA in_setU1 orbC.
     case/orP=> [/(sinterval_connectedL (setU11 _ _))|/eqP{z}->].
@@ -623,7 +623,7 @@ Section CheckPoints.
 
   Lemma bagPn (U : {set G}) x z : 
     reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin bag U x).
-  Proof.
+  Proof using.
     rewrite /bag -lock inE negb_forall. apply: (iffP existsP) => [[y]|[y] A B].
     - rewrite negb_imply => /andP[? ?]. by exists y.
     - exists y. by rewrite A.
@@ -632,7 +632,7 @@ Section CheckPoints.
   Lemma bag_sub_sinterval (U : {set G}) x y z :
     x \in CP U -> y \in CP U -> z \in cp x y :\: [set x; y] ->
     bag U z \subset sinterval x y.
-  Proof.
+  Proof using G_conn.
     rewrite in_setD in_set2 negb_or => x_cp y_cp /andP[]/andP[zNx zNy] z_cpxy.
     apply/subsetP=> u /bagP u_bag.
     move: x_cp y_cp => /u_bag z_cpux /u_bag z_cpuy.
@@ -658,7 +658,7 @@ Section CheckPoints.
   Lemma ncpP (U : {set G}) (p : G) x : 
     reflect (x \in CP U /\ exists q : Path p x, forall y, y \in CP U -> y \in q -> y = x) 
             (x \in ncp U p).
-  Proof.
+  Proof using.
     rewrite /ncp -lock inE. 
     apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
     - case: (boolP (p == x)) => [/eqP ?|px]. 
@@ -671,7 +671,7 @@ Section CheckPoints.
   
   Lemma ncp_CP (U : {set G}) (u : G) :
     u \in CP U -> ncp U u = [set u].
-  Proof. 
+  Proof using. 
     move => Hu.
     apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
     - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
@@ -680,7 +680,7 @@ Section CheckPoints.
 
   Lemma ncp_bag (U : {set G}) (p : G) x :
     x \in CP U -> (p \in bag U x) = (ncp U p == [set x]).
-  Proof.
+  Proof using G_conn.
     move => Ux. apply/bagP/eq_set1P.
     - move => A. split.
       + apply/ncpP; split => //.
@@ -707,7 +707,7 @@ Section CheckPoints.
 
   Lemma ncp0 (U : {set G}) x p : 
     x \in CP U -> ncp U p == set0 = false.
-  Proof. 
+  Proof using G_conn. 
     case/uPathP : (G_conn p x) => q irr_q Ux.  
     case: (split_at_first Ux (nodes_end q)) => y [q1] [q2] [def_q CPy Hy].
     suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
@@ -717,7 +717,7 @@ Section CheckPoints.
   
   Lemma ncp_interval U (x y p : G) : 
     x != y -> [set x; y] \subset ncp U p -> p \in sinterval x y.
-  Proof.
+  Proof using.
     rewrite subUset !sub1set inE => xy /andP[Nx Ny]. 
     wlog suff: x y xy Nx Ny / x \notin cp p y.
     { move => W. by rewrite !W // eq_sym. }
@@ -732,7 +732,7 @@ Section CheckPoints.
   the rest of the graph *)
   Lemma bag_exit (U : {set G}) x u v : 
     x \in CP U -> u \in bag U x -> v \notin bag U x -> x \in cp u v.
-  Proof.
+  Proof using G_conn.
     move => cp_x. rewrite [v \in _]ncp_bag // => N1 N2.
     have [y [Y1 Y2 Y3]] : exists y, [/\ y \in CP U, x != y & y \in ncp U v].
     { case: (setN01E _ N2); first by rewrite (ncp0 x).
@@ -746,14 +746,14 @@ Section CheckPoints.
 
   Lemma bag_exit' (U : {set G}) x u v : 
     x \in CP U -> u \in bag U x -> v \in x |: ~: bag U x -> x \in cp u v.
-  Proof. 
+  Proof using G_conn. 
     move => cp_x Hu. case/setU1P => [->|]; first by rewrite cp_sym mem_cpl.
     rewrite inE. exact: bag_exit Hu.
   Qed.
 
   Lemma bag_exit_edge (U : {set G}) x u v :
     x \in CP U -> u \in bag U x -> v \notin bag U x -> u -- v -> u = x.
-  Proof.
+  Proof using G_conn.
     move=> x_cp u_bag vNbag uv.
     move/cpP/(_ (edgep uv)): (bag_exit x_cp u_bag vNbag).
     rewrite mem_edgep. case/orP=> /eqP// Exv.
@@ -763,7 +763,7 @@ Section CheckPoints.
   Lemma bag_in_out (U : {set G}) x u v (p : Path u v) :
     x \in CP U -> u \in x |: ~: bag U x -> v \in x |: ~: bag U x -> irred p -> 
                                            p \subset x |: ~: bag U x.
-  Proof.
+  Proof using G_conn.
     move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
     rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
     case/Path_split : in_p => w1 [w2] def_p. subst. 
@@ -779,7 +779,7 @@ a clique, so [CP U] is [U]. *)
   Lemma bags_in_out (U : {set G}) u v (p : Path u v) :
     let T' := U :|: (~: \bigcup_(z in U) bag U z) in 
     u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
-  Proof. 
+  Proof using G_conn. 
     move => T' uT vT irr_p. apply/subsetP/negPn/negP.  
     case/subsetPn => z zp. rewrite !inE negb_or negbK => /andP [zU].
     case/bigcupP => x xU zPx. 
@@ -796,7 +796,7 @@ a clique, so [CP U] is [U]. *)
   Qed.
 
   Lemma connected_bag x (U : {set G}) : x \in CP U -> connected (bag U x).
-  Proof.
+  Proof using G_conn.
     move => cp_x.
     suff S z : z \in bag U x -> connect (restrict (mem (bag U x)) sedge) x z.
     { move => u v Hu Hv. apply: connect_trans (S _ Hv). 
@@ -814,7 +814,7 @@ a clique, so [CP U] is [U]. *)
 
   Lemma bag_extension (U : {set G}) x y : 
     x \in CP U -> y \notin bag U x -> bag U x = bag (y |: U) x.
-  Proof.
+  Proof using G_conn.
     move => CPx Hy. apply/setP => u. apply/idP/bagP.
     - move => A z. 
       have cp_x : x \in cp u y by apply: bag_exit Hy.
@@ -842,7 +842,7 @@ a clique, so [CP U] is [U]. *)
   (** A small part of Proposition 20. *)
   Lemma CP_tree_sinterval (U : {set G}) (x y : G) :
     is_tree (CP U) -> x \in CP U -> y \in CP U -> x ⋄ y -> [disjoint CP U & sinterval x y].
-  Proof.
+  Proof using G_conn.
     move => CP_tree x_cp y_cp xy.
     rewrite -setI_eq0 -subset0; apply/subsetP => u.
     rewrite inE [u \in set0]inE =>/andP[u_cp].
@@ -864,14 +864,14 @@ a clique, so [CP U] is [U]. *)
   
   Lemma bag_disj (U : {set G}) x y :
     x \in CP U -> y \in CP U -> x != y -> [disjoint bag U x & bag U y].
-  Proof.
+  Proof using G_conn.
     move => Ux Uy xy. apply/pred0P => p /=. apply:contraNF xy => /andP[].
     rewrite !ncp_bag //. by move => /eqP-> /eqP/set1_inj->.
   Qed.
 
   Lemma bag_cp (U : {set G}) x y : 
     x \in CP U -> y \in CP U -> x \in bag U y = (x == y).
-  Proof. 
+  Proof using G_conn. 
     move => cp_x cp_y. 
     apply/idP/idP => [|/eqP <-]; last exact: bag_id.
     apply: contraTT => xy. 
@@ -883,7 +883,7 @@ a clique, so [CP U] is [U]. *)
   straightforward proof *)
   Lemma interval_bag_disj U (x y : G) :
     y \in CP U -> [disjoint bag U x & sinterval x y].
-  Proof.
+  Proof using.
     move => Uy. rewrite disjoint_sym disjoints_subset. apply/subsetP => z.
     rewrite !inE => /andP[A1 A2]. 
     apply: contraTN A1 => /bagP/(_ _ Uy). by rewrite negbK.
@@ -893,7 +893,7 @@ a clique, so [CP U] is [U]. *)
 
   Lemma sinterval_bag_cover x y : x != y ->
     [set: G] = bag [set x; y] x :|: sinterval x y :|: bag [set x; y] y.
-  Proof.
+  Proof using G_conn.
     move=> xNy. apply/eqP. rewrite eqEsubset subsetT andbT. apply/subsetP => p _.
     rewrite setUAC setUC !in_setU inE -negb_or -implybE. apply/implyP.
     wlog suff Hyp : x y {xNy} / x \in cp p y -> p \in bag [set x; y] x.
@@ -904,7 +904,7 @@ a clique, so [CP U] is [U]. *)
 
   Lemma sinterval_cp_cover x y z : z \in cp x y :\: [set x; y] ->
     sinterval x y = sinterval x z :|: bag [set x; y] z :|: sinterval z y.
-  Proof.
+  Proof using G_conn.
     rewrite 4!inE negb_or => /andP[]/andP[zNx zNy] z_cpxy. apply/eqP.
     have [x_CP y_CP] : x \in CP [set x; y] /\ y \in CP [set x; y].
     { by split; apply: CP_extensive; rewrite !inE eqxx. }
@@ -936,14 +936,14 @@ a clique, so [CP U] is [U]. *)
 
   Lemma interval_cp_cover x y z : z \in cp x y :\: [set x; y] ->
     interval x y = (x |: sinterval x z) :|: bag [set x; y] z :|: (y |: sinterval z y).
-  Proof.
+  Proof using G_conn.
     rewrite /interval => /sinterval_cp_cover->.
     by rewrite setUAC -setUA [_ :|: set1 y]setUAC !setUA.
   Qed.
 
   Lemma interval_edge_cp (x y z u v : G) : z \in cp x y -> u -- v ->
     u \in interval x z -> v \in interval z y -> (u == z) || (v == z).
-  Proof.
+  Proof using.
     move=> z_cpxy uv u_xz v_zy.
     wlog [Hu Evy] : x y u v z_cpxy uv {u_xz v_zy} / u \in sinterval x z /\ v = y.
     { move=> Hyp. move: u_xz v_zy. rewrite !in_setU !in_set1 -!orbA.
@@ -962,7 +962,7 @@ a clique, so [CP U] is [U]. *)
 
   Lemma CP_bags U x y : link_rel x y -> x \in CP U -> y \in CP U -> 
     exists x' y', [/\ x' \in U, y' \in U, x' \in bag [set x; y] x & y' \in bag [set x;y] y].
-  Proof.
+  Proof using G_conn.
     move => xy xU yU. case: (CP_base xU yU) => x' [y'] [Hx' Hy' CPxy].
     case/uPathP : (G_conn x' y') => p irr_p. 
     have [Hx Hy] : x \in p /\ y \in p. 
@@ -1044,7 +1044,7 @@ Section CheckpointOrder.
   Proof. move => ? ?. exact: leq_total. Qed.
 
   Lemma cpo_antisym : {in cp i o&,antisymmetric cpo}.
-  Proof. 
+  Proof using. 
     move => x y /cpP/(_ the_uPath) Hx _.
     rewrite /cpo -eqn_leq =>/eqP. exact: idx_inj.
   Qed.
@@ -1053,7 +1053,7 @@ Section CheckpointOrder.
   (* TOTHINK: Is this really the formulation that is needed in the proofs? *)
   Lemma cpo_order (x y : G) (p : Path i o) :
     x \in cp i o -> y \in cp i o -> irred p -> cpo x y = (idx p x <= idx p y).
-  Proof.
+  Proof using.
     move => /cpP cp_x /cpP cp_y Ip. rewrite /cpo.
     wlog suff Hyp : p Ip / x <[p] y -> forall q : Path i o, irred q -> ~ y <[q] x.
     { apply/idP/idP; rewrite leq_eqVlt; case/orP=> [/eqP|x_lt_y].
@@ -1073,14 +1073,14 @@ Section CheckpointOrder.
   Proof. by rewrite /cpo idx_start. Qed.
 
   Lemma cpo_max x : x \in cp i o -> cpo x o.
-  Proof.
+  Proof using.
     move=> /cpP/(_ the_uPath) x_path.
     rewrite /cpo idx_end; [ exact: idx_mem | exact: the_uPathP ].
   Qed.
 
   Lemma cpo_cp x y : x \in cp i o -> y \in cp i o -> cpo x y ->
     forall z, z \in cp x y = [&& (z \in cp i o), cpo x z & cpo z y].
-  Proof.
+  Proof using.
     move=> x_cpio y_cpio.
     have [x_path y_path] : x \in the_uPath /\ y \in the_uPath.
     { by split; move: the_uPath; apply/cpP. }
