@@ -149,8 +149,8 @@ Section Link.
       try by rewrite ?(@nodes_end link) ?(@nodes_start link) in Np Nq.
     gen have H,Hp : p Ip Np / {subset p <= codom Some}.
     { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
-    case: (lift_Path (p' := p)) => //; first exact: Some_inj.
-    case: (lift_Path (p' := q)) => //; first exact: Some_inj. exact: H.
+    case: (lift_Path (p' := p)) => //. 
+    case: (lift_Path (p' := q)) => //; first exact: H.
     move => p0 Ep Ip0 q0 Eq Iq0. 
     have E : p0 = q0. apply: forestP; by rewrite ?Ip0 ?Iq0.
     apply/eqP. rewrite -nodes_eqE. by apply/eqP;congruence.
@@ -163,7 +163,7 @@ Section Link.
     move/(_ xU yU). apply: contraNN => _.
     have Hp: {subset p <= codom Some}.
     { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
-    case: (lift_Path (p' := p)) => //; first exact: Some_inj.
+    case: (lift_Path (p' := p)) => //.
     move => p' _ _. exact: Path_connect p'. 
   Qed.
 
@@ -348,7 +348,7 @@ Section Quotients.
         * apply: (@leq_trans (maxn (width D1) (width D2))); last by rewrite geq_max W1 W2.
           apply: leq_trans (join_width _ _). 
           apply: max_mono => t. exact: leq_imset_card.
-        * apply: subon_bij; last by apply bij_on_codom; [exact: Some_inj|exact: (inl t1)]. 
+        * apply: subon_bij; last by (apply bij_on_codom => //; exact: (inl t1)). 
           by move => [x|]; rewrite !in_simpl // codom_f. 
   Qed.
 

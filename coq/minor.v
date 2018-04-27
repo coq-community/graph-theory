@@ -377,7 +377,7 @@ Section AddNode.
     case: p => p0 p'.
     set q0 : seq add_node := map Some p0.
     have q' : @spath add_node (Some x) (Some y) q0.
-      move: p'; rewrite /spath/= last_map (inj_eq Some_inj).
+      move: p'; rewrite /spath/= last_map (inj_eq (@Some_inj _)).
       move=> /andP[p' ->]; rewrite andbT.
       exact: project_path p'.
     by exists (Sub _ q'); rewrite !nodesE /=.

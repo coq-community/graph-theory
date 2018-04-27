@@ -23,6 +23,9 @@ Ltac contrab :=
     [H1 : is_true ?b, H2 : is_true (~~ ?b) |- _] => by rewrite H1 in H2
   end.
 
+
+Hint Extern 0 (injective Some) => exact: @Some_inj.
+
 (** *** Generic Trivialities *)
 
 Lemma all_cons (T : eqType) (P : T -> Prop) a (s : seq T) : 
