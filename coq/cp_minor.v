@@ -131,7 +131,7 @@ Proof.
       { move => W. case: (ltngtP c1 c2) => [|A B|A B]; first exact: W.
         - case: (W _ _ A _) => [|y0 [x0] [? ? ?]]; first by rewrite sgP. 
           exists x0; exists y0. by rewrite sgP.
-        - case/ord_inj : A => ?. subst. by rewrite sgP in B. }
+        - move/ord_inj : A => ?. subst. by rewrite sgP in B. }
       case: c1 => [[|[|[|//]]]]; case: c2 => [[|[|[|//]]]] //= Hc2 Hc1 _ _. 
       * exists n1. exists n1'. rewrite !inE n_edge. split => //.
         -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 

@@ -558,7 +558,7 @@ Section Quotients.
       apply/subsetP => ? /imsetP [x H1 ->]. move: H1. 
       rewrite /P -!setUA [[set _;_]]setUC !setUA. case/setUP => H1.
       * by rewrite mem_imset.
-      * case/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
         apply/eqmodP. by rewrite equiv_sym /= seq2_eqv_io.
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 

@@ -56,7 +56,7 @@ Lemma par2_LR (G1 G2 : graph2) x y :
   inl x = inr y %[mod_eq @par2_eqv G1 G2] ->
   x = g_in /\ y = g_in \/ x = g_out /\ y = g_out.
 Proof.
-  case/eqmodP; rewrite /=/par2_eqv /eq_op/= -!/eq_op. case: ifP => i_o.
+  move/eqmodP; rewrite /=/par2_eqv /eq_op/= -!/eq_op. case: ifP => i_o.
   - rewrite !inE !eqEsubset. case/orP=> /andP[H _]; move: H.
     all: rewrite subUset !sub1set !inE /eq_op/= orbF =>/andP[/eqP-> /eqP->].
     + by left.
