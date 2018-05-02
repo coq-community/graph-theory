@@ -749,23 +749,77 @@ Qed.
 in the definition of treewidth. Consequently, [width <= 3] means
 treewidth two. *) 
 
+Lemma ssplit_disconnected (G:sgraph) (V : {set G}) : 
+  (forall x y, x \in V -> y \notin V -> ~~ x -- y) ->
+  sg_iso (sjoin (sgraph.induced V) (sgraph.induced (~: V))) G.
+Proof.
+  move => HV. set H := sjoin _ _.
+  have cast x (p : x \notin V) : x \in ~: V. by rewrite inE.
+  pose g (x : G) : H := 
+    match (@boolP (x \in V)) with 
+      | AltTrue p => inl (Sub x p) 
+      | AltFalse p => inr (Sub x (cast x p)) 
+    end.
+  pose h (x : H) : G := match x with inl x => val x | inr x => val x end.
+  exists g h. 
+  - move => x. rewrite /g /h. by case: {-}_ /boolP.
+  - move => [x|x]; rewrite /g /h. 
+    + case: {-}_ /boolP => px. 
+      * congr inl. symmetry. apply/eqP. by rewrite sub_val_eq.
+      * case:notF.  apply: contraNT px => _. exact: valP.
+    + case: {-}_ /boolP => px.
+      * case:notF.  apply: contraTT px => _. move: (valP x). by rewrite !inE.
+      * congr inr. symmetry. apply/eqP. by rewrite sub_val_eq.
+  - move => x y xy.
+    rewrite /g. case: {-}_/boolP => px;case: {-}_/boolP => py => //.
+    + apply: contraTT xy => _. exact: HV.
+    + apply: contraTT xy => _. rewrite sg_sym. exact: HV.
+  - by move => [x|x] [y|y] xy.
+Qed.
+
 Theorem graph_minor_TW2 (G : sgraph) :
-  connected [set: G] -> 
   K4_free G <-> 
   exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  move => conn_G. split=> [K4F_G | [T][B][]]; last exact: TW2_K4_free.
-  case: (posnP #|G|) =>[G_empty | /card_gt0P[x _]].
-  { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
-    apply: leq_trans (width_bound _) _. by rewrite G_empty. }
-  have [G' [iso_Gs iso_G]] := flesh_out x.
-  have conn_G' : connected [set: skeleton G'].
-  { exact: iso_connected conn_G. }
-  have M := minor_exclusion_2p conn_G'.  
-  have K4F_G' : K4_free (sskeleton G').
-  { exact: iso_K4_free K4F_G. }
-  case/M : K4F_G' => T [B] [B1 B2]. 
-  case: (sg_iso_decomp B1 iso_Gs) => D D1 D2. exists T. exists D. by rewrite D2.
+  split=> [| [T][B][]]; last exact: TW2_K4_free.
+  move: G. apply: (nat_size_ind (f := fun G : sgraph => #|G|)).
+  move => G IH K4F_G. 
+  case: (boolP (connectedb [set: G])) => /connectedP conn_G.
+  - case: (posnP #|G|) =>[G_empty | /card_gt0P[x _]].
+    { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
+      apply: leq_trans (width_bound _) _. by rewrite G_empty. }
+    have [G' [iso_Gs iso_G]] := flesh_out x.
+    have conn_G' : connected [set: skeleton G'].
+    { exact: iso_connected conn_G. }
+    have M := minor_exclusion_2p conn_G'.  
+    have K4F_G' : K4_free (sskeleton G').
+    { exact: iso_K4_free K4F_G. }
+    case/M : K4F_G' => T [B] [B1 B2]. 
+    case: (sg_iso_decomp B1 iso_Gs) => D D1 D2. exists T. exists D. by rewrite D2.
+  - case/disconnectedE : conn_G => x [y] [_ _]. 
+    rewrite restrictE; last by move => ?;rewrite !inE. move => Hxy.
+    pose V := [set z | connect sedge x z].
+    pose G1 := sgraph.induced V.
+    pose G2 := sgraph.induced (~:V).
+    have G_iso : sg_iso (sjoin G1 G2) G.
+    { apply: ssplit_disconnected => a b. rewrite !inE => H1. apply: contraNN => H2.
+      apply: connect_trans H1 _. exact: connect1. }
+    have [T1 [B1 [dec1 W1]]] : 
+      exists (T : forest) (B : T -> {set G1}), sdecomp T G1 B /\ width B <= 3.
+    { apply: IH. 
+      - rewrite card_sig. apply: (card_ltnT (x := y)) => /=. by rewrite inE.
+      - apply: subgraph_K4_free K4F_G. exact: sgraph.induced_sub. }
+    have [T2 [B2 [dec2 W2]]] : 
+      exists (T : forest) (B : T -> {set G2}), sdecomp T G2 B /\ width B <= 3.
+    { apply: IH. 
+      - rewrite card_sig. apply: (card_ltnT (x := x)) => /=. by rewrite !inE negbK connect0.
+      - apply: subgraph_K4_free K4F_G. exact: sgraph.induced_sub. }
+    exists (tjoin T1 T2). 
+    pose B' := (decompU B1 B2).
+    have dec' := join_decomp dec1 dec2.
+    have [B dec W] := sg_iso_decomp dec' G_iso.
+    exists B. rewrite W. split => //. 
+    apply: leq_trans (join_width _ _) _. by rewrite geq_max W1 W2.
 Qed.
 
 Print Assumptions graph_minor_TW2.
