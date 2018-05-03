@@ -50,6 +50,37 @@ Lemma sedge_equiv_in (G : sgraph) (A : {set G}) :
   {in A & &, equivalence_rel (connect (restrict (mem A) sedge))}.
 Proof. move: (sedge_in_equiv A). by firstorder. Qed.
 
+(** ** Disjoint Union *)
+
+Section JoinSG.
+  Variables (G1 G2 : sgraph).
+  
+  Definition join_rel (a b : G1 + G2) := 
+    match a,b with
+    | inl x, inl y => x -- y
+    | inr x, inr y => x -- y
+    | _,_ => false
+    end.
+
+  Lemma join_rel_sym : symmetric join_rel.
+  Proof. move => [x|x] [y|y] //=; by rewrite sg_sym. Qed.
+
+  Lemma join_rel_irrefl : irreflexive join_rel.
+  Proof. move => [x|x] //=; by rewrite sg_irrefl. Qed.
+
+  Definition sjoin := SGraph join_rel_sym join_rel_irrefl. 
+
+  Lemma join_disc (x : G1) (y : G2) : 
+    connect join_rel (inl x) (inr y) = false.
+  Proof. 
+    apply/negP. case/connectP => p. elim: p x => // [[a|a]] //= p IH x.
+    case/andP => _. exact: IH. 
+  Qed.
+
+End JoinSG.
+
+Prenex Implicits join_rel.
+
 (** ** Homomorphisms *)
 
 Definition hom_s (G1 G2 : sgraph) (h : G1 -> G2) := 
@@ -113,6 +144,35 @@ Lemma iso_subgraph (G H : sgraph) : sg_iso G H -> subgraph G H.
 Proof.
   case=> g h _ hK _ hH.
   exists h ; by [exact: can_inj hK | move=> x y /hH->].
+Qed.
+
+(** Splitting off disconnected parts *)
+Lemma ssplit_disconnected (G:sgraph) (V : {set G}) : 
+  (forall x y, x \in V -> y \notin V -> ~~ x -- y) ->
+  sg_iso (sjoin (induced V) (induced (~: V))) G.
+Proof.
+  move => HV. set H := sjoin _ _.
+  have cast x (p : x \notin V) : x \in ~: V. by rewrite inE.
+  pose g (x : G) : H := 
+    match (@boolP (x \in V)) with 
+      | AltTrue p => inl (Sub x p) 
+      | AltFalse p => inr (Sub x (cast x p)) 
+    end.
+  pose h (x : H) : G := match x with inl x => val x | inr x => val x end.
+  exists g h. 
+  - move => x. rewrite /g /h. by case: {-}_ /boolP.
+  - move => [x|x]; rewrite /g /h. 
+    + case: {-}_ /boolP => px. 
+      * congr inl. symmetry. apply/eqP. by rewrite sub_val_eq.
+      * case:notF.  apply: contraNT px => _. exact: valP.
+    + case: {-}_ /boolP => px.
+      * case:notF.  apply: contraTT px => _. move: (valP x). by rewrite !inE.
+      * congr inr. symmetry. apply/eqP. by rewrite sub_val_eq.
+  - move => x y xy.
+    rewrite /g. case: {-}_/boolP => px;case: {-}_/boolP => py => //.
+    + apply: contraTT xy => _. exact: HV.
+    + apply: contraTT xy => _. rewrite sg_sym. exact: HV.
+  - by move => [x|x] [y|y] xy.
 Qed.
 
 (** ** Paths through simple graphs *)
@@ -951,37 +1011,6 @@ Section PathIndexing.
   Qed.
 
 End PathIndexing.
-
-
-(** ** Disjoint Union *)
-
-Section JoinSG.
-  Variables (G1 G2 : sgraph).
-  
-  Definition join_rel (a b : G1 + G2) := 
-    match a,b with
-    | inl x, inl y => x -- y
-    | inr x, inr y => x -- y
-    | _,_ => false
-    end.
-
-  Lemma join_rel_sym : symmetric join_rel.
-  Proof. move => [x|x] [y|y] //=; by rewrite sg_sym. Qed.
-
-  Lemma join_rel_irrefl : irreflexive join_rel.
-  Proof. move => [x|x] //=; by rewrite sg_irrefl. Qed.
-
-  Definition sjoin := SGraph join_rel_sym join_rel_irrefl. 
-
-  Lemma join_disc (x : G1) (y : G2) : connect join_rel (inl x) (inr y) = false.
-  Proof. 
-    apply/negP. case/connectP => p. elim: p x => // [[a|a]] //= p IH x.
-    case/andP => _. exact: IH. 
-  Qed.
-
-End JoinSG.
-
-Prenex Implicits join_rel.
 
 
 (** ** Connectedness *)
