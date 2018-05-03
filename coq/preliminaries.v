@@ -422,12 +422,12 @@ Proof. elim: s => //= x s IH. case E: (a x) => //=. by rewrite E. Qed.
 Lemma rev_inj (T : Type) : injective (@rev T).
 Proof. apply: (can_inj (g := rev)). exact: revK. Qed.
 
-Lemma rev_belast (T : Type) (x : T) p q : 
-  last x p = last x q  -> rev (belast x p) = rev (belast x q) -> p = q.
+Lemma last_belast_eq (T : Type) (x : T) p q : 
+  last x p = last x q  -> belast x p = belast x q -> p = q.
 Proof. 
   elim/last_ind : p => [|p a _]; elim/last_ind : q => [|q b _] //=; 
-    try by rewrite belast_rcons => ? /rev_inj. 
-  rewrite !belast_rcons !last_rcons => ? /rev_inj. congruence.
+    try by rewrite belast_rcons => ?.
+  rewrite !belast_rcons !last_rcons => ?. congruence.
 Qed.
 
 Lemma project_path (aT rT : Type) (e : rel aT) (e' : rel rT) (f : aT -> rT) a p : 
@@ -442,41 +442,6 @@ Proof.
   elim: p' a => /= [|fb p' IH a /andP[A B] /subset_cons[S1 S2]]; first by exists [::].
   case: (codomP S2) => b E. subst. case: (IH _ B S1) => p [] *. 
   exists (b::p) => /=. suff: e a b by move -> ; subst. exact: f_inv.
-Qed.
-
-
-(** Proper Name? *)
-Lemma aux (T:Type) x0 (a : pred T) s n : 
-  ~~ has a s -> ~~ a x0 -> ~~ a (nth x0 s n).
-Proof. by elim: s n => // [|b s IH] [|n] //=; rewrite negb_or => /andP[]; auto. Qed.
-
-(* FIXME: should assume upath *)
-Lemma subset_upath (T : eqType) (x y : T) (p : seq T) (A : pred T) (e : rel T) : 
-  symmetric e -> 
-  unique (fun a => a \in A /\ exists t, (t \notin A) /\ (e a t)) ->
-  x \in A -> y \in A -> path e x p -> last x p = y -> uniq (x :: p) -> {subset p <= A}.
-Proof.
-  move => sym_e uni_e Hx Hy. 
-  elim: p x Hx => // a p IH x Hx /= /andP[H1 H2] H3 /and3P[H4 H5 H6]. 
-  case: (boolP (a \in A)) => [B|B].
-  - apply/subset_cons. split => //. by apply: (IH a) => //=. 
-  - exfalso. 
-    have X : has (mem A) p. 
-    { move: a B H3 Hy {H1 H2 H4 H5 H6 IH}. (* Lemma *)
-      elim: p => //= [a H1 <- H2|b p IH a *]; first by rewrite H2 in H1.
-      case: (boolP (b \in A)) => //= ?. exact: (IH b). }
-    set n := (find (mem A) p).
-    set b := nth a p n. 
-    have Hb : b \in A by rewrite unfold_in nth_find.
-    have E : p = rcons (take n p) b ++ drop n.+1 p. 
-    { by rewrite -take_nth ?cat_take_drop // -has_find. }
-    have F : last a (take n p) \notin A. 
-    { rewrite -(nth_last a) unfold_in. apply: aux => //. exact: take_find. }
-    suff S : x = b. subst. by rewrite E !inE mem_cat mem_rcons inE eqxx /= orbT in H4. 
-    apply: (uni_e) => //. 
-    + split => //. by exists a.
-    + split => //. exists (last a (take n p)); split => //. rewrite sym_e.
-      move: H2. by rewrite {1}E cat_path rcons_path -andbA => /and3P []. 
 Qed.
 
 (** *** Reflexive Transitive Closure *)

@@ -317,7 +317,7 @@ Lemma upath_sym x y : unique (upath x y) -> unique (upath y x).
 Proof. 
   move => U p q Hp Hq. 
   suff S: last y p = last y q. 
-  { apply: rev_belast S _. apply: U; exact: rev_upath. }
+  { apply: last_belast_eq S _; apply: rev_inj; apply: U; exact: rev_upath. }
   rewrite !(spath_last x) //; exact: upathW.
 Qed.
 
@@ -566,7 +566,7 @@ End PathTheory.
 Lemma prevK x y (p : Path x y) : prev (prev p) = p.
 Proof. apply/val_inj=> /=. apply: srevK. exact: path_last. Qed.
 
-Lemma srev_inj x y : injective (@prev x y).
+Lemma prev_inj x y : injective (@prev x y).
 Proof. apply: (can_inj (g := (@prev y x))) => p. exact: prevK. Qed.
 
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
@@ -665,7 +665,7 @@ Proof.
 Qed.
 
 
-(** Induction principles for irredundant packaged paths *)
+(** Induction principles for packaged paths *)
 
 Lemma Path_ind P (y : G) : 
   P y y (idp y) -> 

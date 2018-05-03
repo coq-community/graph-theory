@@ -209,7 +209,7 @@ Section Link.
       case/(isplitP Ip) def_p : _ / Np => [p1 p2 Ip1 Ip2 _].
       case/(isplitP Iq) def_q : _ / Nq => [q1 q2 Iq1 Iq2 _].
       congr pcat. 
-      + apply: srev_inj. apply: link_unique_None; by rewrite irred_rev.
+      + apply: prev_inj. apply: link_unique_None; by rewrite irred_rev.
       + exact: link_unique_None.
     - suff Nq : None \notin q by apply: link_unique_lift. 
       apply: contraNN Np. exact: link_has_None.
