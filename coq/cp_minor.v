@@ -73,13 +73,17 @@ Proof.
     apply: contraNN A => A. 
     by rewrite -[n1](Q2 _ Hz' _) // def_q1 mem_pcat A. }
   have {D} D2 : [disjoint p & q2'] by apply: (D z2 n2 q2 q2' zn2).
-  case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ irr_p2 D3].
+  case/(isplitP irr_p) def_p : p / Q1 => [p1 p2 _ irr_p2 D3'].
   have N2 : n2 \in tail p2. { subst p. by rewrite -idxR in before. }
   have N1 : n1 != y. 
   { apply: contraTN before => /eqP->. by rewrite -leqNgt idx_end // idx_mem. }
   case: (splitL p2 N1) => n1' [n_edge] [p2'] [def_p2 tail_p2].
   have N2' : n2 \in p2' by rewrite tail_p2.
-  
+  (* TODO: This is a local fix to accomodate change in isplitP *)
+  have {D3'} D3 : [disjoint p1 & tail p2].
+  { rewrite disjoint_subset. apply/subsetP => k K1. apply/negP => /= K2.
+    move: (D3' _ K1 (tailW K2)) => X. subst k. subst p2.
+    by rewrite irred_edgeL tail_p2 K2 in irr_p2. }  
   pose pz := pcat (prev q1') q2'.
   pose phi u : option C3 := 
          if u \in p1  then Some ord0

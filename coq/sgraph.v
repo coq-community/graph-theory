@@ -598,6 +598,14 @@ Proof.
     + apply/negP; by apply: contraNneq zNTq =>{1}<-.
 Qed.
 
+(** TODO: This lemma should be used instead of the [irred_cat] where appropriate *)
+Lemma irred_catE x y z (p : Path x z) (q : Path z y) :
+  irred (pcat p q) -> [/\ irred p, irred q & forall k, k \in p -> k \in q -> k = z].
+Proof.
+  rewrite irred_cat'. case/and3P => [? ? A]. split => // k K1 K2.
+  apply/eqP. move/eqP/setP/(_ k) : A. by rewrite !inE K1 K2.
+Qed.
+
 Lemma prev_irred x y (p : Path x y) : irred p -> irred (prev p).
 Proof.
   rewrite /irred /nodes => U. apply: leq_size_uniq U _ _.
@@ -732,7 +740,7 @@ Proof.
     apply: val_inj => /=. by rewrite cats1.
 Qed.
 
-(** TODO: dedicated splitting lemmas for irredundant paths *)
+
 
 Lemma Path_split z x y (p : Path x y) : 
   z \in p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
@@ -742,14 +750,15 @@ Proof.
   exists (Sub p1 P1). exists (Sub p2 P2). exact: val_inj. 
 Qed.
 
+(** This should be the canonical way to split irredundant paths *)
 CoInductive isplit z x y : Path x y -> Prop := 
-  ISplit (p1 : Path x z) (p2 : Path z y) : 
-    irred p1 -> irred p2 -> [disjoint p1 & tail p2] -> isplit z (pcat p1 p2).
+  ISplit' (p1 : Path x z) (p2 : Path z y) : 
+    irred p1 -> irred p2 -> (forall k, k \in p1 -> k \in p2 -> k = z) -> isplit z (pcat p1 p2).
 
 Lemma isplitP z x y (p : Path x y) : irred p -> z \in p -> isplit z p.
 Proof.
   move => I in_p. case: (Path_split in_p) => p1 [p2] E; subst. 
-  move: I. rewrite irred_cat => /and3P[*]. by constructor. 
+  case/irred_catE : I => *. by constructor.
 Qed.
 
 Lemma split_at_first_aux {A : pred G} x y (p : seq G) k : 
@@ -1002,12 +1011,12 @@ Section PathIndexing.
       [/\ p = pcat p1 (pcat p2 p3), a \notin p3 & b \notin p1].
   Proof.
     move => irr_p a_in_p b_in_p a_before_b.
-    case/(isplitP irr_p) def_p : {1}p / (a_in_p) => [p1 p2' irr_p1 irr_p2' D1]. subst p.
+    case/(isplitP irr_p) def_p : _ / (a_in_p) => [p1 p2' irr_p1 irr_p2' _]. subst p.
     case: (idx_nLR irr_p b_in_p) => // Y1 Y2.
-    case/(isplitP irr_p2') def_p1' : {1}p2' / (tailW Y2) => [p2 p3 irr_p2 irr_p3 D2]. subst p2'.
+    case/(isplitP irr_p2') def_p1' : _ / (tailW Y2) => [p2 p3 irr_p2 irr_p3 D2]. subst p2'.
     exists p1. exists p2. exists p3. split => //. 
     have A: a != b. { apply: contraTN a_before_b => /eqP=>?. subst b. by rewrite ltnn. }
-    by rewrite mem_path inE (negbTE A) (disjointFr D2 (nodes_start p2)).
+    apply: contraNN A => A. by rewrite [a]D2 // nodes_start.
   Qed.
 
 End PathIndexing.

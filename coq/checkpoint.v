@@ -90,7 +90,7 @@ Section CheckPoints.
     move/cpP/(_ p) : cp_z. case/(isplitP irr_p) => p1 p2 A B C.
     exists (prev p1). exists p2. rewrite mem_prev. apply/orP. 
     case E : (t \in p1) => //=. 
-    by rewrite mem_path !inE (negbTE tNz) (disjointFr C E).
+    apply: contraNN tNz => F. by rewrite [t]C.
   Qed.
 
   Lemma cp_widenR (x y u v : G) :
@@ -476,9 +476,7 @@ Section CheckPoints.
     case: (sinterval_exit uNIxy v_Ixy) => /cpP/(_ p1); last first.
     + apply/negP; apply: contraNN yNp.
       by rewrite eq_p mem_pcat => ->.
-    + suff S: x \in tail p2 by rewrite (disjointFl D S).
-      have:= nodes_end p2. rewrite mem_path inE => /predU1P [E|//].
-      subst v. by rewrite sinterval_bounds in v_Ixy.
+    + move => A. by rewrite -(D x) ?sinterval_bounds ?nodes_end in v_Ixy.
   Qed.
 
   Lemma sinterval_disj_cp (x y z : G) :
@@ -689,9 +687,7 @@ Section CheckPoints.
         * case/exists_inP => y /= B. rewrite inE eq_sym => /= /andP [C D]. 
           case:notF. apply: contraTT (A _ B) => _. apply/cpPn.
           case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
-          exists q1 => //. rewrite (disjointFl D12) //. 
-          suff: x \in q2. by rewrite mem_path inE (negbTE C). 
-          by rewrite nodes_end.
+          exists q1 => //. apply: contraNN C => C. by rewrite [x]D12 // nodes_end.
         * rewrite negb_exists_in => /forall_inP B.
           exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
           by rewrite inE C.
@@ -805,11 +801,9 @@ a clique, so [CP U] is [U]. *)
     suff/subsetP sP : p \subset bag U x.
     { rewrite srestrict_sym. exact: (connectRI (p := p)). }
     apply/negPn/negP. move/subsetPn => [z' in_p N]. 
-    case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D]. 
-    suff : x \in tail p2. 
-    { rewrite (disjointFr D) //. apply/cpP. exact: bag_exit N. }
-    apply: in_tail => [|]; last exact: nodes_end.
-    apply: contraNN N => /eqP<-. by rewrite bag_id.
+    case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D].
+    suff ?: x \in p1 by rewrite -(D x) ?bag_id ?nodes_end // in N.
+    apply/cpP. exact: bag_exit N.
   Qed.
 
   Lemma bag_extension (U : {set G}) x y : 
