@@ -526,6 +526,7 @@ Definition in_nodes x y (p : Path x y) : collective_pred G :=
   [pred u | u \in nodes p].
 Canonical Path_predType x y := 
   Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
+Coercion in_nodes : Path >-> collective_pred.
 
 Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
 Proof. by rewrite in_collective /nodes -lock. Qed.
@@ -572,6 +573,9 @@ Proof. apply: (can_inj (g := (@prev y x))) => p. exact: prevK. Qed.
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 
+(** TOTHINK: This is easy to prove and in some contetxt exact what is
+needed. However, it introduces an unpleasant asymmetry between [p] and
+[q]. *)
 Lemma irred_cat x y z (p : Path x z) (q : Path z y) :
   irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
 Proof.
@@ -581,6 +585,8 @@ Proof.
   case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // nodes_end.
 Qed.
 
+(** This lemma is more symmetric than [irred_cat]. However, the set
+equality is sometimes cumbersome to use. Better elimination lemma? *)    
 Lemma irred_cat' x y z (p : Path x z) (q : Path z y) :
   irred (pcat p q) = [&& irred p, irred q & [set u in p | u \in q] == [set z]].
 Proof.
@@ -752,7 +758,7 @@ Qed.
 
 (** This should be the canonical way to split irredundant paths *)
 CoInductive isplit z x y : Path x y -> Prop := 
-  ISplit' (p1 : Path x z) (p2 : Path z y) : 
+  ISplit (p1 : Path x z) (p2 : Path z y) : 
     irred p1 -> irred p2 -> (forall k, k \in p1 -> k \in p2 -> k = z) -> isplit z (pcat p1 p2).
 
 Lemma isplitP z x y (p : Path x y) : irred p -> z \in p -> isplit z p.
@@ -820,6 +826,8 @@ Proof.
 Qed.
 
 End Pack.
+
+Hint Resolve nodes_start nodes_end.
 
 (** *** Transporting paths to and from induced subgraphs *)
 

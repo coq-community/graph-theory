@@ -597,9 +597,8 @@ Section CheckPoints.
       case/andP=> zNx zNy. apply/andP; split.
       - exact: Hyp Ip z_p zNx.
       - exact: Hyp Ip' z_p' zNy. }
-    move=> /negbTE zNx. case/Path_split: z_p Ip => [p1] [p2] ->.
-    rewrite irred_cat'. case/and3P=> _ _ /eqP/setP/(_ x).
-    rewrite !inE nodes_start eq_sym zNx => /negbT/=. exact: cpNI.
+    case/(isplitP Ip) _ : _ / z_p => p1 p2 _ _ I zNx.
+    apply: (cpNI (p := p2)). apply: contraNN zNx => H. by rewrite [x]I.
   Qed.
 
   (** *** Bags *)
@@ -672,7 +671,7 @@ Section CheckPoints.
   Proof using. 
     move => Hu.
     apply/setP => x. rewrite [_ \in [set _]]inE. apply/ncpP/eqP.
-    - move => [Hx [q Hq]]. apply: esym. apply: Hq => //. exact: nodes_start.
+    - move => [Hx [q Hq]]. by rewrite [u]Hq.
     - move => ->. split => //. exists (idp u) => y _. by  rewrite mem_idp => /eqP.
   Qed.
 
@@ -762,11 +761,11 @@ Section CheckPoints.
   Proof using G_conn.
     move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
     rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
-    case/Path_split : in_p => w1 [w2] def_p. subst. 
-    rewrite irred_cat !negb_and (disjointNI (x := x)) //.
-    + apply/cpP. rewrite cp_sym. exact: bag_exit' Pu.
-    + suff: x \in prev w2 by rewrite mem_prev mem_path inE eq_sym (negbTE W1). 
-      apply/cpP. rewrite cp_sym. exact: bag_exit' Pv.
+    case/Path_split : in_p => p1 [p2] def_p. subst. 
+    rewrite irred_cat' !negb_and (_ : _ != _ = true) //.
+    apply: contraNN W1 => /eqP/setP/(_ x). rewrite !inE eq_sym => <-.
+    gen have H,-> : u p1 Pu / x \in p1. apply/cpP. rewrite cp_sym. exact: bag_exit' Pu.
+    by rewrite -mem_prev H. 
   Qed.
 
   (** This is a bit bespoke, as it only only mentions bags rooted at

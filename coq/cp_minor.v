@@ -53,7 +53,7 @@ Proof.
   have N : n1 != n2. 
   { apply: contraNN av_n1 => /eqP->. by rewrite def_q mem_pcat nodes_end. }
   have {q irr_q av_n1 Xp Xq q2' def_q} irr_q2 : irred q2.
-  { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
+  { move:irr_q. rewrite def_q irred_cat'. by case/and3P. }
   wlog before: n1 n2 q1 q2 irr_q1 irr_q2 Q1 Q2 Q3 Q4 N {Hn} / idx p n1 < idx p n2. 
   { move => W. 
     case: (ltngtP (idx p n1) (idx p n2)) => H.
