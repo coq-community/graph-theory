@@ -21,7 +21,7 @@ Section CheckPoints.
   Proof using.
     rewrite /cp -lock !inE !negb_or negbK. apply: (iffP and3P).
     - case: (altP (x =P y)) => [<- [_ C2 _]|Dxy [C1 C2 C3]]. 
-      + exists (idp x); by rewrite ?irred_id ?mem_idp. 
+      + exists (idp x); by rewrite ?irred_idp ?mem_idp. 
       + case/uPathRP : C1 => // p irr_p /subsetP S. exists p => //. 
         apply: contraTN isT => /S. by rewrite !inE eqxx.
     - case => p irr_p av_z. 
@@ -357,7 +357,7 @@ Section CheckPoints.
     case: (x =P y) => [x_y | /eqP xNy].
     { (* When x = y, the empty path works. (Actually, p is empty too.) *)
       move: x_y p size_p Ip => {y y_cp}<- p _ _.
-      exists (@idp link_graph x); split; first exact: irred_id;
+      exists (@idp link_graph x); split; first exact: irred_idp;
         apply/subsetP=> z; rewrite mem_idp => /eqP-> //=.
       by rewrite nodes_end. }
     (* When x != y, split the path and apply the induction hypothesis. To avoid

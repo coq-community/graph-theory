@@ -8,8 +8,24 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Simple Graphs
 
-(** * Simple Graphs *)
+This file defines (finite) simple graphs, i.e. undirected and
+unlabeled graphs without self-loops. We provide a number of
+constructions and lemmas to reason about paths in simple graphs:
+
+For [G : sgraph] and [x, y : G] we define two auxiliary notions:
+
+[spath x y p] == the list (x::p) is an xy-path in G.
+
+[upath x y p] == the list (x::p) is an irredundant xy-path in G.
+
+Due to the asymmetry in the definitions of of [path],[spath], and
+[upath], these are ill-suited for the symmetry reasoning prevalent in
+graph theory. We remedy this by providing a type family of packaged
+paths [Path x y] which abstracts away this asymmetry. We then list
+many of the lemmas from the path library to the setting of simple
+graphs. *)
 
 Record sgraph := SGraph { svertex :> finType ; 
                          sedge: rel svertex; 
@@ -175,8 +191,7 @@ Proof.
   - by move => [x|x] [y|y] xy.
 Qed.
 
-(** ** Paths through simple graphs *)
-
+(** ** Unpackaged Simple Paths *)
 
 Section SimplePaths.
 Variable (G : sgraph).
@@ -285,7 +300,7 @@ End SimplePaths.
 Arguments spath_last [G].
 
 
-(** ** Irredundant Paths *)
+(** ** Unpackaged Irredundant Paths *)
  
 Section Upath.
 Variable (G : sgraph).
@@ -402,11 +417,10 @@ Qed.
 
 (** ** Packaged paths *)
 
-(** We now define packaged paths (i.e., a type vertex-indexed
-collection of types [Path x y] whose elements are the paths between
-[x] and [y]). In particular, this abstracts from the asymmetry in
-[spath x y p] which in fact describes that path [x::p] (paths are
-never empty). *)
+(** We now define packaged paths (i.e., a vertex-indexed collection of
+types [Path x y] whose elements are the paths between [x] and [y]). In
+particular, this abstracts from the asymmetry in [spath x y p] which
+states that [x::p] is an xy-path (paths are never empty). *)
 
 Section Pack.
 Variables (G : sgraph).
@@ -424,7 +438,6 @@ Section PathDef.
   Canonical Path_choiceType := Eval hnf in ChoiceType Path Path_choiceMixin.
   Definition Path_countMixin := Eval hnf in [countMixin of Path by <:].
   Canonical Path_countType := Eval hnf in CountType Path Path_countMixin.
-
 
   Record UPath : predArgType := { uval : seq G; _ : upath x y uval }.
 
@@ -483,7 +496,13 @@ Canonical Path_predType x y :=
   Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
 Coercion in_nodes : Path >-> collective_pred.
 
-(** Packaged version of the finite type for irredundant paths *)
+(** ** Packaged Irredundant Paths
+
+Quantification over all paths is, a priori, undecidable. However,
+quantification over irredundant paths is decidable and usually
+sufficient. We define a type family of irredundant paths and endow it
+with a finType structure. *)
+
 Section IPath.
   Variables (x y : G).
   Record IPath : predArgType := { ival : Path x y; ivalP : irred ival }.
@@ -521,7 +540,7 @@ Section IPath.
   Coercion path_of_ipath : IPath >-> Path.
 End IPath.
 
-(** TOTHINK: Should this replace [irredE] *)
+(** TODO: This should be [irredE] *)
 Lemma irred_nodes x y (p : Path x y) : irred p = uniq (nodes p).
 Proof. by rewrite irredE nodesE. Qed.
 
@@ -530,7 +549,6 @@ Proof.
   case: q p => q pth_q [p pth_p]. 
   by rewrite !nodesE -val_eqE /= eqseq_cons eqxx.
 Qed.
-
 
 Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
 Proof. by rewrite in_collective /nodes -lock. Qed.
@@ -643,7 +661,7 @@ Definition idp (u : G) := Build_Path (spathxx u).
 Lemma mem_idp (x u : G) : (x \in idp u) = (x == u).
 Proof. by rewrite mem_path !inE. Qed.
 
-Lemma irred_id (x : G) : irred (idp x).
+Lemma irred_idp (x : G) : irred (idp x).
 Proof. by rewrite irredE. Qed.
 
 Lemma irredxx (x : G) (p : Path x x) : irred p -> p = idp x.

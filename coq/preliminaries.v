@@ -28,6 +28,23 @@ Hint Extern 0 (injective Some) => exact: @Some_inj.
 
 (** *** Generic Trivialities *)
 
+
+Lemma existsPn (T : finType) (P : pred T) : 
+  reflect (forall x, ~~ P x) (~~ [exists x, P x]).
+Proof. rewrite negb_exists. exact: forallP. Qed.
+
+Lemma forallPn (T : finType) (A P : pred T) : 
+  reflect (exists x, ~~ P x) (~~ [forall x, P x]).
+Proof. rewrite negb_forall. exact: existsP. Qed.
+
+Lemma exists_inPn (T : finType) (A P : pred T) : 
+  reflect (forall x, x \in A -> ~~ P x) (~~ [exists x in A, P x]).
+Proof. rewrite negb_exists_in. exact: forall_inP. Qed.
+
+Lemma forall_inPn (T : finType) (A P : pred T) : 
+  reflect (exists2 x, x \in A & ~~ P x) (~~ [forall x in A, P x]).
+Proof. rewrite negb_forall_in. exact: exists_inP. Qed.
+
 Lemma all_cons (T : eqType) (P : T -> Prop) a (s : seq T) : 
   (forall x, x \in a :: s -> P x) <-> (P a) /\ (forall x, x \in s -> P x).
 Proof.
@@ -311,6 +328,10 @@ Proof. move => D L. apply/negbTE. apply/negP => ?. exact: (disjointE D) L. Qed.
 Lemma disjointNI (T : finType) (A B : pred T) (x:T) : 
   x \in A -> x \in B -> ~~ [disjoint A & B].
 Proof. move => ? ?. apply/negP => /disjointE. move/(_ x). by apply. Qed.
+
+Lemma disjoint_exists (T : finType) (A B : pred T) : 
+  [disjoint A & B] = ~~ [exists x in A, x \in B].
+Proof. rewrite negb_exists_in disjoint_subset. by apply/subsetP/forall_inP; apply. Qed.
 
 Definition disjoint_transL := disjoint_trans.
 Lemma disjoint_transR (T : finType) (A B C : pred T) :
