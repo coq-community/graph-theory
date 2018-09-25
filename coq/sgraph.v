@@ -477,10 +477,16 @@ Section Primitives.
 
 End Primitives.
 
+Definition in_nodes x y (p : Path x y) : collective_pred G := 
+  [pred u | u \in nodes p].
+Canonical Path_predType x y := 
+  Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
+Coercion in_nodes : Path >-> collective_pred.
+
 (** Packaged version of the finite type for irredundant paths *)
 Section IPath.
   Variables (x y : G).
-  Record IPath : predArgType := { ival : Path x y; _ : irred ival }.
+  Record IPath : predArgType := { ival : Path x y; ivalP : irred ival }.
   
   Canonical IPath_subType := [subType for ival].
   Definition IPath_eqMixin := Eval hnf in [eqMixin of IPath by <:].
@@ -509,6 +515,10 @@ Section IPath.
 
   Definition IPath_finMixin := Eval hnf in CanFinMixin can_irred_of.
   Canonical IPath_finType := Eval hnf in FinType IPath IPath_finMixin.
+
+  Definition path_of_ipath (p : IPath) := ival p. 
+  Canonical IPath_predType := Eval hnf in @mkPredType G (IPath) (fun p x => x \in path_of_ipath p).
+  Coercion path_of_ipath : IPath >-> Path.
 End IPath.
 
 (** TOTHINK: Should this replace [irredE] *)
@@ -521,12 +531,6 @@ Proof.
   by rewrite !nodesE -val_eqE /= eqseq_cons eqxx.
 Qed.
 
-
-Definition in_nodes x y (p : Path x y) : collective_pred G := 
-  [pred u | u \in nodes p].
-Canonical Path_predType x y := 
-  Eval hnf in @mkPredType G (Path x y) (@in_nodes x y).
-Coercion in_nodes : Path >-> collective_pred.
 
 Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
 Proof. by rewrite in_collective /nodes -lock. Qed.
