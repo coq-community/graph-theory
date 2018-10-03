@@ -25,7 +25,7 @@ Section CheckPoints.
       + case/uPathRP : C1 => // p irr_p /subsetP S. exists p => //. 
         apply: contraTN isT => /S. by rewrite !inE eqxx.
     - case => p irr_p av_z. 
-      split; try by apply: contraNN av_z => /eqP->; rewrite ?nodes_start ?nodes_end.
+      split; try by apply: contraNN av_z => /eqP->; rewrite ?path_begin ?path_end.
       apply: (connectRI (p := p)) => u. rewrite inE. by apply: contraTneq => ->.
   Qed.
 
@@ -59,7 +59,7 @@ Section CheckPoints.
   Qed.
 
   Lemma mem_cpl x y : x \in cp x y.
-  Proof. apply/cpP => p. by rewrite nodes_start. Qed.
+  Proof. apply/cpP => p. by rewrite path_begin. Qed.
 
   Lemma subcp x y : [set x;y] \subset cp x y.
   Proof. by rewrite subUset !sub1set {2}cp_sym !mem_cpl. Qed.
@@ -359,7 +359,7 @@ Section CheckPoints.
       move: x_y p size_p Ip => {y y_cp}<- p _ _.
       exists (@idp link_graph x); split; first exact: irred_idp;
         apply/subsetP=> z; rewrite mem_idp => /eqP-> //=.
-      by rewrite nodes_end. }
+      by rewrite path_end. }
     (* When x != y, split the path and apply the induction hypothesis. To avoid
      * getting a useless decomposition, x is excluded from the predicate. *)
     pose C := CP U :\ x.
@@ -367,15 +367,15 @@ Section CheckPoints.
     have {xNy} : y \in C by rewrite in_setD1 eq_sym xNy y_cp.
     (* Let z be the first element in CP(U) after x on p. Call p1 and p2 the
      * parts of p respectively before and after z. *)
-    case/split_at_first/(_ (nodes_end p)) => [z][p1][p2] [eq_p z_C z_1st].
-    move: z_C Ip. rewrite in_setD1 eq_p irred_cat' => /andP[zNx z_cp] /and3P[Ip1 Ip2].
-    move/eqP/setP/(_ x). rewrite inE in_set1 nodes_start/= eq_sym (negbTE zNx) => /negbT xNp2.
+    case/split_at_first/(_ (path_end p)) => [z][p1][p2] [eq_p z_C z_1st].
+    move: z_C Ip. rewrite in_setD1 eq_p irred_cat => /andP[zNx z_cp] /and3P[Ip1 Ip2].
+    move/eqP/setP/(_ x). rewrite inE in_set1 path_begin/= eq_sym (negbTE zNx) => /negbT xNp2.
     (* Apply the induction hypothesis to get an irreducible path q using only
      * vertices in p2. *)
     have /IHn /(_ z_cp y_cp Ip2) [q[] Iq q_cp qSp2] : #|p2| < n. {
       (* The size decreases because x cannot be a splitting point. *)
       rewrite -size_p. apply: proper_card. apply/properP.
-      split; last exists x => //; last exact: nodes_start.
+      split; last exists x => //; last exact: path_begin.
       by apply/subsetP => a; rewrite eq_p mem_pcat => ->.
     }
     (* All checkpoints for (x, z) are in p1 (by definition of a checkpoint) and
@@ -388,15 +388,15 @@ Section CheckPoints.
     (* Thus there is an x -- z edge in CP(U) that can be prepended to q.
      * That's the path that was looked for. *)
     exists (pcat (edgep xz) q); split.
-    - rewrite irred_cat' irred_edge Iq /=. apply/eqP/setP=> u.
+    - rewrite irred_cat irred_edge Iq /=. apply/eqP/setP=> u.
       rewrite inE in_set1 (@mem_edgep link_graph).
-      apply/andP/eqP; [ case; case/orP=>/eqP->// | move=>->; by rewrite eqxx (nodes_start q) ].
+      apply/andP/eqP; [ case; case/orP=>/eqP->// | move=>->; by rewrite eqxx (path_begin q) ].
       move/(subsetP qSp2). by rewrite (negbTE xNp2).
     - apply/subsetP=> u. rewrite (@mem_pcat link_graph) mem_edgep -orbA.
       case/or3P=> [/eqP->|/eqP->|/(subsetP q_cp)->] //.
     - apply/subsetP=> u. rewrite (@mem_pcat link_graph) mem_pcat mem_edgep -orbA.
       case/or3P=> [/eqP->|/eqP->|/(subsetP qSp2)->//];
-        by [ rewrite nodes_start | rewrite nodes_end ].
+        by [ rewrite path_begin | rewrite path_end ].
   Qed.
 
   Lemma CP_connected (U : {set G}) : connected (CP U).
@@ -414,7 +414,7 @@ Section CheckPoints.
   Proof using G_conn.
     move=> [CPU_tree _] p_cp Ip z z_cp. apply/idP/idP; last exact: link_path_cp.
     have [x_cp y_cp] : x \in CP U /\ y \in CP U.
-    { split; apply: (subsetP p_cp); by rewrite ?nodes_start ?nodes_end. }
+    { split; apply: (subsetP p_cp); by rewrite ?path_begin ?path_end. }
     move=> z_p. apply: cpTI => q0 /(CP_path x_cp y_cp)[q] [Iq q_cp /subsetP q_sub].
     apply: q_sub. by have -> : q = p by exact: CPU_tree.
   Qed.
@@ -476,7 +476,7 @@ Section CheckPoints.
     case: (sinterval_exit uNIxy v_Ixy) => /cpP/(_ p1); last first.
     + apply/negP; apply: contraNN yNp.
       by rewrite eq_p mem_pcat => ->.
-    + move => A. by rewrite -(D x) ?sinterval_bounds ?nodes_end in v_Ixy.
+    + move => A. by rewrite -(D x) ?sinterval_bounds ?path_end in v_Ixy.
   Qed.
 
   Lemma sinterval_disj_cp (x y z : G) :
@@ -495,8 +495,8 @@ Section CheckPoints.
     apply/cpP => /(_ (pcat (prev p) (pcat (edgep uv) q))).
     rewrite !mem_pcat mem_prev mem_edgep zNp zNq orbF /=.
     apply/negP. rewrite negb_or. apply/andP. split.
-    - apply: contraFneq zNp =>->. exact: nodes_start.
-    - apply: contraFneq zNq =>->. exact: nodes_start.
+    - apply: contraFneq zNp =>->. exact: path_begin.
+    - apply: contraFneq zNq =>->. exact: path_begin.
   Qed.
 
   Lemma sinterval_connectL (x y z : G) : z \in sinterval x y ->
@@ -504,7 +504,7 @@ Section CheckPoints.
   Proof using.
     case: (altP (z =P x)) => [->|zNx]; first by rewrite sinterval_bounds.
     case/sintervalP2=> -[p']. case: (splitR p' zNx) => [u] [p] [ux] {p'}->.
-    rewrite irred_cat' => /and3P[? _] /eqP/setP/(_ x).
+    rewrite irred_cat => /and3P[? _] /eqP/setP/(_ x).
     rewrite in_set1 in_set mem_edgep eqxx orbT andbT eq_sym (sg_edgeNeq ux).
     move=> xNp yNp' [q'] Iq' xNq'. exists u; first by rewrite sgP.
     apply: connectRI (p) _ => v. case/Path_split=> [p1] [p2] eq_p.
@@ -686,7 +686,7 @@ Section CheckPoints.
         * case/exists_inP => y /= B. rewrite inE eq_sym => /= /andP [C D]. 
           case:notF. apply: contraTT (A _ B) => _. apply/cpPn.
           case/(isplitP irr_q) def_q : q / D => [q1 q2 irr_q1 irr_q2 D12].
-          exists q1 => //. apply: contraNN C => C. by rewrite [x]D12 // nodes_end.
+          exists q1 => //. apply: contraNN C => C. by rewrite [x]D12 // path_end.
         * rewrite negb_exists_in => /forall_inP B.
           exists q => y /B => C D. apply/eqP. apply: contraNT C => C. 
           by rewrite inE C.
@@ -694,9 +694,9 @@ Section CheckPoints.
         have Hx : x \in q. { apply/cpP. exact: A. }
         apply: esym. exact: Hq. 
     - case => A B y Hy. apply/cpP => q.
-      have qy : y \in q by rewrite nodes_end.
+      have qy : y \in q by rewrite path_end.
       move: (split_at_first Hy qy) => [x'] [q1] [q2] [def_q cp_x' Hq1]. 
-      suff ?: x' = x. { subst x'. by rewrite def_q mem_pcat nodes_end. }
+      suff ?: x' = x. { subst x'. by rewrite def_q mem_pcat path_end. }
       apply: B. apply/ncpP. split => //. exists q1 => z' H1 H2. exact: Hq1.
   Qed.
 
@@ -704,7 +704,7 @@ Section CheckPoints.
     x \in CP U -> ncp U p == set0 = false.
   Proof using G_conn. 
     case/uPathP : (G_conn p x) => q irr_q Ux.  
-    case: (split_at_first Ux (nodes_end q)) => y [q1] [q2] [def_q CPy Hy].
+    case: (split_at_first Ux (path_end q)) => y [q1] [q2] [def_q CPy Hy].
     suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
     apply/ncpP. split => //. by exists q1. 
   Qed.
@@ -762,7 +762,7 @@ Section CheckPoints.
     move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
     rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
     case/Path_split : in_p => p1 [p2] def_p. subst. 
-    rewrite irred_cat' !negb_and (_ : _ != _ = true) //.
+    rewrite irred_cat !negb_and (_ : _ != _ = true) //.
     apply: contraNN W1 => /eqP/setP/(_ x). rewrite !inE eq_sym => <-.
     gen have H,-> : u p1 Pu / x \in p1. apply/cpP. rewrite cp_sym. exact: bag_exit' Pu.
     by rewrite -mem_prev H. 
@@ -801,7 +801,7 @@ a clique, so [CP U] is [U]. *)
     { rewrite srestrict_sym. exact: (connectRI (p := p)). }
     apply/negPn/negP. move/subsetPn => [z' in_p N]. 
     case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D].
-    suff ?: x \in p1 by rewrite -(D x) ?bag_id ?nodes_end // in N.
+    suff ?: x \in p1 by rewrite -(D x) ?bag_id ?path_end // in N.
     apply/cpP. exact: bag_exit N.
   Qed.
 
@@ -845,8 +845,8 @@ a clique, so [CP U] is [U]. *)
     have {p Ip yNp p_p} yNp_ : y \notin p_ by exact: contraNN yNp.
     have {q Iq xNq q_q} xNq_ : x \notin q_ by exact: contraNN xNq.
     have Ip_xy : irred (pcat p_ (edgep xy)).
-    { rewrite irred_cat' Ip_ irred_edge. apply/eqP/setP=> z. rewrite inE in_set1 mem_edgep.
-      apply/andP/eqP=> [[z_p]/orP[]/eqP//z_y|->]; last by rewrite nodes_end eqxx.
+    { rewrite irred_cat Ip_ irred_edge. apply/eqP/setP=> z. rewrite inE in_set1 mem_edgep.
+      apply/andP/eqP=> [[z_p]/orP[]/eqP//z_y|->]; last by rewrite path_end eqxx.
       exfalso. move: z_y z_p =>->. by apply/negP. }
     have eq_ : q_ = pcat p_ (edgep xy).
     { apply CP_tree =>//. split=>//. apply/subsetP=> z. rewrite mem_pcat mem_edgep.
@@ -1083,34 +1083,34 @@ Section CheckpointOrder.
       by move=><-; split; last rewrite /cpo. }
     case: (three_way_split the_uPathP x_path y_path x_lt_y)
       => [p1] [p2] [p3] [eq_path xNp3 yNp1].
-    move: the_uPathP; rewrite eq_path !irred_cat =>/and3P[Ip1]/and3P[Ip2 Ip3].
-    move=> disj23 disj123.
+    move: the_uPathP. rewrite eq_path. 
+    case/irred_catE => Ip1 /irred_catE [Ip2 Ip3 D23] D123.
     move=> z; apply/idP/andP.
     + move=> z_cpxy. have z_cpio := cp_widen x_cpio y_cpio z_cpxy.
       split=>//. move: z_cpio => /cpP/(_ the_uPath) z_path.
       move: z_cpxy => /cpP/(_ p2) z_p2. rewrite /cpo.
       case: (altP (z =P x)) => [->|zNx]; first by rewrite leqnn (ltnW x_lt_y).
       apply/andP; split; last first.
-      - rewrite eq_path idx_catR ?idx_catL ?nodes_end ?idx_end ?idx_mem //.
-        have : z \in pcat p2 p3 by rewrite mem_pcat z_p2.
-        by rewrite mem_path inE (negbTE zNx) => /(disjointFl disj123)->.
+      - rewrite eq_path idx_catR ?idx_catL ?path_end ?idx_end ?idx_mem //.
+        apply: contraNN zNx => ?. by rewrite [z]D123 // mem_pcat z_p2.
       - rewrite eq_path leq_eqVlt. apply/orP; right.
         rewrite -idxR -?eq_path ?the_uPathP //. apply: in_tail zNx _.
         by rewrite mem_pcat z_p2.
     + case=> z_cpio /andP[x_le_z z_le_y]. apply/cpP => p.
       have /cpP/(_ (pcat p1 (pcat p p3))) := z_cpio.
-      case (altP (z =P x)) => [-> _ | zNx]; first exact: nodes_start.
-      case (altP (z =P y)) => [-> _ | zNy]; first exact: nodes_end.
+      case (altP (z =P x)) => [-> _ | zNx]; first exact: path_begin.
+      case (altP (z =P y)) => [-> _ | zNy]; first exact: path_end.
       have zNp1 : z \notin p1.
       { apply: contraNN zNx => z_p1. apply/eqP; apply: cpo_antisym => //.
-        rewrite x_le_z andbT /cpo eq_path idx_catL ?nodes_end // idx_end //.
+        rewrite x_le_z andbT /cpo eq_path idx_catL ?path_end // idx_end //.
         exact: idx_mem. }
       rewrite mem_pcat -implyNb => /implyP/(_ zNp1).
       rewrite mem_pcat => /orP[// | /(in_tail zNy) z_p3].
       exfalso; have := zNy; apply/negP; rewrite negbK.
       apply/eqP; apply: cpo_antisym => //.
       rewrite z_le_y /=/cpo eq_path idx_catR // leq_eqVlt.
-      by rewrite -idxR ?irred_cat ?nodesE/= ?inE ?mem_cat ?z_p3.
+      rewrite -idxR ?z_p3 // ?irred_cat ?mem_pcat ?(tailW z_p3) ?Ip2 ?Ip3//=.
+      apply/eqP/setP => k. rewrite !inE. apply/andP/eqP => [[]|-> //]. exact: D23. 
   Qed.
 
 End CheckpointOrder.
@@ -1131,26 +1131,26 @@ Proof.
   { move=> Hyp. move: p1_cp p2 Ip2 p2_cp pN12. pattern x, y, p1.
     revert x p1 Ip1. apply irred_ind; first by move=> _ p2 /irredxx->.
     move=> x z1 q1 xz1 Iq1 xNq1 IH p1_cp p2 Ip2 p2_cp pN12.
-    case: (altP (x =P y)) xNq1 => [->|xNy xNq1]; first by rewrite nodes_end.
+    case: (altP (x =P y)) xNq1 => [->|xNy xNq1]; first by rewrite path_end.
     case: (splitL p2 xNy) Ip2 p2_cp pN12 => [z2] [xz2] [q2] [-> _].
     case: (altP (z1 =P z2)) xz2 q2 => [<-|zN12] xz2 q2 Ip2 p2_cp pN12.
     - apply: (IH _ q2).
       + by apply/subsetP=> u u_q1; apply: (subsetP p1_cp); rewrite mem_pcat u_q1.
-      + by move: Ip2; rewrite irred_cat'; case/and3P.
+      + by move: Ip2; rewrite irred_cat; case/and3P.
       + by apply/subsetP=> u u_q2; apply: (subsetP p2_cp); rewrite mem_pcat u_q2.
       + apply: contraNneq pN12 =>->.
         by have -> : xz1 = xz2 by exact: bool_irrelevance.
     - apply: (Hyp x (pcat (edgep xz1) q1) (pcat (edgep xz2) q2)) => //.
-      + rewrite irred_cat' irred_edge Iq1. apply/eqP/setP=> u.
+      + rewrite irred_cat irred_edge Iq1. apply/eqP/setP=> u.
         rewrite inE in_set1 mem_edgep.
-        apply/andP/eqP=> [|->]; last by rewrite eqxx nodes_start.
+        apply/andP/eqP=> [|->]; last by rewrite eqxx path_begin.
         case; case/orP=> /eqP-> //. by rewrite (negbTE xNq1).
       + by repeat eexists. }
   move=> [z1] [z2] [xz1] [xz2] [q1] [q2] [zN12 eq_p1 eq_p2].
-  have x_cp : x \in CP U by apply: (subsetP p1_cp); rewrite nodes_start.
+  have x_cp : x \in CP U by apply: (subsetP p1_cp); rewrite path_begin.
   have [z1_cp z2_cp] : z1 \in CP U /\ z2 \in CP U.
   { split; [move: eq_p1 p1_cp | move: eq_p2 p2_cp]=> -> /subsetP; apply;
-    by rewrite mem_pcat nodes_start. }
+    by rewrite mem_pcat path_begin. }
   (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious... *)
   apply: (noCPtri x z1 z2) => //; last by rewrite sg_sym.
   (* ... and for the third edge we construct an irredundant cycle *)
@@ -1160,5 +1160,5 @@ Proof.
     move: Ip1 Ip2. rewrite eq_p1 eq_p2 !irred_edgeL.
     by do 2 case/andP=> /negbTE-> _. }
   have /cycle_clique : irred (pcat (edgep xz1) p) by rewrite irred_edgeL xNp Ip.
-  by apply=> //; rewrite inE mem_pcat ?nodes_start ?nodes_end.
+  by apply=> //; rewrite inE mem_pcat ?path_begin ?path_end.
 Qed.

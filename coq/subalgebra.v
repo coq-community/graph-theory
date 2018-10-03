@@ -146,7 +146,7 @@ Section Link.
     unique (fun p : Path x y => irred p /\ None \notin p).
   Proof. 
     move: x y => [x|] [y|] p q [Ip Np] [Iq Nq]; 
-      try by rewrite ?(@nodes_end link) ?(@nodes_start link) in Np Nq.
+      try by rewrite ?(@path_end link) ?(@path_begin link) in Np Nq.
     gen have H,Hp : p Ip Np / {subset p <= codom Some}.
     { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
     case: (lift_Path (p' := p)) => //. 
@@ -184,10 +184,10 @@ Section Link.
     irred p -> irred q -> None \in p -> None \in q.
   Proof using U_disc.
     move: x y p q => [x|] [y|] p q; 
-      try by rewrite ?(@nodes_end link) ?(@nodes_start link).
+      try by rewrite ?(@path_end link) ?(@path_begin link).
     move => Ip Iq Np. apply: contraTT isT => Nq. 
     case/(isplitP Ip) def_p : _  / Np => [p1 p2 _ _ _]. subst.
-    move: Ip. rewrite irred_cat' => /and3P[Ip1 Ip2 /eqP/setP I12].
+    move: Ip. rewrite irred_cat => /and3P[Ip1 Ip2 /eqP/setP I12].
     case: (splitL p2) => // [] [a|] [/= na] [p2'] [D _] //. 
     case: (splitL (prev p1)) => // [] [b|] [/= nb] [p1'] [D' _] //. 
     have ? : b = a.
@@ -198,7 +198,7 @@ Section Link.
       move: Ip1 Ip2. rewrite -irred_rev D' D !irred_edgeL. by do 2 case: (_ \notin _). }    
     subst. move: (I12 (Some a)). 
     rewrite !inE !mem_pcat mem_edgep -mem_prev D' !eqxx /=.
-    by rewrite (@mem_pcat link) nodes_start orbT => /esym. 
+    by rewrite (@mem_pcat link) path_begin orbT => /esym. 
   Qed.
 
   Lemma link_is_forest : is_forest [set: link].

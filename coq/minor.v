@@ -125,12 +125,12 @@ Section DecompTheory.
       (* In fact, every path into [C] must use this edge (and [c0]) *)
       have t0P c' (p : Path t0 c') : irred p -> c' \in C -> c0 \in p.
       { move => Ip inC'. 
-        case: (altP (c0 =P c')) => [-> |?]. by rewrite nodes_end.
+        case: (altP (c0 =P c')) => [-> |?]. by rewrite path_end.
         have/uPathRP [//|q Iq /subsetP subC] := con_C _ _ Hc0 inC'.
-        suff -> : p = pcat (edgep tc0) q by rewrite mem_pcat nodes_end.
+        suff -> : p = pcat (edgep tc0) q by rewrite mem_pcat path_end.
         apply: forest_is_forest; (repeat split) => //. 
-        rewrite irred_cat irred_edge Iq /= disjoint_edgep //. 
-        apply: contraTN Ht0 => /subC. rewrite 2!inE /=. by case/andP. }
+        rewrite irred_edgeL Iq andbT. 
+        apply: contraTN Ht0 => /subC => H. by rewrite (disjointFr dis_C H). }
       (* We show that [c0] contains the full clique *)
       suff A : c0 \in T0 by case: (disjointE dis_C Hc0 A).
       rewrite inE. apply/subsetP => u u_in_S0.

@@ -40,20 +40,19 @@ Proof.
   have/cpPn [q irr_q av_x] : (x:G) \notin @cp G z y.
   { apply: link_cpN => //; first (by rewrite sg_sym) ;apply: linkNeq => //. 
     by rewrite sg_sym. }
-  have [Yq Yp] : y \in q /\ y \in p by split;apply: nodes_end.
+  have [Yq Yp] : y \in q /\ y \in p by split;apply: path_end.
   case: (split_at_first (G := G) (A := mem p) Yp Yq) => n1 [q1] [q2] [def_q Q1 Q2]. 
   have Hn : n1 != x.
-  { apply: contraNN av_x => /eqP<-. by rewrite def_q mem_pcat nodes_end. }
-  have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1.
-  { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
+  { apply: contraNN av_x => /eqP<-. by rewrite def_q mem_pcat path_end. }
+  have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1 by subst; case/irred_catE :irr_q.
   have/cpPn [q irr_q av_n1] : n1 \notin @cp G z x. 
   { apply link_cpN => //. apply: contraNN av_z => /eqP?. by subst n1. }
-  have [Xq Xp] : x \in q /\ x \in p by split; rewrite /= ?nodes_end ?nodes_start. 
+  have [Xq Xp] : x \in q /\ x \in p by split; rewrite /= ?path_end ?path_begin. 
   case: (split_at_first (G := G) (A := mem p) Xp Xq) => n2 [q2] [q2'] [def_q Q3 Q4].
   have N : n1 != n2. 
-  { apply: contraNN av_n1 => /eqP->. by rewrite def_q mem_pcat nodes_end. }
+  { apply: contraNN av_n1 => /eqP->. by rewrite def_q mem_pcat path_end. }
   have {q irr_q av_n1 Xp Xq q2' def_q} irr_q2 : irred q2.
-  { move:irr_q. rewrite def_q irred_cat'. by case/and3P. }
+  { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
   wlog before: n1 n2 q1 q2 irr_q1 irr_q2 Q1 Q2 Q3 Q4 N {Hn} / idx p n1 < idx p n2. 
   { move => W. 
     case: (ltngtP (idx p n1) (idx p n2)) => H.
@@ -67,8 +66,7 @@ Proof.
   gen have D,D1 : z1 n1 q1 q1' zn1 irr_q1 def_q1  Q2 {Q1 N before} / 
      [disjoint p & q1'].
   { have A : n1 \notin q1'. 
-    { move: irr_q1. rewrite def_q1 irred_cat /= => /and3P[_ _ A].
-      by rewrite (disjointFl A _). }
+    { move: irr_q1. rewrite def_q1 irred_edgeR. by case (_ \in _). }
     rewrite disjoint_subset; apply/subsetP => z' Hz'. rewrite !inE.
     apply: contraNN A => A. 
     by rewrite -[n1](Q2 _ Hz' _) // def_q1 mem_pcat A. }
@@ -107,7 +105,7 @@ Proof.
   move => {def_q1 def_q2 N1 N2 def_p2 tail_p2 p def_p N q1 q2}.
 
   have [Px Py Pz] : [/\ x \in p1, y \in p2' & z \in pz]. 
-  { by rewrite /= mem_pcat ?nodes_start ?nodes_end. }
+  { by rewrite /= mem_pcat ?path_begin ?path_end. }
   have phi_x : phi x = Some ord0. 
   { rewrite /phi. by case: (disjoint3P x D) Px. }
   have phi_y : phi y = Some ord1. 
@@ -138,14 +136,14 @@ Proof.
         - move/ord_inj : A => ?. subst. by rewrite sgP in B. }
       case: c1 => [[|[|[|//]]]]; case: c2 => [[|[|[|//]]]] //= Hc2 Hc1 _ _. 
       * exists n1. exists n1'. rewrite !inE n_edge. split => //.
-        -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 
-        -- rewrite /phi. by case: (disjoint3P n1' D) (nodes_start p2'). 
+        -- rewrite /phi. by case: (disjoint3P n1 D) (path_end p1). 
+        -- rewrite /phi. by case: (disjoint3P n1' D) (path_begin p2'). 
       * exists n1. exists z1. rewrite !inE sg_sym zn1. split => //.
-        -- rewrite /phi. by case: (disjoint3P n1 D) (nodes_end p1). 
-        -- rewrite /phi. by case: (disjoint3P z1 D) (nodes_start pz). 
+        -- rewrite /phi. by case: (disjoint3P n1 D) (path_end p1). 
+        -- rewrite /phi. by case: (disjoint3P z1 D) (path_begin pz). 
       * exists n2. exists z2. rewrite !inE sg_sym zn2. split => //.
         -- rewrite /phi. by case: (disjoint3P n2 D) N2'.
-        -- rewrite /phi. by case: (disjoint3P z2 D) (nodes_end pz). 
+        -- rewrite /phi. by case: (disjoint3P z2 D) (path_end pz). 
 Qed.
 
 
@@ -552,7 +550,7 @@ Proof.
       have : z != o by apply: contraTneq iz =>->.
       rewrite eq_o' eq_z' val_eqE.
       case/(splitR q) => z1 [q'] [z1o] eq_q.
-      have {q' eq_q} z1_q : z1 \in q by rewrite eq_q mem_pcat nodes_end.
+      have {q' eq_q} z1_q : z1 \in q by rewrite eq_q mem_pcat path_end.
       have z1_cp' : z1 \in CP U' by apply: (subsetP q_sub).
       by rewrite -(n_uniq z1).
   }
@@ -593,7 +591,7 @@ Proof.
   have q_sub' : q' \subset CP U'.
   { apply/subsetP=> u. rewrite mem_pcat mem_prev !mem_edgep -orbA.
     by case/or4P=> /eqP->. }
-  have : o' \in q' by rewrite mem_pcat mem_prev !nodes_start.
+  have : o' \in q' by rewrite mem_pcat mem_prev !path_begin.
   rewrite (CP_tree_paths conn_G' tree_CPU' _ Iq' _) //.
   move/(@cpP G')/(_ p')/(map_f val).
   by rewrite -eq_p' -eq_o' =>/p_io; rewrite sinterval_bounds.

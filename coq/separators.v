@@ -127,8 +127,6 @@ Proof.
   (* There exist finitely many proper separations, pick one for which
   [V1 :&: V2] is smallest. This is smallest separator since every
   separator can be extended to a proper separation *)
-  (* Hint, 
-
 Admitted.
 
 (** TOTHINK: the second assumption is half-redundant but makes for a nice statement *)
