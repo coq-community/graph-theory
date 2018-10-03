@@ -32,8 +32,8 @@ Proof.
   rewrite -{C C_comp a_C}(def_pblock compI C_comp a_C).
   case/uPathP: (connectedTE G_conn a g_in) => p.
   move: (aNi); rewrite !inE. case/(splitR p) => [z][q][zi] {p}->.
-  rewrite irred_cat'. case/and3P=> _ _ /eqP/setP/(_ g_in).
-  rewrite !inE eq_sym sg_edgeNeq // nodes_end andbT => /negbT iNq.
+  rewrite irred_cat. case/and3P=> _ _ /eqP/setP/(_ g_in).
+  rewrite !inE eq_sym sg_edgeNeq // path_end andbT => /negbT iNq.
   exists z => //.
   rewrite pblock_equivalence_partition // ?inE ?(sg_edgeNeq zi) //.
   + apply: (connectRI (p := q)) => x. rewrite !inE. by apply: contraTneq =>->.
