@@ -1083,8 +1083,8 @@ Section CheckpointOrder.
       by move=><-; split; last rewrite /cpo. }
     case: (three_way_split the_uPathP x_path y_path x_lt_y)
       => [p1] [p2] [p3] [eq_path xNp3 yNp1].
-    move: the_uPathP; rewrite eq_path !irred_cat =>/and3P[Ip1]/and3P[Ip2 Ip3].
-    move=> disj23 disj123.
+    move: the_uPathP. rewrite eq_path. 
+    case/irred_catE => Ip1 /irred_catE [Ip2 Ip3 D23] D123.
     move=> z; apply/idP/andP.
     + move=> z_cpxy. have z_cpio := cp_widen x_cpio y_cpio z_cpxy.
       split=>//. move: z_cpio => /cpP/(_ the_uPath) z_path.
@@ -1092,8 +1092,7 @@ Section CheckpointOrder.
       case: (altP (z =P x)) => [->|zNx]; first by rewrite leqnn (ltnW x_lt_y).
       apply/andP; split; last first.
       - rewrite eq_path idx_catR ?idx_catL ?nodes_end ?idx_end ?idx_mem //.
-        have : z \in pcat p2 p3 by rewrite mem_pcat z_p2.
-        by rewrite mem_path inE (negbTE zNx) => /(disjointFl disj123)->.
+        apply: contraNN zNx => ?. by rewrite [z]D123 // mem_pcat z_p2.
       - rewrite eq_path leq_eqVlt. apply/orP; right.
         rewrite -idxR -?eq_path ?the_uPathP //. apply: in_tail zNx _.
         by rewrite mem_pcat z_p2.
@@ -1110,7 +1109,8 @@ Section CheckpointOrder.
       exfalso; have := zNy; apply/negP; rewrite negbK.
       apply/eqP; apply: cpo_antisym => //.
       rewrite z_le_y /=/cpo eq_path idx_catR // leq_eqVlt.
-      by rewrite -idxR ?irred_cat ?nodesE/= ?inE ?mem_cat ?z_p3.
+      rewrite -idxR ?z_p3 // ?irred_cat' ?mem_pcat ?(tailW z_p3) ?Ip2 ?Ip3//=.
+      apply/eqP/setP => k. rewrite !inE. apply/andP/eqP => [[]|-> //]. exact: D23. 
   Qed.
 
 End CheckpointOrder.

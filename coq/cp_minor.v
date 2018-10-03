@@ -44,8 +44,7 @@ Proof.
   case: (split_at_first (G := G) (A := mem p) Yp Yq) => n1 [q1] [q2] [def_q Q1 Q2]. 
   have Hn : n1 != x.
   { apply: contraNN av_x => /eqP<-. by rewrite def_q mem_pcat nodes_end. }
-  have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1.
-  { move:irr_q. rewrite def_q irred_cat. by case/and3P. }
+  have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1 by subst; case/irred_catE :irr_q.
   have/cpPn [q irr_q av_n1] : n1 \notin @cp G z x. 
   { apply link_cpN => //. apply: contraNN av_z => /eqP?. by subst n1. }
   have [Xq Xp] : x \in q /\ x \in p by split; rewrite /= ?nodes_end ?nodes_start. 
@@ -67,8 +66,7 @@ Proof.
   gen have D,D1 : z1 n1 q1 q1' zn1 irr_q1 def_q1  Q2 {Q1 N before} / 
      [disjoint p & q1'].
   { have A : n1 \notin q1'. 
-    { move: irr_q1. rewrite def_q1 irred_cat /= => /and3P[_ _ A].
-      by rewrite (disjointFl A _). }
+    { move: irr_q1. rewrite def_q1 irred_edgeR. by case (_ \in _). }
     rewrite disjoint_subset; apply/subsetP => z' Hz'. rewrite !inE.
     apply: contraNN A => A. 
     by rewrite -[n1](Q2 _ Hz' _) // def_q1 mem_pcat A. }

@@ -689,17 +689,21 @@ Lemma irred_edgeL y x z1 (xz1 : x -- z1) (p : Path z1 y) :
   irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
 Proof. case: p => p pth_p. by rewrite !irredE /= mem_path /=. Qed.
 
-Lemma disjoint_edgep x y z (xy : x -- y) (p : Path y z) :
-  irred p -> 
-  [disjoint edgep xy & tail p] = (x \notin p).
-Proof. 
-  move => Ip. rewrite mem_path inE sg_edgeNeq //=. apply/idP/idP.
-  - move => D. by rewrite (disjointFr D) // mem_edgep eqxx.
-  - move => H. rewrite disjoint_subset. apply/subsetP => u.
-    rewrite mem_edgep. case/orP => /eqP-> //. rewrite !inE.
-    move: Ip. rewrite irredE /=. by case/andP.
-Qed.
+Fact prev_edge_proof x y (xy : x -- y) : y -- x. by rewrite sgP. Qed.
+Lemma prev_edge x y (xy : x -- y) : prev (edgep xy) = edgep (prev_edge_proof xy).
+Proof. by apply/eqP. Qed.
 
+Lemma pcatA u v x y (p : Path u v) (q : Path v x) (r : Path x y) : 
+  pcat (pcat p q) r = pcat p (pcat q r).
+Proof. apply/eqP. by rewrite -val_eqE /= catA. Qed.
+
+Lemma prev_cat x y z (p : Path x y) (q : Path y z) : 
+  prev (pcat p q) = pcat (prev q) (prev p).
+Proof. apply/eqP. by rewrite -val_eqE /= /srev belast_cat rev_cat path_last. Qed.
+  
+Lemma irred_edgeR y x z (xz : y -- z) (p : Path x y) : 
+  irred (pcat p (edgep xz)) = (z \notin p) && irred p.
+Proof. by rewrite -irred_rev prev_cat prev_edge irred_edgeL irred_rev mem_prev. Qed.
 
 (** Induction principles for packaged paths *)
 
