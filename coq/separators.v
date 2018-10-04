@@ -91,9 +91,10 @@ Qed.
 i.e., a separator can disconnect the graph into more than two
 components. Hence, we also define separations, which make the
 separated sides explicit *)
+(* TOTHINK: maybe use [forall x, x \in V1 :|: V2] or [forall x, x \notin V1 -> x \in V2] as first part *)
 Definition separation V1 V2 := 
-  ((V1 :|: V2 = setT) * (forall x1 x2, x1 \in V1 :\: V2 -> x2 \in V2 :\: V1 -> ~~ x1 -- x2))%type.
-(* used to be    ...       ...       ...         ...       ...      ...     -> x1 -- x2 = false))%type.*)
+  ((V1 :|: V2 = setT) * (forall x1 x2, x1 \in V1 :\: V2 -> x2 \in V2 :\: V1 -> x1 -- x2 = false))%type.
+
 
 Definition proper V1 V2 := V1 :\: V2 != set0 /\ V2 :\: V1 != set0.
 
@@ -115,31 +116,23 @@ Qed.
 Lemma proper_separator V1 V2 :
   proper_separation V1 V2 -> separator (V1 :&: V2).
 Proof.
-  move => [[Hset H] [/set0Pn[x Hx] /set0Pn[y Hy]]]. exists x. exists y. split.
-  - case/setDP: Hx => _. apply: contraNN. move/setIP => [] //.
-  - case/setDP: Hy => _. apply: contraNN. move/setIP => [] //.
-  - intro p.
+  move => [Hsep [/set0Pn[x Hx] /set0Pn[y Hy]]]. exists x. exists y.
+  split; try by move: Hx Hy; rewrite !inE; do ! case (_ \in _).
+  - move => p.
     case: (@split_at_first G (mem V2) x y p y) => //; first by case/setDP: Hy.
     move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE in H2. exists z.
     (* z is the first node of the path \in V2 *)
-    + rewrite H1 mem_pcatT. apply /orP. left. apply nodes_end.
-    + apply/setIP; split => //.
+    + by rewrite H1 mem_pcat path_end.
+    + rewrite inE H2 andbT.
       case: (@splitR G x z p1) => [|z0 [p1' [z0z H4]]].
-      { apply: contraFneq; [|eauto]; intro. (* didnt find a direct lemma for (x=z->false)->x!=z *)
-        subst x. case/setDP: Hx => _ H4 //. contrab. }
-      apply: contraTT (z0z) => Hz1. apply H; last by apply/setDP; split => //.
-      apply/setDP.
-      (* need case disjonction on z0 \in/\notin V2, didnt find a clean way *)
-      have [H0|H0]: (z0 \in V2 \/ z0 \notin V2).
-      * case: (z0 \in V2) => //=; auto.
+      { apply: contraTneq H2 => ?; subst x. by case/setDP : Hx. }
+      apply: contraTT (z0z) => Hz1. rewrite Hsep ?inE //.
+      case: (boolP (z0 \in V2)) => /= H0.
       * (* z0 \in V2 => contradiction with split_at_first *)
-        have z0p1: z0 \in p1.
-        { rewrite H4 mem_pcatT. apply /orP. left. apply nodes_end. }
-        move: (H3 z0) => ff. rewrite inE in ff. move: (ff H0 z0p1) => {ff} zEz0.
-        move: (sg_edgeNeq z0z) => temp. subst z. move/eqP: temp => temp //.
+        move: (z0z). rewrite [z0]H3 ?sgP //. by rewrite H4 mem_pcat path_end.
       * (* z0 \notin V2 => z0 \in V1 by Hset *)
-        have temp: z0 \in V1 :|: V2 by rewrite Hset; done.
-        case/setUP: temp => temp //=. contrab.
+        (* having to use in_setT/-Hsep is not nice *)
+        apply: contraTT (in_setT z0) => C. by rewrite -Hsep inE (negbTE C).
 Qed.
 
 Lemma separator_separation S : 
