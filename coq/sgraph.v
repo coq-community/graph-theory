@@ -771,14 +771,15 @@ Proof.
     apply: val_inj => /=. by rewrite cats1.
 Qed.
 
+CoInductive psplit z x y : Path x y -> Prop := 
+  PSplit (p1 : Path x z) (p2 : Path z y) : psplit z (pcat p1 p2).
 
-
-Lemma Path_split z x y (p : Path x y) : 
-  z \in p -> exists (p1 : Path x z) p2, p = pcat p1 p2.
-Proof.
+Lemma psplitP z x y (p : Path x y) : z \in p -> psplit z p.
+Proof. 
   move: (valP p) => pth_p in_p. rewrite mem_path in in_p.
-  case/(ssplitP in_p) E : {1}(val p) / pth_p => [p1 p2 P1 P2].
-  exists (Sub p1 P1). exists (Sub p2 P2). exact: val_inj. 
+  case/(ssplitP in_p) E : _ / pth_p => [p1 p2 P1 P2].
+  have -> : p = pcat (Sub p1 P1) (Sub p2 P2) by exact: val_inj.
+  by constructor.
 Qed.
 
 (** This should be the canonical way to split irredundant paths *)
@@ -788,8 +789,8 @@ CoInductive isplit z x y : Path x y -> Prop :=
 
 Lemma isplitP z x y (p : Path x y) : irred p -> z \in p -> isplit z p.
 Proof.
-  move => I in_p. case: (Path_split in_p) => p1 [p2] E; subst. 
-  case/irred_catE : I => *. by constructor.
+  move => I in_p. case/psplitP : _ / in_p I => p1 p2 /irred_catE [*]. 
+  by constructor.
 Qed.
 
 Lemma split_at_first_aux {A : pred G} x y (p : seq G) k : 
@@ -1135,13 +1136,10 @@ Proof.
   { move => H.  apply: (connect_trans (y := x)); last exact: H.
     rewrite srestrict_sym. exact: H. }
   case: (x =P y1) C1 => [-> //|/eqP H /andP [inA' C1]].
-  case/uPathRP : C1 => // p _ subA. 
-  apply: (connectRI (p := p)) => z /Path_split [p1] [p2] def_p.
-  rewrite inE. rewrite (subsetP subA) /=.
-  + apply (connectRI (p := p1)). 
-    apply/subsetP. apply: subset_trans subA. 
-    rewrite def_p. exact: subset_pcatL.
-  + by rewrite def_p mem_pcat path_end.
+  case/uPathRP : C1 => // p _ subA. apply: (connectRI (p := p)) => z in_p. 
+  rewrite !inE (subsetP subA) //=. case/psplitP : _ / in_p subA => p1 p2 subA. 
+  apply: (connectRI (p := p1)). apply/subsetP. apply: subset_trans subA. 
+  exact: subset_pcatL.
 Qed.
 
 
@@ -1190,18 +1188,20 @@ Proof.
   apply: connect1; rewrite /= !inE !eqxx orbT //=. by rewrite sg_sym.
 Qed.
 
+Lemma connected_center (G:sgraph) x (S : {set G}) :
+  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
+  connected S.
+Proof.
+  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
+  rewrite connect_symI; by [apply: H | apply: symmetric_restrict_sedge].
+Qed.
+
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
   connected [set z in p].
 Proof. 
-  move => u v. rewrite 2!inE => A B. 
-  case: (Path_split A) => {A} p1 [p2 def_p]. subst p.
-  rewrite mem_pcat in B. case/orP: B. 
-  - case/Path_split => p11 [p12 def_p1]. 
-    apply: (connectRI (p := (prev p12))) => z. 
-    by rewrite mem_prev !inE def_p1 !mem_pcat => ->.
-  - case/Path_split => p21 [p22 def_p2]. 
-    apply: (connectRI (p := p21)) => z. 
-    by rewrite !inE def_p2 !mem_pcat => ->.
+  apply: (@connected_center _ x); last by rewrite inE.
+  move => z. rewrite inE => A. case/psplitP : _ / A => {p} p1 p2.
+  apply: (connectRI (p := p1)) => u Hu. by rewrite inE mem_pcat Hu.
 Qed.
 
 Lemma connected_in_subgraph (G : sgraph) (S : {set G}) (A : {set induced S}) : 
@@ -1237,13 +1237,7 @@ Proof.
   by rewrite in_collective nodesE inE -eqi_p' path_begin.
 Qed.
 
-Lemma connected_center (G:sgraph) x (S : {set G}) :
-  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
-  connected S.
-Proof.
-  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
-  rewrite connect_symI; by [apply: H | apply: symmetric_restrict_sedge].
-Qed.
+
 
 (** *** Connected components *)
 
@@ -1336,9 +1330,8 @@ Proof.
   case: (altP (z =P x1)) => [->|zNx1]; first by apply: contraNN x1_VC; apply/subsetP.
   apply: contraNN xNC => z_C.
   rewrite -(def_pblock compI C_comp z_C). apply/components_pblockP.
-  case/Path_split: z_p1 Ip1 => [q1][q2] Ep1.
-  rewrite Ep1 irred_cat; case/and3P=> _ _ /eqP/setP/(_ x1).
-  rewrite !inE path_end eq_sym (negbTE zNx1) andbT => /negbT x1Nq1.
+  case/(isplitP Ip1) Ep1 : _ / z_p1 => [q1 q2 _ _ H].
+  have x1Nq1 : x1 \notin q1 by apply: contraNN zNx1 => A; rewrite [x1]H.
   exists (prev q1). apply/subsetP=> u. rewrite mem_prev => u_q1.
   apply: contraNT x1Nq1 => uNV. rewrite -(x1_first u) ?inE //.
   by rewrite Ep1 mem_pcat u_q1.
