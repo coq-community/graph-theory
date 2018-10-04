@@ -14,7 +14,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** Preliminaries *)
 
-Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, #|V| < #|U| -> ~ P U.
+Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, #|V| < #|U| -> ~ P V.
 
 Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
   p x0 -> exists2 x, p x & forall y, p y -> m x <= m y.
@@ -79,15 +79,21 @@ Definition component x := [set y | connect sedge x y].
 Lemma sseparator_connected S : 
   smallest separator S -> 0 < #|S| -> connected [set: G].
 Proof.
-  (* Immediate with [separates0P] *)
-Admitted.
+  case => SS H cSgt0 x y _ _.
+  (*case: (@separatesNE x y set0).  ... connect not inductive*)
+  have: (connect (restrict [predC set0] sedge) x y).
+  { apply (@separatesNE x y set0); rewrite ?inE => //.
+    intro. apply (H set0). rewrite cards0 //. exists x. exists y. done. }
+  rewrite !restrictE //; intro; rewrite !inE //.
+Qed.
 
 (** separators do not make precises what the separated comonents are,
 i.e., a separator can disconnect the graph into more than two
 components. Hence, we also define separations, which make the
 separated sides explicit *)
 Definition separation V1 V2 := 
-  ((V1 :|: V2 = setT) * (forall x1 x2, x1 \in V1 :\: V2 -> x2 \in V2 :\: V1 -> x1 -- x2 = false))%type.
+  ((V1 :|: V2 = setT) * (forall x1 x2, x1 \in V1 :\: V2 -> x2 \in V2 :\: V1 -> ~~ x1 -- x2))%type.
+(* used to be    ...       ...       ...         ...       ...      ...     -> x1 -- x2 = false))%type.*)
 
 Definition proper V1 V2 := V1 :\: V2 != set0 /\ V2 :\: V1 != set0.
 
@@ -106,11 +112,35 @@ Proof.
     + apply/set0Pn. exists x. by rewrite !inE eqxx (negbTE xDy).
 Qed.
 
-Lemma proper_separator V1 V2 : 
+Lemma proper_separator V1 V2 :
   proper_separation V1 V2 -> separator (V1 :&: V2).
 Proof.
-  (* [V1 :&: V2] separates all elements of [V1 :\: V2] and [V2 :\: V1], use set0Pn *)
-Admitted.
+  move => [[Hset H] [/set0Pn[x Hx] /set0Pn[y Hy]]]. exists x. exists y. split.
+  - case/setDP: Hx => _. apply: contraNN. move/setIP => [] //.
+  - case/setDP: Hy => _. apply: contraNN. move/setIP => [] //.
+  - intro p.
+    case: (@split_at_first G (mem V2) x y p y) => //; first by case/setDP: Hy.
+    move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE in H2. exists z.
+    (* z is the first node of the path \in V2 *)
+    + rewrite H1 mem_pcatT. apply /orP. left. apply nodes_end.
+    + apply/setIP; split => //.
+      case: (@splitR G x z p1) => [|z0 [p1' [z0z H4]]].
+      { apply: contraFneq; [|eauto]; intro. (* didnt find a direct lemma for (x=z->false)->x!=z *)
+        subst x. case/setDP: Hx => _ H4 //. contrab. }
+      apply: contraTT (z0z) => Hz1. apply H; last by apply/setDP; split => //.
+      apply/setDP.
+      (* need case disjonction on z0 \in/\notin V2, didnt find a clean way *)
+      have [H0|H0]: (z0 \in V2 \/ z0 \notin V2).
+      * case: (z0 \in V2) => //=; auto.
+      * (* z0 \in V2 => contradiction with split_at_first *)
+        have z0p1: z0 \in p1.
+        { rewrite H4 mem_pcatT. apply /orP. left. apply nodes_end. }
+        move: (H3 z0) => ff. rewrite inE in ff. move: (ff H0 z0p1) => {ff} zEz0.
+        move: (sg_edgeNeq z0z) => temp. subst z. move/eqP: temp => temp //.
+      * (* z0 \notin V2 => z0 \in V1 by Hset *)
+        have temp: z0 \in V1 :|: V2 by rewrite Hset; done.
+        case/setUP: temp => temp //=. contrab.
+Qed.
 
 Lemma separator_separation S : 
   separator S -> exists V1 V2, proper_separation V1 V2 /\ S = V1 :&: V2.
@@ -119,6 +149,17 @@ Proof.
   component of [x1] in G\S and let [V1 := U :|: S] and [V2 := ~: U] *)
   case => x1 [x2] [S1 S2 P12].
   set U := [set x | connect (restrict [predC S] sedge) x1 x].
+  set V1 := U :|: S. set V2 := ~: U. exists V1; exists V2. split.
+  - admit.
+  - subst V1. subst V2. rewrite setIUl setICr set0U. symmetry. apply: setIidPl.
+    rewrite -disjoints_subset disjoint_sym disjoint_subset.
+    Search "" ( _ \subset _).
+Check subsetP. Check (@subsetP _ (mem U) [predC S]).
+(* how do I apply subsetP / transform U in (mem U) ?*)
+have: {subset mem U <= [predC S]}. { admit.  }
+
+(* [WIP] *)
+
 Admitted.
 
 Lemma minimal_separation x y : x != y -> ~~ x -- y -> 
