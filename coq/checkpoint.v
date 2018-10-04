@@ -507,7 +507,7 @@ Section CheckPoints.
     rewrite irred_cat => /and3P[? _] /eqP/setP/(_ x).
     rewrite in_set1 in_set mem_edgep eqxx orbT andbT eq_sym (sg_edgeNeq ux).
     move=> xNp yNp' [q'] Iq' xNq'. exists u; first by rewrite sgP.
-    apply: connectRI (p) _ => v. case/Path_split=> [p1] [p2] eq_p.
+    apply: connectRI (p) _ => v in_p. case/psplitP eq_p : _ / in_p => [p1 p2].
     rewrite inE. apply/andP. split.
     - apply: (@cpNI v y (pcat (prev p1) q')).
       rewrite mem_pcat mem_prev negb_or xNq' andbT.
@@ -761,7 +761,7 @@ Section CheckPoints.
   Proof using G_conn.
     move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
     rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
-    case/Path_split : in_p => p1 [p2] def_p. subst. 
+    case/psplitP def_p : _ / in_p => [p1 p2]. subst. 
     rewrite irred_cat !negb_and (_ : _ != _ = true) //.
     apply: contraNN W1 => /eqP/setP/(_ x). rewrite !inE eq_sym => <-.
     gen have H,-> : u p1 Pu / x \in p1. apply/cpP. rewrite cp_sym. exact: bag_exit' Pu.
