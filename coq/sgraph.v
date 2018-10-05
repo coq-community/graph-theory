@@ -1466,6 +1466,23 @@ Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
 Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') :=
   [fun x => h @: B x].
 
+
+(** ** Complete graphs *)
+
+Definition complete_rel n := [rel x y : 'I_n | x != y].
+Fact complete_sym n : symmetric (complete_rel n).
+Proof. move => x y /=. by rewrite eq_sym. Qed.
+Fact complete_irrefl n : irreflexive (complete_rel n).
+Proof. move => x /=. by rewrite eqxx. Qed.
+Definition complete n := SGraph (@complete_sym n) (@complete_irrefl n).
+Notation "''K_' n" := (complete n)
+  (at level 8, n at level 2, format "''K_' n").
+
+Definition C3 := 'K_3.
+Definition K4 := 'K_4.
+
+(** ** Adding Edges *)
+
 Definition add_edge_rel (G:sgraph) (i o : G) := 
   relU (@sedge G) (sc [rel x y | [&& x != y, x == i & y == o]]).
 
@@ -1497,4 +1514,64 @@ Proof.
   move => con1 x y xU yU. 
   apply: connect_mono (con1 _ _ xU yU) => {x y xU yU} x y /=.
   by rewrite -andbA => /and3P[-> -> ->].
+Qed.
+
+(** Adding Vertices *)
+
+Section AddNode.
+  Variables (G : sgraph) (N : {set G}).
+  
+  Definition add_node_rel (x y : option G) := 
+    match x,y with 
+    | None, Some y => y \in N
+    | Some x, None => x \in N
+    | Some x,Some y => x -- y
+    | None, None => false
+    end.
+
+  Lemma add_node_sym : symmetric add_node_rel.
+  Proof. move => [a|] [b|] //=. by rewrite sgP. Qed.
+
+  Lemma add_node_irrefl : irreflexive add_node_rel.
+  Proof. move => [a|] //=. by rewrite sgP. Qed.
+
+  Definition add_node := SGraph add_node_sym add_node_irrefl.
+
+  Lemma add_node_lift_Path (x y : G) (p : Path x y) :
+    exists q : @Path add_node (Some x) (Some y), nodes q = map Some (nodes p).
+  Proof.
+    case: p => p0 p'.
+    set q0 : seq add_node := map Some p0.
+    have q' : @spath add_node (Some x) (Some y) q0.
+      move: p'; rewrite /spath/= last_map (inj_eq (@Some_inj _)).
+      move=> /andP[p' ->]; rewrite andbT.
+      exact: project_path p'.
+    by exists (Sub _ q'); rewrite !nodesE /=.
+  Qed.
+End AddNode.
+Arguments add_node : clear implicits.
+
+Lemma add_node_complete n : sg_iso 'K_n.+1 (add_node 'K_n setT).
+Proof.
+  pose g : add_node 'K_n setT -> 'K_n.+1 := oapp (lift ord_max) ord_max.
+  pose h : 'K_n.+1 -> add_node 'K_n setT := unlift ord_max.
+  exists g h; rewrite /g/h/=.
+  + move=> [x|] /=; [by rewrite liftK | by rewrite unlift_none].
+  + by move=> x; case: unliftP.
+  + move=> [x|] [y|] //=; rewrite ?[_ == ord_max]eq_sym ?neq_lift //.
+    by rewrite (inj_eq (@lift_inj _ ord_max)).
+  + move=> x y /=; do 2 case: unliftP => /= [?|]-> //; last by rewrite eqxx.
+    by rewrite (inj_eq (@lift_inj _ ord_max)).
+Qed.
+
+Lemma connected_add_node (G : sgraph) (U A : {set G}) : 
+  connected A -> @connected (add_node G U) (Some @: A).
+Proof. 
+  move => H x y /imsetP [x0 Hx0 ->] /imsetP [y0 Hy0 ->].
+  have/uPathRP := H _ _ Hx0 Hy0. 
+  case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
+  case: (add_node_lift_Path U p) => q E. 
+  apply: (connectRI (p := q)) => ?. 
+  rewrite !inE mem_path -nodesE E.
+  case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
 Qed.

@@ -10,9 +10,7 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Tree Width and Minors *)
-
-(** ** Tree Decompositions *)
+(** * Tree Decompositions *)
 
 (** Covering is not really required, but makes the renaming theorem
 easier to state *)
@@ -63,11 +61,246 @@ Proof.
     apply: can_inj can_g.
 Qed.
 
+(** ** Renaming *)
+Arguments sdecomp [T G] B.
+
+Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp D) (h : G -> H) : 
+  hom_s h -> 
+  surjective h -> 
+  (forall x y : H, x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0]) ->
+  (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
+  @sdecomp T _ (rename D h).
+Proof.
+  move => hom_h sur_h sur_e comp_h. 
+  split. 
+  - move => x. pose x0 := cr sur_h x. case: (sbag_cover dec_D x0) => t Ht.
+    exists t. apply/imsetP. exists x0; by rewrite ?crK. 
+  - move => x y xy. case: (sur_e _ _ xy) => x0 [y0] [hx0 hy0 e0].
+    case: (sbag_edge dec_D e0) => t /andP [t1 t2]. 
+    exists t. apply/andP;split;apply/imsetP;by [exists x0|exists y0].
+  - move => x t1 t2 bg1 bg2. 
+    case/imsetP : (bg1) (bg2) => x0 A B /imsetP [x1 C E]. subst. rewrite E in bg2.
+    case: (comp_h _ _ E) => t /andP [F I]. 
+    apply: (connect_trans (y := t)). 
+    + apply: connect_mono (sbag_conn dec_D A F) => u v /= /andP [/andP [X Y] Z]. 
+      rewrite Z andbT. apply/andP;split; by apply/imsetP;exists x0.
+    + apply: connect_mono (sbag_conn dec_D I C) => u v /= /andP [/andP [X Y] Z]. 
+      rewrite E Z andbT. apply/andP;split; by apply/imsetP;exists x1.
+Qed.
+
+Lemma rename_width (T : forest) (G : sgraph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
+  width (rename D h) <= width D.
+Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
+
+(** ** Disjoint Union *)
+
+Section JoinT.
+  Variables (T1 T2 : forest).
+
+  Lemma sub_inl (a b : T1) (p : @Path (sjoin T1 T2) (inl a) (inl b)) :
+    {subset p <= codom inl}.
+  Proof. 
+    apply: path_closed; first by rewrite codom_f. 
+    do 2 case => ? //; rewrite ?codom_f //. by case/codomP => ?.
+  Qed.
+
+  Lemma sub_inr (a b : T2) (p : @Path (sjoin T1 T2) (inr a) (inr b)) :
+    {subset p <= codom inr}.
+  Proof. 
+    apply: path_closed; first by rewrite codom_f. 
+    do 2 case => ? //; rewrite ?codom_f //. by case/codomP => ?.
+  Qed.
+
+  Arguments inl_inj [A B].
+  Prenex Implicits inl_inj.
+
+  Lemma join_is_forest : is_forest [set: sjoin T1 T2].
+  Proof with try solve [exact: inl_inj|exact: inr_inj
+                       |exact: sub_inl|exact: sub_inr].
+    move => [a|a] [b|b] p q [Ip _] [Iq _].
+    - case: (lift_Path (p' := p)) => //...
+      case: (lift_Path (p' := q)) => //...
+      move => p' Np I q' Nq I'. 
+      have E : p' = q'. { apply: forestP; by rewrite ?I ?I'. }
+      apply/eqP. by rewrite -nodes_eqE -Nq -E Np.
+    - move: (Path_connect p). by rewrite join_disc.
+    - move: (Path_connect p). by rewrite sconnect_sym join_disc.
+    - case: (lift_Path (p' := p)) => //...
+      case: (lift_Path (p' := q)) => //...
+      move => p' Np I q' Nq I'. 
+      have E : p' = q'. { apply: forestP; by rewrite ?I ?I'. }
+      apply/eqP. by rewrite -nodes_eqE -Nq -E Np.
+  Qed.
+      
+  Definition tjoin := @Forest (sjoin T1 T2) join_is_forest.
+
+  Definition decompU (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : 
+    tjoin -> {set sjoin G1 G2} := 
+    [fun a => match a with 
+          | inl a => [set inl x | x in D1 a]
+          | inr a => [set inr x | x in D2 a]
+          end].
+
+  Lemma join_decomp (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2})  :
+    sdecomp D1 -> sdecomp D2 -> sdecomp (decompU D1 D2).
+  Proof using.
+    move => dec1 dec2. split.
+    - move => [x|x]. 
+      + case: (sbag_cover dec1 x) => t Ht. exists (inl t) => /=. by rewrite mem_imset.
+      + case: (sbag_cover dec2 x) => t Ht. exists (inr t) => /=. by rewrite mem_imset.
+    - move => [x|x] [y|y] // xy. 
+      + case: (sbag_edge dec1 xy) => t /andP [H1 H2]. exists (inl t) => /=. by rewrite !mem_imset.
+      + case: (sbag_edge dec2 xy) => t /andP [H1 H2]. exists (inr t) => /=. by rewrite !mem_imset.
+    - have inl_inr x t : inl x \in decompU D1 D2 (inr t) = false.
+      { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
+      have inr_inl x t : inr x \in decompU D1 D2 (inl t) = false.
+      { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
+      move => [x|x] [t1|t1] [t2|t2] /= ; rewrite ?inl_inr ?inr_inl // => A B. 
+      + pose e := restrict [pred t | x \in D1 t] sedge.
+        apply: (connect_img (e:= e) (f := inl)).
+        * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
+          by rewrite !mem_imset.
+        * apply: sbag_conn => //. 
+          move: A. by case/imsetP => ? ? [->].
+          move: B. by case/imsetP => ? ? [->].
+      + pose e := restrict [pred t | x \in D2 t] sedge.
+        apply: (connect_img (e:= e) (f := inr)).
+        * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
+          by rewrite !mem_imset.
+        * apply: sbag_conn => //. 
+          move: A. by case/imsetP => ? ? [->].
+          move: B. by case/imsetP => ? ? [->].
+  Qed.
+
+  Lemma join_width (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2}) : 
+    width (decompU D1 D2) <= maxn (width D1) (width D2).
+  Proof.
+    apply/bigmax_leqP => [[x|x] _]. 
+    all: rewrite /decompU /= card_imset; try solve [exact: inl_inj|exact: inr_inj].
+    - apply: leq_trans (leq_maxl _ _). exact: leq_bigmax.
+    - apply: leq_trans (leq_maxr _ _). exact: leq_bigmax.
+  Qed.
+
+End JoinT.
+
+(** ** Link Construction *)
+
+Section Link.
+  Variables (T : forest) (U : {set T}).
+  Hypothesis U_disc : {in U &,forall x y, x != y -> ~~ connect sedge x y}.
+  
+  Definition link := add_node T U.
+  
+  Lemma link_unique_lift (x y : link) : 
+    unique (fun p : Path x y => irred p /\ None \notin p).
+  Proof. 
+    move: x y => [x|] [y|] p q [Ip Np] [Iq Nq]; 
+      try by rewrite ?(@path_end link) ?(@path_begin link) in Np Nq.
+    gen have H,Hp : p Ip Np / {subset p <= codom Some}.
+    { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
+    case: (lift_Path (p' := p)) => //. 
+    case: (lift_Path (p' := q)) => //; first exact: H.
+    move => p0 Ep Ip0 q0 Eq Iq0. 
+    have E : p0 = q0. apply: forestP; by rewrite ?Ip0 ?Iq0.
+    apply/eqP. rewrite -nodes_eqE. by apply/eqP;congruence.
+  Qed.
+
+  Lemma link_bypass (x y : T) (p : @Path link (Some x) (Some y)) : 
+    x \in U -> y \in U -> None \notin p -> x = y.
+  Proof. 
+    move => xU yU Np. case: (lift_Path (p' := p)) => // => [|p' _ _].
+    { move => [u|]; by rewrite ?codom_f // (negbTE Np). }
+    apply: contraTeq isT => /U_disc => /(_ xU yU). 
+    by rewrite (Path_connect p').
+  Qed.
+
+  Lemma link_unique_None (x : link) : 
+    unique (fun p : @Path link None x => irred p).
+  Proof.
+    move: x => [x|] p q Ip Iq; last by rewrite (irredxx Ip) (irredxx Iq).
+    case: (splitL p) => // [] [y|] [/= xy] [p'] [P1 _] //. 
+    case: (splitL q) => // [] [z|] [/= xz] [q'] [Q1 _] //. subst. 
+    move: Ip Iq. rewrite !irred_edgeL => /andP[Np Ip] /andP[Nq Iq].
+    have ? : y = z. { 
+      apply: (link_bypass (p := pcat p' (prev q'))) => //.
+      by rewrite (@mem_pcat link) mem_prev negb_or Np Nq. }
+    subst. congr pcat; first exact: val_inj. exact: link_unique_lift.
+  Qed.
+
+  Lemma link_has_None (x y : link) (p q : Path x y) : 
+    irred p -> irred q -> None \in p -> None \in q.
+  Proof using U_disc.
+    move: x y p q => [x|] [y|] p q; 
+      try by rewrite ?(@path_end link) ?(@path_begin link).
+    move => Ip Iq Np. apply: contraTT isT => Nq. 
+    case/(isplitP Ip) def_p : _  / Np => [p1 p2 Ip1 Ip2 I12]. subst.
+    case: (splitL p2) => // [] [a|] [/= na] [p2'] [D _] //. 
+    case: (splitL (prev p1)) => // [] [b|] [/= nb] [p1'] [D' _] //. 
+    have ? : b = a; last subst.
+    { suff [p Hp] : exists p : @Path link (Some b) (Some a), None \notin p.
+      { exact: link_bypass Hp. }
+      exists (pcat p1' (pcat q (prev p2'))). 
+      rewrite !(@mem_pcat link) mem_prev (negbTE Nq) /= negb_or. 
+      move: Ip1 Ip2. rewrite -irred_rev D' D !irred_edgeL. by do 2 case: (_ \notin _). }
+    move: (I12 (Some a)). case/(_ _ _)/Wrap => //; rewrite ?mem_pcat ?path_end //.
+    by rewrite -mem_prev D' mem_pcat path_begin.
+  Qed.
+
+  Lemma link_is_forest : is_forest [set: link].
+  Proof.
+    apply: unique_forestT => x y p q Ip Iq. 
+    case: (boolP (None \in p)) => Np.
+    - have Nq := link_has_None Ip Iq Np.
+      case/(isplitP Ip) def_p : _ / Np => [p1 p2 Ip1 Ip2 _].
+      case/(isplitP Iq) def_q : _ / Nq => [q1 q2 Iq1 Iq2 _].
+      congr pcat. 
+      + apply: prev_inj. apply: link_unique_None; by rewrite irred_rev.
+      + exact: link_unique_None.
+    - suff Nq : None \notin q by apply: link_unique_lift. 
+      apply: contraNN Np. exact: link_has_None.
+  Qed.
+      
+  Definition tlink := @Forest link link_is_forest.
+
+  Definition decompL (G:sgraph) (D : T -> {set G}) A a := 
+    match a with Some x => D x | None => A end.
+
+  Lemma decomp_link (G : sgraph) (D : T -> {set G}) (A  : {set G}) : 
+    A \subset \bigcup_(t in U) D t ->
+    sdecomp D -> @sdecomp tlink G (decompL D A).
+  Proof.
+    move => HA decD. split => //.
+    - move => x. case: (sbag_cover decD x) => t Ht. by exists (Some t). 
+    - move => x y xy. case: (sbag_edge decD xy) => t Ht. by exists (Some t).
+    - have X x a : x \in D a -> x \in A ->
+        connect (restrict [pred t | x \in decompL D A t] (add_node_rel U)) 
+                (Some a) None.
+      { move => H1 H2. move/(subsetP HA) : (H2) => /bigcupP [t Ht1 Ht2].
+        apply: (connect_trans (y := Some t)).
+        - move: (sbag_conn decD H1 Ht2). exact: connect_img.
+        - apply: connect1 => /=; by rewrite !in_simpl H2 Ht1. }
+      move => x [a|] [b|] /= H1 H2; last exact: connect0. 
+      + move: (sbag_conn decD H1 H2). exact: connect_img. 
+      + exact: X.
+      + rewrite (@srestrict_sym link). exact: X. 
+  Qed.
+
+  Lemma width_link (G : sgraph) (D : T -> {set G}) (A  : {set G}) : 
+    width (decompL D A) <= maxn (width D) #|A|.
+  Proof.
+    apply/bigmax_leqP => [] [t|] _ /=; last by rewrite ?leq_maxr. 
+    apply: leq_trans (leq_maxl _ _). exact: leq_bigmax.
+  Qed.
+
+End Link.
+
+
+
 Section DecompTheory.
   Variables (G : sgraph) (T : forest) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).
 
-  Hypothesis decD : sdecomp T G B.
+  Hypothesis decD : sdecomp B.
 
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
 
@@ -149,24 +382,9 @@ Section DecompTheory.
       
 End DecompTheory.
 
-
-
-(** ** Complete graphs *)
-
-Definition complete_rel n := [rel x y : 'I_n | x != y].
-Fact complete_sym n : symmetric (complete_rel n).
-Proof. move => x y /=. by rewrite eq_sym. Qed.
-Fact complete_irrefl n : irreflexive (complete_rel n).
-Proof. move => x /=. by rewrite eqxx. Qed.
-Definition complete n := SGraph (@complete_sym n) (@complete_irrefl n).
-Notation "''K_' n" := (complete n)
-  (at level 8, n at level 2, format "''K_' n").
-
-Definition C3 := 'K_3.
-Definition K4 := 'K_4.
-
+(** K4 has with at least 4 *)
 Lemma K4_bag (T : forest) (D : T -> {set K4}) : 
-  sdecomp T K4 D -> exists t, 4 <= #|D t|.
+  sdecomp D -> exists t, 4 <= #|D t|.
 Proof.
   move => decD.
   case: (@decomp_clique _ _ _ decD setT _ _) => //.
@@ -175,14 +393,11 @@ Proof.
     exact: subset_leq_card.
 Qed.
 
-(** K4 has with at least 4 *)
-
 Lemma K4_width (T : forest) (D : T -> {set K4}) : 
-  sdecomp T K4 D -> 4 <= width D.
+  sdecomp D -> 4 <= width D.
 Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
 
-
-(** ** Minors *)
+(** * Minors *)
 
 (** H is a minor of G -- The order allows us to write [minor G] for the
 collection of [G]s minors *)
@@ -289,7 +504,7 @@ Definition edge_surjective (G1 G2 : sgraph) (h : G1 -> G2) :=
   forall x y : G2 , x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0].
 
 (* The following should hold but does not fit the use case for minors *)
-Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G -> H) : 
+Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp D) (h :G -> H) : 
   hom_s h -> surjective h -> edge_surjective h -> 
   (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
   @sdecomp T _ (rename D h).
@@ -298,7 +513,7 @@ Abort.
 
 
 Lemma width_minor (G H : sgraph) (T : forest) (B : T -> {set G}) : 
-  sdecomp T G B -> minor G H -> exists B', sdecomp T H B' /\ width B' <= width B.
+  sdecomp B -> minor G H -> exists B', @sdecomp T H B' /\ width B' <= width B.
 Proof.
   move => decT [phi [p1 p2 p3]].
   pose B' t := [set x : H | [exists (x0 | x0 \in B t), phi x0 == Some x]].
@@ -345,80 +560,23 @@ Lemma iso_K4_free (G H : sgraph) :
 Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
 
 Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) : 
-  sdecomp T G B -> width B <= 3 -> K4_free G.
+  sdecomp B -> width B <= 3 -> K4_free G.
 Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
   suff: 4 <= 3 by []. 
   apply: leq_trans wT. apply: leq_trans B2. exact: K4_width.
 Qed.
 
-Section AddNode.
-  Variables (G : sgraph) (N : {set G}).
-  
-  Definition add_node_rel (x y : option G) := 
-    match x,y with 
-    | None, Some y => y \in N
-    | Some x, None => x \in N
-    | Some x,Some y => x -- y
-    | None, None => false
-    end.
-
-  Lemma add_node_sym : symmetric add_node_rel.
-  Proof. move => [a|] [b|] //=. by rewrite sgP. Qed.
-
-  Lemma add_node_irrefl : irreflexive add_node_rel.
-  Proof. move => [a|] //=. by rewrite sgP. Qed.
-
-  Definition add_node := SGraph add_node_sym add_node_irrefl.
-
-  Lemma add_node_lift_Path (x y : G) (p : Path x y) :
-    exists q : @Path add_node (Some x) (Some y), nodes q = map Some (nodes p).
-  Proof.
-    case: p => p0 p'.
-    set q0 : seq add_node := map Some p0.
-    have q' : @spath add_node (Some x) (Some y) q0.
-      move: p'; rewrite /spath/= last_map (inj_eq (@Some_inj _)).
-      move=> /andP[p' ->]; rewrite andbT.
-      exact: project_path p'.
-    by exists (Sub _ q'); rewrite !nodesE /=.
-  Qed.
-
-  (* TODO: theory for [induced [set~ : None : add_node]] *)
-  Lemma minor_induced_add_node : @minor_map (induced [set~ None : add_node]) G val.
-  Proof.
-  have inNoneD (a : G) : Some a \in [set~ None] by rewrite !inE. split.
-    + move=> y. by exists (Sub (Some y) (inNoneD y)).
-    + move=> y x1 x2. rewrite -!mem_preim =>/eqP<- /eqP/val_inj->. exact: connect0.
-    + move=> x y xy. exists (Sub (Some x) (inNoneD x)).
-      exists (Sub (Some y) (inNoneD y)). by split; rewrite -?mem_preim.
-  Qed.
-End AddNode.
-Arguments add_node : clear implicits.
-
-Lemma add_node_complete n : sg_iso 'K_n.+1 (add_node 'K_n setT).
+(* TODO: theory for [induced [set~ : None : add_node]] *)
+Lemma minor_induced_add_node (G : sgraph) (N : {set G}) : @minor_map (induced [set~ None : add_node G N]) G val.
 Proof.
-  pose g : add_node 'K_n setT -> 'K_n.+1 := oapp (lift ord_max) ord_max.
-  pose h : 'K_n.+1 -> add_node 'K_n setT := unlift ord_max.
-  exists g h; rewrite /g/h/=.
-  + move=> [x|] /=; [by rewrite liftK | by rewrite unlift_none].
-  + by move=> x; case: unliftP.
-  + move=> [x|] [y|] //=; rewrite ?[_ == ord_max]eq_sym ?neq_lift //.
-    by rewrite (inj_eq (@lift_inj _ ord_max)).
-  + move=> x y /=; do 2 case: unliftP => /= [?|]-> //; last by rewrite eqxx.
-    by rewrite (inj_eq (@lift_inj _ ord_max)).
+  have inNoneD (a : G) : Some a \in [set~ None] by rewrite !inE. split.
+  + move=> y. by exists (Sub (Some y) (inNoneD y)).
+  + move=> y x1 x2. rewrite -!mem_preim =>/eqP<- /eqP/val_inj->. exact: connect0.
+  + move=> x y xy. exists (Sub (Some x) (inNoneD x)).
+    exists (Sub (Some y) (inNoneD y)). by split; rewrite -?mem_preim.
 Qed.
 
-Lemma connected_add_node (G : sgraph) (U A : {set G}) : 
-  connected A -> @connected (add_node G U) (Some @: A).
-Proof. 
-  move => H x y /imsetP [x0 Hx0 ->] /imsetP [y0 Hy0 ->].
-  have/uPathRP := H _ _ Hx0 Hy0. 
-  case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
-  case: (add_node_lift_Path U p) => q E. 
-  apply: (connectRI (p := q)) => ?. 
-  rewrite !inE mem_path -nodesE E.
-  case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
-Qed.
 
 Lemma add_node_minor (G G' : sgraph) (U : {set G}) (U' : {set G'}) (phi : G -> G') :
   (forall y, y \in U' -> exists2 x, x \in U & phi x = y) ->
