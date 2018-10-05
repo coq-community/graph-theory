@@ -53,8 +53,9 @@ Qed.
 Fact separates_sym x y U : separates x y U <-> separates y x U.
 Proof.
   wlog suff: x y / separates x y U -> separates y x U by firstorder.
-  (* trivial *)
-Admitted.
+  move => [xU yU H] //. rewrite /separates; split => // p.
+  move: (H (prev p)) => [z zpp zU]. exists z; by try rewrite mem_prev in zpp.
+Qed.
 
 Fact separates0P x y : reflect (separates x y set0) (~~ connect sedge x y).
 Proof.
@@ -135,6 +136,31 @@ Proof.
         apply: contraTT (in_setT z0) => C. by rewrite -Hsep inE (negbTE C).
 Qed.
 
+
+(*
+Can't destroy an 'exists' if the final goal is a Type rather than a Prop.
+Lemma patate2:
+  forall (n:nat), (exists m:nat, n=m) -> (exists p, p=n).
+Proof. move => a [b c]. Check a=b. Check (exists p, p=a).
+Abort.
+Lemma patate3 x y U V: 
+  (exists p: Path x y, p \subset V) -> Path x x.
+Proof. Check Path x y. Check Path x x.
+(*move => [p H].*)
+Abort.
+Lemma patate x y U V: 
+  (exists p: Path x y, p \subset V) -> exists p : Path x x, True.
+Proof. Check Path x y. Check Path x x.
+move => [p H]. exists (idp x). done.
+Qed.
+*)
+
+
+Lemma pcat_subset: forall x y z (p : Path x y) (q : Path y z) (A: simpl_pred G),
+  p \subset A -> q \subset A -> pcat p q \subset A.
+Admitted.
+
+
 Lemma separator_separation S : 
   separator S -> exists V1 V2, proper_separation V1 V2 /\ S = V1 :&: V2.
 Proof.
@@ -142,16 +168,65 @@ Proof.
   component of [x1] in G\S and let [V1 := U :|: S] and [V2 := ~: U] *)
   case => x1 [x2] [S1 S2 P12].
   set U := [set x | connect (restrict [predC S] sedge) x1 x].
-  set V1 := U :|: S. set V2 := ~: U. exists V1; exists V2. split.
-  - admit.
+  set V1 := U :|: S. set V2 := ~: U. exists V1; exists V2.
+
+  (* few results first *)
+  have UV1V2: U = V1 :\: V2.
+  { have HCC: forall A, A = ~:~:A. (* didnt find it in library *)
+    { move => t A. apply /setP => x. rewrite !in_set.
+      by case: (boolP (x \in A)) => /= H0. }
+    subst V1 V2. by rewrite setDE -(HCC _ U) setUK. }
+  have HU: forall z, z \in U -> exists pp : Path x1 z, pp \subset [predC S].
+  { move => z zU. case: (boolP (x1 == z)) => /= H0.
+    - move/eqP: H0 => H0; subst x1. exists (idp z).
+      apply /subsetP => z' zz'. rewrite mem_idp in zz'.
+      move/eqP: zz' => ?; subst z'. by rewrite inE.
+    - rewrite inE in zU. move: zU => /PathRP zU. move: (zU H0) => [p H]. by exists p. }
+  have Htrans: forall (x y z:G) (p:Path x y) (S : {set G}),
+    z \in p -> p \subset [predC S] -> z \in [predC S].
+    { admit.  (* can't find a way to prove it. Lemmas 'sub1set' and 'subset_trans'
+      seem promising but I can't make it work *)}
+  have HSCS: forall (z:G), z \in [predC S] -> z \in S -> false.
+  { admit. (*no idea how, inE and contrab are not enough *) }
+
+  split.
+  - split.
+    + split.
+      * subst V1 V2. by rewrite setUAC setUCr setTU.
+      * move => z0 z1 Hz0 Hz1.
+        (* x1 --path-- z0 by definition of U,
+           so if z0--z1 then x1 --path-- z1 absurd since z1 \notin U *)
+        rewrite -UV1V2 in Hz0.
+        apply: negbTE. have test: ~~false by auto. apply: contraNN test => z0z1.
+        have [pxz Hpxz]: exists pp : Path x1 z1, pp \subset [predC S].
+        { move: (HU z0 Hz0) => [p Hp]. exists (pcat p (edgep z0z1)).
+          have Hz1S: z1 \notin S.
+          { subst V1 V2. move/setDP: Hz1 => [_ HUS]. apply: contraNN HUS => HS.
+            apply /setUP /orP. by rewrite HS. }
+          have z0NS: z0 \notin S.
+          { have: ~~false by auto. apply: contraNN => z0S.
+            apply HSCS with z0 => //. apply Htrans with x1 z0 p => //. }
+          apply pcat_subset => //. apply /subsetP => x Hx. rewrite mem_edgep in Hx.
+          case/orP: Hx => /eqP Hx; subst x; by rewrite inE. }
+        have z1U: z1 \in U.
+        { case: (boolP (x1 == z1)) => //= H0.
+          { move: H0 => /eqP H0. by subst; rewrite inE. }
+          rewrite inE. apply /PathRP => //. by exists pxz. }
+        replace U in z1U. move: Hz1 z1U => /setDP[? ?] /setDP[? ?]. contrab.
+    + rewrite /proper. split; apply /set0Pn.
+      * exists x1. rewrite -UV1V2. subst U; rewrite inE //.
+      * exists x2. have x2NU: x2 \notin U.
+        { case: (boolP (x2 \in U)) => /= H0; last by done.
+          move: (HU x2 H0) => [p Hp]. move: (P12 p) => [z zp zS].
+          move: (Htrans x1 x2 z p S zp Hp) => zCS. by apply HSCS with z. }
+        apply /setDP; split; first by subst V2; rewrite in_setC.
+        subst V1. rewrite -in_setC setCU. apply /setIP. by split; rewrite in_setC. 
+
   - subst V1. subst V2. rewrite setIUl setICr set0U. symmetry. apply: setIidPl.
     rewrite -disjoints_subset disjoint_sym disjoint_subset.
-    Search "" ( _ \subset _).
-Check subsetP. Check (@subsetP _ (mem U) [predC S]).
-(* how do I apply subsetP / transform U in (mem U) ?*)
-have: {subset mem U <= [predC S]}. { admit.  }
-
-(* [WIP] *)
+    apply /subsetP => z zU. move: (HU z zU) => [p Hp].
+    have zp: z \in p by apply path_end.
+    by apply Htrans with x1 z p.
 
 Admitted.
 
@@ -218,7 +293,8 @@ subgraphs and lift the required lemmas *)
 Lemma sseparator_remove G (S : {set G}) s : 
   smallest separator S -> s \in S -> 
  @smallest (induced [set~ s]) separator (remainder _ S).
-  
+Proof.
+Admitted.
 
 Lemma indepentent_paths G (V1 V2 : {set G}) : 
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 3 <= #|V1 :&: V2| ->
