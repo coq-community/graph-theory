@@ -294,8 +294,6 @@ Section Link.
 
 End Link.
 
-
-
 Section DecompTheory.
   Variables (G : sgraph) (T : forest) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).
@@ -304,12 +302,17 @@ Section DecompTheory.
 
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
 
-  Lemma decomp_clique (S : {set G}) : 
+
+  (** This proof is based on a stackexchange post to be found here:
+      https://math.stackexchange.com/questions/1227867/
+      a-clique-in-a-tree-decomposition-is-contained-in-a-bag 
+
+      The assumption [0 < #|S|] ensures that [T] is nonempty. *)
+  Lemma decomp_clique (S : {set G}): 
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 
-    move: S. 
-    apply: (nat_size_ind (f := fun S : {set G} => #|S|)) => S IH inh_S clique_S.
-    case: (leqP #|S| 2) => card_S. 
+    move: S. apply: (nat_size_ind (f := fun S : {set G} => #|S|)) => S IH inh_S clique_S.
+    case: (leqP #|S| 2) => [card_S | card_S {inh_S}]. 
     - case: (card12 inh_S card_S) => [[x]|[x] [y] [Hxy]] ?; subst S.
       + case: (sbag_cover decD x) => t A. exists t. by rewrite sub1set.
       + have xy: x -- y. by apply: clique_S => //; rewrite !inE !eqxx ?orbT.
@@ -317,11 +320,9 @@ Section DecompTheory.
     - have [v [v0] [Hv Hv0 X]] := card_gt1P (ltnW card_S).
       pose S0 := S :\ v.
       pose T0 := [set t | S0 \subset B t]. 
-      (* Wlog. no bag from [T0] contains [v] *)
-      case: (boolP [forall t in T0, v \notin B t]); last first. (* TODO: wlog? *)
-      { rewrite negb_forall_in. case/exists_inP => t. rewrite inE negbK => H1 H2.
-        exists t. by rewrite -(setD1K Hv) subUset sub1set H2 H1. }
-      move/forall_inP => HT0.
+      wlog /forall_inP HT0 : / [forall t in T0, v \notin B t].
+      { case: (boolP [forall _ in _,_]) => [H|/forall_inPn [t H1 /negPn H2] _]; first by apply.
+        exists t. rewrite inE in H1. by rewrite -(setD1K Hv) subUset sub1set H2 H1. }
       have HT0' t : v \in B t -> ~~ (S0 \subset B t).
       { apply: contraTN => C. apply: HT0. by rewrite inE. }
       have pairs x y : x \in S -> y \in S -> exists t, x \in B t /\ y \in B t.
@@ -334,44 +335,43 @@ Section DecompTheory.
       consider its subtree outside of T0 *)
       have [c [Hc1 Hc2]] : exists t, v \in B t /\ v0 \in B t by apply: pairs. 
       pose C := [set t in [predC T0] | connect (restrict [predC T0] sedge) c t].
-      have inC: c \in C. { rewrite !inE connect0 andbT. exact: HT0'. }
+      have inC: c \in C. { by rewrite !inE connect0 andbT HT0'. }
       have con_C : connected C. 
       { apply: connected_restrict. move: inC. rewrite inE. by case/andP. }
       have dis_C : [disjoint C & T0]. 
       { rewrite disjoints_subset /C. apply/subsetP => t. rewrite !inE. by case/andP. }
-      (* There exists an edge connecting [C] and [T0] *)
       have [t0 [c0 [Ht0 Hc0 tc0]]] : exists t0 c0, [/\ t0 \in T0, c0 \in C & t0 -- c0].
-      { case: (IH S0 _ _) => [|||t Ht].
-        - by rewrite [#|S|](cardsD1 v) Hv.
-        - apply/card_gt0P. exists v0. by rewrite !inE eq_sym X.
-        - apply: sub_in11W clique_S. apply/subsetP. by rewrite subD1set.
-        - have A : v0 \in B t. { apply (subsetP Ht). by rewrite !inE eq_sym X. }
-          have/uPathRP [|p Ip _] := (sbag_conn decD v0 c t Hc2 A).
-          { apply: contraTneq inC => ->. by rewrite !inE Ht. }
-          move: (c) p Ip (inC). apply: irred_ind; first by rewrite !inE Ht.
-          move => x z p xz Ip xp IHp xC.
-          case: (boolP (z \in C)) => [|zNC {IHp}] ; first exact: IHp.
-          exists z; exists x. rewrite sgP. split => //. apply: contraNT zNC => H.
-          rewrite 2!inE /= in xC. case/andP : xC => H1 H2.
-          rewrite 2!inE /= (negbTE H) /=. apply: connect_trans H2 _.
-          apply: connect1 => /=. by  rewrite 2!inE H1 2!inE xz H. }
-      (* In fact, every path into [C] must use this edge (and [c0]) *)
+      { have [t Ht] : exists t, S0 \subset B t.
+        { case: (IH S0 _ _) => [|||t Ht]; last by exists t.
+          - by rewrite [#|S|](cardsD1 v) Hv.
+          - apply/card_gt0P. exists v0. by rewrite !inE eq_sym X.
+          - apply: sub_in11W clique_S. apply/subsetP. by rewrite subD1set. }
+        have A : v0 \in B t. { apply (subsetP Ht). by rewrite !inE eq_sym X. }
+        have/uPathRP [|p Ip _] := (sbag_conn decD v0 c t Hc2 A).
+        { apply: contraTneq inC => ->. by rewrite !inE Ht. }
+        move: (c) p Ip (inC). apply: irred_ind; first by rewrite !inE Ht.
+        move => x z p xz Ip xp IHp xC.
+        case: (boolP (z \in C)) => [|zNC {IHp}] ; first exact: IHp.
+        exists z; exists x. rewrite sgP. split => //. apply: contraNT zNC => H.
+        rewrite 2!inE /= in xC. case/andP : xC => H1 H2.
+        rewrite 2!inE /= (negbTE H) /=. apply: connect_trans H2 _.
+        apply: connect1 => /=. by  rewrite 2!inE H1 2!inE xz H. }
+      (* Every path into [C] must use this edge (and [c0]) *)
       have t0P c' (p : Path t0 c') : irred p -> c' \in C -> c0 \in p.
-      { move => Ip inC'. 
+      { move => Ip inC'.
         case: (altP (c0 =P c')) => [-> |?]. by rewrite path_end.
         have/uPathRP [//|q Iq /subsetP subC] := con_C _ _ Hc0 inC'.
         suff -> : p = pcat (edgep tc0) q by rewrite mem_pcat path_end.
-        apply: forest_is_forest; (repeat split) => //. 
-        rewrite irred_edgeL Iq andbT. 
+        apply: forest_is_forest; (repeat split) => //.
+        rewrite irred_edgeL Iq andbT.
         apply: contraTN Ht0 => /subC => H. by rewrite (disjointFr dis_C H). }
-      (* We show that [c0] contains the full clique *)
+      (* We show that [B c0] contains the full clique *)
       suff A : c0 \in T0 by case: (disjointE dis_C Hc0 A).
       rewrite inE. apply/subsetP => u u_in_S0.
       have Hu: u \in B t0. { rewrite inE in Ht0. exact: (subsetP Ht0). }
       have [cu [Hcu1 Hcu2]] : exists t, u \in B t /\ v \in B t. 
       { apply: (pairs u v) => //. move: u_in_S0. rewrite inE. by case: (_ \notin _). }
-      move:(sbag_conn decD u t0 cu Hu Hcu1). 
-      case/uPathRP => [|q irr_p /subsetP has_u]. 
+      case/uPathRP:(sbag_conn decD u t0 cu Hu Hcu1) => [|q irr_p /subsetP has_u]. 
       { apply: contraTneq Hcu2 => <-.  exact: HT0. }
       suff Hq : c0 \in q. { move/has_u : Hq. by rewrite inE. }
       apply: t0P irr_p _. rewrite !inE /= HT0' //=. 
