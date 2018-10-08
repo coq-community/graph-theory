@@ -81,7 +81,6 @@ Lemma sseparator_connected S :
   smallest separator S -> 0 < #|S| -> connected [set: G].
 Proof.
   case => SS H cSgt0 x y _ _.
-  (*case: (@separatesNE x y set0).  ... connect not inductive*)
   have: (connect (restrict [predC set0] sedge) x y).
   { apply (@separatesNE x y set0); rewrite ?inE => //.
     intro. apply (H set0). rewrite cards0 //. exists x. exists y. done. }
@@ -101,7 +100,7 @@ Definition proper V1 V2 := V1 :\: V2 != set0 /\ V2 :\: V1 != set0.
 
 Definition proper_separation V1 V2 := separation V1 V2 /\ proper V1 V2.
 
-Lemma sparate_nonadjacent x y : x != y -> ~~ x -- y -> proper_separation [set~ x] [set~ y].
+Lemma separate_nonadjacent x y : x != y -> ~~ x -- y -> proper_separation [set~ x] [set~ y].
 Proof.
   move => xDy xNy. split.
   - split.
@@ -136,30 +135,9 @@ Proof.
         apply: contraTT (in_setT z0) => C. by rewrite -Hsep inE (negbTE C).
 Qed.
 
-
-(*
-Can't destroy an 'exists' if the final goal is a Type rather than a Prop.
-Lemma patate2:
-  forall (n:nat), (exists m:nat, n=m) -> (exists p, p=n).
-Proof. move => a [b c]. Check a=b. Check (exists p, p=a).
-Abort.
-Lemma patate3 x y U V: 
-  (exists p: Path x y, p \subset V) -> Path x x.
-Proof. Check Path x y. Check Path x x.
-(*move => [p H].*)
-Abort.
-Lemma patate x y U V: 
-  (exists p: Path x y, p \subset V) -> exists p : Path x x, True.
-Proof. Check Path x y. Check Path x x.
-move => [p H]. exists (idp x). done.
-Qed.
-*)
-
-
 Lemma pcat_subset: forall x y z (p : Path x y) (q : Path y z) (A: simpl_pred G),
   p \subset A -> q \subset A -> pcat p q \subset A.
 Admitted.
-
 
 Lemma separator_separation S : 
   separator S -> exists V1 V2, proper_separation V1 V2 /\ S = V1 :&: V2.
@@ -190,12 +168,39 @@ Proof.
     by rewrite (negbTE (HU _ _)).
 Qed.
 
+
+Definition separatorb U := [exists x, exists y, separatesb x y U].
+
+Lemma separatorP U : reflect (separator U) (separatorb U).
+Proof. rewrite /separator /separatorb.
+  apply: (iffP existsP).
+  - move => [x /existsP [y /separatesP H]]. exists x; exists y; done.
+  - move => [x [y H]]. exists x. apply /existsP. exists y. by apply /separatesP.
+Qed.
+
 Lemma minimal_separation x y : x != y -> ~~ x -- y -> 
   exists V1 V2, proper_separation V1 V2 /\ smallest separator (V1 :&: V2).
 Proof.
   (* There exist finitely many proper separations, pick one for which
   [V1 :&: V2] is smallest. This is smallest separator since every
   separator can be extended to a proper separation *)
+  move => xDy xNy. move: (separate_nonadjacent xDy xNy) => /proper_separator /separatorP sep.
+  case (ex_smallest (fun S => #|S|) sep) => U /separatorP sepU HU.
+  move: (separator_separation sepU) => [V1 [V2 [ps UV]]].
+  exists V1; exists V2.
+  rewrite -UV /smallest. split; last split; move => // V ineq /separatorP sepV.
+  move: (HU V sepV) => ineq2. rewrite ltnNge in ineq. contrab.
+Qed.
+
+Lemma proper_separation_symmetry V1 V2 :
+  proper_separation V1 V2 -> proper_separation V2 V1.
+Proof.
+Admitted.
+
+Lemma separation_path V1 V2:
+  separation V1 V2 -> forall x y, x \in (V1 :\: V2) -> y \in (V2 :\: V1) ->
+  separates x y (V1 :&: V2).
+Proof.
 Admitted.
 
 (** TOTHINK: the second assumption is half-redundant but makes for a nice statement *)
@@ -208,8 +213,49 @@ Proof.
      - suff: [S' := V1 :&: V2 :\ s] is a separator. 
      - Let [x1 \in C1, x2 \in C2 := V2 :\: V1] and [p : Path x1 x2] be irredundant.
      - Let [s'] be the first vertex on [p] that is not in [C1]. Then [s' \in S']. *) 
-Admitted.
 
+  wlog: V1 V2 / [forall x1 in (V1:\:V2), ~~ s -- x1].
+  { move => H ps ss sS.
+    case (boolP [forall x in (V1 :\: V2), ~~ s -- x]).
+    - move => HH. apply (H V1 V2) => //.
+    - move => /forall_inPn [x1 x1V sx1].
+      case (boolP [forall x in (V2 :\: V1), ~~ s -- x]).
+      + move => HH. rewrite setIC in sS ss. case (H V2 V1) => //.
+        * by apply proper_separation_symmetry.
+        * move => y [z [? ? ? ?]]. exists z; exists y. split; done.
+      + move => /forall_inPn [x2 x2V sx2].
+        exists x1; exists x2. split => //; by apply negbNE.
+  }
+  rewrite /smallest.
+  move => /forall_inP Hwlog [sep [/set0Pn [x1 x1V12] /set0Pn [x2 x2V21]]] [sepS smallS] sS.
+  pose S' := V1 :&: V2:\ s. suff: separator S'.
+  - move => sS'. exfalso. move: sS'. apply smallS.
+    rewrite /S'. rewrite (cardsD1 s (V1 :&: V2)) sS //=.
+  - (* cant use [separator S], because the two vertices could be both in V2 *)
+    exists x1; exists x2. split.
+    + subst S'. rewrite !inE in x1V12. move: x1V12 => /andP [x1V2 _].
+      rewrite !inE !negb_and. by rewrite x1V2.
+    + subst S'. rewrite !inE in x2V21. move: x2V21 => /andP [x2V1 _].
+      rewrite !inE !negb_and. by rewrite x2V1.
+    + move => p.
+      case: (@split_at_first G (mem V2) x1 x2 p x2) => //; first by case/setDP: x2V21.
+      move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE in H2. exists z;
+        first by rewrite H1 mem_pcat path_end.
+      case: (@splitR G x1 z p1). { apply: contraTN isT => /eqP ?.
+        subst x1. case/setDP: x1V12 => _ ?. contrab. }
+      move => z0 [p' [z0z Hp']].
+
+      have z0V1: z0 \in (V1 :\: V2).
+      { (* before z in p1, so not in V2, so in V1*)
+        admit.
+      }
+
+      rewrite !inE. apply /and3P. split => //.
+      * move: (z0z) => /prev_edge_proof zz0.
+        apply: contraTN zz0 => /eqP->. by apply Hwlog.
+      * apply: contraTT (z0z) => ?. rewrite sep => //. by rewrite inE.
+
+Admitted.
 
 (* TOTHINK: This definition really only makes sense for irredundant paths *)
 Definition independent x y (p q : Path x y) := 
@@ -298,5 +344,4 @@ Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
 Admitted.
-
 
