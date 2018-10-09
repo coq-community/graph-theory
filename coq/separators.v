@@ -289,6 +289,11 @@ Proof.
   contradiction. *)
 Admitted.
 
+Lemma separation_connected_same_component V1 V2:
+  proper_separation V1 V2 -> forall x0 x, x0 \in V1:\:V2 ->
+  connect (restrict [predC (V1:&:V2)] sedge) x0 x -> x \in V1:\:V2.
+Admitted.
+
 End Separators.
 
 Prenex Implicits separator.
@@ -383,7 +388,11 @@ Proof.
     admit. (* boring verification *)
 Admitted.
 
-Lemma indepentent_paths G (V1 V2 : {set G}) : 
+Lemma card_gt2P {T : finType}  {D : pred T} : 
+  reflect (exists x y z, [/\ x \in D, y \in D & z \in D] /\ [/\ x!=y, y!=z & z!=x]) (2 < #|D|).
+Admitted.
+
+Lemma independent_paths G (V1 V2 : {set G}) : 
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 3 <= #|V1 :&: V2| ->
   exists x1 x2 (p1 p2 p3 : Path x1 x2), 
     [/\ irred p1, irred p2 & irred p3] /\
@@ -393,18 +402,98 @@ Proof.
   set S := V1 :&: V2.
   set C1 := V1 :\: V2.
   set C2 := V2 :\: V1.
-  (* - take some [u \in C1] and [v \in C2] and some irredundant [q1 : Path u v] 
-       visiting exactly one element from [S], say [s1] [sseparator_uniq] 
-     - removing [s1] yields a connected graph where the remainder of [S] 
-       is again a minimal separator. 
-     - this yields a path [q2] containing [s2 \in S] different from [s1]
-     - traversing [q2] in both directions from [s2] up to the first vertex
-       shared with [q1] yields vertices [u',v'] and two indepentent 
-       u'v'-paths [q1'] and [q2']
-     - obtain a path avoiding [{s1,s2}] containing [s3].
-     - traverse this path to the first vertices shared with [q1' :|: q2']
-     - take the first shared vertex in [C1] to be [x1] and likewise for [x2] 
-   Note: It may be useful to prove the case [2 <= #|S|] as a separate lemma *)
+  move => [[V12G nedgeC12] proper] ssS /card_gt2P [s1 [s2 [s3 [[s1S s2S s3S] [Ns12 Ns23 Ns31]]]]].
+  move: (proper) => [/set0Pn [x0 x0C1] /set0Pn [y0 y0C2]].
+  rewrite -/C1 -/C2 in nedgeC12 x0C1 y0C2.
+  case: (@independent_paths_aux G S s1 s2 s3 x0) => //=.
+    { rewrite /S !inE. rewrite /C1 !inE in x0C1. by move: x0C1 => /andP [? ->]. }
+  move => x [pxs1 [pxs2 [pxs3 [[irx1 irx2 irx3] [[/subsetP px1Ss1 /subsetP px2Ss2 /subsetP px3Ss3]
+    [connx0x ind_pxs1pxs2 ind_pxs2pxs3 ind_pxs3pxs1]]]]]].
+  case: (@independent_paths_aux G S s1 s2 s3 y0) => //=.
+    { rewrite /S !inE. rewrite /C2 !inE in y0C2. by move: y0C2 => /andP [? ->]. }
+  move => y [pys1 [pys2 [pys3 [[iry1 iry2 iry3] [[/subsetP py1Ss1 /subsetP py2Ss2 /subsetP py3Ss3]
+    [conny0y ind_pys1pys2 ind_pys2pys3 ind_pys3pys1]]]]]].
+
+  set p1 := pcat pxs1 (prev pys1).
+  set p2 := pcat pxs2 (prev pys2).
+  set p3 := pcat pxs3 (prev pys3).
+  exists x; exists y; exists p1; exists p2; exists p3.
+
+  (* moved the difficulty towards a separate lemma *)
+  have xC1: x \in C1 by apply separation_connected_same_component with x0.
+  have yC2: y \in C2.
+  { apply separation_connected_same_component with y0 => //.
+    (* shouldnt be hard, might do separate lemma *) }
+
+(*
+todo
+gen have pxsiV1: s1 pxs1 {irx1 ... } ... / {subset pxs1 <= V1}.
+gen have pxsiV1: s1 pys1 {iry1 ... } ... / {subset pys1 <= V2}.
+or
+gen have pxsiV1: x V1 s1 pxs1 {irx1 ... } ... / {subset pxs1 <= V1}.
+*)
+
+  have pxs1V1: {subset pxs1 <= V1}.
+  { case: (@splitR G x s1 pxs1). { rewrite /S !inE in xC1 s1S.
+      move: s1S => /andP [_ ?]. move: xC1 => /andP [? _].
+      apply: contraTN isT => /eqP ?. subst x. contrab. }
+    move => z [pxz [zs1 pcat1]]. rewrite pcat1.
+    move => x1. rewrite mem_pcatT. move => /orP [x1p | xs1].
+    - suff: x1 \in C1. rewrite inE /andP. by move => /andP [_ ?].
+      case (boolP (x == x1)) => [/eqP ?|?]; first by subst.
+      apply separation_connected_same_component with x => //.
+      apply /PathRP => //. case: (psplitP x1p) => pxx1 px1z.
+
+      have pcat2: pxz = pcat pxx1 px1z. { admit. }
+
+      exists pxx1.
+      admit.
+
+    - rewrite /tail /edgep inE in xs1. move: xs1 => /eqP->.
+       rewrite /S inE in s1S. by move: s1S => /andP [? _].
+  }
+
+  have pys1V2: {subset pys1 <= V2}. admit.
+  have pxs2V1: {subset pxs2 <= V1}. admit.
+  have pys2V2: {subset pys2 <= V2}. admit.
+  have pxs3V1: {subset pxs3 <= V1}. admit.
+  have pys3V2: {subset pys3 <= V2}. admit.
+
+  gen have irredpi: s1 pxs1 pys1 {ind_pys1pys2 ind_pys3pys1 p1 py1Ss1
+      ind_pxs1pxs2 ind_pxs3pxs1 s1S Ns12 Ns31} px1Ss1 irx1 iry1 pxs1V1 pys1V2
+    / irred (pcat pxs1 (prev pys1)).
+  { rewrite irred_cat. apply /and3P; split => //; first by rewrite irred_rev.
+    apply /eqP /setP. move => z. rewrite inE mem_prev in_set1.
+    apply Bool.eq_true_iff_eq; split.
+    * move => /andP [zpxs1 /pys1V2 zV2]. move: (zpxs1) => /pxs1V1 zV1.
+      apply px1Ss1. rewrite /S !inE //=.
+    * move => /eqP->. apply /andP; split; apply path_end.
+  }
+
+  split; split.
+
+  - by apply irredpi.
+  - by apply irredpi.
+  - by apply irredpi.
+
+  - (* x \in C1 *) done.
+  - (* y \in C2 *) done.
+
+  - (* independent p1 p2 *)
+    rewrite /independent /p1 /p2 => z. rewrite !mem_pcat !mem_prev.
+    move => /orP [zpxs1 | zpys1] /orP [zpxs2 | zpys2].
+    + left. by apply ind_pxs1pxs2.
+    + exfalso. move: Ns12 => /eqP; apply. apply /eqP.
+      move: (pxs1V1 z zpxs1) => zV1. move: (pys2V2 z zpys2) => zV2.
+      move: (py2Ss2 z). rewrite !inE => temp.
+        have [/eqP temp2]: z==s2 by apply temp. subst s2. clear temp.
+      move: (px1Ss1 z). rewrite !inE => temp.
+        have [/eqP temp2]: z==s1 by apply temp. by subst z.
+    + (* same idea as above *) admit.
+    + right. by apply ind_pys1pys2.
+
+  - (* independent p2 p3 *) admit.
+  - (* independent p3 p1 *) admit.
 Admitted.
 
 Lemma K4_of_separators (G : sgraph) : 
