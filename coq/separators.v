@@ -208,8 +208,7 @@ Lemma sseparator_neighbours V1 V2 s :
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 
   s \in V1 :&: V2 -> exists x1 x2, [/\ x1 \in V1 :\: V2, x2 \in V2 :\: V1, s -- x1 & s -- x2].
 Proof.
-  (* - G is connected, since its smallest separator is nonempty
-     - Wlog. [~~ s -- x1] for all elements of [C1 := V1:\:V2] ([V1] and [V2] are symmetric)
+  (* - Wlog. [~~ s -- x1] for all elements of [C1 := V1:\:V2] ([V1] and [V2] are symmetric)
      - suff: [S' := V1 :&: V2 :\ s] is a separator. 
      - Let [x1 \in C1, x2 \in C2 := V2 :\: V1] and [p : Path x1 x2] be irredundant.
      - Let [s'] be the first vertex on [p] that is not in [C1]. Then [s' \in S']. *) 
@@ -227,7 +226,7 @@ Proof.
         exists x1; exists x2. split => //; by apply negbNE.
   }
   rewrite /smallest.
-  move => /forall_inP Hwlog [sep [/set0Pn [x1 x1V12] /set0Pn [x2 x2V21]]] [sepS smallS] sS.
+  move => /forall_inP Hwlog [[sep1 sep2] [/set0Pn [x1 x1V12] /set0Pn [x2 x2V21]]] [sepS smallS] sS.
   pose S' := V1 :&: V2:\ s. suff: separator S'.
   - move => sS'. exfalso. move: sS'. apply smallS.
     rewrite /S'. rewrite (cardsD1 s (V1 :&: V2)) sS //=.
@@ -244,18 +243,18 @@ Proof.
       case: (@splitR G x1 z p1). { apply: contraTN isT => /eqP ?.
         subst x1. case/setDP: x1V12 => _ ?. contrab. }
       move => z0 [p' [z0z Hp']].
-
       have z0V1: z0 \in (V1 :\: V2).
-      { (* before z in p1, so not in V2, so in V1*)
-        admit.
+      { have: z0 \in [set: G] by done. rewrite -sep1 !inE.
+        suff: z0 \notin V2 by move => ? /orP [?|?] //; contrab.
+        move: (sg_edgeNeq z0z) => zz0. apply: contraFN zz0 => ?.
+        apply /eqP. apply H3 => //. rewrite Hp'. rewrite mem_pcat mem_edgep.
+        by rewrite eq_refl.
       }
-
       rewrite !inE. apply /and3P. split => //.
       * move: (z0z) => /prev_edge_proof zz0.
         apply: contraTN zz0 => /eqP->. by apply Hwlog.
-      * apply: contraTT (z0z) => ?. rewrite sep => //. by rewrite inE.
-
-Admitted.
+      * apply: contraTT (z0z) => ?. rewrite sep2 => //. by rewrite inE.
+Qed.
 
 (* TOTHINK: This definition really only makes sense for irredundant paths *)
 Definition independent x y (p q : Path x y) := 
