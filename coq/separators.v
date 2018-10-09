@@ -260,6 +260,12 @@ Qed.
 Definition independent x y (p q : Path x y) := 
   forall z, z \in p -> z \in q -> z = x \/ z = y.
 
+Definition left_independent x y y' (p : Path x y) (q : Path x y') := 
+  forall z, z \in p -> z \in q -> z = x.
+
+Lemma separatorNE U x y : ~ separator U -> x \notin U -> y \notin U -> ~ separates x y U.
+Proof. move => nsepU Hx Hy sepU. by apply nsepU; exists x; exists y. Qed.
+
 (** Note: This generalizes the corresponding lemma on checkpoints *)
 Lemma avoid_nonseperator U x y : ~ separator U -> x \notin U -> y \notin U -> 
   exists2 p : Path x y, irred p & [disjoint p & U].
@@ -268,9 +274,9 @@ Proof.
   case: (altP (x =P y)) => [?|A];first subst y.
   - exists (idp x); first exact: irred_idp. 
     rewrite (@eq_disjoint1 _ x) // => y. by rewrite mem_idp.
-  - have/separatesNE/uPathRP : ~ separates x y U. admit. (* easy lemma *)
+  - have/separatesNE/uPathRP : ~ separates x y U by apply separatorNE.
     case => // p irr_p. rewrite -disjoint_subset. by exists p.
-Admitted.
+Qed.
 
 Lemma sseparator_uniq x y S:
   smallest separator S -> separates x y S -> S != set0 ->
@@ -298,6 +304,22 @@ subgraphs and lift the required lemmas *)
 Lemma sseparator_remove G (S : {set G}) s : 
   smallest separator S -> s \in S -> 
  @smallest (induced [set~ s]) separator (remainder _ S).
+Proof.
+Admitted.
+
+Lemma sseparator_path G (S : {set G}) x s : 
+  smallest separator S -> x \notin S -> s \in S -> 
+  exists2 p : Path x s, irred p & [predI p & S] =i pred1 s.
+Admitted.
+
+Lemma independent_paths_aux G S (s1 s2 s3 :G) x0 : 
+  smallest separator S -> x0 \notin S ->
+  uniq [:: s1; s2; s3] -> s1 \in S -> s2 \in S -> s3 \in S ->
+  exists x (p1 : Path x s1) (p2 : Path x s2) (p3 : Path x s3),
+    [/\ irred p1, irred p2 & irred p3] /\
+    [/\ [predI p1 & S] =i pred1 s1, [predI p2 & S] =i pred1 s2 & [predI p3 & S] =i pred1 s3] /\ 
+    [/\ connect (restrict [predC S] sedge) x0 x, 
+       left_independent p1 p2, left_independent p2 p3 & left_independent p3 p1].
 Proof.
 Admitted.
 
