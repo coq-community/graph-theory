@@ -834,6 +834,18 @@ Proof.
   + move => ?. rewrite mem_path. exact: A2.
 Qed.
 
+Lemma split_at_last {A : pred G} (x y : G) (p : Path x y) (k : G) : 
+  k \in A -> k \in p ->
+  exists (z : G) (p1 : Path x z) (p2 : Path z y),
+    [/\ p = pcat p1 p2, z \in A & forall z' : G, z' \in A -> z' \in p2 -> z' = z].
+Proof.
+  move => kA kp. rewrite -mem_prev in kp. 
+  case: (split_at_first kA kp) => z [p1] [p2] [E zA I].
+  exists z. exists (prev p2). exists (prev p1). rewrite -prev_cat -E prevK. 
+  split => // z'. rewrite mem_prev. exact: I. 
+Qed.
+
+
 Lemma UPath_from_irred x y (p : Path x y) : irred p ->
   exists q : UPath x y, val p = val q.
 Proof.

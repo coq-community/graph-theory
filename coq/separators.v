@@ -309,18 +309,61 @@ Admitted.
 
 Lemma sseparator_path G (S : {set G}) x s : 
   smallest separator S -> x \notin S -> s \in S -> 
-  exists2 p : Path x s, irred p & [predI p & S] =i pred1 s.
+  exists2 p : Path x s, irred p & [predI p & S] \subset pred1 s.
+Proof.
+  move => ssepS. case: (ssepS) => sepS smallS xS sS. 
+  have nSs : ~ separator (S :\ s). 
+  { apply: smallS. by rewrite [in X in _ < X](cardsD1 s) sS. }
+  case: (@avoid_nonseperator _ _ x s nSs _ _) => [||p irr_p dis_p]; 
+    rewrite ?inE ?eqxx ?(negbTE xS) //.
+  exists p => //. apply/subsetP => z. rewrite !inE => /andP [Y1 Y2].
+  apply: contraTT dis_p => H. apply: disjointNI Y1 _. exact/setD1P.
+Qed.
+
+Lemma left_independent_sym (G:sgraph) (x y y' : G) (p : Path x y) (q : Path x y') :
+  left_independent p q -> left_independent q p.
 Admitted.
 
 Lemma independent_paths_aux G S (s1 s2 s3 :G) x0 : 
   smallest separator S -> x0 \notin S ->
-  uniq [:: s1; s2; s3] -> s1 \in S -> s2 \in S -> s3 \in S ->
+  s1 != s2 -> s2 != s3 -> s3 != s1 -> s1 \in S -> s2 \in S -> s3 \in S ->
   exists x (p1 : Path x s1) (p2 : Path x s2) (p3 : Path x s3),
     [/\ irred p1, irred p2 & irred p3] /\
-    [/\ [predI p1 & S] =i pred1 s1, [predI p2 & S] =i pred1 s2 & [predI p3 & S] =i pred1 s3] /\ 
+    [/\ [predI p1 & S] \subset pred1 s1, [predI p2 & S] \subset pred1 s2 & [predI p3 & S] \subset pred1 s3] /\ 
     [/\ connect (restrict [predC S] sedge) x0 x, 
        left_independent p1 p2, left_independent p2 p3 & left_independent p3 p1].
 Proof.
+  move => ssepS H0 D1 D2 D3 S1 S2 S3. 
+  case: (sseparator_path ssepS H0 S1) => p1 I1 P1.
+  case: (sseparator_path ssepS H0 S2) => p2 I2 P2.
+  case: (sseparator_path ssepS H0 S3) => p3 I3 P3.
+  case: (split_at_last (A := [predU p2 & p3]) _ (path_begin p1)).
+  { by rewrite inE /= path_begin. }
+  move => x [p11] [p12] [P11 P12 P13].
+  wlog P12 : s2 s3 S2 S3 D1 D2 D3 p2 p3 P2 I2 P3 I3 {P12} P13 / x \in p2.
+  { move => W. case/orP : P12 => /= in_p2; first exact: (W _ _ _ _ _ _ _ p2 p3). 
+    case: (W _ _ _ _ _ _ _ p3 p2) => //; try by rewrite eq_sym.
+    - admit.
+    - move => x' [p1'] [p2'] [p3'] [[? ? ?] [[? ? ?] [? ? ? ?]]]. 
+      exists x'; exists p1'; exists p3'; exists p2'. do ! split => //; exact: left_independent_sym. }
+  case: (split_at_last (A := mem p2) _ (path_begin p3)) => [|]; 
+    first exact: path_begin.
+  move => y [p31] [p32] [P31 P32 P33].
+  have/subsetP sub3 : p32 \subset p3. 
+  { rewrite P31. apply: subset_pcatR. }
+  rewrite -[y \in mem p2]/(y \in p2) in P32. (* ugly *)
+  subst p1; subst p3. 
+  case/irred_catE : I1 => _ I1 I1'. case/irred_catE : I3 => _ I3 I3'.
+  case: (altP (x =P y)) => [?|xDy].
+  - subst y. 
+    case/(isplitP I2) def_p2 : _  / P12 => [p21 p22 _ I22 I2'].
+    exists x. exists p12. exists p22. exists p32. split => //. 
+    admit. (* boring verification *)
+  - have {P13} P13 : forall z' : G, z' \in [predU p2 & p32] -> z' \in p12 -> z' = x. admit.
+    wlog {xDy} Hxy : / x <[p2] y. (* TODO: Properly generalize and prove *) admit.
+    case: (three_way_split I2 P12 P32 Hxy) => p21 [p22] [p23] [def_p2 Hx Hy].
+    exists y. exists (pcat (prev p22) (p12)). exists p23. exists p32. 
+    admit. (* boring verification *)
 Admitted.
 
 Lemma indepentent_paths G (V1 V2 : {set G}) : 
