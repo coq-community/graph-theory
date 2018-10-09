@@ -324,6 +324,10 @@ Lemma left_independent_sym (G:sgraph) (x y y' : G) (p : Path x y) (q : Path x y'
   left_independent p q -> left_independent q p.
 Admitted.
 
+Lemma predIpcatR (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) (S A : pred G) : 
+  [predI pcat p q & S] \subset A -> [predI q & S] \subset A.
+Admitted.
+
 Lemma independent_paths_aux G S (s1 s2 s3 :G) x0 : 
   smallest separator S -> x0 \notin S ->
   s1 != s2 -> s2 != s3 -> s3 != s1 -> s1 \in S -> s2 \in S -> s3 \in S ->
@@ -349,19 +353,32 @@ Proof.
   case: (split_at_last (A := mem p2) _ (path_begin p3)) => [|]; 
     first exact: path_begin.
   move => y [p31] [p32] [P31 P32 P33].
-  have/subsetP sub3 : p32 \subset p3. 
-  { rewrite P31. apply: subset_pcatR. }
+  have {P33} P33 z' : z' \in [predU p2 & p12] -> z' \in p32 -> z' = y.
+  { case/orP. exact: P33. rewrite inE => A B. 
+    have E : z' = x by rewrite [z']P13 ?inE ?P31 ?mem_pcat ?B //.
+    subst z'. by rewrite [x]P33 //. }
+  have {P13} P13 z' : z' \in [predU p2 & p32] -> z' \in p12 -> z' = x.
+  { case/orP => [/= A|/= A];apply: P13 => //; by rewrite inE /= P31 ?mem_pcat A. }
   rewrite -[y \in mem p2]/(y \in p2) in P32. (* ugly *)
   subst p1; subst p3. 
-  case/irred_catE : I1 => _ I1 I1'. case/irred_catE : I3 => _ I3 I3'.
+  case/irred_catE : I1 => _ I1 _. case/irred_catE : I3 => _ I3 _.
+  move/predIpcatR : P1 => P1. move/predIpcatR : P3 => P3. 
+  clear p31 p11.
   case: (altP (x =P y)) => [?|xDy].
   - subst y. 
     case/(isplitP I2) def_p2 : _  / P12 => [p21 p22 _ I22 I2'].
     exists x. exists p12. exists p22. exists p32. split => //. 
     admit. (* boring verification *)
-  - have {P13} P13 : forall z' : G, z' \in [predU p2 & p32] -> z' \in p12 -> z' = x. admit.
-    wlog {xDy} Hxy : / x <[p2] y. (* TODO: Properly generalize and prove *) admit.
+  - wlog {xDy} Hxy : x y P12 P32 s1 s3 S1 S3 D1 D2 D3 p12 p32 I1 I3 P13 P33 P1 P3 / x <[p2] y. 
+    { move => W. case: (ltngtP (idx p2 x) (idx p2 y)) => H.
+      - exact: (W _ _ _ _ _ _ _ _ _ _ _ p12 p32).
+      - case: (W _ _ _ _ _ _ _ _ _ _ _ p32 p12) => //; try by rewrite eq_sym.
+        move => x' [p1'] [p2'] [p3'] [[? ? ?] [[? ? ?] [? ? ? ?]]]. 
+        exists x'; exists p3'; exists p2'; exists p1'. do ! split => //; exact: left_independent_sym. 
+      - move/idx_inj : H. rewrite nodesE -mem_path P12 => /(_ isT) E. 
+        by rewrite E eqxx in xDy. }
     case: (three_way_split I2 P12 P32 Hxy) => p21 [p22] [p23] [def_p2 Hx Hy].
+    subst p2. case/irred_catE : I2 => _ I2 _. move/predIpcatR : P2 => P2. 
     exists y. exists (pcat (prev p22) (p12)). exists p23. exists p32. 
     admit. (* boring verification *)
 Admitted.
