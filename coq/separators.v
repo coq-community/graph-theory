@@ -263,6 +263,10 @@ Definition independent x y (p q : Path x y) :=
 Definition left_independent x y y' (p : Path x y) (q : Path x y') := 
   forall z, z \in p -> z \in q -> z = x.
 
+Lemma left_independent_sym (x y y' : G) (p : Path x y) (q : Path x y') :
+  left_independent p q -> left_independent q p.
+Proof. move => H z A B. exact: H. Qed.
+
 Lemma separatorNE U x y : ~ separator U -> x \notin U -> y \notin U -> ~ separates x y U.
 Proof. move => nsepU Hx Hy sepU. by apply nsepU; exists x; exists y. Qed.
 
@@ -325,13 +329,24 @@ Proof.
   apply: contraTT dis_p => H. apply: disjointNI Y1 _. exact/setD1P.
 Qed.
 
-Lemma left_independent_sym (G:sgraph) (x y y' : G) (p : Path x y) (q : Path x y') :
-  left_independent p q -> left_independent q p.
-Admitted.
+
+Lemma subsetIlP1 (T : finType) (A B : pred T) x : 
+  reflect (forall y, y \in A -> y \in B -> y = x) ([predI A & B] \subset pred1 x).
+Proof.
+  apply: (iffP subsetP) => [H y H1 H2|H y /andP [/= H1 H2]]. 
+  - by rewrite [y](eqP (H _ _ )) ?inE ?H1 ?H2.
+  - by rewrite inE [y]H.
+Qed.
+Arguments subsetIlP1 [T A B x].
+
+Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
 
 Lemma predIpcatR (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) (S A : pred G) : 
   [predI pcat p q & S] \subset A -> [predI q & S] \subset A.
-Admitted.
+Proof. 
+  move/subsetP => H. apply/subsetP => u /andP [/= H1 H2]. 
+  apply: H. by rewrite !inE H1 H2.
+Qed.
 
 Lemma independent_paths_aux G S (s1 s2 s3 :G) x0 : 
   smallest separator S -> x0 \notin S ->
@@ -352,7 +367,7 @@ Proof.
   wlog P12 : s2 s3 S2 S3 D1 D2 D3 p2 p3 P2 I2 P3 I3 {P12} P13 / x \in p2.
   { move => W. case/orP : P12 => /= in_p2; first exact: (W _ _ _ _ _ _ _ p2 p3). 
     case: (W _ _ _ _ _ _ _ p3 p2) => //; try by rewrite eq_sym.
-    - admit.
+    - move => z. move: (P13 z). by rewrite !inE orbC.
     - move => x' [p1'] [p2'] [p3'] [[? ? ?] [[? ? ?] [? ? ? ?]]]. 
       exists x'; exists p1'; exists p3'; exists p2'. do ! split => //; exact: left_independent_sym. }
   case: (split_at_last (A := mem p2) _ (path_begin p3)) => [|]; 
@@ -360,33 +375,63 @@ Proof.
   move => y [p31] [p32] [P31 P32 P33].
   have {P33} P33 z' : z' \in [predU p2 & p12] -> z' \in p32 -> z' = y.
   { case/orP. exact: P33. rewrite inE => A B. 
-    have E : z' = x by rewrite [z']P13 ?inE ?P31 ?mem_pcat ?B //.
+    have E : z' = x by rewrite [z']P13 ?inE ?P31 ?inE ?B //.
     subst z'. by rewrite [x]P33 //. }
   have {P13} P13 z' : z' \in [predU p2 & p32] -> z' \in p12 -> z' = x.
-  { case/orP => [/= A|/= A];apply: P13 => //; by rewrite inE /= P31 ?mem_pcat A. }
+  { case/orP => [/= A|/= A];apply: P13 => //; by rewrite inE /= P31 ?inE A. }
   rewrite -[y \in mem p2]/(y \in p2) in P32. (* ugly *)
   subst p1; subst p3. 
   case/irred_catE : I1 => _ I1 _. case/irred_catE : I3 => _ I3 _.
   move/predIpcatR : P1 => P1. move/predIpcatR : P3 => P3. 
+  have xS : x \notin S. 
+  { apply: contraNN D1 => xS.
+    by rewrite -(subsetIlP1 P2 x) // -(subsetIlP1 P1 x) // path_begin. }
+  have yS : y \notin S. 
+  { apply: contraNN D2 => yS. 
+    by rewrite -(subsetIlP1 P2 y) // -(subsetIlP1 P3 y) // path_begin. }
   clear p31 p11.
   case: (altP (x =P y)) => [?|xDy].
   - subst y. 
     case/(isplitP I2) def_p2 : _  / P12 => [p21 p22 _ I22 I2'].
-    exists x. exists p12. exists p22. exists p32. split => //. 
-    admit. (* boring verification *)
-  - wlog {xDy} Hxy : x y P12 P32 s1 s3 S1 S3 D1 D2 D3 p12 p32 I1 I3 P13 P33 P1 P3 / x <[p2] y. 
+    subst p2. 
+    exists x. exists p12. exists p22. exists p32. do 3 split => //. 
+    + exact: predIpcatR P2.
+    + apply: (connectRI (p := p21)) => z. rewrite !inE => Z1. 
+      apply: contraNN xS => zS. 
+      suff? : z = s2 by subst z; rewrite -(I2' s2).
+      by apply:(subsetIlP1 P2) => //; rewrite !inE Z1. 
+    + move => z Z1 Z2; by rewrite [z]P13 // !inE Z2.
+    + move => z Z1 Z2; by rewrite [z]P33 // !inE Z1.
+    + move => z Z1 Z2. by rewrite [z]P33 // !inE Z2. 
+  - wlog {xDy} Hxy : x y xS yS P12 P32 s1 s3 S1 S3 D1 D2 D3 p12 p32 I1 I3 P13 P33 P1 P3 / x <[p2] y. 
     { move => W. case: (ltngtP (idx p2 x) (idx p2 y)) => H.
-      - exact: (W _ _ _ _ _ _ _ _ _ _ _ p12 p32).
-      - case: (W _ _ _ _ _ _ _ _ _ _ _ p32 p12) => //; try by rewrite eq_sym.
+      - exact: (W _ _ _ _ _ _ _ _ _ _ _ _ _ p12 p32).
+      - case: (W _ _ _ _ _ _ _ _ _ _ _ _ _ p32 p12) => //; try by rewrite eq_sym.
         move => x' [p1'] [p2'] [p3'] [[? ? ?] [[? ? ?] [? ? ? ?]]]. 
         exists x'; exists p3'; exists p2'; exists p1'. do ! split => //; exact: left_independent_sym. 
       - move/idx_inj : H. rewrite nodesE -mem_path P12 => /(_ isT) E. 
         by rewrite E eqxx in xDy. }
     case: (three_way_split I2 P12 P32 Hxy) => p21 [p22] [p23] [def_p2 Hx Hy].
-    subst p2. case/irred_catE : I2 => _ I2 _. move/predIpcatR : P2 => P2. 
-    exists y. exists (pcat (prev p22) (p12)). exists p23. exists p32. 
-    admit. (* boring verification *)
-Admitted.
+    subst p2. case/irred_catE : I2 => _ I2 I2'. case/irred_catE : I2 => I22 I23 I2.
+    exists y. exists (pcat (prev p22) (p12)). exists p23. exists p32. repeat split => //.
+    + rewrite irred_cat irred_rev I1 I22 /=. apply/eqP/setP => z.
+      rewrite !inE. apply/andP/eqP => [[A B]|-> //]. by rewrite [z]P13 // !inE A.
+    + apply/subsetIlP1 => z. rewrite !inE => /orP [A|A] B; last exact: (subsetIlP1 P1).
+      have ? : z = s2. by apply: (subsetIlP1 P2); rewrite // !inE A. subst z.
+      apply: contraNeq yS => _. by rewrite -(I2 s2).
+    + move/predIpcatR : P2 => P2. exact : predIpcatR P2.
+    + apply: (connectRI (p := pcat p21 p22)) => z; rewrite !inE => Z1.
+      apply: contraNN yS => zS. 
+      have ? : z = s2. apply: (subsetIlP1 P2) => //. by rewrite -pcatA !inE Z1. subst.
+      case/orP : Z1 => Z1; first by rewrite [s2]I2' // in zS; contrab.
+      by rewrite [s2]I2 // in zS.
+    + move => z. rewrite !inE => /orP [|A B]; first exact: I2. 
+      have E: x = z by rewrite [z]P13 ?inE ?B. subst z. by rewrite [x]I2.
+    + move => z Z1 Z2. by rewrite [z]P33 ?inE ?Z1.
+    + move => z Z1. rewrite !inE => /orP [Z2|Z2]; first by rewrite [z]P33 ?inE ?Z2.
+      have E: z = x by apply: P13; rewrite ?inE ?Z1. subst.
+      by apply: P33 => //; rewrite ?inE.
+Qed.
 
 Lemma card_gt2P {T : finType}  {D : pred T} : 
   reflect (exists x y z, [/\ x \in D, y \in D & z \in D] /\ [/\ x!=y, y!=z & z!=x]) (2 < #|D|).
