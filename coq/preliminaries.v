@@ -151,17 +151,44 @@ Proof.
   case: (posnP #|D|) => A B; first by rewrite (card0_eq A).
   have/card1P [z E] : #|D| == 1 by rewrite eqn_leq B.
   by rewrite !E !inE => /eqP-> /eqP->.
-Qed. 
+Qed.
+
+Lemma uniq_take (T : eqType) (s : seq T) n : uniq s -> uniq (take n s).
+Proof. 
+  elim: n s => /= => [|n IHn] s; first by rewrite take0.
+  case: s => [|a s] //= /andP [A B]. rewrite IHn // andbT. 
+  apply: contraNN A. exact: mem_take.
+Qed.
+
+Lemma card_gtnP {T : finType} {A : pred T} {n} : 
+  reflect (exists s, [/\ uniq s, size s = n & {subset s <= A}]) (n <= #|A|).
+Proof.
+  apply: (iffP idP) => [H|[s] [S1 S2 /subsetP S3]].
+  - exists (take n (enum A)). rewrite uniq_take ?enum_uniq // size_take. split => //. 
+    + case: (ltnP n (size (enum A))) => // H'. 
+      apply/eqP. by rewrite eqn_leq H' -cardE H.
+    + move => x /mem_take. by rewrite mem_enum.
+  - rewrite -S2 -(card_uniqP S1). exact: subset_leq_card. 
+Qed.
 
 Lemma card_gt1P {T : finType}  {D : pred T} : 
   reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
 Proof. 
-  apply: (iffP idP).
-  - move => A. case/card_gt0P : (ltnW A) => v inS. 
-    rewrite (cardD1 v) inS /= ltnS in A. case/card_gt0P : A => v'. 
-    rewrite !inE => /andP [? ?]. by exists v'; exists v.
-  - move => [x] [y] [xD yD xy]. apply: contraNT xy.
-    rewrite -leqNgt => A. by rewrite (card_le1 A xD yD).
+  apply: (iffP card_gtnP) => [[s] []|[x] [y]].
+  - case: s => [//|a [//|b [|//]]] /=. rewrite inE andbT => A _ B.
+    exists a; exists b. by rewrite A !B ?inE ?eqxx.
+  - move => [xD yD xy]. exists [:: x;y] => /=. rewrite inE xy.
+    split => // z. by rewrite !inE => /orP [] /eqP->.
+Qed.
+
+Lemma card_gt2P {T : finType}  {D : pred T} : 
+  reflect (exists x y z, [/\ x \in D, y \in D & z \in D] /\ [/\ x!=y, y!=z & z!=x]) (2 < #|D|).
+Proof.
+  apply: (iffP card_gtnP) => [[s] []|[x] [y] [z]].
+  - case: s => [|a [|b [|c [|]]]] //=. rewrite !inE !andbT negb_or -andbA. 
+    move => /and3P [A B C] _ S. exists a;exists b;exists c. by rewrite A C eq_sym B !S ?inE ?eqxx.
+  - move => [[xD yD zD] [A B C]]. exists [:: x;y;z] => /=. rewrite !inE negb_or A B eq_sym C.
+    split => // z'. by rewrite !inE => /or3P [] /eqP->.
 Qed.
 
 Lemma card_le1P (T : finType) (A : pred T) : 

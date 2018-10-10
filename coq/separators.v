@@ -433,10 +433,6 @@ Proof.
       by apply: P33 => //; rewrite ?inE.
 Qed.
 
-Lemma card_gt2P {T : finType}  {D : pred T} : 
-  reflect (exists x y z, [/\ x \in D, y \in D & z \in D] /\ [/\ x!=y, y!=z & z!=x]) (2 < #|D|).
-Admitted.
-
 Lemma independent_paths G (V1 V2 : {set G}) : 
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 3 <= #|V1 :&: V2| ->
   exists x1 x2 (p1 p2 p3 : Path x1 x2), 
