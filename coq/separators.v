@@ -448,11 +448,11 @@ Proof.
   rewrite -/C1 -/C2 in nedgeC12 x0C1 y0C2.
   case: (@independent_paths_aux G S s1 s2 s3 x0) => //=.
     { rewrite /S !inE. rewrite /C1 !inE in x0C1. by move: x0C1 => /andP [? ->]. }
-  move => x [pxs1 [pxs2 [pxs3 [[irx1 irx2 irx3] [[/subsetP px1Ss1 /subsetP px2Ss2 /subsetP px3Ss3]
+  move => x [pxs1 [pxs2 [pxs3 [[irx1 irx2 irx3] [[/subsetIlP1 px1Ss1 /subsetIlP1 px2Ss2 /subsetIlP1 px3Ss3]
     [connx0x ind_pxs1pxs2 ind_pxs2pxs3 ind_pxs3pxs1]]]]]].
   case: (@independent_paths_aux G S s1 s2 s3 y0) => //=.
     { rewrite /S !inE. rewrite /C2 !inE in y0C2. by move: y0C2 => /andP [? ->]. }
-  move => y [pys1 [pys2 [pys3 [[iry1 iry2 iry3] [[/subsetP py1Ss1 /subsetP py2Ss2 /subsetP py3Ss3]
+  move => y [pys1 [pys2 [pys3 [[iry1 iry2 iry3] [[/subsetIlP1 py1Ss1 /subsetIlP1 py2Ss2 /subsetIlP1 py3Ss3]
     [conny0y ind_pys1pys2 ind_pys2pys3 ind_pys3pys1]]]]]].
 
   set p1 := pcat pxs1 (prev pys1).
@@ -468,8 +468,9 @@ Proof.
   { apply separation_connected_same_component with y0 => //. by rewrite -S21. }
 
 have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1') (C1' : {set G}),
-    C1' = V1' :\: V2' -> S = V1' :&: V2' -> s1' \in S -> irred pxs1' -> {subset [predI pxs1' & S] <= pred1 s1'} ->
-    x' \in C1' -> proper_separation V1' V2' -> {subset pxs1' <= V1'}.
+    C1' = V1' :\: V2' -> S = V1' :&: V2' -> s1' \in S -> irred pxs1' ->
+    (forall y : G, y \in pxs1' -> y \in S -> y = s1') -> x' \in C1' ->
+    proper_separation V1' V2' -> {subset pxs1' <= V1'}.
 
   { move => x' V1' V2' s1' pxs1' C1' HC1' HS s1'S ir' subset' x'C1' psep'.
     case: (@splitR G x' s1' pxs1'). { rewrite HS HC1' !inE in x'C1' s1'S.
@@ -486,9 +487,9 @@ have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1
       case /psplitP pcat2: _/x1p => [pxx1 px1z].
       exists pxx1. rewrite -HS. apply /subsetP => x2 x2pxx1.
       apply: contraNT s1pxz => x2S. rewrite inE Bool.negb_involutive /= in x2S.
-      suff: x2 == s1'.
-        + move => /eqP ?; subst x2. by rewrite pcat2 inE x2pxx1.
-        + apply subset'. rewrite inE pcat1 /= inE pcat2 inE x2pxx1 x2S. done.
+      rewrite -(subset' x2) => //.
+        + rewrite pcat2 inE x2pxx1. done.
+        + rewrite pcat1 /= inE pcat2 inE x2pxx1. done.
     - rewrite /tail /edgep inE in xs1. move: xs1 => /eqP->.
        rewrite HS inE in s1'S. by move: s1'S => /andP [? _].
   }
@@ -504,10 +505,10 @@ have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1
       ind_pxs1pxs2 ind_pxs3pxs1 s1S Ns12 Ns31} px1Ss1 irx1 iry1 pxs1V1 pys1V2
     / irred (pcat pxs1 (prev pys1)).
   { rewrite irred_cat. apply /and3P; split => //; first by rewrite irred_rev.
-    apply /eqP /setP. move => z. rewrite inE mem_prev in_set1.
+    apply /eqP /setP => z. rewrite inE mem_prev in_set1.
     apply Bool.eq_true_iff_eq; split.
     * move => /andP [zpxs1 /pys1V2 zV2]. move: (zpxs1) => /pxs1V1 zV1.
-      apply px1Ss1. rewrite /S !inE //=.
+      apply /eqP. apply (px1Ss1 z); rewrite /S ?inE //=.
     * move => /eqP->. apply /andP; split; apply path_end.
   }
 
@@ -518,19 +519,14 @@ have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1
   { rewrite /independent => z. rewrite !mem_pcat !mem_prev.
     move => /orP [zpxs1 | zpys1] /orP [zpxs2 | zpys2].
     + left. by apply ind_pxs1pxs2.
-    + exfalso. move: Ns12 => /eqP; apply. apply /eqP.
+    + exfalso. move: Ns12 => /eqP; apply.
       move: (pxs1V1 z zpxs1) => zV1. move: (pys2V2 z zpys2) => zV2.
-      move: (py2Ss2 z). rewrite !inE => temp.
-        have /eqP temp2: z==s2 by apply temp. subst s2. clear temp.
-      move: (px1Ss1 z). rewrite !inE => temp.
-        have /eqP temp2: z==s1 by apply temp. by subst z.
-    + (* same as above, do a second generalisation ? *)
-      exfalso. move: Ns12 => /eqP; apply. apply /eqP.
+      rewrite -(px1Ss1 z); rewrite ?inE //.
+      rewrite -(py2Ss2 z); rewrite ?inE //.
+    + exfalso. move: Ns12 => /eqP; apply.
       move: (pxs2V1 z zpxs2) => zV1. move: (pys1V2 z zpys1) => zV2.
-      move: (py1Ss1 z). rewrite !inE => temp.
-        have /eqP temp2: z==s1 by apply temp. subst s1. clear temp.
-      move: (px2Ss2 z). rewrite !inE => temp.
-        have /eqP temp2: z==s2 by apply temp. by subst z.
+      rewrite -(px2Ss2 z); rewrite ?inE //.
+      rewrite -(py1Ss1 z); rewrite ?inE //.
     + right. by apply ind_pys1pys2.
   }
 
@@ -563,5 +559,4 @@ Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
 Admitted.
-
 
