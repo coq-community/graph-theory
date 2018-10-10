@@ -460,45 +460,45 @@ Proof.
   set p3 := pcat pxs3 (prev pys3).
   exists x; exists y; exists p1; exists p2; exists p3.
 
-  (* moved the difficulty towards a separate lemma *)
+  have S21: S = V2 :&: V1 by rewrite setIC.
+  have psep21: proper_separation V2 V1 by apply proper_separation_symmetry.
+
   have xC1: x \in C1 by apply separation_connected_same_component with x0.
   have yC2: y \in C2.
-  { apply separation_connected_same_component with y0 => //.
-    (* shouldnt be hard, might do separate lemma *) }
+  { apply separation_connected_same_component with y0 => //. by rewrite -S21. }
 
-(*
-todo
-gen have pxsiV1: s1 pxs1 {irx1 ... } ... / {subset pxs1 <= V1}.
-gen have pxsiV1: s1 pys1 {iry1 ... } ... / {subset pys1 <= V2}.
-or
-gen have pxsiV1: x V1 s1 pxs1 {irx1 ... } ... / {subset pxs1 <= V1}.
-*)
+have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1') (C1' : {set G}),
+    C1' = V1' :\: V2' -> S = V1' :&: V2' -> s1' \in S -> irred pxs1' -> {subset [predI pxs1' & S] <= pred1 s1'} ->
+    x' \in C1' -> proper_separation V1' V2' -> {subset pxs1' <= V1'}.
 
-  have pxs1V1: {subset pxs1 <= V1}.
-  { case: (@splitR G x s1 pxs1). { rewrite /S !inE in xC1 s1S.
-      move: s1S => /andP [_ ?]. move: xC1 => /andP [? _].
-      apply: contraTN isT => /eqP ?. subst x. contrab. }
-    move => z [pxz [zs1 pcat1]]. rewrite pcat1.
-    move => x1. rewrite mem_pcatT. move => /orP [x1p | xs1].
-    - suff: x1 \in C1. rewrite inE /andP. by move => /andP [_ ?].
-      case (boolP (x == x1)) => [/eqP ?|?]; first by subst.
-      apply separation_connected_same_component with x => //.
-      apply /PathRP => //. case: (psplitP x1p) => pxx1 px1z.
-
-      have pcat2: pxz = pcat pxx1 px1z. { admit. }
-
-      exists pxx1.
-      admit.
-
+  { move => x' V1' V2' s1' pxs1' C1' HC1' HS s1'S ir' subset' x'C1' psep'.
+    case: (@splitR G x' s1' pxs1'). { rewrite HS HC1' !inE in x'C1' s1'S.
+      move: s1'S => /andP [_ ?]. move: x'C1' => /andP [? _].
+      apply: contraTN isT => /eqP ?. subst x'. contrab. }
+    move => z [pxz [zs1 pcat1]].
+    move: (ir') => ir'c. rewrite pcat1 irred_edgeR in ir'c.
+      move: ir'c => /andP [s1pxz _].
+    rewrite pcat1. move => x1. rewrite mem_pcatT. move => /orP [x1p | xs1].
+    - suff: x1 \in C1'. rewrite HC1' inE /andP. by move => /andP [_ ?]. rewrite HC1'.
+      case (boolP (x' == x1)) => [/eqP ?|?]; first by subst.
+      apply separation_connected_same_component with x' => //; first by rewrite -HC1'.
+      apply /PathRP => //.
+      case /psplitP pcat2: _/x1p => [pxx1 px1z].
+      exists pxx1. rewrite -HS. apply /subsetP => x2 x2pxx1.
+      apply: contraNT s1pxz => x2S. rewrite inE Bool.negb_involutive /= in x2S.
+      suff: x2 == s1'.
+        + move => /eqP ?; subst x2. by rewrite pcat2 inE x2pxx1.
+        + apply subset'. rewrite inE pcat1 /= inE pcat2 inE x2pxx1 x2S. done.
     - rewrite /tail /edgep inE in xs1. move: xs1 => /eqP->.
-       rewrite /S inE in s1S. by move: s1S => /andP [? _].
+       rewrite HS inE in s1'S. by move: s1'S => /andP [? _].
   }
 
-  have pys1V2: {subset pys1 <= V2}. admit.
-  have pxs2V1: {subset pxs2 <= V1}. admit.
-  have pys2V2: {subset pys2 <= V2}. admit.
-  have pxs3V1: {subset pxs3 <= V1}. admit.
-  have pys3V2: {subset pys3 <= V2}. admit.
+  have pxs1V1: {subset pxs1 <= V1}. { apply pxysiVi with V2 C1 => //. }
+  have pxs2V1: {subset pxs2 <= V1}. { apply pxysiVi with V2 C1 => //. }
+  have pxs3V1: {subset pxs3 <= V1}. { apply pxysiVi with V2 C1 => //. }
+  have pys1V2: {subset pys1 <= V2}. { apply pxysiVi with V1 C2 => //. }
+  have pys2V2: {subset pys2 <= V2}. { apply pxysiVi with V1 C2 => //. }
+  have pys3V2: {subset pys3 <= V2}. { apply pxysiVi with V1 C2 => //. }
 
   gen have irredpi: s1 pxs1 pys1 {ind_pys1pys2 ind_pys3pys1 p1 py1Ss1
       ind_pxs1pxs2 ind_pxs3pxs1 s1S Ns12 Ns31} px1Ss1 irx1 iry1 pxs1V1 pys1V2
@@ -511,31 +511,39 @@ gen have pxsiV1: x V1 s1 pxs1 {irx1 ... } ... / {subset pxs1 <= V1}.
     * move => /eqP->. apply /andP; split; apply path_end.
   }
 
-  split; split.
-
-  - by apply irredpi.
-  - by apply irredpi.
-  - by apply irredpi.
-
-  - (* x \in C1 *) done.
-  - (* y \in C2 *) done.
-
-  - (* independent p1 p2 *)
-    rewrite /independent /p1 /p2 => z. rewrite !mem_pcat !mem_prev.
+  gen have indep: s1 s2 pxs1 pys1 pxs2 pys2
+      {Ns23 Ns31 iry2 ind_pys2pys3 irx2 ind_pxs2pxs3 iry1 ind_pys3pys1 irx1 ind_pxs3pxs1 p1 p2}
+      ind_pxs1pxs2 ind_pys1pys2 pxs1V1 pxs2V1 pys1V2 pys2V2 Ns12 s2S s1S px1Ss1 px2Ss2 py1Ss1 py2Ss2
+      / independent (pcat pxs1 (prev pys1)) (pcat pxs2 (prev pys2)).
+  { rewrite /independent => z. rewrite !mem_pcat !mem_prev.
     move => /orP [zpxs1 | zpys1] /orP [zpxs2 | zpys2].
     + left. by apply ind_pxs1pxs2.
     + exfalso. move: Ns12 => /eqP; apply. apply /eqP.
       move: (pxs1V1 z zpxs1) => zV1. move: (pys2V2 z zpys2) => zV2.
       move: (py2Ss2 z). rewrite !inE => temp.
-        have [/eqP temp2]: z==s2 by apply temp. subst s2. clear temp.
+        have /eqP temp2: z==s2 by apply temp. subst s2. clear temp.
       move: (px1Ss1 z). rewrite !inE => temp.
-        have [/eqP temp2]: z==s1 by apply temp. by subst z.
-    + (* same idea as above *) admit.
+        have /eqP temp2: z==s1 by apply temp. by subst z.
+    + (* same as above, do a second generalisation ? *)
+      exfalso. move: Ns12 => /eqP; apply. apply /eqP.
+      move: (pxs2V1 z zpxs2) => zV1. move: (pys1V2 z zpys1) => zV2.
+      move: (py1Ss1 z). rewrite !inE => temp.
+        have /eqP temp2: z==s1 by apply temp. subst s1. clear temp.
+      move: (px2Ss2 z). rewrite !inE => temp.
+        have /eqP temp2: z==s2 by apply temp. by subst z.
     + right. by apply ind_pys1pys2.
+  }
 
-  - (* independent p2 p3 *) admit.
-  - (* independent p3 p1 *) admit.
-Admitted.
+  split; split.
+  - (* irred p1 *) by apply irredpi.
+  - (* irred p2 *) by apply irredpi.
+  - (* irred p3 *) by apply irredpi.
+  - (* x \in C1 *) done.
+  - (* y \in C2 *) done.
+  - (* independent p1 p2 *) by apply indep.
+  - (* independent p2 p3 *) by apply indep.
+  - (* independent p3 p1 *) by apply indep.
+Qed.
 
 Lemma K4_of_separators (G : sgraph) : 
   3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
@@ -555,4 +563,5 @@ Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
 Admitted.
+
 
