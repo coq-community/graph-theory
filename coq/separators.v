@@ -194,8 +194,10 @@ Qed.
 
 Lemma proper_separation_symmetry V1 V2 :
   proper_separation V1 V2 -> proper_separation V2 V1.
-Proof.
-Admitted.
+Proof. move => [[? nedgeC12] [? ?]].
+  split; split => //; first by rewrite setUC.
+  move => x1 x2 H H'. rewrite sg_sym. by apply nedgeC12.
+Qed.
 
 Lemma separation_path V1 V2:
   separation V1 V2 -> forall x y, x \in (V1 :\: V2) -> y \in (V2 :\: V1) ->
@@ -208,11 +210,6 @@ Lemma sseparator_neighbours V1 V2 s :
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 
   s \in V1 :&: V2 -> exists x1 x2, [/\ x1 \in V1 :\: V2, x2 \in V2 :\: V1, s -- x1 & s -- x2].
 Proof.
-  (* - Wlog. [~~ s -- x1] for all elements of [C1 := V1:\:V2] ([V1] and [V2] are symmetric)
-     - suff: [S' := V1 :&: V2 :\ s] is a separator. 
-     - Let [x1 \in C1, x2 \in C2 := V2 :\: V1] and [p : Path x1 x2] be irredundant.
-     - Let [s'] be the first vertex on [p] that is not in [C1]. Then [s' \in S']. *) 
-
   wlog: V1 V2 / [forall x1 in (V1:\:V2), ~~ s -- x1].
   { move => H ps ss sS.
     case (boolP [forall x in (V1 :\: V2), ~~ s -- x]).
@@ -296,7 +293,25 @@ Admitted.
 Lemma separation_connected_same_component V1 V2:
   proper_separation V1 V2 -> forall x0 x, x0 \in V1:\:V2 ->
   connect (restrict [predC (V1:&:V2)] sedge) x0 x -> x \in V1:\:V2.
-Admitted.
+Proof.
+  set S := V1 :&: V2. set C1 := V1 :\: V2. set C2 := V2 :\: V1.
+  move => [[/setP V12G nedgeC12] proper] x0 x x0C1.
+  case: (boolP (x0==x)) => [/eqP ? | x0x]; first by subst x0.
+  move => /(PathRP x0x) [p /subsetP Hp].
+  case: (boolP(x \in C1)) => // xNC1.
+  case: (@split_at_first G [predC C1] x0 x p x) => //.
+    move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE /= in H2.
+  case (boolP (x0 == z)) => [/eqP ?|?]; first by subst x0; contrab.
+  case: (@splitR G x0 z p1) => [|z0 [p1' [z0z H4]]] //.
+  apply: contraTT (z0z) => _. rewrite nedgeC12 //.
+  + have: z0==z = false by rewrite sg_edgeNeq.
+    apply: contraFT => z0NC1. apply /eqP. apply H3; first by rewrite inE.
+    by rewrite H4 mem_pcat path_end.
+  + have zNS: z \in [predC S]. { apply Hp. by rewrite H1 mem_pcat path_end. }
+    move: (V12G z) => zV12.
+    rewrite /S !inE !negb_and /= in zV12 zNS H2 *. 
+    move: zV12 zNS H2 => /orP [zV1 | zV2] /orP [zNV1 | zNV2] /orP [?|?] //; contrab.
+Qed.
 
 End Separators.
 
@@ -454,7 +469,6 @@ Proof.
     { rewrite /S !inE. rewrite /C2 !inE in y0C2. by move: y0C2 => /andP [? ->]. }
   move => y [pys1 [pys2 [pys3 [[iry1 iry2 iry3] [[/subsetIlP1 py1Ss1 /subsetIlP1 py2Ss2 /subsetIlP1 py3Ss3]
     [conny0y ind_pys1pys2 ind_pys2pys3 ind_pys3pys1]]]]]].
-
   set p1 := pcat pxs1 (prev pys1).
   set p2 := pcat pxs2 (prev pys2).
   set p3 := pcat pxs3 (prev pys3).
@@ -462,16 +476,14 @@ Proof.
 
   have S21: S = V2 :&: V1 by rewrite setIC.
   have psep21: proper_separation V2 V1 by apply proper_separation_symmetry.
-
   have xC1: x \in C1 by apply separation_connected_same_component with x0.
   have yC2: y \in C2.
   { apply separation_connected_same_component with y0 => //. by rewrite -S21. }
 
-have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1') (C1' : {set G}),
+  have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1') (C1' : {set G}),
     C1' = V1' :\: V2' -> S = V1' :&: V2' -> s1' \in S -> irred pxs1' ->
     (forall y : G, y \in pxs1' -> y \in S -> y = s1') -> x' \in C1' ->
     proper_separation V1' V2' -> {subset pxs1' <= V1'}.
-
   { move => x' V1' V2' s1' pxs1' C1' HC1' HS s1'S ir' subset' x'C1' psep'.
     case: (@splitR G x' s1' pxs1'). { rewrite HS HC1' !inE in x'C1' s1'S.
       move: s1'S => /andP [_ ?]. move: x'C1' => /andP [? _].
@@ -493,7 +505,6 @@ have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1
     - rewrite /tail /edgep inE in xs1. move: xs1 => /eqP->.
        rewrite HS inE in s1'S. by move: s1'S => /andP [? _].
   }
-
   have pxs1V1: {subset pxs1 <= V1}. { apply pxysiVi with V2 C1 => //. }
   have pxs2V1: {subset pxs2 <= V1}. { apply pxysiVi with V2 C1 => //. }
   have pxs3V1: {subset pxs3 <= V1}. { apply pxysiVi with V2 C1 => //. }
@@ -520,13 +531,13 @@ have pxysiVi : forall (x' : G) (V1' V2' : {set G}) (s1' : G) (pxs1' : Path x' s1
     move => /orP [zpxs1 | zpys1] /orP [zpxs2 | zpys2].
     + left. by apply ind_pxs1pxs2.
     + exfalso. move: Ns12 => /eqP; apply.
-      move: (pxs1V1 z zpxs1) => zV1. move: (pys2V2 z zpys2) => zV2.
-      rewrite -(px1Ss1 z); rewrite ?inE //.
-      rewrite -(py2Ss2 z); rewrite ?inE //.
+      move: (pxs1V1 z zpxs1) (pys2V2 z zpys2) => zV1 zV2.
+      rewrite -(px1Ss1 z) ?inE //.
+      rewrite -(py2Ss2 z) ?inE //.
     + exfalso. move: Ns12 => /eqP; apply.
-      move: (pxs2V1 z zpxs2) => zV1. move: (pys1V2 z zpys1) => zV2.
-      rewrite -(px2Ss2 z); rewrite ?inE //.
-      rewrite -(py1Ss1 z); rewrite ?inE //.
+      move: (pxs2V1 z zpxs2) (pys1V2 z zpys1) => zV1 zV2.
+      rewrite -(px2Ss2 z) ?inE //.
+      rewrite -(py1Ss1 z) ?inE //.
     + right. by apply ind_pys1pys2.
   }
 
