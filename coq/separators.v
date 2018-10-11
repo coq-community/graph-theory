@@ -192,6 +192,9 @@ Proof.
   move: (HU V sepV) => ineq2. rewrite ltnNge in ineq. contrab.
 Qed.
 
+Lemma separation_sym V1 V2 : separation V1 V2 <-> separation V2 V1.
+Admitted.
+
 Lemma proper_separation_symmetry V1 V2 :
   proper_separation V1 V2 -> proper_separation V2 V1.
 Proof. move => [[? nedgeC12] [? ?]].
@@ -317,6 +320,18 @@ End Separators.
 
 Prenex Implicits separator.
 Implicit Types G H : sgraph.
+
+Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 t1 t2 :
+  sdecomp T1 (induced V1) B1 -> sdecomp T2 (induced V2) B2 -> 
+  separation V1 V2 -> V1 :&: V2 \subset (val @: B1 t1) :&: (val @: B2 t2) ->
+  exists T B, sdecomp T G B /\ width B <= maxn (width B1) (width B2).
+Admitted.
+
+Lemma separation_K4 G (V1 V2 : {set G}) : 
+  separation V1 V2 -> #|V1 :&: V2| <= 2 -> 
+  minor G K4 -> 
+  exists2 phi : G -> option K4, minor_map phi & phi @^-1: [set~ None] \subset V1.
+Admitted.                                     
 
 Definition remainder (G : sgraph) (U S : {set G}) : {set induced U} := 
   [set x : induced U | val x \in S].
