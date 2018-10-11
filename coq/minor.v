@@ -193,6 +193,43 @@ Definition minor_map (G H : sgraph) (phi : G -> option H) :=
      (forall x y : H, x -- y -> exists x0 y0 : G,
       [/\ x0 \in phi @^-1 Some x, y0 \in phi @^-1 Some y & x0 -- y0])].
 
+Definition minor_rmap (G H : sgraph) (phi : H -> {set G}) :=
+  [/\ (forall x : H, phi x != set0),
+     (forall x : H, connected (phi x)),
+     (forall x y : H, x != y -> [disjoint phi x & phi y]) &
+     (forall x y : H, x -- y -> exists x' y' : G, [/\ x' \in phi x, y' \in phi y & x' -- y'])].
+
+Lemma minor_map_rmap (G H : sgraph) (phi : H -> {set G}) : 
+  minor_rmap phi -> minor_map (fun x : G => [pick x0 : H | x \in phi x0]).
+Proof.
+  set phi' := (fun x => _).
+  case => P1 P2 P3 P4. 
+  have phiP x x0 : x0 \in phi x = (phi' x0 == Some x).
+  { rewrite /phi'. case: pickP => [x' Hx'|]; last by move->. 
+    rewrite Some_eqE. apply/idP/eqP => [|<-//]. 
+    apply: contraTeq => /P3 D. by rewrite (disjointFr D Hx'). }
+  split.
+  - move => y. case/set0Pn : (P1 y) => y0. rewrite phiP => /eqP <-. by exists y0.
+  - move => y x0 y0. rewrite !inE -!phiP => H1 H2. move: (P2 y _ _ H1 H2). 
+    apply: connect_mono => u v. by rewrite /= -!mem_preim !phiP.
+  - move => x y /P4 [x0] [y0] [*]. exists x0;exists y0. by rewrite -!mem_preim -!phiP.
+Qed.
+
+Lemma minor_rmap_map (G H : sgraph) (phi : G -> option H) : 
+  minor_map phi -> minor_rmap (fun x => [set y | phi y == Some x]).
+Proof.
+  set phi' := fun _ => _.
+  case => P1 P2 P3.
+  split.
+  - move => x. apply/set0Pn. case: (P1 x) => x0 H0. exists x0. by rewrite !inE H0.
+  - move => x u v Hu Hv. move: (P2 x _ _ Hu Hv). 
+    apply: connect_mono => a b. by rewrite /= !inE.
+  - move => x y D. rewrite disjoint_exists. 
+    apply: contraNN D => /exists_inP [x0]. by rewrite -Some_eqE !inE => /eqP<-/eqP<-.
+  - move => x y /P3 [x0] [y0] [*]. exists x0;exists y0. by rewrite !inE !mem_preim. 
+Qed.
+      
+
 Definition minor (G H : sgraph) : Prop := exists phi : G -> option H, minor_map phi.
 
 Fact minor_of_map (G H : sgraph) (phi : G -> option H): 
