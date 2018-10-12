@@ -33,7 +33,7 @@ Lemma existsPn (T : finType) (P : pred T) :
   reflect (forall x, ~~ P x) (~~ [exists x, P x]).
 Proof. rewrite negb_exists. exact: forallP. Qed.
 
-Lemma forallPn (T : finType) (A P : pred T) : 
+Lemma forallPn (T : finType) (P : pred T) : 
   reflect (exists x, ~~ P x) (~~ [forall x, P x]).
 Proof. rewrite negb_forall. exact: existsP. Qed.
 

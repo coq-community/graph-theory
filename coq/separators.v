@@ -93,8 +93,13 @@ components. Hence, we also define separations, which make the
 separated sides explicit *)
 (* TOTHINK: maybe use [forall x, x \in V1 :|: V2] or [forall x, x \notin V1 -> x \in V2] as first part *)
 Definition separation V1 V2 := 
-  ((V1 :|: V2 = setT) * (forall x1 x2, x1 \in V1 :\: V2 -> x2 \in V2 :\: V1 -> x1 -- x2 = false))%type.
+  ((forall x, x \in V1 :|: V2) * (forall x1 x2, x1 \notin V2 -> x2 \notin V1 -> x1 -- x2 = false))%type.
 
+Lemma sep_inR x V1 V2 : separation V1 V2 -> x \notin V1 -> x \in V2.
+Proof. move => sepV. by case/setUP : (sepV.1 x) => ->. Qed.
+
+Lemma sep_inL x V1 V2 : separation V1 V2 -> x \notin V2 -> x \in V1.
+Proof. move => sepV. by case/setUP : (sepV.1 x) => ->. Qed.
 
 Definition proper V1 V2 := V1 :\: V2 != set0 /\ V2 :\: V1 != set0.
 
@@ -104,9 +109,8 @@ Lemma separate_nonadjacent x y : x != y -> ~~ x -- y -> proper_separation [set~ 
 Proof.
   move => xDy xNy. split.
   - split.
-    + apply/setP => z. rewrite !inE. apply: contraNT xDy. 
-      rewrite negb_or !negbK. by case/andP => [/eqP<- /eqP<-].
-    + move => x1 x2. rewrite !inE !negbK sg_sym => /andP[/eqP-> _] /andP[/eqP-> B].
+    + move => z. rewrite !inE -negb_and. by apply: contraNN xDy => /andP[/eqP->/eqP->].
+    + move => x1 x2. rewrite !inE !negbK sg_sym => [/eqP->] [/eqP->].
       by rewrite (negbTE xNy).
   - split. 
     + apply/set0Pn. exists y. by rewrite !inE eqxx eq_sym (negbTE xDy).
@@ -128,11 +132,8 @@ Proof.
       { apply: contraTneq H2 => ?; subst x. by case/setDP : Hx. }
       apply: contraTT (z0z) => Hz1. rewrite Hsep ?inE //.
       case: (boolP (z0 \in V2)) => /= H0.
-      * (* z0 \in V2 => contradiction with split_at_first *)
-        move: (z0z). rewrite [z0]H3 ?sgP //. by rewrite H4 mem_pcat path_end.
-      * (* z0 \notin V2 => z0 \in V1 by Hset *)
-        (* having to use in_setT/-Hsep is not nice *)
-        apply: contraTT (in_setT z0) => C. by rewrite -Hsep inE (negbTE C).
+      * move: (z0z). rewrite [z0]H3 ?sgP //. by rewrite H4 mem_pcat path_end.
+      * move: (z0z). by rewrite Hsep.
 Qed.
 
 Lemma pcat_subset: forall x y z (p : Path x y) (q : Path y z) (A: simpl_pred G),
@@ -152,11 +153,10 @@ Proof.
   { rewrite /U -lock inE srestrict_sym. case/connectP => [[/= _ <- //|/= y p]].
     rewrite inE /=. by case: (x \in S). }
   split; first split; first split.
-  - apply/setP => x. rewrite !inE. by case: (x \in U).
-  - move => u v.
-    rewrite !inE !(negb_or,negb_and,negbK) -andbA => /andP[xU _] /and3P [U1 U2 _].
-    apply: contraNF U1 => uv. move: (xU). rewrite /U -lock !inE => H.
-    apply: connect_trans H _. apply: connect1. by rewrite /= !inE U2 uv HU.
+  - move => x. rewrite !inE. by case: (x \in U).
+  - move => u v. rewrite !inE !(negb_or,negb_and,negbK) => [Hu] /andP [Hv1 Hv2].
+    apply: contraNF Hv1 => uv. move: (Hu). rewrite /U -lock !inE => H.
+    apply: connect_trans H _. apply: connect1. by rewrite /= !inE HU.
   - split; apply/set0Pn.
     + exists x1. suff H: (x1 \in U) by rewrite !inE H.
       by rewrite /U -lock inE connect0.
@@ -209,6 +209,7 @@ Proof.
 Admitted.
 
 (** TOTHINK: the second assumption is half-redundant but makes for a nice statement *)
+(** TOTHINK: provide [x \notin V2] instead *)
 Lemma sseparator_neighbours V1 V2 s : 
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 
   s \in V1 :&: V2 -> exists x1 x2, [/\ x1 \in V1 :\: V2, x2 \in V2 :\: V1, s -- x1 & s -- x2].
@@ -226,7 +227,7 @@ Proof.
         exists x1; exists x2. split => //; by apply negbNE.
   }
   rewrite /smallest.
-  move => /forall_inP Hwlog [[sep1 sep2] [/set0Pn [x1 x1V12] /set0Pn [x2 x2V21]]] [sepS smallS] sS.
+  move => /forall_inP Hwlog [sepV [/set0Pn [x1 x1V12] /set0Pn [x2 x2V21]]] [sepS smallS] sS.
   pose S' := V1 :&: V2:\ s. suff: separator S'.
   - move => sS'. exfalso. move: sS'. apply smallS.
     rewrite /S'. rewrite (cardsD1 s (V1 :&: V2)) sS //=.
@@ -243,17 +244,17 @@ Proof.
       case: (@splitR G x1 z p1). { apply: contraTN isT => /eqP ?.
         subst x1. case/setDP: x1V12 => _ ?. contrab. }
       move => z0 [p' [z0z Hp']].
-      have z0V1: z0 \in (V1 :\: V2).
-      { have: z0 \in [set: G] by done. rewrite -sep1 !inE.
-        suff: z0 \notin V2 by move => ? /orP [?|?] //; contrab.
+      have z0V1: z0 \notin V2. 
+      { (* have: z0 \in [set: G] by done. rewrite -sep1 !inE. *)
+        (* suff: z0 \notin V2 by move => ? /orP [?|?] //; contrab. *)
         move: (sg_edgeNeq z0z) => zz0. apply: contraFN zz0 => ?.
         apply /eqP. apply H3 => //. rewrite Hp'. rewrite mem_pcat mem_edgep.
         by rewrite eq_refl.
       }
       rewrite !inE. apply /and3P. split => //.
       * move: (z0z) => /prev_edge_proof zz0.
-        apply: contraTN zz0 => /eqP->. by apply Hwlog.
-      * apply: contraTT (z0z) => ?. rewrite sep2 => //. by rewrite inE.
+        apply: contraTN zz0 => /eqP->. by rewrite Hwlog // !inE z0V1 (sep_inL sepV).
+      * apply: contraTT (z0z) => ?. by rewrite sepV.
 Qed.
 
 (* TOTHINK: This definition really only makes sense for irredundant paths *)
@@ -298,7 +299,7 @@ Lemma separation_connected_same_component V1 V2:
   connect (restrict [predC (V1:&:V2)] sedge) x0 x -> x \in V1:\:V2.
 Proof.
   set S := V1 :&: V2. set C1 := V1 :\: V2. set C2 := V2 :\: V1.
-  move => [[/setP V12G nedgeC12] proper] x0 x x0C1.
+  move => [sepV propV] x0 x x0C1.
   case: (boolP (x0==x)) => [/eqP ? | x0x]; first by subst x0.
   move => /(PathRP x0x) [p /subsetP Hp].
   case: (boolP(x \in C1)) => // xNC1.
@@ -306,12 +307,13 @@ Proof.
     move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE /= in H2.
   case (boolP (x0 == z)) => [/eqP ?|?]; first by subst x0; contrab.
   case: (@splitR G x0 z p1) => [|z0 [p1' [z0z H4]]] //.
-  apply: contraTT (z0z) => _. rewrite nedgeC12 //.
+  apply: contraTT (z0z) => _. rewrite sepV //. 
   + have: z0==z = false by rewrite sg_edgeNeq.
-    apply: contraFT => z0NC1. apply /eqP. apply H3; first by rewrite inE.
+    apply: contraFT => z0NC1. apply /eqP. apply H3; first by rewrite !inE negb_and z0NC1. 
     by rewrite H4 mem_pcat path_end.
   + have zNS: z \in [predC S]. { apply Hp. by rewrite H1 mem_pcat path_end. }
-    move: (V12G z) => zV12.
+    (** What is going on here? *)
+    move: (sepV.1 z) => zV12.
     rewrite /S !inE !negb_and /= in zV12 zNS H2 *. 
     move: zV12 zNS H2 => /orP [zV1 | zV2] /orP [zNV1 | zNV2] /orP [?|?] //; contrab.
 Qed.
@@ -593,8 +595,7 @@ Proof.
   case: (boolP [forall x : G, forall y : G, (x==y) || (x--y)]).
   { (*TODO, take 4 elements in G, exact K4 *) admit. }
 
-
-  move => /(forallPn G) [x /(forallPn G) [y temp]].
+  move => /forallPn [x /forallPn [y temp]].
   rewrite negb_or in temp. move: temp => /andP [xNy xNEy].
   move: (minimal_separation xNy xNEy) => [V1 [V2 [psepV12 [sS HS]]]].
   set S := V1 :&: V2. set C1 := V1 :\: V2. set C2 := V2 :\: V1.
