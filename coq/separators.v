@@ -202,11 +202,10 @@ Proof. move => [[? nedgeC12] [? ?]].
   move => x1 x2 H H'. rewrite sg_sym. by apply nedgeC12.
 Qed.
 
-Lemma separation_path V1 V2:
-  separation V1 V2 -> forall x y, x \in (V1 :\: V2) -> y \in (V2 :\: V1) ->
-  separates x y (V1 :&: V2).
-Proof.
+Lemma separation_separates x y V1 V2:
+  separation V1 V2 -> x \notin V2 -> y \notin V1 -> separates x y (V1 :&: V2).
 Admitted.
+
 
 (** TOTHINK: the second assumption is half-redundant but makes for a nice statement *)
 (** TOTHINK: provide [x \notin V2] instead *)
@@ -329,11 +328,108 @@ Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 t1 t2 :
   exists T B, sdecomp T G B /\ width B <= maxn (width B1) (width B2).
 Admitted.
 
-Lemma separation_K4 G (V1 V2 : {set G}) : 
-  separation V1 V2 -> #|V1 :&: V2| <= 2 -> 
+Lemma minorRE G H : minor G H -> exists phi : H -> {set G}, minor_rmap phi.
+Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
+
+Lemma disjointW (T : finType) (A B C D : pred T) : 
+    A \subset B -> C \subset D -> [disjoint B & D] -> [disjoint A & C].
+Proof. 
+  move => subAB subCD BD. apply: (disjoint_trans subAB). 
+  move: BD. rewrite !(disjoint_sym B). exact: disjoint_trans.
+Qed.
+
+Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
+
+Lemma connectedI_clique (G : sgraph) (A B S : {set G}) :
+  connected A -> clique S -> 
+  (forall x y (p : Path x y), p \subset A -> x \in B -> y \notin B -> 
+     exists2 z, z \in p & z \in S :&: B) ->
+  connected (A :&: B).
+Proof.
+  move => conA clS H x y /setIP [X1 X2] /setIP [Y1 Y2].
+  case: (altP (x =P y)) => [->|xDy]; first exact: connect0.
+  case/uPathRP : (conA _ _ X1 Y1) => // p Ip subA. 
+  case: (boolP (p \subset B)) => subB.
+  - apply connectRI with p => z zp. 
+    by rewrite !inE (subsetP subA) ?(subsetP subB).
+  - case/subsetPn : subB => z Z1 Z2. 
+    gen have C,Cx : x y p Ip subA X1 X2 Y1 Y2 Z1 Z2 {xDy} / 
+        exists2 s, s \in S :&: A :&: B & connect (restrict (mem (A :&: B)) sedge) x s.
+    { case: (split_at_first (A := [predC B]) Z2 Z1) => u' [p1] [p2] [P1 P2 P3].
+      subst p. case/irred_catE : Ip => Ip1 Ip2 Ip.
+      case/splitR : (p1); first by apply: contraNneq P2 => <-.
+      move => u [p1'] [uu'] E. subst p1. 
+      have uB : u \in B. apply: contraTT (uu') => C. by rewrite [u]P3 ?sgP // !inE.
+      exists u. case: (H _ _ (edgep uu')) => //.
+      - apply: subset_trans subA. 
+        apply: subset_trans (subset_pcatL _ _). exact: subset_pcatR.
+      - move => ?. rewrite !inE mem_edgep. case/orP => /eqP-> /andP[U1 U2].
+        + by rewrite U1 U2 (subsetP subA) // !inE.
+        + by rewrite !inE U2 in P2.
+      - apply connectRI with p1' => v Hv. 
+        rewrite !inE (subsetP subA) ?inE ?Hv //=.
+        move: Ip1. rewrite irred_edgeR andbC => /andP [Ip1].
+        apply: contraNT => C. by rewrite -(P3 v) // !inE Hv. }
+    case: Cx => s. rewrite !inE -andbA => /and3P [S1 S2 S3 S4].
+    case: (C _ _ (prev p)); rewrite ?mem_prev ?irred_rev //. 
+    + apply: subset_trans subA. apply/subsetP => ?. by rewrite !inE.
+    + move => t. rewrite !inE -andbA => /and3P [T1 T2 T3 T4].
+      apply: connect_trans S4 _. rewrite srestrict_sym.
+      apply: connect_trans T4 _. case: (altP (t =P s)) => [-> //|E].
+      apply: connect1 => /=. by rewrite !inE clS. 
+Qed.
+
+Lemma separation_K4side G (V1 V2 : {set G}) s1 s2 : 
+  separation V1 V2 -> V1 :&: V2 = [set s1; s2] -> s1 -- s2 -> 
   minor G K4 -> 
-  exists2 phi : G -> option K4, minor_map phi & phi @^-1: [set~ None] \subset V1.
-Admitted.                                     
+  exists2 phi : K4 -> {set G}, minor_rmap phi & 
+     (forall x, phi x \subset V1) \/ (forall x, phi x \subset V2).
+Proof.
+  move def_S : (V1 :&: V2) => S. (* pose C1 := V1 :\: V2; pose C2 := V2 :\: V1. *)
+  move => sepV HS s12 /minorRE [phi] [P1 P2 P3 P4].
+  wlog/forallP cutV1 : V1 V2 sepV def_S / [forall x, phi x :&: V1 != set0].
+  { move => W. 
+    case: (boolP [forall x, phi x :&: V1 != set0]) => A; first exact: (W V1 V2).
+    case: (boolP [forall x, phi x :&: V2 != set0]) => B. 
+    - case: (W V2 V1) => //; rewrite 1?separation_sym 1?setIC //. 
+      move => phi' ? [?|?]; by exists phi'; auto.
+    - case: notF. 
+      case/forallPn : A => i /negPn Hi. 
+      case/forallPn : B => j /negPn Hj.
+      case: (altP (i =P j)) => [E|E].
+      + subst j. case/set0Pn : (P1 i) => x Hx. case/setUP : (sepV.1 x) => Hx'.
+        move/eqP/setP/(_ x) : Hi. by rewrite !inE Hx Hx'.
+        move/eqP/setP/(_ x) : Hj. by rewrite !inE Hx Hx'.
+      + move: (P4 i j E) => [x] [y] [A B]. rewrite sgP sepV //.
+        apply: contraTN Hj => Hy. by apply/set0Pn; exists y; rewrite inE B.
+        apply: contraTN Hi => Hx. by apply/set0Pn; exists x; rewrite inE A. }
+  have phiP i : ~~ (phi i \subset V1) -> phi i :&: S != set0.
+  { case/subsetPn => [x X1 X2]. admit. }
+  pose phi' (i : K4) := phi i :&: V1.
+  exists phi'; first split.
+  - move => i. by case/cutV1 : (i). 
+  - move => i. apply connectedI_clique with S.
+    + exact: P2.
+    + rewrite HS. exact: clique2.
+    + move => x y p sub_phi Hx Hy. case: (boolP (x \in V2)) => Hx'.
+      * exists x => //. by rewrite -def_S !inE Hx.
+      * have/(_ x y Hx' Hy) [_ _ /(_ p) [z]] := (separation_separates sepV).
+        rewrite def_S => X1 X2. exists z => //. 
+        by rewrite setIC -def_S setIA setIid def_S.
+  - move => i j /P3 => D. apply: disjointW D; exact: subsetIl.
+  - move => i j ij. move/P4: (ij) => [x] [y] [H1 H2 H3]. 
+    have D: [disjoint phi i & phi j]. apply: P3. by rewrite sg_edgeNeq. 
+    have S_link u v : u \in S -> v \in S -> u \in phi i -> u \in phi j -> u -- v.
+    { admit. (* u and v must be the two distinct vertices in s *) }
+    case: (boolP (x \in V1)) => HVx; case: (boolP (y \in V1)) => HVy.
+    + exists x; exists y. by rewrite !inE HVx HVy.
+    + have xS : x \in S. admit. (* would contradict H3 *)
+      have [s S1 S2]: exists2 s, s \in phi j & s \in S. admit. (* phiP *)
+      exists x; exists s. admit.
+    + admit. (* symmetric; do symmetry reasoning *)
+    + admit.
+  - left => x. exact: subsetIr.
+Admitted.
 
 Definition remainder (G : sgraph) (U S : {set G}) : {set induced U} := 
   [set x : induced U | val x \in S].
@@ -371,7 +467,7 @@ Proof.
 Qed.
 Arguments subsetIlP1 [T A B x].
 
-Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
+
 
 Lemma predIpcatR (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) (S A : pred G) : 
   [predI pcat p q & S] \subset A -> [predI q & S] \subset A.
