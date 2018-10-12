@@ -110,7 +110,7 @@ Proof.
   move => xDy xNy. split.
   - split.
     + move => z. rewrite !inE -negb_and. by apply: contraNN xDy => /andP[/eqP->/eqP->].
-    + move => x1 x2. rewrite !inE !negbK sg_sym => [/eqP->] [/eqP->].
+    + move => x1 x2. rewrite !inE !negbK sg_sym => /eqP-> /eqP->.
       by rewrite (negbTE xNy).
   - split. 
     + apply/set0Pn. exists y. by rewrite !inE eqxx eq_sym (negbTE xDy).
@@ -507,7 +507,7 @@ Proof.
     subst z'. by rewrite [x]P33 //. }
   have {P13} P13 z' : z' \in [predU p2 & p32] -> z' \in p12 -> z' = x.
   { case/orP => [/= A|/= A];apply: P13 => //; by rewrite inE /= P31 ?inE A. }
-  rewrite -[y \in mem p2]/(y \in p2) in P32. (* ugly *)
+  rewrite -[y \in mem p2]/(y \in p2) in P32. (* ugly *) (* rewrite inE in P32. ?*)
   subst p1; subst p3. 
   case/irred_catE : I1 => _ I1 _. case/irred_catE : I3 => _ I3 _.
   move/predIpcatR : P1 => P1. move/predIpcatR : P3 => P3. 
@@ -569,12 +569,12 @@ Lemma path_touch_separation :
 Proof.
   move => G x S V1 V2 s1 pxs1 C1 HC1 HS s1S ir subset xC1 psep.
   case: (@splitR G x s1 pxs1). { rewrite HS HC1 !inE in xC1 s1S.
-    move: s1S => /andP [_ ?]. move: xC1 => /andP [? _].
+    move: s1S xC1 => /andP [_ ?] /andP [? _].
     apply: contraTN isT => /eqP ?. subst x. contrab. }
   move => z [pxz [zs1 pcat1]].
-  move: (ir) => irc. rewrite pcat1 irred_edgeR in irc. move: irc => /andP [s1pxz _].
+  move: (ir) => irc. rewrite pcat1 irred_edgeR in irc. case/andP: irc => [s1pxz _].
   rewrite pcat1. move => x1. rewrite mem_pcatT. move => /orP [x1p | xs1].
-  - suff: x1 \in C1. rewrite HC1 inE /andP. by move => /andP [_ ?]. rewrite HC1.
+  - suff: x1 \in C1. rewrite HC1 inE. by move => /andP [_ ?]. rewrite HC1.
     case (boolP (x == x1)) => [/eqP ?|?]; first by subst.
     apply separation_connected_same_component with x => //; first by rewrite -HC1.
     apply /PathRP => //.
@@ -585,7 +585,7 @@ Proof.
       + rewrite pcat2 inE x2pxx1. done.
       + rewrite pcat1 /= inE pcat2 inE x2pxx1. done.
   - rewrite /tail /edgep inE in xs1. move: xs1 => /eqP->.
-    rewrite HS inE in s1S. by move: s1S => /andP [? _].
+    rewrite HS inE in s1S. by case/andP: s1S.
 Qed.
 
 Lemma independent_paths G (V1 V2 : {set G}) : 
@@ -603,7 +603,7 @@ Proof.
   set C2 := V2 :\: V1.
   move => [[V12G nedgeC12] proper] ssS /card_gt2P [s1 [s2 [s3 [[s1S s2S s3S] [Ns12 Ns23 Ns31]]]]].
   move: (proper) => [/set0Pn [x0 x0C1] /set0Pn [y0 y0C2]].
-  rewrite -/C1 -/C2 in nedgeC12 x0C1 y0C2.
+  rewrite -/C1 -/C2 in x0C1 y0C2.
   case: (@independent_paths_aux G S s1 s2 s3 x0) => //=.
     { rewrite /S !inE. rewrite /C1 !inE in x0C1. by move: x0C1 => /andP [? ->]. }
   move => x [pxs1 [pxs2 [pxs3 [[irx1 irx2 irx3] [[/subsetIlP1 px1Ss1 /subsetIlP1 px2Ss2 /subsetIlP1 px3Ss3]
@@ -682,14 +682,81 @@ Qed.
 
 Lemma independent_symmetry (G : sgraph):
   forall (x y : G) (p q : Path x y), independent p q -> independent q p.
+Proof.
+  move => x y p q ipq z zq zp.
+  case: (ipq z zp zq) => H. by left. by right.
+Qed.
+
+Lemma connectedU_common_point :
+  forall (G : sgraph) (U V : {set G}) (x : G),
+  x \in U -> x \in V -> connected U -> connected V -> connected (U :|: V).
+Proof.
 Admitted.
+
+Lemma splitR_buffed: forall (G : sgraph) (x y : G) (p : Path x y),
+  x != y -> irred p -> exists (z : G) (p' : Path x z) (zy : z -- y),
+  [/\ irred p', p = pcat p' (edgep zy) & [set z in p'] = ([set z in p] :\ y)].
+Proof.
+  move => G x y p xNy ip.
+  case: (splitR p xNy) => z [p' [zy cat]].
+  exists z. exists p'. exists zy. split => //.
+  - rewrite cat irred_edgeR in ip. by case/andP: ip.
+  - rewrite cat irred_edgeR in ip. case/andP: ip => [yNp' ip'].
+    apply /setP => a. rewrite !inE. rewrite cat mem_pcatT !inE.
+    case: (boolP (a==y)) => [/eqP ay | aNy] //=. subst a.
+    case: (boolP (y \in p')) => [? | ?] //=. contrab.
+Qed.
+
+Lemma splitL_buffed: forall (G : sgraph) (x y : G) (p : Path x y),
+  x != y -> irred p -> exists (z : G) (p' : Path z y) (xz : x -- z),
+  [/\ irred p', p = pcat (edgep xz) p' & [set z in p'] = ([set z in p] :\ x)].
+Proof.
+  move => G x y p xNy ip.
+  case: (splitL p xNy) => z [xz [p' [cat _]]].
+  exists z. exists p'. exists xz. split => //.
+  - rewrite cat irred_edgeL in ip. by case/andP: ip.
+  - rewrite cat irred_edgeL in ip. case/andP: ip => [xNp' ip'].
+    apply /setP => a. rewrite !inE. rewrite -(mem_prev p) cat prev_cat mem_pcatT !inE.
+    case: (boolP (a==x)) => [/eqP ax | aNx] //=. subst a.
+    case: (boolP (x \in p')) => [? | ?] //=. contrab.
+Qed.
+
 
 Lemma K4_of_separators (G : sgraph) : 
   3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
 Proof.
   move => G4elt minsep3.
   case: (boolP [forall x : G, forall y : G, (x==y) || (x--y)]).
-  { (*TODO, take 4 elements in G, exact K4 *) admit. }
+  { case/card_gtnP: G4elt => [sq [uniqsq sq4elt sqG]].
+    destruct sq as [|g0 [|g1 [|g2 [|g3 [|g4 q]]]]]; simpl in sq4elt => //=.
+    clear sq4elt. move => H.
+    have Htemp: forall x y : G, x!=y -> x--y.
+    { move => x y xNy. move: H => /forallP H'. move: (H' x) => /forallP Hx.
+      move: (Hx y) => /orP [xy | ?] => //. contrab. }
+    pose phi (i : K4) := match i with
+                  | Ordinal 0 _ => [set g0]
+                  | Ordinal 1 _ => [set g1]
+                  | Ordinal 2 _ => [set g2]
+                  | Ordinal 3 _ => [set g3]
+                  | Ordinal p n => set0
+                  end.
+    suff HH: minor_rmap phi by apply (minor_of_map (minor_map_rmap HH)).
+    move: uniqsq => /and5P  [g0i g1i g2i _ _].
+    rewrite !(inE,negb_or) in g0i g1i g2i.
+    move: g0i g1i g2i => /and3P [g01 g02 g03] /andP [g12 g13] g23.
+    split.
+    - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn;
+      by (eexists; rewrite inE).
+    - move => [m i]. case m as [|[|[|[|m]]]] => //=; by (apply connected1).
+    - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
+      case m' as [|[|[|[|m']]]] => //= _.
+      all: erewrite eq_disjoint1; [ rewrite inE | move => ?; rewrite inE; reflexivity] => //=;
+        try done; by rewrite eq_sym.
+    - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
+      case m' as [|[|[|[|m']]]] => //= _.
+      all: eexists; eexists; split; [by rewrite inE | by rewrite inE
+        | apply Htemp; try done; by rewrite eq_sym].
+  }
 
   move => /forallPn [x /forallPn [y temp]].
   rewrite negb_or in temp. move: temp => /andP [xNy xNEy].
@@ -699,22 +766,22 @@ Proof.
   case: (independent_paths psepV12) => //. move => x [y [p1 [p2 [p3 [[ir1 ir2 ir3]
     [[[s1 s1p1 s1Nxy] [s2 s2p2 s2Nxy] [s3 s3p3 s3Nxy]] [xC1 yC2 ind12 ind23 ind31]]]]]]].
   rewrite -/C1 -/C2 in xC1 yC2.
-
+  have xNy: x!=y. { apply: contraTN isT => /eqP ?; subst x.
+    rewrite !inE in xC1 yC2. move: xC1 yC2 => /andP [? ?] /andP [? ?]. contrab. }
   case (@avoid_nonseperator G [set x; y] s1 s2) => //.
-  { have temp: x!=y. { apply: contraTN isT => /eqP ?; subst x.
-      rewrite !inE in xC1 yC2. move: xC1 yC2 => /andP [? ?] /andP [? ?]. contrab. }
-    apply HS. rewrite cards2. rewrite temp. exact S3elt. }
+    { apply HS. rewrite cards2. rewrite xNy. exact S3elt. }
   move => p irp dispxy.
+  case: (@split_at_first G (predU (mem p2) (mem p3)) s1 s2 p s2) => //; first by rewrite !inE s2p2.
+  move => s2' [p' [p'' [catp s2'p23 s2'firstp23]]].
 
-  case: (@split_at_first G (predU (mem p2) (mem p3)) s1 s2 p s2) => //;
-    first by rewrite !inE s2p2.
-  move => s2' [p' [p'' [catp'p'' s2'p23 s2'firstp23]]].
-
-  wlog s2'p2: p2 p3 {ir3 ir2 s3p3 s2p2 s2'firstp23} ind12 ind23 ind31 s2'p23 / (s2' \in p2).
+  wlog s2'p2: p2 p3 {s3p3 s2p2} ir2 ir3 s2'firstp23 ind12 ind23 ind31 s2'p23 / (s2' \in p2).
   { rewrite inE /= in s2'p23. move: (s2'p23) => /orP [s2'p2|s2'p3].
-    - apply; eauto.
-    - apply; try (apply independent_symmetry; eauto).
-      by rewrite !inE /= s2'p3. done.
+    - apply. exact ir2. exact ir3. all:eauto.
+    - apply. exact ir3. exact ir2. 2-4: apply independent_symmetry; eauto.
+      + move => z' H1 H2. apply s2'firstp23. rewrite inE /= in H1.
+        move: H1 => /orP [H1|H1]; by rewrite !inE /= H1. done.
+      + by rewrite !inE /= s2'p3.
+      + done.
   }
 
 set M1 := [set y].
@@ -732,65 +799,128 @@ pose phi (i : K4) := match i with
   suff HH: minor_rmap phi by apply (minor_of_map (minor_map_rmap HH)).
 
   have ?: [disjoint M1 & M2].
-  { rewrite /M1 /M2 /M3 /M4 disjoints_subset.
+  { rewrite /M1 /M2 disjoints_subset.
     apply /subsetP => z /=. rewrite !(inE,negb_and,negb_or,negbK) => //=.
     move => ->. done. }
   have ?: [disjoint M1 & M3].
-  { rewrite /M1 /M2 /M3 /M4 disjoints_subset.
+  { rewrite /M1 /M3 disjoints_subset.
     apply /subsetP => z /=. rewrite !(inE,negb_and,negb_or,negbK) => //=.
     move => ->. done. }
   have ?: [disjoint M1 & M4].
-  { rewrite /M1 /M2 /M3 /M4 disjoints_subset.
+  { rewrite /M1 /M4 disjoints_subset.
     apply /subsetP => z /=. rewrite !(inE,negb_and,negb_or,negbK) => //=.
     move => zNy. rewrite zNy. move: zNy => /eqP ->. apply /andP; split => //.
-    apply /orP. right. (* from [p = pcat p' p''] and [disjoint p & [set x; y]]*)
-    admit. }
+    apply /orP. right.
+    suff: (y \notin p). by rewrite catp inE negb_or => /andP [? _].
+    rewrite (@disjointFl _ (mem p) (mem [set x; y])) => //.
+    rewrite !inE. apply /orP. right. done. }
   have ?: [disjoint M2 & M3].
-  { rewrite /M1 /M2 /M3 /M4 disjoints_subset.
+  { rewrite /M2 /M3 disjoints_subset.
     apply /subsetP => z /=. rewrite !inE. move => /andP [zNy zp3].
-    rewrite !(inE,negb_and,negb_or) => //=.
-    rewrite /independent in ind23. (* case z \in p2 *)
-    admit. }
+    rewrite !(inE,negb_and,negb_or,negbK) => //=.
+    case: (boolP (z \in p2)) => [zp2|zNp2] => //=.
+    move: (ind23 z zp2 zp3) => [/eqP ->|/eqP ->] //=. }
   have ?: [disjoint M2 & M4].
-  { rewrite /M1 /M2 /M3 /M4 disjoints_subset.
+  { rewrite /M2 /M4 disjoints_subset.
     apply /subsetP => z /=. rewrite !inE. move => /andP [zNy zp3].
-    rewrite !(inE,negb_and,negb_or) => //=. admit. }
-  have ?: [disjoint M3 & M4]. { admit. }
+    rewrite !(inE,negb_and,negb_or,negbK) => //=.
+    apply /andP; split.
+    - case: (boolP (z \in p1)) => [zp1|zNp1] => //=.
+      move: (ind31 z zp3 zp1) => [/eqP ->|/eqP ->] //=.
+    - case: (boolP (z \in p')) => [zp'|zNp'] => //=.
+      rewrite (s2'firstp23 z) => //=. by rewrite inE /= zp3. }
+  have ?: [disjoint M3 & M4].
+  { rewrite /M3 /M4 disjoints_subset.
+    apply /subsetP => z /=. rewrite !inE negb_or. move => /andP [/andP [zNx zNy] zp2].
+    rewrite !(inE,negb_and,negb_or,negbK) => //=.
+    apply /andP; split.
+    - apply /orP; right. case: (boolP (z \in p1)) => [zp1|zNp1] => //=.
+      move: (ind12 z zp1 zp2) => [/eqP ?|/eqP ?] //=; contrab.
+    - case: (boolP (z \in p')) => [zp'|zNp'] => //=.
+      rewrite (s2'firstp23 z) => //=. by rewrite inE /= zp2. }
 
-  have con12: exists x' y' : G, [/\ x' \in M1, y' \in M2 & x' -- y']. { admit. }
-  have con13: exists x' y' : G, [/\ x' \in M1, y' \in M3 & x' -- y']. { admit. }
-  have con14: exists x' y' : G, [/\ x' \in M1, y' \in M4 & x' -- y']. { admit. }
-  have con23: exists x' y' : G, [/\ x' \in M2, y' \in M3 & x' -- y']. { admit. }
-  have con24: exists x' y' : G, [/\ x' \in M2, y' \in M4 & x' -- y']. { admit. }
-  have con34: exists x' y' : G, [/\ x' \in M3, y' \in M4 & x' -- y']. { admit. }
+  case: (splitR_buffed xNy ir3) => [y3 [p3' [y3y [ir3' catp3 rewM2]]]].
+  case: (splitL_buffed xNy ir2) => [x2 [p2' [xx2 [ir2' catp2' rewM3']]]].
+  case: (splitL_buffed xNy ir1) => [x1 [p1' [xx1 [ir1' catp1' rewM41']]]].
+  case: (@splitR_buffed G x1 y p1') => //.
+  { apply: contraTN (xx1) => /eqP ?. subst x1. rewrite psepV12.1.2 => //=.
+    - rewrite !inE in xC1. by case/andP : xC1 => ? _.
+    - rewrite !inE in yC2. by case/andP : yC2 => ? _. }
+  move => y1 [p1'' [y1y [irp1'' catp1'' rewM41]]]. rewrite rewM41' setDDl in rewM41.
+  case: (@splitR_buffed G x2 y p2') => //.
+  { apply: contraTN (xx2) => /eqP ?. subst x2. rewrite psepV12.1.2 => //=.
+    - rewrite !inE in xC1. by case/andP : xC1 => ? _.
+    - rewrite !inE in yC2. by case/andP : yC2 => ? _. }
+  move => y2 [p2'' [y2y [irp2'' catp2'' rewM3]]]. rewrite rewM3' setDDl in rewM3.
+  case: (@splitR_buffed G s1 s2' p') => //.
+  { apply: contraTN isT => /eqP ?. subst s2'.
+    rewrite !inE negb_or in s1Nxy. move: s1Nxy => /andP [? ?].
+    move: (ind12 s1 s1p1 s2'p2) => [/eqP aa|/eqP bb]; contrab. }
+  { rewrite catp irred_cat in irp. by case /and3P: irp. } 
+  move => s' [ps1s' [s's2' [irps1s' catps1s' rewM42]]].
+  have s2'M3: s2' \in M3.
+  { rewrite !inE s2'p2 negb_or. apply /andP; split => //=.
+    have temp: s2' \in p. { rewrite catp inE path_end. done. }
+    move: (disjointFr dispxy temp). rewrite !inE. move => /negbT aa.
+    by rewrite negb_or in aa. }
 
+  have ?: exists x' y' : G, [/\ x' \in M1, y' \in M2 & x' -- y'].
+  { exists y; exists y3; split.
+    - by rewrite /M1 inE.
+    - by rewrite /M2 -rewM2 !inE.
+    - by rewrite sg_sym. }
+  have ?: exists x' y' : G, [/\ x' \in M1, y' \in M3 & x' -- y'].
+  { exists y; exists y2; split.
+    - by rewrite /M1 inE.
+    - by rewrite /M3 -rewM3 !inE.
+    - by rewrite sg_sym. }
+  have ?: exists x' y' : G, [/\ x' \in M1, y' \in M4 & x' -- y'].
+  { exists y; exists y1; split.
+    - by rewrite /M1 inE.
+    - by rewrite /M4 -rewM41 -rewM42 !inE.
+    - by rewrite sg_sym. }
+  have ?: exists x' y' : G, [/\ x' \in M2, y' \in M3 & x' -- y'].
+  { exists x; exists x2; split.
+    - by rewrite /M2 !inE.
+    - by rewrite /M3 -rewM3 !inE.
+    - done. }
+  have ?: exists x' y' : G, [/\ x' \in M2, y' \in M4 & x' -- y'].
+  { exists x; exists x1; split.
+    - by rewrite /M2 !inE.
+    - by rewrite /M4 -rewM41 -rewM42 !inE.
+    - done. }
+  have ?: exists x' y' : G, [/\ x' \in M3, y' \in M4 & x' -- y'].
+  { exists s2'; exists s'; split.
+    - done.
+    - by rewrite /M4 -rewM41 -rewM42 !inE.
+    - by rewrite sg_sym. }
   have hsymcon: forall A B, (exists x' y' : G, [/\ x' \in A, y' \in B & x' -- y']) ->
                           (exists x' y' : G, [/\ x' \in B, y' \in A & x' -- y']).
-  { move => ? ? ? ?. case => [x' [y' [? ? ?]]].
-    exists y'; exists x'; split => //. by rewrite sg_sym. }
+  { move => ? ? ? ?. case => [x' [y' [? ? ?]]]. exists y'; exists x'; split => //. by rewrite sg_sym. }
 
   split.
-
+  - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn.
+    + exists y. by rewrite inE.
+    + exists x. by rewrite !inE xNy.
+    + exists s2'. done.
+    + exists s1. rewrite /M4 -rewM42. by rewrite !inE.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=.
-
-    + admit. (* M1 != set0 *)
-    + admit.
-    + admit.
-    + admit.
-
-  - move => [m i]. case m as [|[|[|[|m]]]] => //=.
-    + admit. (* connected M1 *)
-    + admit.
-    + admit.
-    + admit.
-
+    + apply connected1.
+    + rewrite /M2 -rewM2. apply connected_path.
+    + rewrite /M3 -rewM3. apply connected_path.
+    + rewrite /M4 -rewM41 -rewM42. apply connectedU_common_point with s1.
+      * rewrite catp1' catp1'' in s1p1.
+        rewrite -mem_prev prev_cat mem_pcatT mem_prev mem_pcatT !inE in s1p1.
+        rewrite !inE negb_or in s1Nxy. case/andP: s1Nxy => [? ?].
+        case/orP: s1p1 => [/orP [?|?]|?] => //=; try contrab; by rewrite inE.
+      * rewrite inE. apply path_begin.
+      * apply connected_path.
+      * apply connected_path.
   - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
     case m' as [|[|[|[|m']]]] => //= _; by rewrite disjoint_sym.
-
   - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
     case m' as [|[|[|[|m']]]] => //= _; by apply hsymcon.
-
-Admitted.
+Qed.
 
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
