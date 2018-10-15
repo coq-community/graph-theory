@@ -236,6 +236,9 @@ Fact minor_of_map (G H : sgraph) (phi : G -> option H):
   minor_map phi -> minor G H.
 Proof. case => *. by exists phi. Qed.
 
+Lemma minorRE G H : minor G H -> exists phi : H -> {set G}, minor_rmap phi.
+Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
+
 Lemma minor_map_comp (G H K : sgraph) (f : G -> option H) (g : H -> option K) :
   minor_map f -> minor_map g -> minor_map (obind g \o f).
 Proof.

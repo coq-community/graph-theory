@@ -28,6 +28,11 @@ Hint Extern 0 (injective Some) => exact: @Some_inj.
 
 (** *** Generic Trivialities *)
 
+Lemma contraTnot b (P : Prop) : (P -> ~~ b) -> (b -> ~ P).
+Proof. by case: b => //= H _ /H. Qed.
+
+Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
+Proof. rewrite -{1}[b]negbK. exact: contraTnot. Qed.
 
 Lemma existsPn (T : finType) (P : pred T) : 
   reflect (forall x, ~~ P x) (~~ [exists x, P x]).
@@ -235,6 +240,18 @@ Lemma nat_size_ind (X:Type) (P : X -> Type) (f : X -> nat) :
    (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
 Proof. move => H. apply: well_founded_induction_type; last exact H. exact: wf_leq. Qed.
 
+Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, #|V| < #|U| -> ~ P V.
+
+(** TOTHINK: It would suffice if { y | m y <= m x} were enumerable for every [x] *) 
+Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
+  p x0 -> exists2 x, p x & forall y, p y -> m x <= m y.
+Proof.
+  move: x0. apply: (nat_size_ind (f := m)) => x0 IH p0.
+  case: (boolP [exists x in p, m x < m x0]).
+  - case/exists_inP => x *. exact: (IH x).
+  - move/exists_inPn => H. exists x0 => // y /H. by rewrite -leqNgt.
+Qed.
+
 Lemma sub_in11W (T1 : predArgType) (D1 D2 : pred T1) (P1 : T1 -> T1 -> Prop) :
  {subset D1 <= D2} -> {in D2&D2, forall x y : T1, P1 x y} -> {in D1&D1, forall x y: T1, P1 x y}.
 Proof. firstorder. Qed.
@@ -364,6 +381,14 @@ Definition disjoint_transL := disjoint_trans.
 Lemma disjoint_transR (T : finType) (A B C : pred T) :
  A \subset B -> [disjoint C & B] -> [disjoint C & A].
 Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjoint_trans. Qed.
+
+Lemma disjointW (T : finType) (A B C D : pred T) : 
+    A \subset B -> C \subset D -> [disjoint B & D] -> [disjoint A & C].
+Proof. 
+  move => subAB subCD BD. apply: (disjoint_trans subAB). 
+  move: BD. rewrite !(disjoint_sym B). exact: disjoint_trans.
+Qed.
+
 
 Section Disjoint3.
 Variables (T : finType) (A B C : mem_pred T).

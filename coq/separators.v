@@ -14,16 +14,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** Preliminaries *)
 
-Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, #|V| < #|U| -> ~ P V.
-
-Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
-  p x0 -> exists2 x, p x & forall y, p y -> m x <= m y.
-Proof.
-  move: x0. apply: (nat_size_ind (f := m)) => x0 IH p0.
-  case: (boolP [exists x in p, m x < m x0]).
-  - case/exists_inP => x *. exact: (IH x).
-  - move/exists_inPn => H. exists x0 => // y /H. by rewrite -leqNgt.
-Qed.
 
 Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
 
@@ -77,8 +67,6 @@ Qed.
 
 Definition separator U := exists x y, separates x y U.
 
-Definition component x := [set y | connect sedge x y].
-
 Lemma sseparator_connected S : 
   smallest separator S -> 0 < #|S| -> connected [set: G].
 Proof.
@@ -93,7 +81,6 @@ Qed.
 i.e., a separator can disconnect the graph into more than two
 components. Hence, we also define separations, which make the
 separated sides explicit *)
-(* TOTHINK: maybe use [forall x, x \in V1 :|: V2] or [forall x, x \notin V1 -> x \in V2] as first part *)
 Definition separation V1 V2 := 
   ((forall x, x \in V1 :|: V2) * (forall x1 x2, x1 \notin V2 -> x2 \notin V1 -> x1 -- x2 = false))%type.
 
@@ -133,10 +120,6 @@ Proof.
   case => Hsep [x] [y] [Hx Hy]. exists x. exists y. exact: separation_separates. 
 Qed.
 
-Lemma pcat_subset: forall x y z (p : Path x y) (q : Path y z) (A: simpl_pred G),
-  p \subset A -> q \subset A -> pcat p q \subset A.
-Admitted.
-
 Lemma separator_separation S : 
   separator S -> exists V1 V2, proper_separation V1 V2 /\ S = V1 :&: V2.
 Proof.
@@ -165,7 +148,6 @@ Proof.
     by rewrite (negbTE (HU _ _)).
 Qed.
 
-
 Definition separatorb U := [exists x, exists y, separatesb x y U].
 
 Lemma separatorP U : reflect (separator U) (separatorb U).
@@ -178,30 +160,24 @@ Qed.
 Lemma minimal_separation x y : x != y -> ~~ x -- y -> 
   exists V1 V2, proper_separation V1 V2 /\ smallest separator (V1 :&: V2).
 Proof.
-  (* There exist finitely many proper separations, pick one for which
-  [V1 :&: V2] is smallest. This is smallest separator since every
-  separator can be extended to a proper separation *)
-  move => xDy xNy. move: (separate_nonadjacent xDy xNy) => /proper_separator /separatorP sep.
-  case (ex_smallest (fun S => #|S|) sep) => U /separatorP sepU HU.
+  move => xDy xNy. 
+  move: (separate_nonadjacent xDy xNy) => /proper_separator /separatorP sep.
+  case (ex_smallest (fun S => #|S|) sep) => U /separatorP sepU HU {sep xDy xNy}.
   move: (separator_separation sepU) => [V1 [V2 [ps UV]]].
-  exists V1; exists V2.
-  rewrite -UV /smallest. split; last split; move => // V ineq /separatorP sepV.
-  move: (HU V sepV) => ineq2. rewrite ltnNge in ineq. contrab.
+  exists V1; exists V2. repeat split => //; rewrite -UV // => V. 
+  apply: contraTnot => /separatorP H. by rewrite -leqNgt HU.
 Qed.
 
 Lemma separation_sym V1 V2 : separation V1 V2 <-> separation V2 V1.
-Admitted.
-
-(* TODO: should be an equivalence *)
-Lemma proper_separation_symmetry V1 V2 :
-  proper_separation V1 V2 -> proper_separation V2 V1.
 Proof.
-Admitted.
+  wlog suff W : V1 V2 / separation V1 V2 -> separation V2 V1. { split; exact: W. }
+  move => sepV. split => [x|x1 x2 A B]; by rewrite 1?setUC 1?sgP sepV. 
+Qed.
 
+Lemma proper_separation_symmetry V1 V2 :
+  proper_separation V1 V2 <-> proper_separation V2 V1.
+Proof. rewrite /proper_separation separation_sym. by firstorder. Qed.
 
-
-(** TOTHINK: the second assumption is half-redundant but makes for a nice statement *)
-(** TOTHINK: provide [x \notin V2] instead *)
 Lemma sseparator_neighbours V1 V2 s : 
   proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 
   s \in V1 :&: V2 -> exists x1 x2, [/\ x1 \notin V2, x2 \notin V1, s -- x1 & s -- x2].
@@ -216,8 +192,7 @@ Proof.
         * by apply proper_separation_symmetry.
         * move => y [z [? ? ? ?]]. exists z; exists y. split; done.
       + move => /forall_inPn [x2 x2V sx2].
-        exists x1; exists x2. split => //; by apply negbNE.
-  }
+        exists x1; exists x2. split => //; by apply negbNE. }
   rewrite /smallest.
   move => /forall_inP Hwlog [sepV [x1] [x2] [x1V12  x2V21]] [sepS smallS] sS.
   pose S' := V1 :&: V2:\ s. suff: separator S'.
@@ -238,7 +213,7 @@ Proof.
       have z0V1: z0 \notin V2. 
       { move: (sg_edgeNeq z0z) => zz0. apply: contraFN zz0 => ?.
         apply /eqP. apply H3 => //. by rewrite Hp' !inE. }
-      rewrite !inE. apply /and3P. split => //.
+      rewrite !inE H2 andbT. apply/andP; split.
       * move: (z0z) => /prev_edge_proof zz0. (* TODO: simplify *)
         apply: contraTN zz0 => /eqP->. by rewrite Hwlog // !inE z0V1 (sep_inL sepV).
       * apply: contraTT (z0z) => ?. by rewrite sepV.
@@ -255,8 +230,8 @@ Lemma left_independent_sym (x y y' : G) (p : Path x y) (q : Path x y') :
   left_independent p q -> left_independent q p.
 Proof. move => H z A B. exact: H. Qed.
 
-Lemma separatorNE U x y : ~ separator U -> x \notin U -> y \notin U -> ~ separates x y U.
-Proof. move => nsepU Hx Hy sepU. by apply nsepU; exists x; exists y. Qed.
+Lemma separatorNE U x y : ~ separator U -> ~ separates x y U.
+Proof. move => nsepU sepU. by apply nsepU; exists x; exists y. Qed.
 
 (** Note: This generalizes the corresponding lemma on checkpoints *)
 Lemma avoid_nonseperator U x y : ~ separator U -> x \notin U -> y \notin U -> 
@@ -315,15 +290,6 @@ Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 t1 t2 :
   exists T B, sdecomp T G B /\ width B <= maxn (width B1) (width B2).
 Admitted.
 
-Lemma minorRE G H : minor G H -> exists phi : H -> {set G}, minor_rmap phi.
-Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
-
-Lemma disjointW (T : finType) (A B C D : pred T) : 
-    A \subset B -> C \subset D -> [disjoint B & D] -> [disjoint A & C].
-Proof. 
-  move => subAB subCD BD. apply: (disjoint_trans subAB). 
-  move: BD. rewrite !(disjoint_sym B). exact: disjoint_trans.
-Qed.
 
 
 
@@ -431,19 +397,6 @@ Proof.
   - left => x. exact: subsetIr.
 Qed.
 
-Definition remainder (G : sgraph) (U S : {set G}) : {set induced U} := 
-  [set x : induced U | val x \in S].
-Arguments remainder [G] U S.
-
-(** TOHINK: This is one possibility, but this has the potential to
-lead to messy sigma-type. Alternative: define separators for induced
-subgraphs and lift the required lemmas *)
-Lemma sseparator_remove G (S : {set G}) s : 
-  smallest separator S -> s \in S -> 
- @smallest (induced [set~ s]) separator (remainder _ S).
-Proof.
-Admitted.
-
 Lemma sseparator_path G (S : {set G}) x s : 
   smallest separator S -> x \notin S -> s \in S -> 
   exists2 p : Path x s, irred p & [predI p & S] \subset pred1 s.
@@ -457,7 +410,6 @@ Proof.
   apply: contraTT dis_p => H. apply: disjointNI Y1 _. exact/setD1P.
 Qed.
 
-
 Lemma subsetIlP1 (T : finType) (A B : pred T) x : 
   reflect (forall y, y \in A -> y \in B -> y = x) ([predI A & B] \subset pred1 x).
 Proof.
@@ -466,8 +418,6 @@ Proof.
   - by rewrite inE [y]H.
 Qed.
 Arguments subsetIlP1 [T A B x].
-
-
 
 Lemma predIpcatR (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) (S A : pred G) : 
   [predI pcat p q & S] \subset A -> [predI q & S] \subset A.

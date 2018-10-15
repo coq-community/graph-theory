@@ -581,6 +581,12 @@ Proof. apply/subsetP => u. by rewrite mem_pcat => ->. Qed.
 Lemma subset_pcatR : q \subset pcat p q.
 Proof. apply/subsetP => u. by rewrite mem_pcat => ->. Qed.
 
+Lemma pcat_subset (A : pred G) : p \subset A -> q \subset A -> pcat p q \subset A.
+Proof. 
+  move => /subsetP Hp /subsetP Hq. apply/subsetP => u. 
+  rewrite !mem_pcat. case/orP; [exact: Hp|exact: Hq].
+Qed.
+
 End PathTheory.
 
 Lemma prevK x y (p : Path x y) : prev (prev p) = p.
