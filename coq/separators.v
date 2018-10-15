@@ -603,19 +603,10 @@ Proof.
     + right. by apply ind_pys1pys2.
   }
 
-
-  split; [|split]; split.
-  - (* irred p1 *) by apply irredpi.
-  - (* irred p2 *) by apply irredpi.
-  - (* irred p3 *) by apply irredpi.
-  - (* s1 \in p & s1 \in S *) exists s1; first by rewrite !inE. done.
-  - (* s2 \in p & s1 \in S *) exists s2; first by rewrite !inE. done.
-  - (* s3 \in p & s1 \in S *) exists s3; first by rewrite !inE. done.
-  - (* x \notin V2 *) done.
-  - (* y \notin V1 *) done.
-  - (* independent p1 p2 *) by apply indep.
-  - (* independent p2 p3 *) by apply indep.
-  - (* independent p3 p1 *) by apply indep.
+  split; [|split].
+  - (* irred *) split; by apply irredpi.
+  - (* si \in p & si \in S *) split; [exists s1|exists s2|exists s3] => //; by rewrite !inE.
+  - (* x/y \notin V2/V1 + independent *) split => //; by apply indep.
 Qed.
 
 Lemma independent_symmetry (G : sgraph):
@@ -762,7 +753,6 @@ Proof.
   { rewrite catp in irp. rewrite irred_cat in irp. move: irp => /and3P [irp' _ _].
     rewrite catps1s' irred_edgeR in irp'. by case/andP: irp'. }
 
-
   have ?: forall i j : K4, i != j -> [disjoint phi i & phi j].
   { move => i j iNj. wlog iltj: i j {iNj} / i < j.
     { move => H. rewrite neq_ltn in iNj. move: iNj => /orP [iltj|jlti].
@@ -806,39 +796,22 @@ Proof.
         subst z. contrab.
   }
 
-  have ?: exists x' y' : G, [/\ x' \in M1, y' \in M2 & x' -- y'].
-  { exists y; exists y3; split.
-    - by rewrite inE.
-    - by rewrite inE.
-    - by rewrite sg_sym. }
-  have ?: exists x' y' : G, [/\ x' \in M1, y' \in M3 & x' -- y'].
-  { exists y; exists y2; split.
-    - by rewrite inE.
-    - by rewrite inE.
-    - by rewrite sg_sym. }
-  have ?: exists x' y' : G, [/\ x' \in M1, y' \in M4 & x' -- y'].
-  { exists y; exists y1; split.
-    - by rewrite inE.
-    - by rewrite !inE.
-    - by rewrite sg_sym. }
-  have ?: exists x' y' : G, [/\ x' \in M2, y' \in M3 & x' -- y'].
-  { exists x; exists x2; split.
-    - by rewrite inE.
-    - by rewrite inE.
-    - done. }
-  have ?: exists x' y' : G, [/\ x' \in M2, y' \in M4 & x' -- y'].
-  { exists x; exists x1; split.
-    - by rewrite inE.
-    - by rewrite !inE.
-    - done. }
-  have ?: exists x' y' : G, [/\ x' \in M3, y' \in M4 & x' -- y'].
-  { exists s2'; exists s'; split.
-    - done.
-    - by rewrite !inE.
-    - by rewrite sg_sym. }
-  have hsymcon: forall A B, (exists x' y' : G, [/\ x' \in A, y' \in B & x' -- y']) ->
-                          (exists x' y' : G, [/\ x' \in B, y' \in A & x' -- y']).
-  { move => ? ? ? ?. case => [x' [y' [? ? ?]]]. exists y'; exists x'; split => //. by rewrite sg_sym. }
+  have ?: forall i j : K4, i != j -> exists x' y' : G, [/\ x' \in phi i, y' \in phi j & x' -- y'].
+  { move => i j iNj. wlog iltj: i j {iNj} / i < j.
+    { move => H. rewrite neq_ltn in iNj. move: iNj => /orP [iltj|jlti].
+      - by apply H.
+      - case: (H j i jlti) => [x' [y' [x'j y'i edge]]].
+        exists y'. exists x'. split => //. by rewrite sg_sym. }
+    destruct i as [m i]. destruct j as [n j].
+    case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=;
+      [ exists y; exists y3  (* M1 M2 *)
+      | exists y; exists y2  (* M1 M3 *)
+      | exists y; exists y1  (* M1 M4 *)
+      | exists x; exists x2  (* M2 M3 *)
+      | exists x; exists x1  (* M2 M4 *)
+      | exists s2'; exists s'(* M3 M4 *)
+      ]; split; try done; try (by rewrite !inE); by rewrite sg_sym.
+  }
 
   split.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn.
@@ -858,8 +831,7 @@ Proof.
       * apply connected_path.
       * apply connected_path.
   - done.
-  - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
-    case m' as [|[|[|[|m']]]] => //= _; by apply hsymcon.
+  - done.
 Qed.
 
 Theorem TW2_of_K4F (G : sgraph) :
