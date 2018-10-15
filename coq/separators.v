@@ -403,8 +403,13 @@ Proof.
       + move: (P4 i j E) => [x] [y] [A B]. rewrite sgP sepV //.
         apply: contraTN Hj => Hy. by apply/set0Pn; exists y; rewrite inE B.
         apply: contraTN Hi => Hx. by apply/set0Pn; exists x; rewrite inE A. }
-  have phiP i : ~~ (phi i \subset V1) -> phi i :&: S != set0.
-  { case/subsetPn => [x X1 X2]. admit. }
+  have phiP i y : y \in phi i -> y \notin V1 -> phi i :&: S != set0.
+  { case/set0Pn : (cutV1 i) => x /setIP [xpi xV1 ypi yV1].
+    case: (boolP (x \in V2)) => xV2; first by apply/set0Pn; exists x; rewrite -def_S !inE.
+    case/uPathRP : (P2 i x y xpi ypi); first by apply: contraNneq yV1 => <-.
+    move => p Ip subP. 
+    have [_ _ /(_ p)] := separation_separates sepV xV2 yV1. rewrite def_S.
+    case => z /(subsetP subP) => ? ?. by apply/set0Pn; exists z; rewrite !inE. }
   pose phi' (i : K4) := phi i :&: V1.
   exists phi'; first split.
   - move => i. by case/cutV1 : (i). 
@@ -418,18 +423,26 @@ Proof.
         by rewrite setIC -def_S setIA setIid def_S.
   - move => i j /P3 => D. apply: disjointW D; exact: subsetIl.
   - move => i j ij. move/P4: (ij) => [x] [y] [H1 H2 H3]. 
-    have D: [disjoint phi i & phi j]. apply: P3. by rewrite sg_edgeNeq. 
-    have S_link u v : u \in S -> v \in S -> u \in phi i -> u \in phi j -> u -- v.
-    { admit. (* u and v must be the two distinct vertices in s *) }
+    have S_link u v : u \in S -> v \in S -> u \in phi i -> v \in phi j -> u -- v.
+    { have D: [disjoint phi i & phi j]. apply: P3. by rewrite sg_edgeNeq. 
+      rewrite HS !inE => /orP[] /eqP -> /orP[] /eqP -> // upi vpj; 
+        solve [by rewrite (disjointFr D upi) in vpj|by  rewrite sgP]. }
+    have/subsetP subV : S \subset V1 by rewrite -def_S subsetIl.
+    have inS u v : u -- v -> u \in V1 -> v \notin V1 -> u \in S.
+    { move => uv HVu HVv. rewrite -def_S !inE HVu /=. 
+      apply: contraTT uv => /= C. by rewrite sepV. }
     case: (boolP (x \in V1)) => HVx; case: (boolP (y \in V1)) => HVy.
     + exists x; exists y. by rewrite !inE HVx HVy.
-    + have xS : x \in S. admit. (* would contradict H3 *)
-      have [s S1 S2]: exists2 s, s \in phi j & s \in S. admit. (* phiP *)
-      exists x; exists s. admit.
-    + admit. (* symmetric; do symmetry reasoning *)
-    + admit.
+    + case/set0Pn : (phiP _ _ H2 HVy) => s /setIP [S1 S2]. 
+      exists x; exists s. rewrite !inE H1 HVx S1 S_link // ?subV //. exact: inS HVy.
+    + case/set0Pn : (phiP _ _ H1 HVx) => s /setIP [S1 S2].
+      exists s; exists y. rewrite !inE H2 HVy S1 S_link // ?subV //. 
+      apply: inS HVx => //. by rewrite sgP.
+    + case/set0Pn : (phiP _ _ H1 HVx) => s /setIP [S1 S2].
+      case/set0Pn : (phiP _ _ H2 HVy) => s' /setIP [S3 S4].
+      exists s; exists s'. by rewrite !inE S1 S3 S_link // !subV.
   - left => x. exact: subsetIr.
-Admitted.
+Qed.
 
 Definition remainder (G : sgraph) (U S : {set G}) : {set induced U} := 
   [set x : induced U | val x \in S].
