@@ -284,14 +284,17 @@ End Separators.
 Prenex Implicits separator.
 Implicit Types G H : sgraph.
 
-Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 t1 t2 :
-  sdecomp T1 (induced V1) B1 -> sdecomp T2 (induced V2) B2 -> 
-  separation V1 V2 -> V1 :&: V2 \subset (val @: B1 t1) :&: (val @: B2 t2) ->
-  exists T B, sdecomp T G B /\ width B <= maxn (width B1) (width B2).
+Arguments sdecomp : clear implicits.
+
+Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 :
+  @sdecomp T1 (induced V1) B1 -> @sdecomp T2 (induced V2) B2 -> 
+  separation V1 V2 -> clique (V1 :&: V2) ->
+  exists T B, @sdecomp T G B /\ width B <= maxn (width B1) (width B2).
+Proof.
+  move => dec1 dec2 sepV subV.
+  have dec12 := join_decomp dec1 dec2. set G' := sjoin _ _ in dec12.
+  pose h (x : G') : G := match x with inl x => val x | inr x => val x end.
 Admitted.
-
-
-
 
 Lemma connectedI_clique (G : sgraph) (A B S : {set G}) :
   connected A -> clique S -> 
