@@ -514,13 +514,12 @@ Proof.
       by apply: P33 => //; rewrite ?inE.
 Qed.
 
-Lemma path_touch_separation :
-  forall G (x : G) (S V1 V2 : {set G}) (s1 : G) (pxs1 : Path x s1),
+Lemma path_touch_separation G (x : G) (S V1 V2 : {set G}) (s1 : G) (pxs1 : Path x s1):
   S = V1 :&: V2 -> s1 \in S -> irred pxs1 ->
   (forall y : G, y \in pxs1 -> y \in S -> y = s1) -> x \notin V2 ->
   proper_separation V1 V2 -> {subset pxs1 <= V1}.
 Proof.
-  move => G x S V1 V2 s1 pxs1 HS s1S ir subset xNV2 psep.
+  move => HS s1S ir subset xNV2 psep.
   case: (@splitR G x s1 pxs1). { rewrite HS inE in s1S. move: s1S => /andP [_ ?].
     apply: contraTN isT => /eqP ?. subst x. contrab. }
   move => z [pxz [zs1 pcat1]].
@@ -612,15 +611,13 @@ Proof.
   - (* x/y \notin V2/V1 + independent *) split => //; by apply indep.
 Qed.
 
-Lemma independent_symmetry (G : sgraph):
-  forall (x y : G) (p q : Path x y), independent p q -> independent q p.
+Lemma independent_symmetry (G : sgraph) (x y : G) (p q : Path x y):
+  independent p q -> independent q p.
 Proof.
-  move => x y p q ipq z zq zp.
-  case: (ipq z zp zq) => H. by left. by right.
+  move => ipq z zq zp. case: (ipq z zp zq) => H. by left. by right.
 Qed.
 
-Lemma connectedU_common_point :
-  forall (G : sgraph) (U V : {set G}) (x : G),
+Lemma connectedU_common_point (G : sgraph) (U V : {set G}) (x : G):
   x \in U -> x \in V -> connected U -> connected V -> connected (U :|: V).
 Proof.
 Admitted.
@@ -837,7 +834,164 @@ Proof.
   - done.
 Qed.
 
+Lemma no_K4_small_separator (G : sgraph) :
+  ~ (minor G K4) -> #|G| <= 3 \/ (exists S : {set G}, separator S /\ #|S| <= 2).
+Proof.
+  move => HM. case (boolP (3 < #|G|)) => sizeG; last by rewrite leqNgt; left. right.
+  case (boolP ([exists S : {set G}, separatorb S && (#|S| <= 2)])).
+  { move => /existsP [S /andP [/separatorP sepS sizeS]]. exists S. split; done. }
+  move => /existsPn H. exfalso. apply HM. apply K4_of_separators => //.
+  move => S. move: (H S). rewrite negb_and. move => /orP [/separatorP nsepS|bb] sepS.
+  - exfalso. by apply nsepS.
+  - by rewrite ltnNge.
+Qed.
+
+Lemma add_edge_sym_iso (G : sgraph) (s1 s2 : G):
+  sg_iso (@add_edge G s1 s2) (@add_edge G s2 s1).
+Proof.
+  pose f1 (v : add_edge s1 s2) := (v : add_edge s2 s1).
+  pose f2 (v : add_edge s2 s1) := (v : add_edge s1 s2).
+  exists f2 f1.
+  - done.
+  - done.
+  - rewrite /homomorphism_2. move => x y xy. rewrite /f2.
+    simpl in xy. simpl. apply /orP. move: xy => /or3P [?|/and3P [? ? ?]|/and3P [? ? ?]].
+    + by left.
+    + right. apply /orP. right. apply /and3P; split => //. by rewrite eq_sym.
+    + right. apply /orP. left. apply /and3P; split => //. by rewrite eq_sym.
+  - rewrite /homomorphism_2. move => x y xy. rewrite /f1.
+    simpl in xy. simpl. apply /orP. move: xy => /or3P [?|/and3P [? ? ?]|/and3P [? ? ?]].
+    + by left.
+    + right. apply /orP. right. apply /and3P; split => //. by rewrite eq_sym.
+    + right. apply /orP. left. apply /and3P; split => //. by rewrite eq_sym.
+(*TODO : simplify *)
+Qed.
+
+Lemma add_edge_sedge_sym (G : sgraph) s1 s2 x y:
+  (@sedge (@add_edge G s1 s2) x y) <-> (@sedge (@add_edge G s2 s1) x y).
+Proof.
+Admitted.
+
+Lemma add_edge_connected_sym (G : sgraph) s1 s2 A:
+  @connected (@add_edge G s1 s2) A <-> @connected (@add_edge G s2 s1) A.
+Proof.
+Admitted.
+
+Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
+  @connected (@add_edge G s1 s2) A -> s1 \notin A -> @connected G A.
+Proof.
+Admitted.
+
+Lemma cases_without_edge (G : sgraph) (V1 V2 : {set G}) (s1 s2 : G) phi:
+  proper_separation V1 V2 -> V1 :&: V2 = [set s1; s2] -> (@minor_rmap (add_edge s1 s2) K4 phi) ->
+  minor G K4 \/ (exists i, exists j, [/\ s1 \in (phi i), s2 \in (phi j) & i!=j])
+    \/ exists i, [/\ s1 \in (phi i), s2 \in (phi i) & ~ @connected G (phi i)].
+Proof.
+  move => psep V12s12 rmapphi.
+  case (boolP ([exists i, s1 \in phi i] && [exists j, s2 \in phi j])).
+  - (* s1 and s2 appear in a bag *)
+    move => /andP [/existsP [i s1i] /existsP [j s2j]]. case (boolP (i==j));
+      last by move => ?; right; left; exists i; exists j; split => //.
+    (* s1 s2 in same bag *)
+    move => /eqP temp. subst j. case (boolP (@connectedb G (phi i))).
+    + (* bag connected, so find minor *)
+      move => /connectedP coni. left.
+      suff HH: @minor_rmap G K4 phi by apply (minor_of_map (minor_map_rmap HH)).
+      destruct rmapphi.
+      have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j.
+      { move => x' i' j' x'i'. apply contraTT => i'Nj'.
+        move: (H1 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx. 
+        move: (iINx x' x'i') => temp. by rewrite inE in temp. }
+      split => //.
+      * move => x. case (boolP (x==i)) => [xi|xNi]. by move: xi => /eqP ->.
+        apply add_edge_keep_connected_l with s1 s2 => //.
+        apply: contraNN xNi => ?. apply disjE with s1 => //.
+      *  move => i' j' i'j'. case: (H2 i' j' i'j') => x' [y' [x'i' y'j' x'y']].
+        exists x'. exists y'. split => //.
+        have i'Nj': i'!=j' by rewrite (sg_edgeNeq i'j').
+        simpl in x'y'. move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]|/and3P [y'Nx' /eqP ? /eqP ?]] => //.
+        { subst x' y'. move: (disjE s1 i i' s1i x'i') => /eqP temp.
+          move: (disjE s2 i j' s2j y'j') => temp2. subst i. contrab. }
+        { subst x' y'. move: (disjE s1 i j' s1i y'j') => temp.
+          move: (disjE s2 i i' s2j x'i') => /eqP temp2. subst i. contrab. }
+    + (* bag not connected *)
+      move => /connectedP nconi. right. right. exists i. split => //.
+  - (* either s1 or s2 is not in any bag *)
+    rewrite negb_and !negb_exists.
+    wlog /forallP Hs1: s1 s2 V12s12 phi rmapphi / [forall x, s1 \notin phi x].
+    { move => H /orP [Hs1b | Hs2b]. { apply H => //. by apply /orP; left. }
+      move: (Hs2b) => /forallP Hs2. case: (H s2 s1 _ phi) => //.
+      + by rewrite V12s12 set2C.
+      + destruct rmapphi. split => //.
+        * move => x. by rewrite add_edge_connected_sym.
+        * move => i' j' i'j'. case: (H3 i' j' i'j') => x' [y' [? ? ?]].
+          exists x'. exists y'. split => //. by rewrite add_edge_sedge_sym.
+      + by apply /orP; left.
+      + auto.
+      + move => [[i [j [? ? ?]]]|[i [? ? ?]]]; right; [left|right].
+        * exists j. exists i. split => //. by rewrite eq_sym.
+        * exists i. split => //.
+    } (* wlog assume s1 is not in any bag *)
+    move => _. left. (* so find minor *)
+    suff HH: @minor_rmap G K4 phi by apply (minor_of_map (minor_map_rmap HH)).
+    destruct rmapphi. split => //.
+    + move => x. apply add_edge_keep_connected_l with s1 s2 => //.
+    + move => i j ij. case: (H2 i j ij) => x' [y' [x'i y'j x'y']].
+      exists x'. exists y'. split => //.
+      simpl in x'y'. move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]|/and3P [y'Nx' /eqP ? /eqP ?]] => //.
+      * move: (Hs1 i) => s1i. subst x' y'. contrab.
+      * move: (Hs1 j) => s1j. subst x' y'. contrab.
+Qed.
+
+(*
+Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 :
+  @sdecomp T1 (induced V1) B1 -> @sdecomp T2 (induced V2) B2 -> 
+  separation V1 V2 -> clique (V1 :&: V2) ->
+  exists T B, @sdecomp T G B /\ width B <= maxn (width B1) (width B2).
+*)
+
+Lemma card2' G (S : {set G}):
+  #|S| == 2 -> exists x y, S == [set x; y].
+Admitted.
+
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
+
+  (* induction size G ? *) (* nat_size_ind ? *)
+
+  move => K4free. case (no_K4_small_separator K4free).
+  { move => Gsmall. exists tunit. exists (fun _ => [set: G]). split.
+    + exact (triv_sdecomp G).
+    + apply leq_trans with #|G| => //. apply width_bound. }
+  move => [S [sepS Ssmall2]].
+
+  move: (separator_separation sepS) => [V1 [V2 [psep SV12]]].
+  rewrite leq_eqVlt in Ssmall2. move: Ssmall2 => /orP [Ssize2|Sless2].
+
+  - (* If #|S| = 2, find S = [set s1; s2], use (add_edge s1 s2) *)
+    move: (card2' Ssize2) => [s1 [s2 S12]].
+    (* a tree decomposition for G+s1s2 is enough *)
+    suff: (exists (T : forest) (B : T -> {set G}), sdecomp T (add_edge s1 s2) B /\ width B <= 3).
+    { move => [T [B [sdec wid]]]. exists T. exists B.
+      destruct sdec. split => //. split.
+      + move => x. destruct (sbag_cover x). eexists; eauto.
+      + move => x y xy. case (sbag_edge x y). { apply /orP. by left. }
+        move => t /andP [t1 t2]. exists t. by rewrite t1 t2.
+      + move => x t1 t2 xt1 xt2. apply sbag_conn => //. }
+
+    have K4free_addedge: K4_free (add_edge s1 s2).
+    { (* big proof *)
+      admit.
+    }
+
+    (* will have to prove that [separator S] and [proper_separation V1 V2] are still valid for G+s1s2 *)
+
+    (* then use separation_decomp *)
+
+    admit.
+
+  - (* If #|S| < 2, can use separation_decomp directly *)
+    admit.
+
 Admitted.
