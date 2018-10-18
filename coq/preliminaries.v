@@ -508,13 +508,14 @@ Lemma project_path (aT rT : Type) (e : rel aT) (e' : rel rT) (f : aT -> rT) a p 
 Proof. move => A. elim: p a => //= b p IHp a /andP [H1 H2]. by rewrite A ?IHp. Qed.
 
 Lemma lift_path (aT : finType) (rT : eqType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a p' : 
-  (forall x y, e' (f x) (f y) -> e x y) ->
+  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> e' (f x) (f y) -> e x y) ->
   path e' (f a) p' -> {subset p' <= codom f} -> exists p, path e a p /\ map f p = p'.
 Proof.
-  move => f_inv. 
-  elim: p' a => /= [|fb p' IH a /andP[A B] /subset_cons[S1 S2]]; first by exists [::].
-  case: (codomP S2) => b E. subst. case: (IH _ B S1) => p [] *. 
-  exists (b::p) => /=. suff: e a b by move -> ; subst. exact: f_inv.
+  move => f_inv.
+  elim: p' a f_inv => /= [|fb p' IH a H /andP[A B] /subset_cons[S1 S2]]; first by exists [::].
+  case: (codomP S2) => b E. subst. case: (IH b) => // => [x y Hx Hy|p [] *]. 
+  - by apply: H; rewrite inE ?Hx ?Hy.
+  - exists (b::p) => /=. suff: e a b by move -> ; subst. by rewrite H ?inE ?eqxx.
 Qed.
 
 (** *** Reflexive Transitive Closure *)

@@ -385,21 +385,31 @@ Proof.
   rewrite upath_cons u1 u2 /=. exact: IH.
 Qed.
 
-Lemma lift_spath (G H : sgraph) (f : G -> H) a b p' : 
-  (forall x y, f x -- f y -> x -- y) -> injective f -> 
+Lemma lift_spath_on (G H : sgraph) (f : G -> H) a b p' : 
+  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
   spath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, spath a b p /\ map f p = p'.
 Proof. 
   move => A I /andP [B /eqP C] D.  case: (lift_path A B D) => p [p1 p2]; subst. 
   exists p. split => //. apply/andP. split => //. rewrite last_map in C. by rewrite (I _ _ C).
 Qed.
 
+Lemma lift_spath (G H : sgraph) (f : G -> H) a b p' : 
+  (forall x y, f x -- f y -> x -- y) -> injective f -> 
+  spath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, spath a b p /\ map f p = p'.
+Proof. move => I. apply: lift_spath_on. auto. Qed.
+
+Lemma lift_upath_on (G H : sgraph) (f : G -> H) a b p' : 
+  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
+  upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
+Proof.
+  move => A B /andP [C D] E. case: (lift_spath_on A B D E) => p [p1 p2].
+  exists p. split => //. apply/andP. split => //. by rewrite -(map_inj_uniq B) /= p2.
+Qed.
+
 Lemma lift_upath (G H : sgraph) (f : G -> H) a b p' : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> 
   upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
-Proof.
-  move => A B /andP [C D] E. case: (lift_spath A B D E) => p [p1 p2].
-  exists p. split => //. apply/andP. split => //. by rewrite -(map_inj_uniq B) /= p2.
-Qed.
+Proof. move => I. apply: lift_upath_on. auto. Qed.
 
 (* TOTHINK: is this the best way to transfer path from induced subgraphs *)
 Lemma induced_path (G : sgraph) (S : {set G}) (x y : induced S) (p : seq (induced S)) : 
@@ -904,16 +914,22 @@ Proof.
 Qed.
 
 (* TOTHINK: Use this to prove the lemmas above? *)
-Lemma lift_Path (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
-  (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
+Lemma lift_Path_on (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
+  (forall x y, f x \in p' -> f y \in p' -> f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
   exists2 p : Path a b, map f (nodes p) = nodes p' & irred p = irred p'.
 Proof.
-  move => A I S. case: (lift_spath A I (valP p') _).
+  move => A I S. case: (lift_spath_on _ I (valP p') _).
+  - move => x y. rewrite -!mem_path. exact: A.
   - move => x V. apply: S. by rewrite mem_path inE V.
   - move => p [p1 p2]. exists (Sub p p1). 
     + by rewrite !nodesE /= p2. 
     + by rewrite !irredE -p2 -map_cons map_inj_uniq.
 Qed.
+
+Lemma lift_Path (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
+  (forall x y, f x -- f y -> x -- y) -> injective f -> {subset p' <= codom f} -> 
+  exists2 p : Path a b, map f (nodes p) = nodes p' & irred p = irred p'.
+Proof. move => ?. apply: lift_Path_on; auto. Qed.
 
 (** *** Path indexing and 3-way split *)
 
