@@ -389,6 +389,9 @@ Proof.
   move: BD. rewrite !(disjoint_sym B). exact: disjoint_trans.
 Qed.
 
+Lemma disjoints1 (T : finType) (x : T) (A : pred T) : [disjoint [set x] & A] = (x \notin A).
+Proof. rewrite (@eq_disjoint1 _ x) // => ?. by rewrite !inE. Qed.
+
 
 Section Disjoint3.
 Variables (T : finType) (A B C : mem_pred T).
@@ -544,6 +547,13 @@ Proof. move => A. apply: connect_sub. exact: sub_trans (sub_connect e2). Qed.
 Lemma sub_restrict_connect (T : finType) (e : rel T) (a : pred T) : 
   subrel (connect (restrict a e)) (connect e).
 Proof. apply: connect_mono. exact: subrel_restrict. Qed.
+
+Lemma connect_restrict_mono (T : finType) (e : rel T) (A B : pred T) :
+  A \subset B -> subrel (connect (restrict A e)) (connect (restrict B e)).
+Proof.
+  move/subsetP => AB. apply: connect_mono => u v /=.
+  rewrite -!andbA => /and3P [? ? ->]. by rewrite !AB.
+Qed.
 
 Lemma restrictE (T : finType) (e : rel T) (A : pred T) : 
   A =i predT -> connect (restrict A e) =2 connect e.

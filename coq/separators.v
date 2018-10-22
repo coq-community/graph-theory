@@ -223,6 +223,11 @@ Qed.
 Definition independent x y (p q : Path x y) := 
   forall z, z \in p -> z \in q -> z = x \/ z = y.
 
+Lemma independent_sym x y (p q : Path x y):
+  independent p q -> independent q p.
+Proof. move => ipq z zq zp. by case: (ipq z zp zq) => H; auto. Qed.
+
+
 Definition left_independent x y y' (p : Path x y) (q : Path x y') := 
   forall z, z \in p -> z \in q -> z = x.
 
@@ -257,11 +262,11 @@ Proof.
 Admitted.
 
 Lemma separation_connected_same_component V1 V2:
-  proper_separation V1 V2 -> forall x0 x, x0 \notin V2 ->
+  separation V1 V2 -> forall x0 x, x0 \notin V2 ->
   connect (restrict [predC (V1:&:V2)] sedge) x0 x -> x \notin V2.
 Proof.
   set S := V1 :&: V2.
-  move => [sepV propV] x0 x x0NV2.
+  move => sepV x0 x x0NV2.
   case: (boolP (x0==x)) => [/eqP ? | x0x]; first by subst x0.
   move => /(PathRP x0x) [p /subsetP Hp].
   case: (boolP(x \in V2)) => // xV2.
@@ -517,27 +522,23 @@ Qed.
 Lemma path_touch_separation G (x : G) (S V1 V2 : {set G}) (s1 : G) (pxs1 : Path x s1):
   S = V1 :&: V2 -> s1 \in S -> irred pxs1 ->
   (forall y : G, y \in pxs1 -> y \in S -> y = s1) -> x \notin V2 ->
-  proper_separation V1 V2 -> {subset pxs1 <= V1}.
+  separation V1 V2 -> {subset pxs1 <= V1}.
 Proof.
-  move => HS s1S ir subset xNV2 psep.
-  case: (@splitR G x s1 pxs1). { rewrite HS inE in s1S. move: s1S => /andP [_ ?].
-    apply: contraTN isT => /eqP ?. subst x. contrab. }
+  move => HS s1S ir subset xNV2 sepV.
+  case: (@splitR G x s1 pxs1). 
+  { apply: contraTneq s1S => <-. by rewrite HS !inE negb_and xNV2. }
   move => z [pxz [zs1 pcat1]].
   move: (ir) => irc. rewrite pcat1 irred_edgeR in irc. case/andP: irc => [s1pxz _].
   rewrite pcat1. move => x1. rewrite mem_pcatT. move => /orP [x1p | xs1].
-  - suff: x1 \notin V2. { move: (psep.1.1 x1). rewrite inE.
-      move => /orP [?|?] => ? //. contrab. }
+  - rewrite (sep_inL sepV) //.
     case (boolP (x == x1)) => [/eqP ?|?]; first by subst.
     apply separation_connected_same_component with V1 x => //.
-    apply /PathRP => //.
-    case /psplitP pcat2: _/x1p => [pxx1 px1z].
-    exists pxx1. rewrite -HS. apply /subsetP => x2 x2pxx1.
-    apply: contraNT s1pxz => x2S. rewrite negbK inE in x2S.
-    rewrite -(subset x2) => //.
-      + rewrite pcat2 inE x2pxx1. done.
-      + rewrite pcat1 /= inE pcat2 inE x2pxx1. done.
-  - rewrite /tail /edgep inE in xs1. move: xs1 => /eqP->.
-    rewrite HS inE in s1S. by case/andP: s1S.
+    case /psplitP pcat2: _/x1p => [pxx1 px1z]. 
+    apply connectRI with pxx1. rewrite -HS => x2 x2pxx1. 
+    apply: contraNN s1pxz => /= x2S. 
+    by rewrite -(subset x2) // !(pcat2,pcat1) !inE x2pxx1.
+  - rewrite !inE in xs1. rewrite (eqP xs1). 
+    move: s1S. rewrite HS inE. by case/andP.
 Qed.
 
 Lemma independent_paths G (V1 V2 : {set G}) : 
@@ -547,17 +548,20 @@ Lemma independent_paths G (V1 V2 : {set G}) :
     [/\(exists2 s1, s1 \in p1 & s1 \in V1 :&: V2),
        (exists2 s2, s2 \in p2 & s2 \in V1 :&: V2)&
        (exists2 s3, s3 \in p3 & s3 \in V1 :&: V2)] /\
-    [/\ x1 \notin V2, x2 \notin V1, 
-       independent p1 p2, independent p2 p3 & independent p3 p1].
+    [/\ x1 \notin V2, x2 \notin V1, independent p1 p2, independent p2 p3 & independent p3 p1].
 Proof.
   set S := V1 :&: V2.
   move => propsep ssS /card_gt2P [s1 [s2 [s3 [[s1S s2S s3S] [Ns12 Ns23 Ns31]]]]].
   move: (propsep) => [[V12G nedgeC12] [x0 [y0 [x0NV2 y0NV1]]]].
-  case: (@independent_paths_aux G S s1 s2 s3 x0) => //=. { rewrite /S !inE negb_and x0NV2. done. }
-  move => x [pxs1 [pxs2 [pxs3 [[irx1 irx2 irx3] [[/subsetIlP1 px1Ss1 /subsetIlP1 px2Ss2 /subsetIlP1 px3Ss3]
+  case: (@independent_paths_aux G S s1 s2 s3 x0) => //=. 
+  { by rewrite /S !inE negb_and x0NV2. }
+  move => x [pxs1 [pxs2 [pxs3 [[irx1 irx2 irx3] 
+    [[/subsetIlP1 px1Ss1 /subsetIlP1 px2Ss2 /subsetIlP1 px3Ss3]
     [connx0x ind_pxs1pxs2 ind_pxs2pxs3 ind_pxs3pxs1]]]]]].
-  case: (@independent_paths_aux G S s1 s2 s3 y0) => //=. { rewrite /S !inE negb_and y0NV1. done. }
-  move => y [pys1 [pys2 [pys3 [[iry1 iry2 iry3] [[/subsetIlP1 py1Ss1 /subsetIlP1 py2Ss2 /subsetIlP1 py3Ss3]
+  case: (@independent_paths_aux G S s1 s2 s3 y0) => //=. 
+  { by rewrite /S !inE negb_and y0NV1. }
+  move => y [pys1 [pys2 [pys3 [[iry1 iry2 iry3] 
+    [[/subsetIlP1 py1Ss1 /subsetIlP1 py2Ss2 /subsetIlP1 py3Ss3]
     [conny0y ind_pys1pys2 ind_pys2pys3 ind_pys3pys1]]]]]].
   set p1 := pcat pxs1 (prev pys1).
   set p2 := pcat pxs2 (prev pys2).
@@ -565,7 +569,7 @@ Proof.
   exists x; exists y; exists p1; exists p2; exists p3.
 
   have S21: S = V2 :&: V1 by rewrite setIC.
-  have psep21: proper_separation V2 V1 by apply proper_separation_symmetry.
+  have sep21: separation V2 V1 by apply/separation_sym.
   have xNV2: x \notin V2 by apply separation_connected_same_component with V1 x0.
   have yNV1: y \notin V1.
   { apply separation_connected_same_component with V2 y0 => //. by rewrite -S21. }
@@ -586,12 +590,11 @@ Proof.
       apply /eqP. apply (px1Ss1 z); rewrite /S ?inE //=.
     * move => /eqP->. apply /andP; split; apply path_end.
   }
-
   gen have indep: s1 s2 pxs1 pys1 pxs2 pys2
       {Ns23 Ns31 iry2 ind_pys2pys3 irx2 ind_pxs2pxs3 iry1 ind_pys3pys1 irx1 ind_pxs3pxs1 p1 p2}
       ind_pxs1pxs2 ind_pys1pys2 pxs1V1 pxs2V1 pys1V2 pys2V2 Ns12 s2S s1S px1Ss1 px2Ss2 py1Ss1 py2Ss2
       / independent (pcat pxs1 (prev pys1)) (pcat pxs2 (prev pys2)).
-  { rewrite /independent => z. rewrite !mem_pcat !mem_prev.
+  { move => z. rewrite !mem_pcat !mem_prev.
     move => /orP [zpxs1 | zpys1] /orP [zpxs2 | zpys2].
     + left. by apply ind_pxs1pxs2.
     + exfalso. move: Ns12 => /eqP; apply.
@@ -611,16 +614,6 @@ Proof.
   - (* x/y \notin V2/V1 + independent *) split => //; by apply indep.
 Qed.
 
-Lemma independent_symmetry (G : sgraph) (x y : G) (p q : Path x y):
-  independent p q -> independent q p.
-Proof.
-  move => ipq z zq zp. case: (ipq z zp zq) => H. by left. by right.
-Qed.
-
-Lemma connectedU_common_point (G : sgraph) (U V : {set G}) (x : G):
-  x \in U -> x \in V -> connected U -> connected V -> connected (U :|: V).
-Proof.
-Admitted.
 
 Lemma K4_of_complete_graph (G : sgraph) : 
   3 < #|G| -> (forall x y : G, x!=y -> x--y) -> minor G K4.
@@ -643,14 +636,12 @@ Proof.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn;
     by (eexists; rewrite inE).
   - move => [m i]. case m as [|[|[|[|m]]]] => //=; by (apply connected1).
+  - move => [m i] [m' i']. 
+    case m as [|[|[|[|m]]]] => //=;
+    case m' as [|[|[|[|m']]]] => //= _; by rewrite disjoints1 !inE // eq_sym.
   - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
     case m' as [|[|[|[|m']]]] => //= _.
-    all: erewrite eq_disjoint1; [ rewrite inE | move => ?; rewrite inE; reflexivity] => //=;
-      try done; by rewrite eq_sym.
-  - move => [m i] [m' i']. case m as [|[|[|[|m]]]] => //=;
-    case m' as [|[|[|[|m']]]] => //= _.
-    all: eexists; eexists; split; [by rewrite inE | by rewrite inE
-      | apply H; try done; by rewrite eq_sym].
+    all: eexists; eexists; split; solve [by rewrite inE | by apply H; rewrite // eq_sym].
 Qed.
 
 
@@ -688,7 +679,7 @@ Proof.
   wlog s2'p2: p2 p3 {s3p3 s2p2} ir2 ir3 s2'firstp23 ind12 ind23 ind31 s2'p23 / (s2' \in p2).
   { rewrite inE /= in s2'p23. move: (s2'p23) => /orP [s2'p2|s2'p3].
     - apply. exact ir2. exact ir3. all:eauto.
-    - apply. exact ir3. exact ir2. 2-4: apply independent_symmetry; eauto.
+    - apply. exact ir3. exact ir2. 2-4: apply independent_sym; eauto.
       + move => z' H1 H2. apply s2'firstp23. rewrite inE /= in H1.
         move: H1 => /orP [H1|H1]; by rewrite !inE /= H1. done.
       + by rewrite !inE /= s2'p3.

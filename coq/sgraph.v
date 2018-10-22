@@ -1195,6 +1195,32 @@ Qed.
 Lemma connected1 (G : sgraph) (x : G) : connected [set x].
 Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
 
+Lemma connected2 (G : sgraph) (x y: G) : x -- y -> connected [set x; y].
+Proof.
+  move=> xy ? ? /set2P[]-> /set2P[]->; try exact: connect0;
+  apply: connect1; rewrite /= !inE !eqxx orbT //=. by rewrite sg_sym.
+Qed.
+
+Lemma connected_center (G:sgraph) x (S : {set G}) :
+  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
+  connected S.
+Proof.
+  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
+  rewrite connect_symI; by [apply: H | apply: symmetric_restrict_sedge].
+Qed.
+
+
+Lemma connectedU_common_point (G : sgraph) (U V : {set G}) (x : G):
+  x \in U -> x \in V -> connected U -> connected V -> connected (U :|: V).
+Proof.
+  move => xU xV conU conV. 
+  apply connected_center with x; last by rewrite !inE xU.
+  move => y. case/setUP => [yU|yV]. 
+  - apply: connect_restrict_mono (conU _ _ xU yU); exact: subsetUl.
+  - apply: connect_restrict_mono (conV _ _ xV yV); exact: subsetUr.
+Qed.
+
+
 Lemma connectedU_edge (G : sgraph) (U V : {set G}) (x y : G) :
   x \in U -> y \in V -> x -- y -> connected U -> connected V -> connected (U :|: V).
 Proof.
@@ -1216,19 +1242,6 @@ Proof.
   by apply: connect1; rewrite /= !inE x_U y_V xy.
 Qed.
 
-Lemma connected2 (G : sgraph) (x y: G) : x -- y -> connected [set x; y].
-Proof.
-  move=> xy ? ? /set2P[]-> /set2P[]->; try exact: connect0;
-  apply: connect1; rewrite /= !inE !eqxx orbT //=. by rewrite sg_sym.
-Qed.
-
-Lemma connected_center (G:sgraph) x (S : {set G}) :
-  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
-  connected S.
-Proof.
-  move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
-  rewrite connect_symI; by [apply: H | apply: symmetric_restrict_sedge].
-Qed.
 
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
   connected [set z in p].
