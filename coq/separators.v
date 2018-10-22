@@ -882,7 +882,7 @@ Lemma cases_without_edge (G : sgraph) (V1 V2 : {set G}) (s1 s2 : G) phi:
   minor G K4 \/ (exists i, exists j, [/\ s1 \in (phi i), s2 \in (phi j) & i!=j])
     \/ exists i, [/\ s1 \in (phi i), s2 \in (phi i) & ~ @connected G (phi i)].
 Proof.
-  move => psep V12s12 rmapphi.
+  move => psep V12s12 [map0 map1 map2 map3].
   case (boolP ([exists i, s1 \in phi i] && [exists j, s2 \in phi j])).
   - (* s1 and s2 appear in a bag *)
     move => /andP [/existsP [i s1i] /existsP [j s2j]]. case (boolP (i==j));
@@ -892,35 +892,34 @@ Proof.
     + (* bag connected, so find minor *)
       move => /connectedP coni. left.
       suff HH: @minor_rmap G K4 phi by apply (minor_of_map (minor_map_rmap HH)).
-      destruct rmapphi.
-      have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j.
+      have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j. (* TODO: independent lemma *)
       { move => x' i' j' x'i'. apply contraTT => i'Nj'.
-        move: (H1 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx. 
+        move: (map2 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx. 
         move: (iINx x' x'i') => temp. by rewrite inE in temp. }
       split => //.
       * move => x. case (boolP (x==i)) => [xi|xNi]. by move: xi => /eqP ->.
         apply add_edge_keep_connected_l with s1 s2 => //.
         apply: contraNN xNi => ?. apply disjE with s1 => //.
-      *  move => i' j' i'j'. case: (H2 i' j' i'j') => x' [y' [x'i' y'j' x'y']].
+      *  move => i' j' i'j'. case: (map3 i' j' i'j') => x' [y' [x'i' y'j' x'y']].
         exists x'. exists y'. split => //.
         have i'Nj': i'!=j' by rewrite (sg_edgeNeq i'j').
-        simpl in x'y'. move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]|/and3P [y'Nx' /eqP ? /eqP ?]] => //.
-        { subst x' y'. move: (disjE s1 i i' s1i x'i') => /eqP temp.
+        move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]
+          |/and3P [y'Nx' /eqP ? /eqP ?]] => //; subst x' y'.
+        { move: (disjE s1 i i' s1i x'i') => /eqP temp.
           move: (disjE s2 i j' s2j y'j') => temp2. subst i. contrab. }
-        { subst x' y'. move: (disjE s1 i j' s1i y'j') => temp.
+        { move: (disjE s1 i j' s1i y'j') => temp.
           move: (disjE s2 i i' s2j x'i') => /eqP temp2. subst i. contrab. }
     + (* bag not connected *)
       move => /connectedP nconi. right. right. exists i. split => //.
   - (* either s1 or s2 is not in any bag *)
     rewrite negb_and !negb_exists.
-    wlog /forallP Hs1: s1 s2 V12s12 phi rmapphi / [forall x, s1 \notin phi x].
+    wlog /forallP Hs1: s1 s2 V12s12 phi map0 map1 map2 map3 / [forall x, s1 \notin phi x].
     { move => H /orP [Hs1b | Hs2b]. { apply H => //. by apply /orP; left. }
       move: (Hs2b) => /forallP Hs2. case: (H s2 s1 _ phi) => //.
       + by rewrite V12s12 set2C.
-      + destruct rmapphi. split => //.
-        * move => x. by rewrite add_edge_connected_sym.
-        * move => i' j' i'j'. case: (H3 i' j' i'j') => x' [y' [? ? ?]].
-          exists x'. exists y'. split => //. by rewrite add_edge_sedge_sym.
+      + move => x. by rewrite add_edge_connected_sym.
+      + move => i' j' i'j'. case: (map3 i' j' i'j') => x' [y' [? ? ?]].
+        exists x'. exists y'. split => //. by rewrite add_edge_sedge_sym.
       + by apply /orP; left.
       + auto.
       + move => [[i [j [? ? ?]]]|[i [? ? ?]]]; right; [left|right].
@@ -929,13 +928,14 @@ Proof.
     } (* wlog assume s1 is not in any bag *)
     move => _. left. (* so find minor *)
     suff HH: @minor_rmap G K4 phi by apply (minor_of_map (minor_map_rmap HH)).
-    destruct rmapphi. split => //.
+    split => //.
     + move => x. apply add_edge_keep_connected_l with s1 s2 => //.
-    + move => i j ij. case: (H2 i j ij) => x' [y' [x'i y'j x'y']].
+    + move => i j ij. case: (map3 i j ij) => x' [y' [x'i y'j x'y']].
       exists x'. exists y'. split => //.
-      simpl in x'y'. move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]|/and3P [y'Nx' /eqP ? /eqP ?]] => //.
-      * move: (Hs1 i) => s1i. subst x' y'. contrab.
-      * move: (Hs1 j) => s1j. subst x' y'. contrab.
+      move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]
+        |/and3P [y'Nx' /eqP ? /eqP ?]] => //; subst x' y'.
+      * move: (Hs1 i) => s1i. contrab.
+      * move: (Hs1 j) => s1j. contrab.
 Qed.
 
 Lemma card2' G (S : {set G}):
@@ -947,6 +947,13 @@ Lemma disjointU' (G : sgraph) (A B C : {set G}):
 Proof.
 move => a b. (* rewrite disjointU. *)
 Admitted.
+
+Lemma disjointI (G :sgraph) (A B : {set G}):
+  (forall x, x \in A -> x \in B -> False) -> [disjoint A & B].
+Proof.
+  move => H. rewrite -setI_eq0. apply /eqP /setP => z. rewrite !inE.
+  apply: contraTF isT => /andP [zCs1 zy]. exfalso. apply H with z => //.
+Qed.
 
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
   K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
@@ -960,7 +967,7 @@ Proof.
   move => phi rmapphi.
   (* wlog forall k, Ik \subset V1 *)
   wlog: V1 V2 psep {sep'} SV12 / forall x : K4, phi x \subset V1.
-  { move => H. move => [?|?].
+  { move => H [?|?].
     - apply H with V1 V2 => //. by left.
     - apply H with V2 V1 => //. by apply proper_separation_symmetry.
       by rewrite setIC. by left. }
@@ -980,32 +987,43 @@ Proof.
     move => _ [z [_ zNV1 _ s1z]].
     (* path from z to s2 avoiding s1 *)
     case: (@avoid_nonseperator G [set s1] z s2).
-    { apply ssepS.2. rewrite S12 cards1 cards2 s1Ns2. done. }
-    { rewrite inE eq_sym. apply: contraTN isT => temp. by rewrite (sg_edgeNeq s1z) in temp. }
-    { rewrite inE eq_sym. done. }
+    { apply ssepS.2. by rewrite S12 cards1 cards2 s1Ns2. }
+    { by rewrite inE eq_sym (sg_edgeNeq s1z). }
+    { by rewrite inE eq_sym. }
     move => p irp dis.
 
     (* path included in V2 ? *)
-    have ?: p \subset V2. admit.
+    have pV2: p \subset V2.
+    { case: (boolP (p \subset V2)) => // /subsetPn [z' z'p z'Nv2].
+      case /psplitP pcatz': _/z'p => [pzz' pz's2].  
+      move: psep. rewrite proper_separation_symmetry => psep'.
+      move: (separation_separates psep'.1 zNV1 z'Nv2) => [zNS z'NS Hp].
+      move: (Hp pzz') => [s sp].
+      rewrite setIC S12 !inE => /orP [/eqP ?|/eqP ?]; subst s.
+      - exfalso. apply: (@disjointE _ _ _ s1 dis); by rewrite ?pcatz' !inE ?sp.
+      - rewrite pcatz' in irp. move: (irred_catE irp) => [_ _ Hir].
+        have s2z': s2 = z' by apply Hir. subst z'.
+        rewrite setIC S12 !inE negb_or in z'NS. case/andP: z'NS => ? t.
+        by apply: contraNT t. (* how do we conclude with premise a!=a ? *) }
 
     (* phi' := phi[k := phi k `union` p] *)
     pose phi' (k : K4) := if k==j then phi k :|: [set a in p] else phi k .
     suff HH: @minor_rmap G K4 phi' by apply (minor_of_map (minor_map_rmap HH)).
     destruct rmapphi as [map0 map1 map2 map3].
-    have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j.
+    have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j. (* TODO: independent lemma *)
     { move => x' i' j' x'i'. apply contraTT => i'Nj'.
-      move: (map2 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx. 
+      move: (map2 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx.
       move: (iINx x' x'i') => temp. by rewrite inE in temp. }
     rewrite /phi'. split => [x|x|x y xNy|x y xy].
     + case (boolP (x==j)) => xj //=. apply /set0Pn. exists s2. by rewrite !inE.
     + case (boolP (x==j)) => [/eqP xj|xj] //=.
       * subst x. apply connectedU_common_point with s2 => //. by rewrite !inE.
-        apply add_edge_keep_connected_l => //. apply: contraTN isT => s1x.
-        move: (disjE s1 i j s1i s1x) => ?. contrab.
-        apply connected_path.
+        apply add_edge_keep_connected_l => //. apply: contraNN iNj => s1x.
+        by apply: (disjE s1 i j s1i s1x).
+        by apply connected_path.
       * apply (@add_edge_keep_connected_l G s2 s1) => //.
-        by apply add_edge_connected_sym. apply: contraTN isT => s1x.
-        move: (disjE s2 x j s1x s2j) => ?. contrab.
+        by apply add_edge_connected_sym. apply: contraNN xj => s1x.
+        by apply: (disjE s2 x j s1x s2j).
     + wlog yNj: x y xNy / y!=j.
       { move => H. case (boolP (y==j)) => yj //=.
         - rewrite eq_sym in xNy. case (boolP (x==j)) => [/eqP xj | xj] //=.
@@ -1014,7 +1032,13 @@ Proof.
         - move: (H x y xNy yj). by rewrite (negbTE yj). }
       rewrite (negbTE yNj). case (boolP (x==j)) => [/eqP xj|xj] //=;
         [ subst x | by apply map2].
-      rewrite disjointU' => //. by apply map2. rewrite disjoint_subset. (* todo *) admit.
+      rewrite disjointU' => //. by apply map2. apply disjointI => a ap ay.
+      rewrite inE in ap. case: (boolP (a==s1)) => [/eqP as1|aNs1].
+      { subst a. apply: (@disjointE _ _ _ s1 dis) => //. by rewrite inE. }
+      move: (subsetP (HphiV1 y) a ay) => aV1. move: (subsetP pV2 a ap) => aV2.
+      have: a \in [set s1; s2] by rewrite -S12 !inE.
+      rewrite !inE => /orP [as1|/eqP as2]; first by contrab. subst a.
+      move: (disjE s2 j y s2j ay) => ?. contrab.
     + wlog yNj: x y xy / y!=j.
       { move => H. case (boolP (y==j)) => yj //=.
         - simpl in xy. rewrite eq_sym in xy. case (boolP (x==j)) => [/eqP xj | xj] //=.
@@ -1042,14 +1066,14 @@ Proof.
     (exists i j : K4, [/\ s2 \in phi2 i, s1 \in phi2 j & i != j]) ->
     (forall x : K4, phi2 x \subset V1) -> minor G K4.
   { clear rmapphi HphiV1 phi. move => phi' rmapphi' twobags' Hphi'V1.
-    pose phi (k : K4) := (phi' k : {set add_edge s1 s2}). apply caseA with phi.
-    - rewrite /phi. destruct rmapphi' as [map0 map1 map2 map3]. split => //.
-      + move => x. rewrite add_edge_connected_sym. done.
+    pose phi (k : K4) := (phi' k : {set add_edge s1 s2}).
+    apply caseA with phi => //; rewrite /phi.
+    - destruct rmapphi' as [map0 map1 map2 map3]. split => //.
+      + move => x. by rewrite add_edge_connected_sym.
       + move => x y xy. move: (map3 x y xy) => [x' [y' [t1 t2 t3]]].
-        exists x'. exists y'. split => //. rewrite add_edge_sedge_sym. done.
-    - rewrite /phi. move: twobags' => [i [j [t1 t2 t3]]].
-      exists j. exists i. split => //. by rewrite eq_sym.
-    - rewrite /phi. done. }
+        exists x'. exists y'. split => //. by rewrite add_edge_sedge_sym.
+    - move: twobags' => [i [j [t1 t2 t3]]].
+      exists j. exists i. split => //. by rewrite eq_sym. }
 
   move => [twobags|onebag].
 
@@ -1058,7 +1082,7 @@ Proof.
   - (* case B, s1 and s2 in same bag, not connected *)
     move: onebag => [i [s1i s2i notconi]].
     destruct rmapphi as [map0 map1 map2 map3].
-    have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j.
+    have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j. (* TODO: separate lemma *)
     { move => x' i' j' x'i'. apply contraTT => i'Nj'.
       move: (map2 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx. 
       move: (iINx x' x'i') => temp. by rewrite inE in temp. }
@@ -1068,13 +1092,21 @@ Proof.
 
     have I4inC12: forall (x : G), x \in phi i -> x \in C s1 \/ x \in C s2.
     { move => x xi. case: (boolP (x==s1)) => [/eqP ->|xNs1].
-      { left. rewrite -C_def inE. apply connect0. }
+      { left. by rewrite -C_def inE connect0. }
       move: (map1 i x s1 xi s1i) => /PathRP conxs1. case: (conxs1 xNs1) => p Hp.
       case: (@split_at_first (@add_edge G s1 s2) (mem [set s1; s2]) x s1 p s1).
       { rewrite !inE. by apply /orP; left. } { by rewrite inE. }
       move => z [p1 [p2 [catp zS Hfirst]]].
       case: (boolP (z==s1)) => [/eqP ?|zNs1].
-      - subst z. left. admit.
+      - subst z. left.
+        case: (@lift_Path_on _ _ (fun (v : G) => (v : add_edge s1 s2)) x s1 p1 ) => //.
+        + move => a b ap1 bp1 /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
+              /and3P [t1 /eqP t2 /eqP t3]] => //; subst a b;
+            apply: contraNT t1 => nedge; apply /eqP; symmetry; apply Hfirst => //;
+            rewrite !inE; apply /orP; by right.
+        + move => a ap1. rewrite /codom. (* ? *) admit.
+        + move => p3 t1 t2. rewrite -C_def inE. apply connectRI with p3.
+          (* ? *) admit.
       - have /eqP zs2: z==s2. rewrite !inE in zS. move: zS => /orP [?|?] //. contrab.
         subst z. right. admit.
       (* probably a wlog to do
@@ -1087,14 +1119,14 @@ Proof.
     { apply /subsetP => z Hz. rewrite -C_def !inE in Hz.
       case: (connect_restrict_case Hz) => [?|[_ ?]]. by subst z. done. }
     have disC1C2: C s1 :&: C s2 == set0.
-    { rewrite -subset0. apply /subsetP => z Hz. rewrite !inE in Hz.
+    { rewrite -subset0. apply /subsetP => z. rewrite !inE => /andP [pzs1 pzs2].
       exfalso. apply notconi. move => a b ai bi.
       have cons1s2: @connect G (@restrict G (mem (phi i)) sedge) s1 s2.
-      { move: Hz => /andP [pzs1 pzs2]. rewrite -C_def !inE in pzs1 pzs2.
+      { rewrite -C_def !inE in pzs1 pzs2.
         rewrite srestrict_sym in pzs1. apply connect_trans with z => //. }
       case: (I4inC12 a ai) => aC; rewrite -C_def inE in aC;
-        [apply connect_trans with s1 => //; rewrite srestrict_sym
-        |apply connect_trans with s2 => //; rewrite srestrict_sym].
+        [apply connect_trans with s1|apply connect_trans with s2] => //;
+        rewrite srestrict_sym.
       all: case: (I4inC12 b bi) => bC; rewrite -C_def inE in bC;
         [apply connect_trans with s1|apply connect_trans with s2] => //=.
       by rewrite srestrict_sym.
@@ -1103,8 +1135,7 @@ Proof.
     (* find x1 x2 x3 *)
     have temp: 2 < #|[set: K4] :\ i|.
     { have card4: #|[set: K4]| == 4. { by rewrite cardsT (card_ord 4). }
-      rewrite (cardsD1 i) inE eqn_add2l in card4.
-      move: card4 => /eqP temp. by rewrite temp. }
+      rewrite (cardsD1 i) inE eqn_add2l in card4. by rewrite (eqP card4). }
 
     move: temp => /card_gt2P [j [k [l [[t1 t2 t3] [jk kl lj]]]]].
     rewrite !in_setD1 in t1 t2 t3.
@@ -1116,13 +1147,13 @@ Proof.
 
     (* wlog x1 in C1, x2 in C1, and x3 either in C1 or C2 *)
     have map1': forall x : K4, @connected (@add_edge G s2 s1) (phi x).
-    { move => x. move: (map1 x) => t. by rewrite add_edge_connected_sym. }
+    { move => x. rewrite add_edge_connected_sym. apply map1. }
     have map3': forall x y : K4, x -- y -> exists x' y' : add_edge s2 s1,
       [/\ x' \in phi x, y' \in phi y & x' -- y'].
     { move => x y xy. move: (map3 x y xy) => [x' [y' [t1 t2 t3]]].
       exists x'. exists y'. split => //. by rewrite add_edge_sedge_sym. }
     have I4inC12': forall (x : G), x \in phi i -> x \in C s2 \/ x \in C s1.
-    { move => x xi. case: (I4inC12 x xi) => ?. by right. by left. }
+    { move => x xi. case: (I4inC12 x xi) => ?; [by right| by left]. }
 
     wlog: s1 s2 j k l x1 x2 x3 x1' x2' x3' phi C_def HphiV1 s1i s2i notconi S12
       x1i x2i x3i x1'j x2'k x3'l x1'x1 x2'x2 x3'x3 s1Ns2 map0 map1 map2 map3 map1' map3'
@@ -1159,10 +1190,22 @@ Proof.
                     | by rewrite eq_sym | by rewrite S12 set2C | by rewrite setIC].
     }
 
-    (* proving this after the wlog to avoid proving the same for G+s2s1 *)
-    have conC1: @connected (add_edge s1 s2) (C s1).
-    { admit. }
-    have conC2: @connected (add_edge s1 s2) (C s2).
+    (* proving this after the wlog to avoid proving the same for every permutation *)
+    have all_ords: forall (x:K4), [ || x==i, x==j, x==k | x==l].
+    { move => x. have xK4: x \in [set: K4] by done.
+      apply: contraTT isT. rewrite !negb_or => /and4P [xi xj xk xl].
+      have card4: 4 == #|[set: K4]|. { by rewrite cardsT (card_ord 4). }
+      suff: 5<=#|[set: K4]|. by rewrite ltn_neqAle card4.
+      apply /card_gtnP. exists [::i;j;k;l;x]. split => //.
+      - apply /and5P. rewrite !inE !negb_or. split => //=;
+          [apply /and4P | apply /and3P | apply /andP | ];
+          try split => //; by rewrite eq_sym.
+      - move => y. by rewrite !inE. }
+
+    (* can place this higher *)
+    have conC1: @connected G (C s1).
+    { rewrite -C_def. (* connected_restrict. ?*) admit. }
+    have conC2: @connected G (C s2).
     { admit. }
 
     move => [samecomp | diffcomp] _ _ _.
@@ -1173,14 +1216,10 @@ Proof.
       suff HH: @minor_rmap G K4 phi' by apply (minor_of_map (minor_map_rmap HH)).
       rewrite /phi'. split => [x|x|x y xNy|x y xy].
       * case (boolP (x==i)) => xi //=. apply /set0Pn. exists s1.
-        rewrite -C_def inE. apply connect0.
+        by rewrite -C_def inE connect0.
       * case (boolP (x==i)) => xi //=.
-        { apply (@add_edge_keep_connected_l G s2 s1).
-          by rewrite add_edge_connected_sym.
-          (* using disC1C2 : C s1 :&: C s2 == set0 *) admit. }
         apply (@add_edge_keep_connected_l G s2 s1) => //.
-        apply: contraTN isT => s1x.
-        move: (disjE s2 x i s1x s2i) => ?. contrab.
+        apply: contraNN xi => s1x. apply: disjE s2 x i s1x s2i.
       * wlog yNj: x y xNy / y!=i.
         { move => H. case (boolP (y==i)) => yi //=.
           - rewrite eq_sym in xNy. case (boolP (x==i)) => [/eqP xj | xj] //=.
@@ -1189,10 +1228,38 @@ Proof.
           - move: (H x y xNy yi). by rewrite (negbTE yi). }
         rewrite (negbTE yNj). case (boolP (x==i)) => [/eqP xi|xi] //=;
           [ subst x | by apply map2].
-        (* todo *) admit.
-      * wlog yNj: (*...*) / y!=i. admit.
-        (* factorize that with the wlog of the previous case ? *)
-        admit.
+        apply disjointI => z zCs1 zy. move: (subsetP C1inphii z zCs1) => zi.
+        apply: (@disjointE _ _ _ z (map2 i y xNy)) => //.
+      * wlog yNj: x y xy / y!=i.
+        { move => H. case (boolP (y==i)) => yi //=.
+          - rewrite sg_sym in xy. case (boolP (x==i)) => [/eqP xj | xj] //=.
+            + subst x. rewrite (sg_edgeNeq xy) in yi. done.
+            + move: (H y x xy xj). rewrite (negbTE xj) yi. move => [x' [y' [? ? ?]]].
+              exists y'. exists x'. split => //. by rewrite sg_sym.
+          - move: (H x y xy yi). by rewrite (negbTE yi). }
+        rewrite (negbTE yNj). case (boolP (x==i)) => [/eqP xi|xi] //=.
+        { subst x. destruct samecomp.
+          move: (all_ords y) => /or4P [yi|/eqP yj|/eqP yk|/eqP yl]; try contrab; subst y.
+          - exists x1. exists x1'. split => //. rewrite sg_sym.
+            move: x1'x1 => /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
+              /and3P [t1 /eqP t2 /eqP t3] ] //; subst x1 x1'.
+            move: (disjE s1 j i x1'j s1i) => ?. contrab.
+            move: (disjE s2 j i x1'j s2i) => ?. contrab.
+          - exists x2. exists x2'. split => //. rewrite sg_sym.
+            move: x2'x2 => /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
+              /and3P [t1 /eqP t2 /eqP t3] ] //; subst x2 x2'.
+            move: (disjE s1 k i x2'k s1i) => ?. contrab.
+            move: (disjE s2 k i x2'k s2i) => ?. contrab.
+          - exists x3. exists x3'. split => //. rewrite sg_sym.
+            move: x3'x3 => /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
+              /and3P [t1 /eqP t2 /eqP t3] ] //; subst x3 x3'.
+            move: (disjE s1 l i x3'l s1i) => ?. contrab.
+            move: (disjE s2 l i x3'l s2i) => ?. contrab.
+            (* would be nice to factorize this a bit *) }
+        move: (map3 x y xy) => [x' [y' [t1 t2 t3]]]. exists x'. exists y'. split => //.
+        move: t3 => /or3P [?|/and3P [t4 /eqP t5 /eqP t6]|/and3P [t4 /eqP t5 /eqP t6]] => //;
+        subst x' y'. move: (disjE s1 x i t1 s1i) => ?. contrab.
+          move: (disjE s2 x i t1 s2i) => ?. contrab.
 
     + (* case x1 x2 x3 in different components (wlog C1 C1 C2) *)
 
@@ -1207,37 +1274,77 @@ Proof.
         - case (boolP (x==i)) => xi; [|case (boolP (x==l)) => xl //].
           + apply /set0Pn. exists s1. rewrite -C_def inE. apply connect0.
           + apply /set0Pn. exists s2. rewrite -C_def !inE. by rewrite connect0.
-        - case (boolP (x==i)) => xi => //; case (boolP (x==l)) => xl //.
+        - case (boolP (x==i)) => xi => //; case (boolP (x==l)) => xl //;
+            try by apply add_edge_connected.
           apply connectedU_edge with (x3' : add_edge s1 s2) x3 => //.
-          by destruct diffcomp.
-        - wlog xNi: x y xNy / x!=i.
-          { move => H. case (boolP (x==i)) => xi //=.
-            - case (boolP (y==i)) => [/eqP yi | yi] //=.
-              + subst y. contrab.
-              + rewrite eq_sym in xNy. move: (H y x xNy yi).
-                rewrite (negbTE yi) xi => ?. by rewrite disjoint_sym.
-            - move: (H x y xNy xi). by rewrite (negbTE xi). }
-          wlog yNl: x y xNy xNi / y!=l.
-          { move => H. case (boolP (y==l)) => yl //=.
-            - rewrite eq_sym in xNy. case (boolP (x==l)) => [/eqP xl | xl] //=.
-              + subst x. contrab.
-              + have yNi: y!=i. { apply: contraTN isT. move => /eqP ?. subst y.
-                rewrite eq_sym in yl. contrab. } move: (H y x xNy yNi xl).
-                rewrite (negbTE xl) yl => ?. by rewrite disjoint_sym.
-            - move: (H x y xNy xNi yl). by rewrite (negbTE yl). }
+          by destruct diffcomp. by apply add_edge_connected.
+        - wlog [xNi yNl]: x y xNy / x!=i /\ y!=l.
+          { move => H. case (boolP (x==i)) => xi; case (boolP (y==l)) => yl //=.
+            - rewrite eq_sym in xNy. have h: y!=i /\ x!=l.
+              { split; apply: contraNN li => /eqP<- => //. by rewrite eq_sym. }
+              move: h (H y x xNy h) => [h1 h2].
+              rewrite (negbTE h1) (negbTE h2) xi yl. by rewrite disjoint_sym.
+            - rewrite eq_sym in xNy. have h: y!=i /\ x!=l.
+              { split. apply: contraNN xNy => /eqP-> => //. by rewrite eq_sym.
+                       apply: contraNN li => /eqP<- => //. }
+              move: h (H y x xNy h) => [h1 h2].
+              rewrite (negbTE h1) (negbTE h2) xi (negbTE yl). by rewrite disjoint_sym.
+            - rewrite eq_sym in xNy. have h: y!=i /\ x!=l.
+              { split. apply: contraNN li => /eqP<- => //. by rewrite eq_sym.
+                       apply: contraNN xNy => /eqP-> => //. }
+              move: h (H y x xNy h) => [h1 h2].
+              rewrite (negbTE h1) (negbTE h2) (negbTE xi) yl. by rewrite disjoint_sym.
+            - have h: x!=i /\ y!=l by done.
+              move: (H x y xNy h). by rewrite (negbTE xi) (negbTE yl).
+          }
           rewrite (negbTE xNi) (negbTE yNl).
           case (boolP (x==l)) => xl; case (boolP (y==i)) => yi => //.
-          + admit.
-          + admit.
-          + admit.
+          + apply disjointI => z. rewrite !inE. move => /orP [zl|z2] z1.
+            * apply: (@disjointE _ _ _ z (map2 l i li)) => //. by apply (subsetP C1inphii).
+            * move: disC1C2 => /eqP /setP => temp. move: (temp z). by rewrite !inE z1 z2.
+          + apply disjointI => z. rewrite !inE. move => /orP [zl|z2] zy.
+            * apply: (@disjointE _ _ _ z (map2 y l yNl)) => //.
+            * apply: (@disjointE _ _ _ z (map2 y i yi)) => //. by apply (subsetP C2inphii).
+          + apply disjoint_transR with (mem (phi i)) => //. apply map2 => //.
           + by apply map2.
-        - wlog xNi: (*...*) / x!=i. admit. wlog yNl: (*...*) / y!=l. admit.
-          (* will have to factorize that with the wlog of the previous case *)
+        - have Hsym: forall (A B : {set G}),
+            (exists x' y' : (add_edge s1 s2), [/\ x' \in A, y' \in B & x' -- y']) ->
+            exists x' y' : (add_edge s1 s2), [/\ x' \in B, y' \in A & x' -- y'].
+          { move => x0 y0 [x' [y' [a b]]]. exists y'. exists x'.
+            split => //. rewrite sg_sym. exact p. }
+          wlog [xNi yNl]: x y xy / x!=i /\ y!=l.
+          { move => H. case (boolP (x==i)) => xi; case (boolP (y==l)) => yl //.
+            - rewrite sg_sym in xy. have h: y!=i /\ x!=l.
+              { split; apply: contraNN li => /eqP<- => //. by rewrite eq_sym. }
+              move: h (H y x xy h) => [h1 h2].
+              rewrite (negbTE h1) (negbTE h2) xi yl. apply Hsym.
+            - rewrite sg_sym in xy. have h: y!=i /\ x!=l.
+              { split. apply: contraNN xy => /eqP-> => //. by rewrite eq_sym.
+                       apply: contraNN li => /eqP<- => //. }
+              move: h (H y x xy h) => [h1 h2].
+              rewrite (negbTE h1) (negbTE h2) xi (negbTE yl). apply Hsym.
+            - rewrite sg_sym in xy. have h: y!=i /\ x!=l.
+              { split. apply: contraNN li => /eqP<- => //. by rewrite eq_sym.
+                       apply: contraNN xy => /eqP-> => //. }
+              move: h (H y x xy h) => [h1 h2].
+              rewrite (negbTE h1) (negbTE h2) (negbTE xi) yl. apply Hsym.
+            - have h: x!=i /\ y!=l by done.
+              move: (H x y xy h). by rewrite (negbTE xi) (negbTE yl).
+          }
+          (* can we factorize that with the wlog of the previous case ? *)
+          (* the cases removed by this wlog are shorter to prove than the wlog... kinda useless *)
           rewrite (negbTE xNi) (negbTE yNl).
-          case (boolP (x==l)) => xl; case (boolP (y==i)) => yi => //.
-          + admit.
-          + admit.
-          + admit.
+          case (boolP (x==l)) => [/eqP xl|xNl]; case (boolP (y==i)) => [yi|yNi] => //.
+          + exists s2. exists s1. split; try by rewrite -C_def !inE connect0.
+            apply /orP. right. apply /orP. right. apply /and3P. split => //.
+          + move: (all_ords y) => /or4P [yi|/eqP yj|/eqP yk|yl]; try contrab; subst y x.
+            { move: (map3 l j xy) => [x' [y' [t1 t2 t3]]].
+              exists x'. exists y'. split => //. by rewrite inE t1. }
+            move: (map3 l k xy) => [x' [y' [t1 t2 t3]]].
+              exists x'. exists y'. split => //. by rewrite inE t1.
+          + move: (all_ords x) => /or4P [xi|/eqP xj|/eqP xk|xl]; try contrab; subst x.
+            { exists x1'. exists x1. split => //. by destruct diffcomp. }
+            exists x2'. exists x2. split => //. by destruct diffcomp.
           + by apply map3.
       }
       apply caseA with phi' => //.
@@ -1330,5 +1437,4 @@ Proof.
     by rewrite geq_max w1 w2.
 
 Admitted.
-
 
