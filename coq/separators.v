@@ -649,25 +649,20 @@ Lemma K4_of_separators (G : sgraph) :
   3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
 Proof.
   move => G4elt minsep3.
-  case: (boolP [forall x : G, forall y : G, (x==y) || (x--y)]).
-  { move => H. apply K4_of_complete_graph => //.
-    move => x y xNy. move: H => /forallP H'. move: (H' x) => /forallP Hx.
-    move: (Hx y) => /orP [xy | ?] => //. contrab.
-  }
-
-  move => /forallPn [x /forallPn [y temp]].
-  rewrite negb_or in temp. move: temp => /andP [xNy xNEy].
-  move: (minimal_separation xNy xNEy) => [V1 [V2 [psepV12 [sS HS]]]].
+  case: (boolP [forall x : G, forall (y |x!=y), (x--y)]).
+  { move/forallP => H. apply K4_of_complete_graph => // x. exact/forall_inP. }
+  move => /forallPn [x /forall_inPn [y xNy xNEy]]. rewrite unfold_in in xNy.
+  move: (minimal_separation xNy xNEy) => [V1 [V2 [[sepV propV] [sS HS]]]].
   set S := V1 :&: V2. rewrite -/S in HS sS.
   move: (minsep3 S sS) => S3elt. clear x y xNy xNEy.
-  case: (independent_paths psepV12) => //. move => x [y [p1 [p2 [p3 [[ir1 ir2 ir3]
+  case: (@independent_paths _ V1 V2) => // => x [y [p1 [p2 [p3 [[ir1 ir2 ir3]
     [[[s1 s1p1 s1S] [s2 s2p2 s2S] [s3 s3p3 s3S]] [xNV2 yNV1 ind12 ind23 ind31]]]]]]].
   have temp: forall s, s \in S -> s!=x /\ s!=y.
   { move => s sS2. rewrite /S inE in sS2. move: sS2 => /andP [? ?].
     split; apply: contraTN isT => /eqP ?; subst s; contrab. }
   move: (temp s1 s1S) (temp s2 s2S) => [s1Nx s1Ny] [s2Nx s2Ny]. clear temp.
   have xNy: x!=y. { apply: contraTN isT => /eqP ?; subst x.
-    move: (psepV12.1.1 y). rewrite inE. move => /orP [?|?]; contrab. }
+    move: (sepV.1 y). rewrite inE. move => /orP [?|?]; contrab. }
   case (@avoid_nonseperator G [set x; y] s1 s2) => //.
     { apply HS. rewrite cards2. rewrite xNy. exact S3elt. }
     { by rewrite !inE negb_or s1Nx s1Ny. }
@@ -690,10 +685,10 @@ Proof.
   case: (splitL p2 xNy) => [x2 [xx2 [p2' [catp2' _]]]].
   case: (splitL p1 xNy) => [x1 [xx1 [p1' [catp1' _]]]].
   case: (@splitR G x1 y p1') => //.
-  { apply: contraTN (xx1) => /eqP ?. subst x1. rewrite psepV12.1.2 => //=. }
+  { apply: contraTN (xx1) => /eqP ?. subst x1. rewrite sepV.2 => //=. }
   move => y1 [p1'' [y1y catp1'']].
   case: (@splitR G x2 y p2') => //.
-  { apply: contraTN (xx2) => /eqP ?. subst x2. rewrite psepV12.1.2 => //=. }
+  { apply: contraTN (xx2) => /eqP ?. subst x2. rewrite sepV.2 => //=. }
   move => y2 [p2'' [y2y catp2'']].
   case: (@splitR G s1 s2' p') => //.
   { apply: contraTN isT => /eqP ?. subst s2'.
@@ -714,35 +709,26 @@ Proof.
                   end.
   suff HH: minor_rmap phi by apply (minor_of_map (minor_map_rmap HH)).
 
-  have s2'M3: s2' \in M3.
+  have s2'M3: s2' \in M3. 
   { rewrite !inE. rewrite catp2' catp2'' in s2'p2.
     rewrite -mem_prev prev_cat mem_pcatT mem_prev mem_pcatT !inE in s2'p2.
     have temp: s2' \in p by rewrite catp inE path_end.
     move: (disjointFr dispxy temp). rewrite !inE. move => /negbT temp2.
     rewrite negb_or in temp2. move: temp2 => /andP [? ?].
     case/orP: s2'p2 => [/orP [?|?]|?] => //=; contrab. }
-  have ?: y \notin p3'.
-  { rewrite catp3 irred_edgeR in ir3. by case/andP: ir3 => [yNp3' _]. }
-  have ?: y \notin p1''.
-  { rewrite catp1' catp1'' irred_edgeL in ir1. case/andP: ir1 => [_ temp].
-    rewrite irred_edgeR in temp. case/andP: temp => [yNp1'' _]. done. }
-  have ?: y \notin p2''.
-  { rewrite catp2' catp2'' irred_edgeL in ir2. case/andP: ir2 => [_ temp].
-    rewrite irred_edgeR in temp. case/andP: temp => [yNp2'' _]. done. }
-  have ?: y \notin ps1s'.
-  { suff: (y \notin p). { rewrite catp inE negb_or => /andP [].
-      by rewrite catps1s' inE negb_or => /andP [? _]. }
-    rewrite (@disjointFl _ (mem p) (mem [set x; y])) => //.
-    rewrite !inE. apply /orP. right. done. }
-  have ?: x \notin p2''.
-  { rewrite catp2' catp2'' irred_edgeL in ir2. case/andP: ir2 => [temp _].
-    rewrite mem_pcatT !inE negb_or in temp. by case/andP: temp. }
-  have ?: x \notin p1''.
-  { rewrite catp1' catp1'' irred_edgeL in ir1. case/andP: ir1 => [temp _].
-    rewrite mem_pcatT !inE negb_or in temp. by case/andP: temp. }
-  have ?: s2' \notin ps1s'.
-  { rewrite catp in irp. rewrite irred_cat in irp. move: irp => /and3P [irp' _ _].
-    rewrite catps1s' irred_edgeR in irp'. by case/andP: irp'. }
+
+  have irrE := (irred_edgeL,irred_edgeR,irred_cat).
+
+  (* only used in the have: below *)
+  have ?: y \notin p3'. { apply: contraTN ir3 => C. by subst; rewrite !irrE C. }
+  have ?: y \notin p1''. { apply: contraTN ir1 => C. by subst; rewrite !irrE C. }
+  have ?: y \notin p2''. { apply: contraTN ir2 => C. by subst; rewrite !irrE C. }
+  have N1: y \notin ps1s'.
+  { suff: (y \notin p). { apply: contraNN. by subst; rewrite !inE => ->. }
+    rewrite (@disjointFl _ (mem p) (mem [set x; y])) => //. by rewrite !inE eqxx. }
+  have ?: x \notin p2''. { apply: contraTN ir2 => C. by subst; rewrite !irrE !inE C. }
+  have ?: x \notin p1''. { apply: contraTN ir1 => C. by subst; rewrite !irrE !inE C. }
+  have N2: s2' \notin ps1s'. { apply: contraTN irp => C. by subst; rewrite !irrE C. }
 
   have ?: forall i j : K4, i != j -> [disjoint phi i & phi j].
   { move => i j iNj. wlog iltj: i j {iNj} / i < j.
@@ -751,40 +737,25 @@ Proof.
       - rewrite disjoint_sym. by apply H. }
     destruct i as [m i]. destruct j as [n j].
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
-    - rewrite disjoints_subset. apply /subsetP => z /=.
-      rewrite !inE. move => /eqP ->. done.
-    - rewrite disjoints_subset. apply /subsetP => z /=.
-      rewrite !inE. move => /eqP ->. done.
-    - rewrite disjoints_subset. apply /subsetP => z /=.
-      rewrite !inE negb_or => //=. move => /eqP ->.
-      apply /andP. split => //.
+    - by rewrite disjoints1 inE. 
+    - by rewrite disjoints1 inE. 
+    - rewrite disjoints1 !inE negb_or. by apply/andP;split.
     - rewrite disjoints_subset. apply /subsetP => z /=. rewrite !inE.
       move => zp3'. apply: contraTN isT => zp2''.
-      case: (ind23 z).
-      + rewrite catp2' catp2'' !inE zp2''. done.
-      + rewrite catp3 !inE zp3'. done.
-      + move => zx. subst z. contrab.
-      + move => zy. subst z. contrab.
+      case: (ind23 z); solve [by subst; rewrite ?inE ?zp2'' ?zp3'
+                             | move => ?; subst z; contrab].
     - rewrite disjoints_subset. apply /subsetP => z /=. rewrite !inE.
       move => zp3'. apply: contraTN isT => /orP [zp1''|zps1s'].
-      + case: (ind31 z).
-        * rewrite catp3 !inE zp3'. done.
-        * rewrite catp1' catp1'' !inE zp1''. done.
-        * move => zx. subst z. contrab.
-        * move => zy. subst z. contrab.
-      + have temp: z = s2'. { apply s2'firstp23. rewrite !inE. apply /orP. right.
-          by rewrite catp3 inE zp3'. by rewrite catps1s' inE zps1s'. }
-        subst z. contrab.
+      + case: (ind31 z); solve [by subst; rewrite ?inE ?zp1'' ?zp3'
+                               | move => ?; subst z; contrab].
+      + suff: z = s2' by move => ?; subst z; contrab.
+        apply s2'firstp23; subst; by rewrite ?inE mem_edgep ?zp3' ?zps1s'.
     - rewrite disjoints_subset. apply /subsetP => z /=. rewrite !inE.
       move => zp2''. apply: contraTN isT => /orP [zp1''|zps1s'].
-      + case: (ind12 z).
-        * rewrite catp1' catp1'' !inE zp1''. done.
-        * rewrite catp2' catp2'' !inE zp2''. done.
-        * move => zx. subst z. contrab.
-        * move => zy. subst z. contrab.
-      + have temp: z = s2'. { apply s2'firstp23. rewrite !inE. apply /orP. left.
-          by rewrite catp2' catp2'' !inE zp2''. by rewrite catps1s' inE zps1s'. }
-        subst z. contrab.
+      + case: (ind12 z); solve [by subst; rewrite ?inE ?zp1'' ?zp2''
+                               | move => ?; subst z; contrab].
+      + suff: z = s2' by move => ?; subst z; contrab.
+        apply s2'firstp23; subst; by rewrite ?inE !mem_edgep ?zp2'' ?zps1s'.
   }
 
   have ?: forall i j : K4, i != j -> exists x' y' : G, [/\ x' \in phi i, y' \in phi j & x' -- y'].
