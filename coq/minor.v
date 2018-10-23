@@ -337,7 +337,7 @@ Section DecompTheory.
       pose C := [set t in [predC T0] | connect (restrict [predC T0] sedge) c t].
       have inC: c \in C. { by rewrite !inE connect0 andbT HT0'. }
       have con_C : connected C. 
-      { apply: connected_restrict. move: inC. rewrite inE. by case/andP. }
+      { apply: connected_restrict_in. move: inC. rewrite inE. by case/andP. }
       have dis_C : [disjoint C & T0]. 
       { rewrite disjoints_subset /C. apply/subsetP => t. rewrite !inE. by case/andP. }
       have [t0 [c0 [Ht0 Hc0 tc0]]] : exists t0 c0, [/\ t0 \in T0, c0 \in C & t0 -- c0].

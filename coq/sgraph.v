@@ -1162,20 +1162,32 @@ Lemma connectedTI (G : sgraph) :
 Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 
 Lemma connected_restrict (G : sgraph) (A : pred G) x : 
-  x \in A -> 
-  connected [set y in A | connect (restrict A sedge) x y].
+  connected [set y | connect (restrict A sedge) x y].
 Proof.
-  move => inA y1 y2. rewrite !inE. move => C1 C2. set P := mem _. 
-  wlog suff: y1 {y2} C1 {C2} / connect (restrict P sedge) x y1.
-  { move => H.  apply: (connect_trans (y := x)); last exact: H.
-    rewrite srestrict_sym. exact: H. }
-  case: (x =P y1) C1 => [-> //|/eqP H /andP [inA' C1]].
-  case/uPathRP : C1 => // p _ subA. apply: (connectRI (p := p)) => z in_p. 
-  rewrite !inE (subsetP subA) //=. case/psplitP : _ / in_p subA => p1 p2 subA. 
-  apply: (connectRI (p := p1)). apply/subsetP. apply: subset_trans subA. 
-  exact: subset_pcatL.
+  move => u v. rewrite !inE => Hu Hv. move defP : (mem _) => P.
+  wlog suff W: u Hu / connect (restrict P sedge) x u.
+  { apply: connect_trans (W _ Hv). rewrite srestrict_sym. exact: W. }
+  case: (altP (x =P u)) => [-> //|xDu].
+  case/uPathRP : Hu => // p Ip Ap.
+  apply connectRI with p => z in_p.
+  rewrite -defP inE. case/psplitP : in_p Ap => p1 p2 Ap. 
+  apply connectRI with p1. apply/subsetP. 
+  apply: subset_trans Ap. exact: subset_pcatL.
 Qed.
 
+Lemma connect_range (G : sgraph) (A : pred G) x : x \in A -> 
+  [set y | connect (restrict A sedge) x y] = 
+  [set y in A | connect (restrict A sedge) x y].
+Proof. 
+  move => inA. apply/setP => z. rewrite !inE srestrict_sym.
+  case: (altP (z =P x)) => [->|zDx]; first by rewrite !connect0 inA.
+  apply/idP/andP => [Czx|[//]];split => //.
+  case/connectP : Czx => [[/= _ <- //|a p /=]]. by case (z \in A).
+Qed.
+
+Lemma connected_restrict_in (G : sgraph) (A : pred G) x : x \in A -> 
+  connected [set y in A | connect (restrict A sedge) x y].
+Proof. move => inA. rewrite -connect_range //. exact: connected_restrict. Qed.
 
 (* NOTE: This could be generalized to sets and their images *)
 Lemma iso_connected (G H : sgraph) :
@@ -1333,7 +1345,7 @@ Proof.
   { move => z Hz. rewrite -compU. apply/bigcupP; by exists C. } 
   move/CH : (in_C) => in_H. 
   suff -> : C = [set y in H | connect (restrict (mem H) sedge) x y].
-  { exact: connected_restrict. }
+  { exact: connected_restrict_in. }
   apply/setP => y. rewrite inE. case: (boolP (y \in H)) => /= [y_in_H|y_notin_H].
   - by rewrite -PEQ // ?(def_pblock _ C_comp).
   - apply: contraNF y_notin_H. exact: CH.
