@@ -834,7 +834,7 @@ Proof.
 Qed.
 
 Lemma add_edge_sedge_sym (G : sgraph) s1 s2 x y:
-  (@sedge (@add_edge G s1 s2) x y) <-> (@sedge (@add_edge G s2 s1) x y).
+  (@sedge (@add_edge G s1 s2) x y) = (@sedge (@add_edge G s2 s1) x y).
 Proof.
 Admitted.
 
@@ -848,54 +848,56 @@ Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
 Proof.
 Admitted.
 
-Lemma cases_without_edge (G : sgraph) (V1 V2 : {set G}) (s1 s2 : G) phi:
-  proper_separation V1 V2 -> V1 :&: V2 = [set s1; s2] -> (@minor_rmap (add_edge s1 s2) K4 phi) ->
-  minor G K4 \/ (exists i, exists j, [/\ s1 \in (phi i), s2 \in (phi j) & i!=j])
-    \/ exists i, [/\ s1 \in (phi i), s2 \in (phi i) & ~ @connected G (phi i)].
+Lemma minor_rmap_add_edge_sym (G H : sgraph) (s1 s2 : G) (phi : H -> {set add_edge s1 s2}) :
+  minor_rmap phi -> @minor_rmap (add_edge s2 s1) H phi.
 Proof.
-  move => psep V12s12 [map0 map1 map2 map3].
+  case => [P1 P2 P3 P4]; split => //.
+  - move => x. exact/add_edge_connected_sym. 
+  - move => x y /P4 => [[x'] [y'] [A B C]]. exists x'; exists y'. by rewrite add_edge_sedge_sym.
+Qed.
+
+Lemma cases_without_edge (G : sgraph) (s1 s2 : G) phi:
+  K4_free G -> (@minor_rmap (add_edge s1 s2) K4 phi) ->
+  (exists i j, [/\ s1 \in phi i, s2 \in phi j & i != j]) \/
+  exists i, [/\ s1 \in phi i, s2 \in phi i & ~ @connected G (phi i)].
+Proof.
+  move => K4F_G phi_map.
   case (boolP ([exists i, s1 \in phi i] && [exists j, s2 \in phi j])).
   - (* s1 and s2 appear in a bag *)
     move => /andP [/existsP [i s1i] /existsP [j s2j]]. case (boolP (i==j));
-      last by move => ?; right; left; exists i; exists j; split => //.
+      last by move => ?; left; exists i; exists j; split => //.
     (* s1 s2 in same bag *)
-    move => /eqP temp. subst j. case (boolP (@connectedb G (phi i))).
-    + (* bag connected, so find minor *)
-      move => /connectedP coni. left.
-      suff HH: @minor_rmap G K4 phi by apply (minor_of_map (minor_map_rmap HH)).
-      have disjE: forall x i j, x \in phi i -> x \in phi j -> i==j. (* TODO: independent lemma *)
-      { move => x' i' j' x'i'. apply contraTT => i'Nj'.
-        move: (map2 i' j' i'Nj'). rewrite disjoints_subset => /subsetP iINx. 
-        move: (iINx x' x'i') => temp. by rewrite inE in temp. }
+    move => /eqP ?. subst j. case (boolP (@connectedb G (phi i))).
+    + case: phi_map => [map0 map1 map2 map3]. (* bag connected, so find minor *)
+      move => /connectedP coni. 
+      suff HH: @minor_rmap G K4 phi by case: K4F_G; apply (minor_of_map (minor_map_rmap HH)).
+      have disjE: forall x i j, x \in phi i -> x \in phi j -> i=j. (* TODO: independent lemma *)
+      { move => x' i' j' x'i'. apply contraTeq => i'Nj'. 
+        by erewrite (disjointFr (map2 _ _ i'Nj')). }
       split => //.
-      * move => x. case (boolP (x==i)) => [xi|xNi]. by move: xi => /eqP ->.
+      * move => x. case: (altP (x =P i)) => [->//|xNi]. 
         apply add_edge_keep_connected_l with s1 s2 => //.
-        apply: contraNN xNi => ?. apply disjE with s1 => //.
+        apply: contraNN xNi => ?. by rewrite (disjE s1 x i). 
       * move => i' j' i'j'. case: (map3 i' j' i'j') => x' [y' [x'i' y'j' x'y']].
         exists x'. exists y'. split => //.
-        have i'Nj': i'!=j' by rewrite (sg_edgeNeq i'j').
         move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]
-          |/and3P [y'Nx' /eqP ? /eqP ?]] => //; subst x' y'.
-        { move: (disjE s1 i i' s1i x'i') => /eqP temp.
-          move: (disjE s2 i j' s2j y'j') => temp2. subst i. contrab. }
-        { move: (disjE s1 i j' s1i y'j') => temp.
-          move: (disjE s2 i i' s2j x'i') => /eqP temp2. subst i. contrab. }
+          |/and3P [y'Nx' /eqP ? /eqP ?]] => //; subst.
+        by rewrite -(disjE s1 i i') // (disjE s2 i j') // sgP in i'j'.
+        by rewrite -(disjE s1 i j') // (disjE s2 i i') // sgP in i'j'.
     + (* bag not connected *)
-      move => /connectedP nconi. right. right. exists i. split => //.
+      move => /connectedP nconi. right. exists i. split => //.
   - (* either s1 or s2 is not in any bag *) (* so find minor *)
-    rewrite negb_and !negb_exists. move => H. left.
-    suff HH: @minor_rmap G K4 phi by apply (minor_of_map (minor_map_rmap HH)).
-    split => //.
-    + move: H => /orP [/forallP H|/forallP H] x.
-      * apply add_edge_keep_connected_l with s1 s2 => //.
-      * apply add_edge_keep_connected_l with s2 s1 => //.
-        by rewrite add_edge_connected_sym.
+    rewrite negb_and !negb_exists => H. 
+    suff HH: @minor_rmap G K4 phi by case: K4F_G; apply (minor_of_map (minor_map_rmap HH)).
+    wlog H : s1 s2 phi phi_map {H} / forall x, s1 \notin phi x. 
+    { move => W. case/orP : H => /forallP; first exact: W. 
+      apply: (W s2 s1). exact: minor_rmap_add_edge_sym. }
+    have H' x y : y \in phi x -> y == s1 = false by apply: contraTF => /eqP->.
+    case: phi_map => [map0 map1 map2 map3]; split => //.    
+    + move => x. exact: add_edge_keep_connected_l. 
     + move => i j ij. case: (map3 i j ij) => x' [y' [x'i y'j x'y']].
-      exists x'. exists y'. split => //.
-      move: x'y' => /or3P [?|/and3P [x'Ny' /eqP ? /eqP ?]
-          |/and3P [y'Nx' /eqP ? /eqP ?]] => //; subst x' y';
-        move: H => /orP [/forallP H|/forallP H];
-        move: (H i) (H j) => ? ?; contrab.
+      exists x'. exists y'. split => //. apply: contraTT x'y' => x'y'. 
+      by rewrite /= (negbTE x'y') (H' i) ?(H' j).
 Qed.
 
 Lemma card2' G (S : {set G}):
@@ -934,8 +936,6 @@ Proof.
     - apply H with V2 V1 => //. by apply proper_separation_symmetry.
       by rewrite setIC. by left. }
   move => HphiV1 _. apply K4free. rewrite SV12 in S12.
-
-  case: (cases_without_edge psep S12 rmapphi). { done. }
 
   have caseA: forall (phi2 : K4 -> {set add_edge s1 s2}), minor_rmap phi2 ->
     (exists i j : K4, [/\ s1 \in phi2 i, s2 \in phi2 j & i != j]) ->
@@ -1037,10 +1037,9 @@ Proof.
     - move: twobags' => [i [j [t1 t2 t3]]].
       exists j. exists i. split => //. by rewrite eq_sym. }
 
-  move => [twobags|onebag].
+  case: (cases_without_edge K4free rmapphi) => [twobags|onebag].
 
   - apply caseA with phi => //.
-
   - (* case B, s1 and s2 in same bag, not connected *)
     move: onebag => [i [s1i s2i notconi]].
     destruct rmapphi as [map0 map1 map2 map3].
