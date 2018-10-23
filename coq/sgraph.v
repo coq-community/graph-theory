@@ -1115,6 +1115,16 @@ Proof.
     apply: restrict_path => //. exact/subsetP.
 Qed.
 
+(* This is only useful if the [x = y] case does not require [x \in A] *)
+Lemma connect_restrict_case (G : sgraph) (x y : G) (A : pred G) : 
+  connect (restrict A sedge) x y -> 
+  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A sedge) x y].
+Proof.
+  case: (altP (x =P y)) => [|? conn]; first by left. 
+  case/uPathRP : (conn) => // p _ /subsetP subA. 
+  right; split => //; by rewrite subA ?path_end ?path_begin.
+Qed.
+
 Lemma PathRP (G : sgraph) {A : pred G} x y : x != y ->
   reflect (exists p: Path x y, p \subset A)
           (connect (restrict A sedge) x y).
@@ -1180,9 +1190,7 @@ Lemma connect_range (G : sgraph) (A : pred G) x : x \in A ->
   [set y in A | connect (restrict A sedge) x y].
 Proof. 
   move => inA. apply/setP => z. rewrite !inE srestrict_sym.
-  case: (altP (z =P x)) => [->|zDx]; first by rewrite !connect0 inA.
-  apply/idP/andP => [Czx|[//]];split => //.
-  case/connectP : Czx => [[/= _ <- //|a p /=]]. by case (z \in A).
+  apply/idP/andP => [|[//]]. by case/connect_restrict_case => [->|[]].
 Qed.
 
 Lemma connected_restrict_in (G : sgraph) (A : pred G) x : x \in A -> 
@@ -1306,16 +1314,6 @@ Definition components (G : sgraph) (H : {set G}) : {set {set G}} :=
 Lemma partition_components (G : sgraph) (H : {set G}) :
   partition (components H) H.
 Proof. apply: equivalence_partitionP. exact: (@sedge_equiv_in G). Qed.
-
-(* This is only useful if the [x = y] case does not require [x \in A] *)
-Lemma connect_restrict_case (G : sgraph) (x y : G) (A : pred G) : 
-  connect (restrict A sedge) x y -> 
-  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A sedge) x y].
-Proof.
-  case: (altP (x =P y)) => [|? conn]; first by left. 
-  case/uPathRP : (conn) => // p _ /subsetP subA. 
-  right; split => //; by rewrite subA ?path_end ?path_begin.
-Qed.
 
 Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :
   reflect (exists p : Path x y, p \subset H) (y \in pblock (components H) x).
