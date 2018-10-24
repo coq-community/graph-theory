@@ -412,7 +412,7 @@ Definition minor_rmap (G H : sgraph) (phi : H -> {set G}) :=
   [/\ (forall x : H, phi x != set0),
      (forall x : H, connected (phi x)),
      (forall x y : H, x != y -> [disjoint phi x & phi y]) &
-     (forall x y : H, x -- y -> exists x' y' : G, [/\ x' \in phi x, y' \in phi y & x' -- y'])].
+     (forall x y : H, x -- y -> neighbor (phi x) (phi y))].
 
 Lemma minor_map_rmap (G H : sgraph) (phi : H -> {set G}) : 
   minor_rmap phi -> minor_map (fun x : G => [pick x0 : H | x \in phi x0]).
@@ -427,7 +427,7 @@ Proof.
   - move => y. case/set0Pn : (P1 y) => y0. rewrite phiP => /eqP <-. by exists y0.
   - move => y x0 y0. rewrite !inE -!phiP => H1 H2. move: (P2 y _ _ H1 H2). 
     apply: connect_mono => u v. by rewrite /= -!mem_preim !phiP.
-  - move => x y /P4 [x0] [y0] [*]. exists x0;exists y0. by rewrite -!mem_preim -!phiP.
+  - move => x y /P4/neighborP [x0] [y0] [*]. exists x0;exists y0. by rewrite -!mem_preim -!phiP.
 Qed.
 
 Lemma minor_rmap_map (G H : sgraph) (phi : G -> option H) : 
@@ -441,7 +441,7 @@ Proof.
     apply: connect_mono => a b. by rewrite /= !inE.
   - move => x y D. rewrite disjoint_exists. 
     apply: contraNN D => /exists_inP [x0]. by rewrite -Some_eqE !inE => /eqP<-/eqP<-.
-  - move => x y /P3 [x0] [y0] [*]. exists x0;exists y0. by rewrite !inE !mem_preim. 
+  - move => x y /P3 [x0] [y0] [*]. apply/neighborP. exists x0;exists y0. by rewrite !inE !mem_preim. 
 Qed.
       
 

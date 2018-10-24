@@ -1632,3 +1632,27 @@ Proof.
   rewrite !inE mem_path -nodesE E.
   case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
 Qed.
+
+(** ** Neighboring sets *)
+
+Section Neighbor.
+  Variable (G : sgraph).
+  Implicit Types A B C D : {set G}.
+  
+  Definition neighbor A B := [exists x in A, exists y in B, x -- y].
+  
+  Lemma neighborP A B : reflect (exists x y, [/\ x \in A, y \in B & x -- y]) (neighbor A B).
+  Admitted.
+
+  Lemma neighborC A B : neighbor A B = neighbor B A.
+  Admitted.
+
+  Lemma neighbor_connected A B : 
+    connected A -> connected B -> neighbor A B -> connected (A :|: B).
+  Admitted.
+
+  Lemma neighborW C D A B : 
+    C \subset A -> D \subset B -> neighbor C D -> neighbor A B.
+  Admitted.
+End Neighbor.
+Arguments neighborW : clear implicits.
