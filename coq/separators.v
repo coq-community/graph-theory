@@ -907,19 +907,21 @@ Proof.
       by rewrite /= (negbTE x'y') (H' i) ?(H' j).
 Qed.
 
-Lemma disjointI (G :sgraph) (A B : {set G}):
-  (forall x, x \in A -> x \in B -> False) -> [disjoint A & B].
+Lemma disjointP (T : finType) (A B : pred T):
+  reflect (forall x, x \in A -> x \in B -> False) [disjoint A & B].
 Proof.
-  move => H. rewrite -setI_eq0. apply /eqP /setP => z. rewrite !inE.
-  apply: contraTF isT => /andP [zCs1 zy]. exfalso. apply H with z => //.
+  apply:(iffP idP) => [H x|H].
+  - move: H. by rewrite disjoint_subset => /subsetP H /H /negP.
+  - rewrite disjoint_subset. apply /subsetP => x xA. rewrite inE.
+    apply: contraTN isT => xB. by case: (H x).
 Qed.
 
 Lemma disjointsU (G : sgraph) (A B C : {set G}):
   [disjoint A & C] -> [disjoint B & C] -> [disjoint A :|: B & C].
 Proof.
-  move => a b. apply disjointI => x. rewrite inE => /orP [xA|xB] xC.
-  - apply: (@disjointE _ _ _ x a) => //.
-  - apply: (@disjointE _ _ _ x b) => //.
+  move => a b. apply /disjointP => x. rewrite inE => /orP [].
+  - apply (disjointP (mem A) (mem C) a).
+  - apply (disjointP (mem B) (mem C) b).
 Qed.
 
 Lemma add_edge_separation (G : sgraph) V1 V2 s1 s2:
@@ -938,9 +940,9 @@ Qed.
 Definition Component G (A : {set G}) s :=
     [set z in A | connect (restrict (mem A) sedge) s z].
 
-Lemma add_edge_connected_in_two_components (G :sgraph) (s1 s2 : G) (A : {set add_edge s1 s2}):
-    connected A -> s1 \in A -> s2 \in A ->
-    forall (x : G), x \in A -> x \in Component (A : {set G}) s1 \/ x \in Component (A : {set G}) s2.
+Lemma add_edge_connected_in_two_components (G :sgraph) (s1 s2 : G) (A : {set G}):
+    connected (A : {set add_edge s1 s2}) -> s1 \in A -> s2 \in A ->
+    forall (x : G), x \in A -> x \in Component A s1 \/ x \in Component A s2.
 Proof. (* TODO : better name *)
   move => conA s1A s2A x xA. case: (altP (s1 =P x)) => [->|s1Nx].
   { left. by rewrite inE connect0. }
@@ -979,7 +981,7 @@ Lemma add_edge_get_connected_two_distinct_components (G :sgraph) (s1 s2 : G) (A 
     connected A -> s1 \in A -> s2 \in A -> ~ @connected G A ->
     [disjoint (Component (A : {set G}) s1) & (Component (A : {set G}) s2)].
 Proof. (* TODO : better name *)
-  move => conA s1A s2A nconA. apply disjointI => z.
+  move => conA s1A s2A nconA. apply /disjointP => z.
   rewrite !inE => /andP [_ ps1z] /andP [_ ps2z].
   apply nconA. move => a b ai bi.
   have cons1s2: @connect G (@restrict G (mem A) sedge) s1 s2.
@@ -1057,7 +1059,7 @@ Proof.
           + move: (H y x xNy xj). rewrite (negbTE xj) yj => ?. by rewrite disjoint_sym.
         - move: (H x y xNy yj). by rewrite (negbTE yj). }
       rewrite (negbTE yNj). case: (altP (x=Pj)) => ? //=; [ subst x | by apply map2].
-      rewrite disjointsU => //. by apply map2. apply disjointI => a ap ay.
+      rewrite disjointsU => //. by apply map2. apply /disjointP => a ap ay.
       rewrite inE in ap.
       move: (subsetP (HphiV1 y) a ay) => aV1. move: (subsetP pV2 a ap) => aV2.
       have: a \in [set s1; s2] by rewrite -S12 !inE.
@@ -1105,8 +1107,10 @@ Proof.
     have I4inC12: forall (x : G), x \in phi i -> x \in C s1 \/ x \in C s2.
     { rewrite -C_def.
       apply (add_edge_connected_in_two_components (map1 i) s1i s2i). }
-    have C1inphii: C s1 \subset phi i. { rewrite -C_def /Component setIdE. apply subsetIl. }
-    have C2inphii: C s2 \subset phi i. { rewrite -C_def /Component setIdE. apply subsetIl. }
+    have C1inphii: (C s1 : {set (add_edge s1 s2)}) \subset phi i.
+    { rewrite -C_def /Component setIdE. apply subsetIl. }
+    have C2inphii: (C s2 : {set (add_edge s1 s2)}) \subset phi i.
+    { rewrite -C_def /Component setIdE. apply subsetIl. }
     have disC1C2: [disjoint (C s1) & (C s2)].
     { rewrite -C_def.
       apply (add_edge_get_connected_two_distinct_components (map1 i) s1i s2i notconi). }
@@ -1190,7 +1194,7 @@ Proof.
         { rewrite add_edge_connected_sym. apply map1. }
         apply: contraNN xi => s1x. by rewrite (disjE s2 x i s1x s2i).
       * have disC1y: forall y, y!=i -> [disjoint C s1 & (phi y : {set G})].
-        { move => y' y'Ni. apply disjointI => z zCs1 zy'.
+        { move => y' y'Ni. apply /disjointP => z zCs1 zy'.
         move: (subsetP C1inphii z zCs1) => zi.
         apply: (@disjointE _ _ _ z (map2 y' i y'Ni)) => //. }
         case: (altP (x =P i)) => xNi //=; try subst x;
@@ -1247,14 +1251,23 @@ Proof.
             try by apply add_edge_connected.
           apply connectedU_edge with (x3' : add_edge s1 s2) x3 => //.
           by destruct diffcomp. by apply add_edge_connected.
-        - case:(altP (x =P i)) => xi; [|case:(altP (x =P l)) => xl]; try subst x.
+        - clear C1V1 C2V1.
+          case:(altP (x =P i)) => xi; [|case:(altP (x =P l)) => xl]; try subst x.
           all: case:(altP (y =P i)) => yi; [|case:(altP (y =P l)) => yl];
             try subst y; try by rewrite eqxx in xNy.
-          1,6: rewrite disjoint_sym. 1,2,4,5: apply disjointsU.
-          1,2,4,5,6,8,10 : rewrite disjoint_sym. all: try done.
-          1,3,5,8: apply disjoint_transL with (mem (phi i)) => //.
-          5,6: apply disjoint_transR with (mem (phi i)) => //.
-          all: apply map2 =>//; by rewrite eq_sym.
+          all: repeat match goal with
+            | [H1 : is_true (?E \subset ?G), H2 : is_true (?F \subset ?G)
+              |- is_true [disjoint ?A & ?B]] => match B with
+                | context [?C :|: ?D] => rewrite disjoint_sym
+                | _ => try done; match A with
+                  | context [?C :|: ?D] => apply disjointsU
+                  | context [E] => rewrite disjoint_sym
+                  | context [F] => rewrite disjoint_sym
+                  | _ => match B with
+                    | context [E] => apply disjoint_transR with (mem (phi i)) => //
+                    | context [F] => apply disjoint_transR with (mem (phi i)) => //
+                    | _ =>  apply map2 => //; by rewrite eq_sym
+          end end end end.
         - case:(altP (x =P i)) => xi; [|case:(altP (x =P l)) => xl]; try subst x.
           all: case:(altP (y =P i)) => yi; [|case:(altP (y =P l)) => yl];
             try subst y; try by move: (sg_edgeNeq xy); rewrite eqxx.
