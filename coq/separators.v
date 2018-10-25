@@ -299,6 +299,51 @@ Proof.
   move => dec1 dec2 sepV subV.
   have dec12 := join_decomp dec1 dec2. set G' := sjoin _ _ in dec12.
   pose h (x : G') : G := match x with inl x => val x | inr x => val x end.
+  case: (boolP (0 < #|V1 :&: V2|)) => [cliquen0|clique0].
+
+  - (* clique not empty *)
+    move def_S : (V1 :&: V2) => S. rewrite def_S in subV cliquen0.
+
+    (* use decomp_clique to get t1 and t2 containing [inl S] and [inr S] *)
+
+    pose S1 := [set x | val x \in S] : {set induced V1}.
+    have cln01: 0 < #|S1|. admit.
+    have clS1: clique S1. admit.
+    pose S2 := [set x | val x \in S] : {set induced V2}.
+    have cln02: 0 < #|S2|. admit.
+    have clS2: clique S2. admit.
+
+    case: (decomp_clique dec1 cln01 clS1) => t1 Ht1.
+    case: (decomp_clique dec2 cln02 clS2) => t2 Ht2.
+
+    pose T := @link (tjoin T1 T2) [set inl t1; inr t2].
+    (* see tlink *)
+    (* see [link] and proof in subalgebra *)
+
+    (* need a new B : T -> {set G}
+                  Some inl t -> B1 t
+                  Some inr t -> B2 t
+                  None       -> S *)
+
+    (* use lemma rename_decomp with T h *)
+(*
+  have dec3: sdecomp T G (rename _ h).
+  { apply rename_decomp => //.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+  }
+
+exists (tjoin T1 T2). exists (rename (decompU B1 B2) h). split => //.
+
+  *)  admit.
+
+  - (* clique size 0 *)
+    (* two separate forest are enough, use h
+       and lemma sg_iso_decomp and ssplit_disconnected *)
+    admit.
+
 Admitted.
 
 Lemma connectedI_clique (G : sgraph) (A B S : {set G}) :
@@ -599,12 +644,10 @@ Proof.
     + left. by apply ind_pxs1pxs2.
     + exfalso. move: Ns12 => /eqP; apply.
       move: (pxs1V1 z zpxs1) (pys2V2 z zpys2) => zV1 zV2.
-      rewrite -(px1Ss1 z) ?inE //.
-      rewrite -(py2Ss2 z) ?inE //.
+      rewrite -(px1Ss1 z) ?inE // -(py2Ss2 z) ?inE //.
     + exfalso. move: Ns12 => /eqP; apply.
       move: (pxs2V1 z zpxs2) (pys1V2 z zpys1) => zV1 zV2.
-      rewrite -(px2Ss2 z) ?inE //.
-      rewrite -(py1Ss1 z) ?inE //.
+      rewrite -(px2Ss2 z) ?inE // -(py1Ss1 z) ?inE //.
     + right. by apply ind_pys1pys2.
   }
 
@@ -941,31 +984,18 @@ Proof. (* TODO : better name *)
   case: (@split_at_last (@add_edge G s1 s2) (mem [set s1; s2]) s1 x p s1).
     { by rewrite !inE eqxx. } { by rewrite inE. }
   move => z [p1 [p2 [catp zS Hlast]]].
-  case: (altP (z =P s1)) => ?.
-  - subst z. left.
-    case: (@lift_Path_on _ _ (fun (v : G) => (v : add_edge s1 s2)) s1 x p2 ) => //.
+  suff HH: x \in Component A z.
+  - rewrite !inE in zS. move: zS => /orP [] /eqP<-; rewrite HH; try solve [by left|by right].
+  - case: (@lift_Path_on _ _ (fun (v : G) => (v : add_edge s1 s2)) z x p2 ) => //.
     + move => a b ap1 bp1 /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
           /and3P [t1 /eqP t2 /eqP t3]] => //; subst a b;
-        apply: contraNT t1 => nedge; apply /eqP; symmetry; apply Hlast => //;
-        by rewrite !inE eqxx.
+        apply: contraNT t1 => nedge; rewrite (Hlast s1) => //;
+        try rewrite (Hlast s2) => //; by rewrite !inE eqxx.
     + move => a ap1. rewrite mem_map // mem_enum //.
     + move => p3 t1 t2. rewrite inE xA. apply connectRI with p3.
       move => a ap3. rewrite map_id in t1.
       rewrite mem_path -nodesE t1 nodesE -(mem_path p2) in ap3.
       apply (subsetP Hp a). by rewrite catp !inE ap3.
-  - have /eqP zs2: z==s2. { rewrite !inE in zS. move: zS => /orP [?|?] //. contrab. }
-    subst z. right.
-    case: (@lift_Path_on _ _ (fun (v : G) => (v : add_edge s1 s2)) s2 x p2 ) => //.
-    + move => a b ap1 bp1 /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
-          /and3P [t1 /eqP t2 /eqP t3]] => //; subst a b;
-        apply: contraNT t1 => nedge; apply /eqP; apply Hlast => //;
-        by rewrite !inE eqxx.
-    + move => a ap1. rewrite mem_map // mem_enum //.
-    + move => p3 t1 t2. rewrite inE xA. apply connectRI with p3.
-      move => a ap3. rewrite map_id in t1.
-      rewrite mem_path -nodesE t1 nodesE -(mem_path p2) in ap3.
-      apply (subsetP Hp a). by rewrite catp !inE ap3.
-  (* is there a wlog to do ? - yes !  *)
 Qed.
 
 Lemma add_edge_get_connected_two_distinct_components (G :sgraph) (s1 s2 : G) (A : {set add_edge s1 s2}):
@@ -1196,7 +1226,7 @@ Proof.
         -- rewrite add_edge_connected_sym. apply map1.
         -- apply: contraNN xi => s1x. by rewrite (disjE s2 x i s1x s2i).
       * have disC1y: forall y, y!=i -> [disjoint C s1 & (phi y : {set G})].
-        { move => y' y'Ni. apply /disjointP => z zCs1 zy'.
+        { move => y' y'Ni. apply /disjointP => z zCs1 zy'. (*TODO: with subset_trans *)
         move: (subsetP C1inphii z zCs1) => zi.
         apply: (@disjointE _ _ _ z (map2 y' i y'Ni)) => //. }
         case: (altP (x =P i)) => xNi //=; try subst x;
@@ -1230,7 +1260,7 @@ Proof.
       { apply caseA with s1 s2 phi' => //.
         * rewrite /phi'. move => x. case: (boolP (x==i)) => xi //=.
           case: (boolP (x==j)) => xl //=. rewrite -(setUid V1). apply setUSS => //.
-        * rewrite /phi'. exists i. exists j. rewrite (negbTE jNi) !eq_refl.
+        * rewrite /phi'. exists i. exists j. rewrite (negbTE jNi) !eqxx.
           split; try rewrite -C_def !inE ?s1i ?s2i connect0; try rewrite eq_sym; done. }
       rewrite /phi'. split => [x|x|x y xNy|x y xy].
       * case: (boolP (x==i)) => xi; [|case: (boolP (x==j)) => xj //].
@@ -1240,41 +1270,37 @@ Proof.
           try by apply add_edge_connected.
         rewrite setUC. apply: neighbor_connected => //. exact: add_edge_connected.
       * clear C1V1 C2V1.
-          case:(altP (x =P i)) => xi; [|case:(altP (x =P j)) => xj]; try subst x.
-          all: case:(altP (y =P i)) => yi; [|case:(altP (y =P j)) => yl];
-            try subst y; try by rewrite eqxx in xNy.
-          all: repeat match goal with
-            | [H1 : is_true (?E \subset ?G), H2 : is_true (?F \subset ?G)
-              |- is_true [disjoint ?A & ?B]] => match B with
-                | context [?C :|: ?D] => rewrite disjoint_sym
-                | _ => try done; match A with
-                  | context [?C :|: ?D] => apply disjointsU
-                  | context [E] => rewrite disjoint_sym
-                  | context [F] => rewrite disjoint_sym
-                  | _ => match B with
-                    | context [E] => apply disjoint_transR with (mem (phi i)) => //
-                    | context [F] => apply disjoint_transR with (mem (phi i)) => //
-                    | _ =>  apply map2 => //; by rewrite eq_sym
-          end end end end.
-       * rewrite /= in xy.
-         wlog yNj : x y xy / y != j; last rewrite (negbTE yNj).
-         { move => W. case: {-}_ / (altP (y =P j)) => [E|H]; last exact: W.
-           by rewrite neighborC W // -?E // eq_sym. }
-         case:(altP (x =P i)) => xi. 
-         { rewrite eq_sym -xi (negbTE xy). apply NCs1Pk.
-           by rewrite inE (negbTE yNj) -xi eq_sym (negbTE xy). }
-         case:(altP (x =P j)) => xj.
-         { subst x. case: (altP (y =P i)) => [E|yNi].
-           - apply/neighborP; exists s2; exists s1. 
-             by rewrite /= s1Ns2 !eqxx !orbT -C_def !inE !connect0 // s1i s2i.
-           - apply: neighborW (map3 _ _ xy) => //. exact: subsetUl. }
+        case:(altP (x =P i)) => xi; [|case:(altP (x =P j)) => xj]; try subst x.
+        all: case:(altP (y =P i)) => yi; [|case:(altP (y =P j)) => yl];
+          try subst y; try by rewrite eqxx in xNy.
+        all: repeat match goal with
+          | [H1 : is_true (?E \subset ?G), H2 : is_true (?F \subset ?G)
+            |- is_true [disjoint ?A & ?B]] => match B with
+              | context [?C :|: ?D] => rewrite disjoint_sym
+              | _ => try done; match A with
+                | context [?C :|: ?D] => apply disjointsU
+                | context [E] => rewrite disjoint_sym
+                | context [F] => rewrite disjoint_sym
+                | _ => match B with
+                  | context [E] => apply disjoint_transR with (mem (phi i)) => //
+                  | context [F] => apply disjoint_transR with (mem (phi i)) => //
+                  | _ =>  apply map2 => //; by rewrite eq_sym
+        end end end end.
+      * rewrite /= in xy.
+        wlog yNj : x y xy / y != j; last rewrite (negbTE yNj).
+        { move => W. case: {-}_ / (altP (y =P j)) => [E|H]; last exact: W.
+          by rewrite neighborC W // -?E // eq_sym. }
+        case:(altP (x =P i)) => xi. 
+        { rewrite eq_sym -xi (negbTE xy). apply NCs1Pk.
+          by rewrite inE (negbTE yNj) -xi eq_sym (negbTE xy). }
+        case:(altP (x =P j)) => xj.
+        { subst x. case: (altP (y =P i)) => [E|yNi].
+          - apply/neighborP; exists s2; exists s1. 
+            by rewrite /= s1Ns2 !eqxx !orbT -C_def !inE !connect0 // s1i s2i.
+          - apply: neighborW (map3 _ _ xy) => //. exact: subsetUl. }
          case:(altP (y =P i)) => yi; last exact: map3.
          by rewrite neighborC NCs1Pk // inE (negbTE xi) (negbTE xj).
 Qed.
-
-Lemma card2' G (S : {set G}):
-  #|S| == 2 -> exists x y, S = [set x; y] /\ x!=y.
-Admitted.
 
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
@@ -1295,11 +1321,12 @@ Proof.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
   clear x0 Hx0 y0 Hy0.
 
-  (* Check card12. ... would need to solve case 0 and 1 separatly... *)
   rewrite leq_eqVlt in Ssmall2. move: Ssmall2 => /orP [Ssize2|Sless2].
 
   - (* If #|S| = 2, find S = [set s1; s2], use (add_edge s1 s2) *)
-    move: (card2' Ssize2) => [s1 [s2 [S12 s1Ns2]]].
+    case: (@card12 _ S); try rewrite (eqP Ssize2) => //.
+      { move => [x HS]. by rewrite HS cards1 in Ssize2. }
+    move => [s1 [s2 [s1Ns2 S12]]].
     (* a tree decomposition for G+s1s2 is enough *)
     suff: (exists (T : forest) (B : T -> {set G}), sdecomp T (add_edge s1 s2) B /\ width B <= 3).
     { move => [T [B [sdec wid]]]. exists T. exists B.
