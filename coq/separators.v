@@ -1006,6 +1006,23 @@ Lemma neighbor_add_edgeC (G : sgraph) (s1 s2 : G) :
   @neighbor (add_edge s1 s2) =2 @neighbor (add_edge s2 s1).
 Admitted.
 
+Lemma neighbor_split (G : sgraph) (A B C1 C2 : {set G}) :
+  B \subset C1 :|: C2 -> neighbor A B -> neighbor A C1 || neighbor A C2.
+Admitted.
+
+(* TODO: names *)
+Lemma fin_new n (s : seq 'I_n) : size s < n -> exists k : 'I_n, k \notin s.
+Admitted.
+
+Lemma fin_seen n (s : seq 'I_n) : uniq s -> n <= size s -> forall k, k \in s.
+Proof. 
+  move => uniq_s size_s. 
+  case: (@leq_size_perm _ s (enum 'I_n)) => // [z||H1 H2 k].
+  - by rewrite mem_enum.
+  - by rewrite size_enum_ord.
+  - by rewrite H1 mem_enum.
+Qed.
+
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
   K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
   S = [set s1; s2] -> s1 != s2 -> K4_free (add_edge s1 s2).
@@ -1105,9 +1122,9 @@ Proof.
 
     (* [phi i] = [component of s1] U [component of s2] *)
     move C_def : (Component ((phi i) : {set G})) => C.
-    have I4inC12: forall (x : G), x \in phi i -> x \in C s1 \/ x \in C s2.
-    { rewrite -C_def.
-      apply (add_edge_connected_in_two_components (map1 i) s1i s2i). }
+    have I4inC12: phi i \subset C s1 :|: C s2.
+    { apply/subsetP. rewrite -C_def => ? ?. apply/setUP.
+      by apply (add_edge_connected_in_two_components (map1 i) s1i s2i). }
     have C1inphii: (C s1 : {set (add_edge s1 s2)}) \subset phi i.
     { rewrite -C_def /Component setIdE. apply subsetIl. }
     have C2inphii: (C s2 : {set (add_edge s1 s2)}) \subset phi i.
@@ -1123,38 +1140,50 @@ Proof.
     wlog [B1|B2]: s1 s2 s1Ns2 phi rmapphi {map1} HphiV1 s1i s2i notconi disjE C_def 
       I4inC12 C1inphii C2inphii S12 caseA disC1C2 conC1 conC2 / 
       (forall j, j != i -> neighbor (C s1) (phi j)) \/ 
-      (exists j, [/\ j != i, neighbor (C s2) (phi j) & forall k, k \notin pred2 i j -> neighbor (C s1) (phi k)]).
-    { move => W. 
+      ( let G' := add_edge s1 s2 in 
+        exists j, [/\ j != i, @neighbor G' (C s2) (phi j) & forall k, k \notin pred2 i j -> @neighbor G' (C s1) (phi k)]).
+    { move => W. pose G' := add_edge s1 s2.
+      Notation NB G A B := (@neighbor G A B).
       have s2Ns1 : s2 != s1 by rewrite eq_sym.
       have rmapphi' := minor_rmap_add_edge_sym rmapphi.
-      have I4inC21 x : x \in phi i -> x \in C s2 \/ x \in C s1 by move/I4inC12; tauto.
+      have I4inC21: phi i \subset C s2 :|: C s1. by rewrite setUC.
       have disC2C1 : [disjoint C s2 & C s1] by rewrite disjoint_sym.
       have S21 : V1 :&: V2 = [set s2; s1] by rewrite setUC.
-      case (boolP [forall (j | j != i), neighbor (C s1) (phi j)]) => [|C1].
-      { move/forall_inP => H. apply: (W s1 s2) => //. exact: rmapphi. by left. }
-
-      case (boolP [forall (j | j != i), neighbor (C s2) (phi j)]) => [|C2].
-      { move/forall_inP => H. apply (W s2 s1 s2Ns1 phi) => //. by left. }
+      case: (rmapphi) => {map1} [map0 map1 map2 map3].
+      have iP z : z != i -> (s1 \in phi z = false)*(s2 \in phi z = false).
+      { move => Hz. by rewrite !(disjointFl (map2 _ _ Hz)). }
+      case (boolP [forall (j | j != i), NB G' (C s1) (phi j)]) => [|C1].
+      { move/forall_inP => H. apply: (W s1 s2) => //. 
+        left => j Hj. move/H : (Hj). apply: neighbor_add_edgeR; by rewrite !iP. }
+      case (boolP [forall (j | j != i), NB G' (C s2) (phi j)]) => [|C2].
+      { move/forall_inP => H. apply (W s2 s1 s2Ns1 phi) => //. 
+        left => j Hj. move/H : (Hj). apply: neighbor_add_edgeR; by rewrite !iP. }
       case/forall_inPn : C1 => j2 Dj2 Nj2. 
       case/forall_inPn : C2 => j1 Dj1 Nj1. rewrite !unfold_in in Dj1 Dj2.
-      case: (rmapphi) => {map1} [map0 map1 map2 map3].
-      have NC A : neighbor A (phi i)  -> neighbor (C s1) A || neighbor (C s2) A.
-      { admit. }
-      have j1Dj2 : j1 != j2. 
-      { apply: contraNneq Nj2 => ?;subst j2. 
-        move/NC : (map3  _ _ Dj2). by rewrite (negbTE Nj1) orbF. }
-      have {Nj2} Nj2 : neighbor (C s2) (phi j2).
-      { move/NC : (map3  _ _ Dj2). by rewrite (negbTE Nj2). }
-      have {Nj1} Nj1 : neighbor (C s1) (phi j1).
-      { move/NC : (map3  _ _ Dj1). by rewrite (negbTE Nj1) orbF. }
-      have [k Hk] : exists k, k \notin [:: i; j1;j2]. admit.
-      move: Hk. rewrite !inE !negb_or => /and3P[Hk1 Hk2 Hk3]. 
-      case/NC/orP : (map3  _ _ Hk1) => [Ks1|Ks2].
-      - apply: (W s2 s1) => //; first exact: rmapphi'.
-        right; exists j1. split => // z. rewrite !inE negb_or.
-        admit.
-      - admit. (* symmetric *) }        
 
+      have NC A  : neighbor A (phi i) -> @neighbor G' (C s1) A || @neighbor G' (C s2) A.
+      { rewrite ![_ _ A] neighborC. exact: neighbor_split.  }
+      have j1Dj2 : j1 != j2. 
+      { apply: contraNneq Nj2 => ?;subst j2.
+        move/NC : (map3  _ _ Dj2). by rewrite (negbTE Nj1) orbF. }
+      have {Nj2} Nj2 : NB G' (C s2) (phi j2).
+      { move/NC : (map3  _ _ Dj2). by rewrite (negbTE Nj2). }
+      have {Nj1} Nj1 : NB G' (C s1) (phi j1).
+      { move/NC : (map3  _ _ Dj1). by rewrite (negbTE Nj1) orbF. }
+      have [k Hk] : exists k, k \notin [:: i; j1;j2] by apply: fin_new.
+      move: Hk. rewrite !inE !negb_or => /and3P[Hk1 Hk2 Hk3]. 
+      have zP z : z \in [:: k;j1;j2;i]. 
+      { by apply: fin_seen; rewrite //= !inE !negb_or Hk1 Hk2 Hk3 Dj1 Dj2 j1Dj2. }
+      case/NC/orP : (map3  _ _ Hk1) => [Ks1|Ks2].
+      - apply: (W s1 s2) => //.
+        right; exists j2. 
+        split => // z. rewrite !inE negb_or => /andP[Z1 Z2]. move: (zP z). 
+        rewrite !inE (negbTE Z1) (negbTE Z2) /= orbF. by case/orP=>/eqP->.
+      - apply: (W s2 s1) => //. exact: rmapphi'. 
+        right. exists j1. rewrite neighbor_add_edgeC.
+        split => // z. rewrite !inE negb_or => /andP[Z1 Z2]. move: (zP z). 
+        rewrite !inE (negbTE Z1) (negbTE Z2) /= orbF. 
+        case/orP=>/eqP-> //; by rewrite neighbor_add_edgeC. }  
     + (* case x1 x2 x3 in same component (wlog component of s1) *)
       pose phi' (k : K4) := if k==i then C s1 else phi k .
       suff HH: @minor_rmap G K4 phi' by apply (minor_of_map (minor_map_rmap HH)).
@@ -1187,8 +1216,8 @@ Proof.
         -- by rewrite (disjointFl (map2 _ _ xi)).
         -- by rewrite (disjointFl (map2 _ _ yNj)).
         -- exact: map3.
-
     + (* case x1 x2 x3 in different components (wlog C1 C1 C2) *)
+      Notation conn G A := (@connected G A).
       case: B2 => j [jNi NCs2Pj NCs1Pk].
       case: rmapphi => [map0 map1 map2 map3].
       pose phi' (k : K4) := if k==i then C s1
@@ -1209,10 +1238,8 @@ Proof.
         -- apply/set0Pn. exists s2. rewrite -C_def !inE s2i. by rewrite connect0.
       * case: (boolP (x==i)) => xi => //; case:(boolP (x==j)) => xj //;
           try by apply add_edge_connected.
-        apply add_edge_connected. rewrite setUC. apply: neighbor_connected => //.
-        apply add_edge_keep_connected_l with s1 s2; first exact: map1.
-        rewrite (eqP xj) in xi. by rewrite (disjointFl (map2 _ _ xi)).
-      *   clear C1V1 C2V1.
+        rewrite setUC. apply: neighbor_connected => //. exact: add_edge_connected.
+      * clear C1V1 C2V1.
           case:(altP (x =P i)) => xi; [|case:(altP (x =P j)) => xj]; try subst x.
           all: case:(altP (y =P i)) => yi; [|case:(altP (y =P j)) => yl];
             try subst y; try by rewrite eqxx in xNy.
@@ -1234,7 +1261,7 @@ Proof.
          { move => W. case: {-}_ / (altP (y =P j)) => [E|H]; last exact: W.
            by rewrite neighborC W // -?E // eq_sym. }
          case:(altP (x =P i)) => xi. 
-         { rewrite eq_sym -xi (negbTE xy). apply: neighbor_add_edge. apply NCs1Pk.
+         { rewrite eq_sym -xi (negbTE xy). apply NCs1Pk.
            by rewrite inE (negbTE yNj) -xi eq_sym (negbTE xy). }
          case:(altP (x =P j)) => xj.
          { subst x. case: (altP (y =P i)) => [E|yNi].
@@ -1242,7 +1269,6 @@ Proof.
              by rewrite /= s1Ns2 !eqxx !orbT -C_def !inE !connect0 // s1i s2i.
            - apply: neighborW (map3 _ _ xy) => //. exact: subsetUl. }
          case:(altP (y =P i)) => yi; last exact: map3.
-         apply: neighbor_add_edge.
          by rewrite neighborC NCs1Pk // inE (negbTE xi) (negbTE xj).
 Qed.
 
