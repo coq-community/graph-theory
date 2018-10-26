@@ -297,52 +297,130 @@ Lemma separation_decomp G (V1 V2 : {set G}) T1 T2 B1 B2 :
   exists T B, @sdecomp T G B /\ width B <= maxn (width B1) (width B2).
 Proof.
   move => dec1 dec2 sepV subV.
-  have dec12 := join_decomp dec1 dec2. set G' := sjoin _ _ in dec12.
+  have dec12 := join_decomp dec1 dec2.
+  set G' := sjoin _ _ in dec12.
+  set T := tjoin T1 T2 in dec12.
+  set B : tjoin T1 T2 -> {set G'}:= decompU B1 B2 in dec12.
   pose h (x : G') : G := match x with inl x => val x | inr x => val x end.
   case: (boolP (0 < #|V1 :&: V2|)) => [cliquen0|clique0].
 
   - (* clique not empty *)
     move def_S : (V1 :&: V2) => S. rewrite def_S in subV cliquen0.
 
-    (* use decomp_clique to get t1 and t2 containing [inl S] and [inr S] *)
-
     pose S1 := [set x | val x \in S] : {set induced V1}.
-    have cln01: 0 < #|S1|. admit.
-    have clS1: clique S1. admit.
+    have cln01: 0 < #|S1|.
+    { move/card_gt0P: cliquen0 => [s sS].
+      apply/card_gt0P. move: (sS); rewrite -def_S inE => /andP [sV1 _].
+      exists (Sub s sV1). by rewrite inE. }
+    have clS1: clique S1.
+    { move => x y xS yS xNy. rewrite !inE in xS yS.
+      apply: (subV (val x : G) (val y)) => //. }
     pose S2 := [set x | val x \in S] : {set induced V2}.
-    have cln02: 0 < #|S2|. admit.
-    have clS2: clique S2. admit.
+    have cln02: 0 < #|S2|.
+    { move/card_gt0P: cliquen0 => [s sS].
+      apply/card_gt0P. move: (sS); rewrite -def_S inE => /andP [_ sV2].
+      exists (Sub s sV2). by rewrite inE. }
+    have clS2: clique S2.
+    { move => x y xS yS xNy. rewrite !inE in xS yS.
+      apply: (subV (val x : G) (val y)) => //. }
 
     case: (decomp_clique dec1 cln01 clS1) => t1 Ht1.
     case: (decomp_clique dec2 cln02 clS2) => t2 Ht2.
+    have dis_t1_t2 : ~~ connect (@sedge T)(inl t1) (inr t2) by rewrite join_disc.
+    have dis_T12 : {in [set inl t1;inr t2] &, forall x y, x != y -> ~~ connect (@sedge T) x y}.
+    { move => [?|?] [?|?] /setUP[] /set1P-> /setUP[]/set1P ->.
+      all: by rewrite ?eqxx // => _; rewrite sconnect_sym. }
+    pose T' := @tlink T _ dis_T12.
+    pose P := [set inl x | x in S1] :|: [set inr x | x in S2].
+    pose B' := decompL B P : _ -> {set G'}.
 
-    pose T := @link (tjoin T1 T2) [set inl t1; inr t2].
-    (* see tlink *)
-    (* see [link] and proof in subalgebra *)
+    have imhS : h @: B' None = S.
+    { apply /setP => x. apply /imsetP. case: (boolP (x \in S)) => [xS|xNS].
+      - have xV1: x \in V1 by move: xS; rewrite -def_S inE => /andP [].
+        exists (inl (Sub x xV1)) => //. rewrite inE. apply /orP; left.
+        apply /imsetP. eexists => //=. by rewrite inE.
+      - apply: contraNnot xNS. move => [x' x'P xx']. subst x.
+        move: x'P. rewrite inE => /orP [] /imsetP [x xS x'x];
+          subst x'; by rewrite inE in xS. }
 
-    (* need a new B : T -> {set G}
-                  Some inl t -> B1 t
-                  Some inr t -> B2 t
-                  None       -> S *)
+    have dec3: sdecomp T' G (rename B' h).
+    { apply rename_decomp.
+      - apply: decomp_link => //.
+        apply/subsetP => x.
+        rewrite !inE => /orP [xS1|xS2]; apply /bigcupP.
+        + exists (inl t1); first by rewrite !inE eqxx.
+          move: xS1 => /imsetP [x0 x0s1 xlx0]. rewrite xlx0.
+          rewrite /B /decompU mem_imset => //. by rewrite (subsetP Ht1).
+        + exists (inr t2); first by rewrite !inE eqxx.
+          move: xS2 => /imsetP [x0 x0s2 xrx0]. rewrite xrx0.
+          rewrite /B /decompU mem_imset => //. by rewrite (subsetP Ht2).
+      - rewrite /h. move => [x|x] [y|y] xy hxNhy; done.
+      - move => x. move: (sepV.1 x). rewrite inE => /orP [xV1|xV2].
+        + by exists (inl (Sub x xV1)).
+        + by exists (inr (Sub x xV2)).
+      - move => x y xy. (* probaby a better way, a bit brute forced *)
+        case: (boolP (x \in V1)) => [xV1|xNV1]; case: (boolP (x \in V2)) => [xV2|xNV2];
+          last by move: (sepV.1 x); rewrite inE => /orP [] ?; contrab.
+        + move: (sepV.1 y); rewrite inE => /orP [yV1|yV2].
+          * exists (inl (Sub x xV1)). exists (inl (Sub y yV1)). split => //=.
+          * exists (inr (Sub x xV2)). exists (inr (Sub y yV2)). split => //=.
+        + case: (boolP (y \in V1)) => [yV1|yNV1].
+          * exists (inl (Sub x xV1)). exists (inl (Sub y yV1)). split => //=.
+          * by rewrite (sepV.2 x y xNV2 yNV1) in xy.
+        + case: (boolP (y \in V2)) => [yV2|yNV2].
+          * exists (inr (Sub x xV2)). exists (inr (Sub y yV2)). split => //=.
+          * rewrite sg_sym in xy. by rewrite (sepV.2 y x yNV2 xNV1) in xy.
+      - move => x y hxEhy.
+        case: (altP (x=Py)) => xNy.
+        { subst y. case: dec12 => [H1 _ _]. move: (H1 x) => [t Ht].
+          exists (Some t). by rewrite Ht. }
+        wlog: x y hxEhy xNy / exists x' y', x = inl x' /\ y = inr y'.
+        { move => W. case Hx: (x) => [lx|rx]; case Hy: (y) => [ly|ry].
+          + suff ?: x==y by contrab. rewrite Hx Hy in hxEhy. rewrite Hx Hy inl_eqE.
+            apply /eqP. apply val_inj. simpl in hxEhy. simpl. by rewrite hxEhy.
+          + rewrite Hx Hy in hxEhy. apply W => //. eexists. eexists. split => //.
+          + case: (W y x) => //; first by rewrite eq_sym.
+            { eexists. eexists. rewrite Hx Hy. split => //. }
+            rewrite Hx Hy. move => t /andP [? ?]. by exists t.
+          + suff ?: x==y by contrab. rewrite Hx Hy in hxEhy. rewrite Hx Hy inr_eqE.
+            apply /eqP. apply val_inj. simpl in hxEhy. simpl. by rewrite hxEhy.
+        }
+        move => [x' [y' [xx' yy']]]. rewrite xx' yy' in hxEhy. simpl in hxEhy.
+        case Hx': (x') => [x0 x0V1]. case Hy': (y') => [y0 y0V2].
+        have x0y0: x0 = y0 by rewrite Hx' Hy' in hxEhy. subst x0.
+        simpl in x0V1. simpl in y0V2. exists None.
+        rewrite xx' yy'. simpl. rewrite !inE. apply /andP.
+        split; apply /orP; [left|right];
+          apply /imsetP; (eexists;[|eauto]);
+          by rewrite inE -def_S inE ?Hx' ?Hy' x0V1 y0V2.
+    }
 
-    (* use lemma rename_decomp with T h *)
-(*
-  have dec3: sdecomp T G (rename _ h).
-  { apply rename_decomp => //.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-  }
-
-exists (tjoin T1 T2). exists (rename (decompU B1 B2) h). split => //.
-
-  *)  admit.
+    exists T'. exists (rename B' h). split => //.
+    rewrite {1}/width (bigID (pred1 None)).
+    rewrite big_pred1_eq. rewrite geq_max. apply/andP;split => //.
+    + rewrite leq_max; apply /orP; left. apply leq_trans with #|S1| => /=.
+      * rewrite imhS. apply eq_leq. admit.
+      * rewrite /width. apply leq_trans with #|B1 t1|; first by apply subset_leq_card.
+        apply (@leq_bigmax _ (fun t => #|B1 t|)).
+    + rewrite (reindex Some) /=.
+      * apply: leq_trans (join_width B1 B2).
+        apply: max_mono => t. exact: leq_imset_card.
+      * apply: subon_bij; last by (apply bij_on_codom => //; exact: (inl t1)). 
+        by move => [x|]; rewrite !in_simpl // codom_f.
 
   - (* clique size 0 *)
-    (* two separate forest are enough, use h
-       and lemma sg_iso_decomp and ssplit_disconnected *)
-    admit.
+    suff iso: sg_iso G' G.
+    + case: (sg_iso_decomp dec12 iso) => B' sdecB' wB'B.
+      exists T; exists B'. split => //. by rewrite wB'B join_width.
+    + suff HH: V2 = ~:V1.
+      * rewrite /G' HH. apply ssplit_disconnected. move => x y xV1 yNV1.
+        rewrite (sepV.2 x y) => //. by rewrite HH inE xV1.
+      * rewrite card_gt0 negbK in clique0. apply /setP => x.
+        case: (boolP (x \in V1)) => [xV1|xNV1]; case: (boolP (x \in V2)) => [xV2|xNV2];
+          try solve [rewrite inE ?xV1 ?xNV1 => //];
+          last by (move: (sepV.1 x); rewrite inE => /orP [] ?; contrab).
+        suff: (x \in set0) by rewrite inE.
+        rewrite -(eqP clique0). by rewrite !inE.
 
 Admitted.
 
