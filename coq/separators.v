@@ -399,7 +399,11 @@ Proof.
     rewrite {1}/width (bigID (pred1 None)).
     rewrite big_pred1_eq. rewrite geq_max. apply/andP;split => //.
     + rewrite leq_max; apply /orP; left. apply leq_trans with #|S1| => /=.
-      * rewrite imhS. apply eq_leq. admit.
+      * rewrite imhS -(on_card_preimset (f := fun x : induced V1 => val x)) //=. 
+        case/card_gt0P : cln01 => x0. 
+        exists (insubd x0) => x //. by rewrite valKd.
+        move => inS. rewrite insubdK //= unfold_in. 
+        move: inS. rewrite -def_S inE. by case: (_ \in _). (* Where is this being proved? *)
       * rewrite /width. apply leq_trans with #|B1 t1|; first by apply subset_leq_card.
         apply (@leq_bigmax _ (fun t => #|B1 t|)).
     + rewrite (reindex Some) /=.
@@ -421,8 +425,7 @@ Proof.
           last by (move: (sepV.1 x); rewrite inE => /orP [] ?; contrab).
         suff: (x \in set0) by rewrite inE.
         rewrite -(eqP clique0). by rewrite !inE.
-
-Admitted.
+Qed.
 
 Lemma connectedI_clique (G : sgraph) (A B S : {set G}) :
   connected A -> clique S -> 
