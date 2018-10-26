@@ -85,6 +85,21 @@ Definition ord1 {n : nat} : 'I_n.+2 := Ordinal (isT : 1 < n.+2).
 Definition ord2 {n : nat} : 'I_n.+3 := Ordinal (isT : 2 < n.+3).
 Definition ord3 {n : nat} : 'I_n.+4 := Ordinal (isT : 3 < n.+4).
 
+Lemma ord_size_enum n (s : seq 'I_n) : uniq s -> n <= size s -> forall k, k \in s.
+Proof. 
+  move => uniq_s size_s. 
+  case: (@leq_size_perm _ s (enum 'I_n)) => // [z||H1 H2 k].
+  all: by rewrite ?H1 ?mem_enum ?size_enum_ord.
+Qed.
+
+Lemma ord_fresh n (s : seq 'I_n) : size s < n -> exists k : 'I_n, k \notin s.
+Proof. 
+  move => H. suff: 0 < #|[predC s]|.
+  { case/card_gt0P => z. rewrite !inE => ?; by exists z. }
+  rewrite -(ltn_add2l #|s|) cardC addn0 card_ord. 
+  apply: leq_ltn_trans H. exact: card_size.
+Qed.
+
 Lemma max_mono (I :Type) (r : seq I) P (F G : I -> nat) :
   (forall x, F x <= G x) -> \max_(i <- r | P i) F i <= \max_(i <- r | P i) G i.
 Proof.
@@ -148,6 +163,8 @@ Proof.
   - move->. rewrite !inE eqxx. by split => // y /set1P.
   - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
 Qed.
+
+
 
 (* This looks rather roundabout *)
 Lemma card_le1 (T : finType) (D : pred T) (x y : T) : 

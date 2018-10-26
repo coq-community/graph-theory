@@ -1573,6 +1573,46 @@ Proof.
   by rewrite -andbA => /and3P[-> -> ->].
 Qed.
 
+Lemma add_edgeC (G : sgraph) (s1 s2 : G):
+  @sedge (add_edge s1 s2) =2 @sedge (add_edge s2 s1).
+Proof.
+  move => x y. rewrite /= [y == x]eq_sym. 
+  by case (x -- y) => //=; do ! (case (_ == _); rewrite //=).
+Qed.
+Arguments add_edgeC [G].
+
+Lemma eq_connected (V : finType) (e1 e2 : rel V) (A : {set V}) 
+  (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
+  (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2):
+  e1 =2 e2 -> 
+  @connected (SGraph e1_sym e1_irrefl) A <-> @connected (SGraph e2_sym e2_irrefl) A.
+Proof.
+  move => E. split.
+  - move => H x y xA yA. erewrite eq_connect. eapply H => //. 
+    move => u v. by rewrite /= E.
+  - move => H x y xA yA. erewrite eq_connect. eapply H => //. 
+    move => u v. by rewrite /= E.
+Qed.
+  
+
+Lemma add_edge_connected_sym (G : sgraph) s1 s2 A:
+  @connected (@add_edge G s1 s2) A <-> @connected (@add_edge G s2 s1) A.
+Proof. apply: eq_connected => u v. exact: (add_edgeC s1 s2). Qed.
+
+Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
+  @connected (@add_edge G s1 s2) A -> s1 \notin A -> @connected G A.
+Proof.
+  move => H s1A x y xA yA. case: (altP (x =P y)) => [-> //|xDy].
+  case/uPathRP : (H _ _ xA yA) => // p Ip /subsetP subA. 
+  case: (@lift_Path_on G (add_edge s1 s2) id x y p) => //.
+  - move => u v up vp /=. case: (_ -- _ ) => //=. 
+    case/orP => /and3P[? /eqP ? /eqP ?]; subst; by rewrite subA in s1A. 
+  - move => u. by rewrite mem_map // mem_enum.
+  - move => p' nodeE irrE. apply connectRI with p' => u.
+    rewrite mem_path -nodesE -(mem_map (f := id)) // nodeE nodesE.
+    rewrite -(@mem_path (add_edge s1 s2)). exact: subA.
+Qed.
+
 (** Adding Vertices *)
 
 Section AddNode.
@@ -1642,17 +1682,69 @@ Section Neighbor.
   Definition neighbor A B := [exists x in A, exists y in B, x -- y].
   
   Lemma neighborP A B : reflect (exists x y, [/\ x \in A, y \in B & x -- y]) (neighbor A B).
-  Admitted.
+  Proof.
+    apply:(iffP exists_inP) => [[x xA] /exists_inP [y inB xy]|[x] [y] [xA yB xy]].
+    - by exists x; exists y.
+    - exists x => //. apply/exists_inP; by exists y.
+  Qed.
 
   Lemma neighborC A B : neighbor A B = neighbor B A.
-  Admitted.
+  Proof. by apply/neighborP/neighborP => [] [x] [y] [*];exists y; exists x; rewrite sgP. Qed.
 
   Lemma neighbor_connected A B : 
     connected A -> connected B -> neighbor A B -> connected (A :|: B).
-  Admitted.
+  Proof. 
+    move => conA conB /neighborP [x] [y] [? ? xy]. 
+    exact: connectedU_edge xy _ _.
+  Qed.
 
   Lemma neighborW C D A B : 
     C \subset A -> D \subset B -> neighbor C D -> neighbor A B.
-  Admitted.
+  Proof.
+    move/subsetP => subA /subsetP subB /neighborP [x] [y] [? ? ?].
+    apply/neighborP; exists x; exists y. by rewrite subA ?subB.
+  Qed.
+
+  
 End Neighbor.
 Arguments neighborW : clear implicits.
+
+Lemma neighbor_add_edgeC (G : sgraph) (s1 s2 : G) :
+  @neighbor (add_edge s1 s2) =2 @neighbor (add_edge s2 s1).
+Proof. 
+  move => x y.
+  apply/neighborP/neighborP => [] [u] [v] [? ? ?]; exists u; exists v.
+  all: by rewrite add_edgeC.
+Qed.
+
+Lemma neighbor_del_edgeR (G : sgraph) (s1 s2 : G) (A B : {set G}) :
+  s1 \notin B -> s2 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
+Proof.
+  move => H1 H2 /neighborP [x] [y] [/= N1 N2 N3]. apply/neighborP. exists x; exists y.
+  case/or3P : N3 => [-> //|] /and3P [_ /eqP ? /eqP ?]; by subst;contrab.
+Qed.
+
+Lemma neighbor_del_edge2 (G : sgraph) (s1 s2 : G) (A B : {set G}) :
+  s2 \notin A -> s2 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
+Proof.
+  move => H1 H2 /neighborP [x] [y] [/= N1 N2 N3]. apply/neighborP. exists x; exists y.
+  case/or3P : N3 => [-> //|] /and3P [_ /eqP ? /eqP ?]; by subst;contrab.
+Qed.
+
+Lemma neighbor_del_edge1 (G : sgraph) (s1 s2 : G) (A B : {set G}) :
+  s1 \notin A -> s1 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
+Proof. move => ? ?. rewrite neighbor_add_edgeC. exact: neighbor_del_edge2. Qed.
+
+Lemma neighbor_add_edge (G : sgraph) (s1 s2 : G) : 
+  subrel (@neighbor G) (@neighbor (add_edge s1 s2)).
+Proof. 
+  move => A B /neighborP [u] [v] [? ? E]. 
+  apply/neighborP; exists u; exists v. by rewrite /= E.
+Qed.
+
+Lemma neighbor_split (G : sgraph) (A B C1 C2 : {set G}) :
+  B \subset C1 :|: C2 -> neighbor A B -> neighbor A C1 || neighbor A C2.
+Proof.
+  move/subsetP => S /neighborP [u] [v] [? /S H E]. apply/orP.
+  by case/setUP : H => ?; [left|right]; apply/neighborP; exists u; exists v.
+Qed.

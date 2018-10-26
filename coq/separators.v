@@ -866,20 +866,6 @@ Proof.
 (*TODO : simplify *)
 Qed.
 
-Lemma add_edge_sedge_sym (G : sgraph) s1 s2 x y:
-  (@sedge (@add_edge G s1 s2) x y) = (@sedge (@add_edge G s2 s1) x y).
-Proof.
-Admitted.
-
-Lemma add_edge_connected_sym (G : sgraph) s1 s2 A:
-  @connected (@add_edge G s1 s2) A <-> @connected (@add_edge G s2 s1) A.
-Proof.
-Admitted.
-
-Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
-  @connected (@add_edge G s1 s2) A -> s1 \notin A -> @connected G A.
-Proof.
-Admitted.
 
 Lemma rmap_disjE (G H : sgraph) (phi : H -> {set G}) x i j :
   minor_rmap phi -> x \in phi i -> x \in phi j -> i=j.
@@ -894,7 +880,7 @@ Proof.
   case => [P1 P2 P3 P4]; split => //.
   - move => x. exact/add_edge_connected_sym. 
   - move => x y /P4/neighborP => [[x'] [y'] [A B C]]. 
-    apply/neighborP; exists x'; exists y'. by rewrite add_edge_sedge_sym.
+    apply/neighborP; exists x'; exists y'. by rewrite add_edgeC.
 Qed.
 
 
@@ -1015,43 +1001,9 @@ Proof. (* TODO : better name *)
   by rewrite srestrict_sym.
 Qed.
 
-Lemma neighbor_add_edgeR (G : sgraph) (s1 s2 : G) (A B : {set G}) :
-  s1 \notin B -> s2 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
-Admitted.
+(** TODO: names *)
 
-Lemma neighbor_add_edge2 (G : sgraph) (s1 s2 : G) (A B : {set G}) :
-  s2 \notin A -> s2 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
-Admitted.
 
-(** should be del_edge *)
-Lemma neighbor_add_edge1 (G : sgraph) (s1 s2 : G) (A B : {set G}) :
-  s1 \notin A -> s1 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
-Admitted.
-
-Lemma neighbor_add_edge (G : sgraph) (s1 s2 : G) : 
-  subrel (@neighbor G) (@neighbor (add_edge s1 s2)).
-Admitted.
-
-Lemma neighbor_add_edgeC (G : sgraph) (s1 s2 : G) :
-  @neighbor (add_edge s1 s2) =2 @neighbor (add_edge s2 s1).
-Admitted.
-
-Lemma neighbor_split (G : sgraph) (A B C1 C2 : {set G}) :
-  B \subset C1 :|: C2 -> neighbor A B -> neighbor A C1 || neighbor A C2.
-Admitted.
-
-(* TODO: names *)
-Lemma fin_new n (s : seq 'I_n) : size s < n -> exists k : 'I_n, k \notin s.
-Admitted.
-
-Lemma fin_seen n (s : seq 'I_n) : uniq s -> n <= size s -> forall k, k \in s.
-Proof. 
-  move => uniq_s size_s. 
-  case: (@leq_size_perm _ s (enum 'I_n)) => // [z||H1 H2 k].
-  - by rewrite mem_enum.
-  - by rewrite size_enum_ord.
-  - by rewrite H1 mem_enum.
-Qed.
 
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
   K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
@@ -1134,10 +1086,10 @@ Proof.
       * subst x. case: (altP (y =P i)) => yi.
         -- subst y. apply/neighborP; exists z. exists s1. split => //; by rewrite ?inE // sgP.
         -- apply: (neighborW G (phi j) (phi y)); rewrite ?subsetUl //.
-           apply: neighbor_add_edgeR (map3 _ _ xy).
+           apply: neighbor_del_edgeR (map3 _ _ xy).
            by rewrite (disjointFl (map2 _ _ yi)).
            by rewrite (disjointFl (map2 _ _ yNj)).
-      * apply: neighbor_add_edge2 (map3 _ _ xy).
+      * apply: neighbor_del_edge2 (map3 _ _ xy).
         by rewrite (disjointFl (map2 _ _ xj)).
         by rewrite (disjointFl (map2 _ _ yNj)). }
 
@@ -1184,10 +1136,10 @@ Proof.
       { move => Hz. by rewrite !(disjointFl (map2 _ _ Hz)). }
       case (boolP [forall (j | j != i), NB G' (C s1) (phi j)]) => [|C1].
       { move/forall_inP => H. apply: (W s1 s2) => //. 
-        left => j Hj. move/H : (Hj). apply: neighbor_add_edgeR; by rewrite !iP. }
+        left => j Hj. move/H : (Hj). apply: neighbor_del_edgeR; by rewrite !iP. }
       case (boolP [forall (j | j != i), NB G' (C s2) (phi j)]) => [|C2].
       { move/forall_inP => H. apply (W s2 s1 s2Ns1 phi) => //. 
-        left => j Hj. move/H : (Hj). apply: neighbor_add_edgeR; by rewrite !iP. }
+        left => j Hj. move/H : (Hj). apply: neighbor_del_edgeR; by rewrite !iP. }
       case/forall_inPn : C1 => j2 Dj2 Nj2. 
       case/forall_inPn : C2 => j1 Dj1 Nj1. rewrite !unfold_in in Dj1 Dj2.
 
@@ -1200,10 +1152,10 @@ Proof.
       { move/NC : (map3  _ _ Dj2). by rewrite (negbTE Nj2). }
       have {Nj1} Nj1 : NB G' (C s1) (phi j1).
       { move/NC : (map3  _ _ Dj1). by rewrite (negbTE Nj1) orbF. }
-      have [k Hk] : exists k, k \notin [:: i; j1;j2] by apply: fin_new.
+      have [k Hk] : exists k, k \notin [:: i; j1;j2] by apply: ord_fresh.
       move: Hk. rewrite !inE !negb_or => /and3P[Hk1 Hk2 Hk3]. 
       have zP z : z \in [:: k;j1;j2;i]. 
-      { by apply: fin_seen; rewrite //= !inE !negb_or Hk1 Hk2 Hk3 Dj1 Dj2 j1Dj2. }
+      { by apply: ord_size_enum; rewrite //= !inE !negb_or Hk1 Hk2 Hk3 Dj1 Dj2 j1Dj2. }
       case/NC/orP : (map3  _ _ Hk1) => [Ks1|Ks2].
       - apply: (W s1 s2) => //.
         right; exists j2. 
@@ -1242,7 +1194,7 @@ Proof.
             + move: (H y x xy xj). rewrite (negbTE xj) yi. by rewrite neighborC.
           - move: (H x y xy yi). by rewrite (negbTE yi). }
         rewrite (negbTE yNj). case: (altP (x =P i)) => xi //=; first exact: B1.
-        apply neighbor_add_edge1 with s1 s2. 
+        apply neighbor_del_edge1 with s1 s2. 
         -- by rewrite (disjointFl (map2 _ _ xi)).
         -- by rewrite (disjointFl (map2 _ _ yNj)).
         -- exact: map3.
@@ -1366,3 +1318,6 @@ Proof.
     apply leq_trans with (maxn (width B1) (width B2)) => //.
     by rewrite geq_max w1 w2.
 Qed.
+
+Check TW2_of_K4F.
+Print Assumptions TW2_of_K4F.
