@@ -5,6 +5,7 @@ bounded.v
 preliminaries.v
 sgraph.v
 minor.v
+separators.v
 checkpoint.v
 cp_minor.v
 multigraph.v
