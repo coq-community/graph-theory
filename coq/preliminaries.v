@@ -373,6 +373,20 @@ Definition unique X (P : X -> Prop) := forall x y, P x -> P y -> x = y.
 Lemma empty_uniqe X (P : X -> Prop) : (forall x, ~ P x) -> unique P.
 Proof. firstorder. Qed.
 
+Lemma disjointP (T : finType) (A B : pred T):
+  reflect (forall x, x \in A -> x \in B -> False) [disjoint A & B].
+Proof.
+  rewrite disjoint_subset. 
+  apply:(iffP subsetP) => H x; by move/H/negP. 
+Qed.
+
+Lemma disjointsU (T : finType) (A B C : {set T}):
+  [disjoint A & C] -> [disjoint B & C] -> [disjoint A :|: B & C].
+Proof.
+  move => a b. 
+  apply/disjointP => x /setUP[]; by move: x; apply/disjointP.
+Qed.
+
 (** *** Disjointness *)
 Lemma disjointE (T : finType) (A B : pred T) x : 
   [disjoint A & B] -> x \in A -> x \in B -> False.
