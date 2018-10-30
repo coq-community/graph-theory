@@ -1,5 +1,6 @@
 -R . TwoPoint
 edone.v
+set_tac.v
 finite_quotient.v
 bounded.v
 preliminaries.v
