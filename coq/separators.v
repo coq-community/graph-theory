@@ -778,7 +778,7 @@ Proof.
                   | Ordinal 3 _ => M4
                   | Ordinal p n => set0
                   end.
-  suff HH: minor_rmap phi by apply (minor_of_map (minor_map_rmap HH)).
+  suff: minor_rmap phi by apply minor_of_rmap.
 
   have s2'M3: s2' \in M3. (* TOTHINK: this looks roundabout *)
   { rewrite !inE. rewrite catp2' catp2'' in s2'p2.
@@ -866,27 +866,6 @@ Proof.
     apply: contraTT. by rewrite ltnNge negbK.
 Qed.
 
-Lemma add_edge_sym_iso (G : sgraph) (s1 s2 : G):
-  sg_iso (@add_edge G s1 s2) (@add_edge G s2 s1).
-Proof.
-  pose f1 (v : add_edge s1 s2) := (v : add_edge s2 s1).
-  pose f2 (v : add_edge s2 s1) := (v : add_edge s1 s2).
-  exists f2 f1.
-  - done.
-  - done.
-  - rewrite /homomorphism_2. move => x y xy. rewrite /f2.
-    simpl in xy. simpl. apply /orP. move: xy => /or3P [?|/and3P [? ? ?]|/and3P [? ? ?]].
-    + by left.
-    + right. apply /orP. right. apply /and3P; split => //. by rewrite eq_sym.
-    + right. apply /orP. left. apply /and3P; split => //. by rewrite eq_sym.
-  - rewrite /homomorphism_2. move => x y xy. rewrite /f1.
-    simpl in xy. simpl. apply /orP. move: xy => /or3P [?|/and3P [? ? ?]|/and3P [? ? ?]].
-    + by left.
-    + right. apply /orP. right. apply /and3P; split => //. by rewrite eq_sym.
-    + right. apply /orP. left. apply /and3P; split => //. by rewrite eq_sym.
-(*TODO : simplify *)
-Qed.
-
 Lemma rmap_disjE (G H : sgraph) (phi : H -> {set G}) x i j :
   minor_rmap phi -> x \in phi i -> x \in phi j -> i=j.
 Proof.
@@ -894,14 +873,6 @@ Proof.
   by erewrite (disjointFr (map _ _ iNj)).
 Qed.
 
-Lemma minor_rmap_add_edge_sym (G H : sgraph) (s1 s2 : G) (phi : H -> {set add_edge s1 s2}) :
-  minor_rmap phi -> @minor_rmap (add_edge s2 s1) H phi.
-Proof.
-  case => [P1 P2 P3 P4]; split => //.
-  - move => x. exact/add_edge_connected_sym. 
-  - move => x y /P4/neighborP => [[x'] [y'] [A B C]]. 
-    apply/neighborP; exists x'; exists y'. by rewrite add_edgeC.
-Qed.
 
 (** If [minor (add_edge s1 s2) K4] but [K4_free G], then the
 additional edge must be used eihter to connect two different
@@ -922,7 +893,7 @@ Proof.
       have disjE := rmap_disjE phi_map.
       case: phi_map => [map0 map1 map2 map3].
       move/connectedP => coni.
-      suff HH: @minor_rmap G K4 phi by case: K4F_G; apply (minor_of_map (minor_map_rmap HH)).
+      suff H: @minor_rmap G K4 phi by case: K4F_G; exact: minor_of_rmap H.
       split => //.
       * move => x. case: (altP (x =P i)) => [->//|xNi].
         apply add_edge_keep_connected_l with s1 s2 => //.
@@ -937,10 +908,10 @@ Proof.
       move/connectedP => nconi. right. by exists i. 
   - (* either s1 or s2 is not in any bag *) (* so find minor *)
     rewrite negb_and !negb_exists => H.
-    suff HH: @minor_rmap G K4 phi by case: K4F_G; apply (minor_of_map (minor_map_rmap HH)).
+    suff HH: @minor_rmap G K4 phi by case: K4F_G; exact: minor_of_rmap HH.
     wlog H : s1 s2 phi phi_map {H} / forall x, s1 \notin phi x.
     { move => W. case/orP : H => /forallP; first exact: W.
-      apply: (W s2 s1). exact: minor_rmap_add_edge_sym. }
+      apply: (W s2 s1). exact: rmap_add_edge_sym. }
     case: phi_map => [map0 map1 map2 map3]; split => //.    
     + move => x. exact: add_edge_keep_connected_l. 
     + move => i j ij. exact: neighbor_del_edge1 (map3 _ _ ij).
@@ -1128,7 +1099,7 @@ Proof.
     { move => W. pose G' := add_edge s1 s2.
       Notation NB G A B := (@neighbor G A B).
       have s2Ns1 : s2 != s1 by rewrite eq_sym.
-      have rmapphi' := minor_rmap_add_edge_sym rmapphi.
+      have rmapphi' := rmap_add_edge_sym rmapphi.
       have I4inC21: phi i \subset C s2 :|: C s1. by rewrite setUC.
       have disC2C1 : [disjoint C s2 & C s1] by rewrite disjoint_sym.
       have S21 : V1 :&: V2 = [set s2; s1] by rewrite setUC.
@@ -1319,6 +1290,3 @@ Proof.
     apply leq_trans with (maxn (width B1) (width B2)) => //.
     by rewrite geq_max w1 w2.
 Qed.
-
-Check TW2_of_K4F.
-Print Assumptions TW2_of_K4F.

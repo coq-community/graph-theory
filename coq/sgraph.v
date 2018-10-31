@@ -153,6 +153,13 @@ Proof.
     + by move=> x y /ghH2 /hkH2.
 Qed.
 
+Lemma eq_sg_iso (T : finType) (e1 e2 : rel T) 
+  (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
+  (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2) :
+e1 =2 e2 -> sg_iso (SGraph e1_sym e1_irrefl) (SGraph e2_sym e2_irrefl).
+Proof. move => E.  exists (@id T) (@id T) => // x y /=; by rewrite E. Qed.
+  
+
 Lemma iso_subgraph (G H : sgraph) : sg_iso G H -> subgraph G H.
 Proof.
   case=> g h _ hK _ hH.
@@ -1147,6 +1154,19 @@ Qed.
 Definition connected (G : sgraph) (S : {set G}) :=
   {in S & S, forall x y : G, connect (restrict (mem S) sedge) x y}.
 
+Lemma eq_connected (V : finType) (e1 e2 : rel V) (A : {set V}) 
+  (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
+  (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2):
+  e1 =2 e2 -> 
+  @connected (SGraph e1_sym e1_irrefl) A <-> @connected (SGraph e2_sym e2_irrefl) A.
+Proof.
+  move => E. split. 
+  - move => H x y xA yA. erewrite eq_connect. eapply H => //. 
+    move => u v. by rewrite /= E.
+  - move => H x y xA yA. erewrite eq_connect. eapply H => //. 
+    move => u v. by rewrite /= E.
+Qed.
+
 Definition disconnected (G : sgraph) (S : {set G}) :=
   exists x y : G, [/\ x \in S, y \in S & ~~ connect (restrict (mem S) sedge) x y].
 
@@ -1593,6 +1613,8 @@ Proof.
   by rewrite -andbA => /and3P[-> -> ->].
 Qed.
 
+(** Lemmas to swap the nodes of add_edge, useful for wlog. reasoning *)
+
 Lemma add_edgeC (G : sgraph) (s1 s2 : G):
   @sedge (add_edge s1 s2) =2 @sedge (add_edge s2 s1).
 Proof.
@@ -1601,19 +1623,11 @@ Proof.
 Qed.
 Arguments add_edgeC [G].
 
-Lemma eq_connected (V : finType) (e1 e2 : rel V) (A : {set V}) 
-  (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
-  (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2):
-  e1 =2 e2 -> 
-  @connected (SGraph e1_sym e1_irrefl) A <-> @connected (SGraph e2_sym e2_irrefl) A.
-Proof.
-  move => E. split.
-  - move => H x y xA yA. erewrite eq_connect. eapply H => //. 
-    move => u v. by rewrite /= E.
-  - move => H x y xA yA. erewrite eq_connect. eapply H => //. 
-    move => u v. by rewrite /= E.
-Qed.
-  
+Lemma add_edge_sym_iso (G : sgraph) (s1 s2 : G):
+  sg_iso (@add_edge G s1 s2) (@add_edge G s2 s1).
+Proof. apply: eq_sg_iso. exact: add_edgeC. Qed.
+
+
 
 Lemma add_edge_connected_sym (G : sgraph) s1 s2 A:
   @connected (@add_edge G s1 s2) A <-> @connected (@add_edge G s2 s1) A.

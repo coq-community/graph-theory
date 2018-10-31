@@ -443,13 +443,25 @@ Proof.
     apply: contraNN D => /exists_inP [x0]. by rewrite -Some_eqE !inE => /eqP<-/eqP<-.
   - move => x y /P3 [x0] [y0] [*]. apply/neighborP. exists x0;exists y0. by rewrite !inE !mem_preim. 
 Qed.
-      
+
+Lemma rmap_add_edge_sym (G H : sgraph) (s1 s2 : G) (phi : H -> {set G}) :
+  @minor_rmap (add_edge s1 s2) H phi -> @minor_rmap (add_edge s2 s1) H phi.
+Proof.
+  case => [P1 P2 P3 P4]; split => //.
+  - move => x. exact/add_edge_connected_sym. 
+  - move => x y /P4/neighborP => [[x'] [y'] [A B C]]. 
+    apply/neighborP; exists x'; exists y'. by rewrite add_edgeC.
+Qed.
 
 Definition minor (G H : sgraph) : Prop := exists phi : G -> option H, minor_map phi.
 
 Fact minor_of_map (G H : sgraph) (phi : G -> option H): 
   minor_map phi -> minor G H.
 Proof. case => *. by exists phi. Qed.
+
+Fact minor_of_rmap (G H : sgraph) (phi : H -> {set G}): 
+  minor_rmap phi -> minor G H.
+Proof. move/minor_map_rmap. exact: minor_of_map. Qed.
 
 Lemma minorRE G H : minor G H -> exists phi : H -> {set G}, minor_rmap phi.
 Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
