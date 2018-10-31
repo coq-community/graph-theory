@@ -723,46 +723,13 @@ Proof.
   - (* x/y \notin V2/V1 + independent *) split => //; by apply indep.
 Qed.
 
-Arguments neighborP [G A B].
-
-(* TODO: generalize to ['K_n] *)
-Lemma K4_of_complete_graph (G : sgraph) : 
-  3 < #|G| -> (forall x y : G, x!=y -> x--y) -> minor G K4.
-Proof.
-  case/card_gtnP => [sq [uniqsq sq4elt sqG]].
-  destruct sq as [|g0 [|g1 [|g2 [|g3 [|g4 q]]]]]; simpl in sq4elt => //=.
-  clear sq4elt. move => H.
-  pose phi (i : K4) := match i with
-                | Ordinal 0 _ => [set g0]
-                | Ordinal 1 _ => [set g1]
-                | Ordinal 2 _ => [set g2]
-                | Ordinal 3 _ => [set g3]
-                | Ordinal p n => set0
-                end.
-  suff HH: minor_rmap phi by apply (minor_of_map (minor_map_rmap HH)).
-  move: uniqsq => /and5P  [g0i g1i g2i _ _].
-  rewrite !(inE,negb_or) in g0i g1i g2i.
-  move: g0i g1i g2i => /and3P [g01 g02 g03] /andP [g12 g13] g23.
-  split.
-  - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn;
-    by (eexists; rewrite inE).
-  - move => [m i]. case m as [|[|[|[|m]]]] => //=; by (apply connected1).
-  - move => [m i] [m' i']. 
-    case m as [|[|[|[|m]]]] => //=;
-    case m' as [|[|[|[|m']]]] => //= _; by rewrite disjoints1 !inE // eq_sym.
-  - move => [m i] [m' i']. rewrite -(rwP neighborP).
-    case m as [|[|[|[|m]]]] => //=; case m' as [|[|[|[|m']]]] => //= _.
-    all: eexists; eexists; split; solve [by rewrite inE | by apply H; rewrite // eq_sym].
-Qed.
-
 
 Lemma K4_of_separators (G : sgraph) : 
   3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
 Proof.
   move => G4elt minsep3.
-  case: (boolP [forall x : G, forall (y |x!=y), (x--y)]).
-  { move/forallP => H. apply K4_of_complete_graph => // x. exact/forall_inP. }
-  move => /forallPn [x /forall_inPn [y xNy xNEy]]. rewrite unfold_in in xNy.
+  case: (boolP (cliqueb [set: G])) => [|/cliquePn [x] [y] [_ _ xNy xNEy]].
+  { move/cliqueP. apply: minor_of_clique. by rewrite cardsT. }
   move: (minimal_separation xNy xNEy) => [V1 [V2 [[sepV propV] [sS HS]]]].
   set S := V1 :&: V2. rewrite -/S in HS sS.
   move: (minsep3 S sS) => S3elt. clear x y xNy xNEy.

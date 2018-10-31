@@ -34,19 +34,19 @@ Proof. by case: b => //= H _ /H. Qed.
 Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
 Proof. rewrite -{1}[b]negbK. exact: contraTnot. Qed.
 
-Lemma existsPn (T : finType) (P : pred T) : 
+Lemma existsPn {T : finType} {P : pred T} : 
   reflect (forall x, ~~ P x) (~~ [exists x, P x]).
 Proof. rewrite negb_exists. exact: forallP. Qed.
 
-Lemma forallPn (T : finType) (P : pred T) : 
+Lemma forallPn {T : finType} {P : pred T} : 
   reflect (exists x, ~~ P x) (~~ [forall x, P x]).
 Proof. rewrite negb_forall. exact: existsP. Qed.
 
-Lemma exists_inPn (T : finType) (A P : pred T) : 
+Lemma exists_inPn {T : finType} {A P : pred T} : 
   reflect (forall x, x \in A -> ~~ P x) (~~ [exists x in A, P x]).
 Proof. rewrite negb_exists_in. exact: forall_inP. Qed.
 
-Lemma forall_inPn (T : finType) (A P : pred T) : 
+Lemma forall_inPn {T : finType} {A P : pred T} : 
   reflect (exists2 x, x \in A & ~~ P x) (~~ [forall x in A, P x]).
 Proof. rewrite negb_forall_in. exact: exists_inP. Qed.
 
@@ -454,6 +454,14 @@ Notation "[ 'disjoint3' A & B & C ]" :=
 
 (** *** Sequences and Paths *)
 
+Lemma tnth_uniq (T : eqType) n (t : n.-tuple T) (i j : 'I_n) : 
+  uniq t -> (tnth t i == tnth t j) = (i == j).
+Proof.
+  move => uniq_t. 
+  rewrite /tnth (set_nth_default (tnth_default t j)) ?size_tuple ?ltn_ord //. 
+  by rewrite nth_uniq // size_tuple ltn_ord.
+Qed.
+
 Lemma tnth_map_in (T:eqType) rT (s : seq T) (f : T -> rT) e 
   (He : index e s < size [seq f x | x <- s]) : e \in s ->
   tnth (in_tuple [seq f x | x <- s]) (Ordinal He)  = f e.
@@ -810,3 +818,11 @@ Lemma foldr1_set_default x0 x1 s :
 Proof. elim: s => //= a s. case: (nilp s) => //= IH. by rewrite IH. Qed.
 
 End Foldr1.
+
+(** Extra Morphism declatations *)
+
+Require Import Setoid Morphisms.
+
+Instance ex2_iff_morphism (A : Type) :  
+  Proper (pointwise_relation A iff ==> pointwise_relation A iff ==> iff) (@ex2 A).
+Proof. by firstorder. Qed.

@@ -1396,18 +1396,38 @@ Qed.
 
 (** *** Cliques *)
 
-Definition clique (G : sgraph) (S : {set G}) :=
-  {in S&S, forall x y, x != y -> x -- y}.
+Section Cliques.
+Variables (G : sgraph).
+Implicit Types S : {set G}.
 
-Lemma clique1 (G : sgraph) (x : G) : clique [set x].
+Definition clique S := {in S&, forall x y, x != y -> x -- y}.
+
+Definition cliqueb S := [forall x in S, forall y in S, (x != y) ==> x -- y]. 
+
+Lemma cliqueP S : reflect (clique S) (cliqueb S).
+Proof.
+  apply: (equivP forall_inP). setoid_rewrite <- (rwP forall_inP). 
+  setoid_rewrite <- (rwP implyP). by firstorder.
+Qed.
+
+Lemma cliquePn S : 
+  reflect (exists x y, [/\ x \in S, y \in S, x != y & ~~ x -- y]) (~~ cliqueb S).
+Proof.
+  apply: (equivP forall_inPn). setoid_rewrite <- (rwP forall_inPn). 
+  setoid_rewrite negb_imply. setoid_rewrite <- (rwP andP). by firstorder.
+Qed.
+
+Lemma clique1 (x : G) : clique [set x].
 Proof. move => y z /set1P-> /set1P ->. by rewrite eqxx. Qed.
 
-Lemma clique2 (G : sgraph) (x y : G) : x -- y -> clique [set x;y].
+Lemma clique2 (x y : G) : x -- y -> clique [set x;y].
 Proof.
   move => xy z z'. rewrite !inE.
   do 2 case/orP => /eqP-> // ; try by rewrite eqxx.
   by rewrite sg_sym.
 Qed.
+
+End Cliques.
 
 
 (** ** Forests and Trees

@@ -584,6 +584,25 @@ Proof.
   - apply: max_mono => t. exact: pimset_card.
 Qed.
 
+Lemma minor_of_clique (G : sgraph) (S : {set G}) n :
+  n <= #|S| -> clique S -> minor G 'K_n.
+Proof.
+  case/card_gtnP => s [uniq_s /eqP size_s sub_s clique_S].
+  pose t := Tuple size_s.
+  pose phi (i : 'K_n) := [set tnth t i].
+  suff H: minor_rmap phi by apply (minor_of_map (minor_map_rmap H)).
+  split.
+  - move => i. apply/set0Pn; exists (tnth t i). by rewrite !inE.
+  - move => i. exact: connected1.
+  - move => i j iNj. rewrite disjoints1. apply: contraNN iNj.
+    by rewrite inE tnth_uniq.
+  - move => i j /= ?. apply/neighborP. exists (tnth t i); exists (tnth t j). 
+    rewrite !inE !tnth_uniq ?eqxx //. 
+    rewrite clique_S // ?tnth_uniq // ?sub_s //; exact: mem_tnth.
+Qed.
+
+Lemma Kn_clique n : clique [set: 'K_n].
+Proof. by []. Qed.  
 
 Definition K4_free (G : sgraph) := ~ minor G K4.
 
