@@ -550,7 +550,8 @@ Section IPath.
   Canonical IPath_finType := Eval hnf in FinType IPath IPath_finMixin.
 
   Definition path_of_ipath (p : IPath) := ival p. 
-  Canonical IPath_predType := Eval hnf in @mkPredType G (IPath) (fun p x => x \in path_of_ipath p).
+  Definition in_ipath p x := x \in path_of_ipath p.
+  Canonical IPath_predType := Eval hnf in @mkPredType G (IPath) in_ipath.
   Coercion path_of_ipath : IPath >-> Path.
 End IPath.
 
