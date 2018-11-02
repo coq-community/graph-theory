@@ -927,51 +927,54 @@ Qed.
 
 (** TODO: simplify below ... *)
 
-Definition Component G (A : {set G}) s :=
+Definition component_in G (A : {set G}) s :=
     [set z in A | connect (restrict (mem A) sedge) s z].
 
-Lemma add_edge_connected_in_two_components (G :sgraph) (s1 s2 : G) (A : {set G}):
+Lemma add_edge_split_connected (G :sgraph) (s1 s2 : G) (A : {set G}):
     connected (A : {set add_edge s1 s2}) -> s1 \in A -> s2 \in A ->
-    forall (x : G), x \in A -> x \in Component A s1 \/ x \in Component A s2.
-Proof. (* TODO : better name *)
+    forall (x : G), x \in A -> x \in component_in A s1 \/ x \in component_in A s2.
+Proof. 
   move => conA s1A s2A x xA. case: (altP (s1 =P x)) => [->|s1Nx].
   { left. by rewrite inE connect0. }
-  move: (conA s1 x s1A xA) => /PathRP conxs1. case: (conxs1 s1Nx) => p Hp.
-  case: (@split_at_last (@add_edge G s1 s2) (mem [set s1; s2]) s1 x p s1).
-    { by rewrite !inE eqxx. } { by rewrite inE. }
+  case/PathRP: (conA s1 x s1A xA) => // p subA. 
+  case: (@split_at_last (@add_edge G s1 s2) (mem [set s1; s2]) s1 x p s1); 
+    try by rewrite ?inE ?eqxx.
   move => z [p1 [p2 [catp zS Hlast]]].
-  suff HH: x \in Component A z.
-  - rewrite !inE in zS. move: zS => /orP [] /eqP<-; rewrite HH; try solve [by left|by right].
-  - case: (@lift_Path_on _ _ (fun (v : G) => (v : add_edge s1 s2)) z x p2 ) => //.
-    + move => a b ap1 bp1 /or3P [? | /and3P [t1 /eqP t2 /eqP t3] |
-          /and3P [t1 /eqP t2 /eqP t3]] => //; subst a b;
-        apply: contraNT t1 => nedge; rewrite (Hlast s1) => //;
-        try rewrite (Hlast s2) => //; by rewrite !inE eqxx.
-    + move => a ap1. rewrite mem_map // mem_enum //.
-    + move => p3 t1 t2. rewrite inE xA. apply connectRI with p3.
-      move => a ap3. rewrite map_id in t1.
-      rewrite mem_path -nodesE t1 nodesE -(mem_path p2) in ap3.
-      apply (subsetP Hp a). by rewrite catp !inE ap3.
+  suff HH: x \in component_in A z.
+  { case/setUP : zS => /set1P <-; rewrite HH; by auto. }
+  case: (@lift_Path_on _ _ (fun (v : G) => (v : add_edge s1 s2)) z x p2 ) => //.
+  - move => u v up vp /=. case/or3P => //.
+    + case/and3P => [E /eqP ? /eqP ?]; subst. 
+      by rewrite [s1]Hlast 1?[s2]Hlast ?inE ?eqxx in E. 
+    + case/and3P => [E /eqP ? /eqP ?]; subst. 
+      by rewrite [s1]Hlast 1?[s2]Hlast ?inE ?eqxx in E.
+  - move => a ap1. rewrite mem_map // mem_enum //.
+  - move => p3 t1 _. rewrite inE xA. apply connectRI with p3 => a. 
+    (* TODO: fix nodesE/mem_path lemmase *)
+    rewrite mem_path -nodesE -[_ p3]map_id t1 nodesE -(mem_path p2). 
+    (* TODO: this should be autmatable *)
+    subst. move => H. apply: (subsetP subA). exact: (subsetP (subset_pcatR _ _)).
 Qed.
 
-Lemma add_edge_get_connected_two_distinct_components (G :sgraph) (s1 s2 : G) (A : {set add_edge s1 s2}):
+Lemma add_edge_split_disjoint (G :sgraph) (s1 s2 : G) (A : {set add_edge s1 s2}):
     connected A -> s1 \in A -> s2 \in A -> ~ @connected G A ->
-    [disjoint (Component (A : {set G}) s1) & (Component (A : {set G}) s2)].
-Proof. (* TODO : better name *)
+    [disjoint (component_in (A : {set G}) s1) & (component_in (A : {set G}) s2)].
+Proof. 
   move => conA s1A s2A nconA. apply /disjointP => z.
   rewrite !inE => /andP [_ ps1z] /andP [_ ps2z].
   apply nconA. move => a b ai bi.
   have cons1s2: @connect G (@restrict G (mem A) sedge) s1 s2.
   { rewrite srestrict_sym in ps2z. apply connect_trans with z => //. }
-  case: (add_edge_connected_in_two_components conA s1A s2A bi); rewrite inE => /andP [_ bC];
+  case: (add_edge_split_connected conA s1A s2A bi); rewrite inE => /andP [_ bC];
     [apply connect_trans with s1 |apply connect_trans with s2] => //; rewrite srestrict_sym.
-  all: case: (add_edge_connected_in_two_components conA s1A s2A ai);
+  all: case: (add_edge_split_connected conA s1A s2A ai);
     rewrite inE => /andP [_ aC];
     [apply connect_trans with s1|apply connect_trans with s2] => //=.
   by rewrite srestrict_sym.
 Qed.
 
-(** TODO: names *)
+(* This lemma is the core of the construction of tree decompositions
+for K4-free graphs. *)
 
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
   K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
@@ -1071,17 +1074,17 @@ Proof.
     case: (rmapphi) => [_ map1 _ _].
 
     (* [phi i] = [component of s1] U [component of s2] *)
-    move C_def : (Component ((phi i) : {set G})) => C.
+    move C_def : (component_in ((phi i) : {set G})) => C.
     have I4inC12: phi i \subset C s1 :|: C s2.
     { apply/subsetP. rewrite -C_def => ? ?. apply/setUP.
-      by apply (add_edge_connected_in_two_components (map1 i) s1i s2i). }
+      by apply (add_edge_split_connected (map1 i) s1i s2i). }
     have C1inphii: (C s1 : {set (add_edge s1 s2)}) \subset phi i.
-    { rewrite -C_def /Component setIdE. apply subsetIl. }
+    { rewrite -C_def /component_in setIdE. apply subsetIl. }
     have C2inphii: (C s2 : {set (add_edge s1 s2)}) \subset phi i.
-    { rewrite -C_def /Component setIdE. apply subsetIl. }
+    { rewrite -C_def /component_in setIdE. apply subsetIl. }
     have disC1C2: [disjoint (C s1) & (C s2)].
     { rewrite -C_def.
-      apply (add_edge_get_connected_two_distinct_components (map1 i) s1i s2i notconi). }
+      apply (add_edge_split_disjoint (map1 i) s1i s2i notconi). }
     have conC1: @connected G (C s1).
     { rewrite -C_def. apply connected_restrict_in => //. }
     have conC2: @connected G (C s2).
@@ -1222,67 +1225,56 @@ Proof.
          by rewrite neighborC NCs1Pk // inE (negbTE xi) (negbTE xj).
 Qed.
 
+Lemma small_clique (G : sgraph) (S : {set G}) : #|S| <= 1 -> clique S.
+Proof. move/card_le1P => H x y xS yS. by rewrite (H x y) ?eqxx. Qed.
+
+
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  move: G.
-  apply: (@nat_size_ind _ _ (fun G => #|G|)) .
-  move => G Hind K4free. case (no_K4_smallest_separator K4free).
+  move: G. apply: (@nat_size_ind _ _ (fun G => #|G|)) => G Hind K4free. 
+  (* Either G is small, or it has a smallest separator of size at most two *)
+  case (no_K4_smallest_separator K4free) =>[|[S [ssepS Ssmall2]]].
   { move => Gsmall. exists tunit. exists (fun _ => [set: G]). split.
     + exact (triv_sdecomp G).
     + apply leq_trans with #|G| => //. apply width_bound. }
-  move => [S [ssepS Ssmall2]].
   move: (separator_separation ssepS.1) => [V1 [V2 [[sep prop] SV12]]].
-
-  move: (prop) => [x0 [y0 [Hx0 Hy0]]].
+  move: (prop) => [x0 [y0 [Hx0 Hy0]]]. 
   have V1properG: #|induced V1| < #|G|.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
-  have V2properG: #|induced V2| < #|G|.
+  have {x0 Hx0 y0 Hy0} V2properG: #|induced V2| < #|G|.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
-  clear x0 Hx0 y0 Hy0.
-
-  rewrite leq_eqVlt in Ssmall2. move: Ssmall2 => /orP [Ssize2|Sless2].
-
+  case: (ltngtP #|S| 2) Ssmall2 => // [Sless2|/eqP Ssize2] _.
+  - (* If #|S| < 2, we obtain a tree decomposition by induction *)
+    case: (Hind (induced V1)) => // [|T1 [B1 [sd1 w1]]].
+    { apply: subgraph_K4_free K4free. exact: induced_sub. }
+    case: (Hind (induced V2)) => // [|T2 [B2 [sd2 w2]]].
+    { apply: subgraph_K4_free K4free. exact: induced_sub. } 
+    case separation_decomp with G V1 V2 T1 T2 B1 B2 => // [|T [B [sd w]]].
+    { rewrite -SV12. exact: small_clique. }
+    exists T. exists B. split => //. 
+    apply leq_trans with (maxn (width B1) (width B2)) => //.
+    by rewrite geq_max w1 w2. 
   - (* If #|S| = 2, find S = [set s1; s2], use (add_edge s1 s2) *)
-    case: (@card12 _ S); try rewrite (eqP Ssize2) => //.
-      { move => [x HS]. by rewrite HS cards1 in Ssize2. }
-    move => [s1 [s2 [s1Ns2 S12]]].
+    case/cards2P : Ssize2 => s1 [s2] [s1Ns2 S12].
     (* a tree decomposition for G+s1s2 is enough *)
-    suff: (exists (T : forest) (B : T -> {set G}), sdecomp T (add_edge s1 s2) B /\ width B <= 3).
-    { move => [T [B [sdec wid]]]. exists T. exists B.
-      destruct sdec. repeat split => //.
-      move => x y xy. case (sbag_edge x y). { simpl. by rewrite xy. }
-      move => t /andP [t1 t2]. exists t. by rewrite t1 t2. }
+    suff: (exists (T : forest) (B : T -> {set G}), 
+           sdecomp T (add_edge s1 s2) B /\ width B <= 3).
+    { move => [T [B [sdec wid]]]. exists T. exists B. split => //. move: sdec. 
+      destruct G; apply sdecomp_subrel. exact: subrelUl. }
     (* G+s1s2 is K4 free *)
     have K4free_addedge: K4_free (add_edge s1 s2).
     { apply K4_free_add_edge_sep_size2 with V1 V2 S => //. }
     (* then use Hind and separation_decomp *)
-    case: (Hind (@induced (add_edge s1 s2) V1)) => //.
+    case: (Hind (@induced (add_edge s1 s2) V1)) => // [|T1 [B1 [sd1 w1]]].
     { apply subgraph_K4_free with (add_edge s1 s2) => //. apply induced_sub. }
-    move => T1 [B1 [sd1 w1]].
-    case: (Hind (@induced (add_edge s1 s2) V2)) => //.
+    case: (Hind (@induced (add_edge s1 s2) V2)) => // [|T2 [B2 [sd2 w2]]].
     { apply subgraph_K4_free with (add_edge s1 s2) => //. apply induced_sub. }
-    move => T2 [B2 [sd2 w2]].
     case separation_decomp with (add_edge s1 s2) V1 V2 T1 T2 B1 B2 => //.
-      { apply add_edge_separation => //; by rewrite -SV12 S12 !inE eqxx. }
-      { rewrite -SV12 S12. apply (@clique2 (add_edge s1 s2)) => /=.
-        by rewrite !eqxx s1Ns2. }
-    move => T [B [sd w]]. exists T. exists B. split => //.
-    apply leq_trans with (maxn (width B1) (width B2)) => //.
-    by rewrite geq_max w1 w2.
-
-  - (* If #|S| < 2, can use Hind and separation_decomp directly *)
-    case: (Hind (induced V1)) => //.
-    { apply subgraph_K4_free with G => //. apply induced_sub. }
-    move => T1 [B1 [sd1 w1]].
-    case: (Hind (induced V2)) => //.
-    { apply subgraph_K4_free with G => //. apply induced_sub. }
-    move => T2 [B2 [sd2 w2]].
-    case separation_decomp with G V1 V2 T1 T2 B1 B2 => //.
-    { have temp: #|S|<=1 by done. move: temp => /card_le1P temp.
-      rewrite -SV12. move => x y xS yS xNy.
-      move: (temp x y xS yS) => /eqP xy. contrab. }
-    move => T [B [sd w]]. exists T. exists B. split => //.
-    apply leq_trans with (maxn (width B1) (width B2)) => //.
-    by rewrite geq_max w1 w2.
+    + apply add_edge_separation => //; by rewrite -SV12 S12 !inE eqxx.
+    + rewrite -SV12 S12. apply (@clique2 (add_edge s1 s2)) => /=.
+        by rewrite !eqxx s1Ns2.
+    + move => T [B [sd w]]. exists T. exists B. split => //.
+      apply leq_trans with (maxn (width B1) (width B2)) => //.
+      by rewrite geq_max w1 w2.
 Qed.

@@ -1448,6 +1448,10 @@ Proof.
   by rewrite sg_sym.
 Qed.
 
+Lemma small_clique (S : {set G}) : #|S| <= 1 -> clique S.
+Proof. move/card_le1P => H x y xS yS. by rewrite (H x y) ?eqxx. Qed.
+
+
 End Cliques.
 
 

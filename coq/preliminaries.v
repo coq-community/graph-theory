@@ -132,6 +132,9 @@ Proof.
   case: (boolP (y == x)) => // /eqP ->. by rewrite H.
 Qed.
 
+(** TODO: check whether the collection of lemmas on sets/predicates
+and their cardinalities can be simplified *)
+
 Lemma cards3 (T : finType) (a b c : T) : #|[set a;b;c]| <= 3.
 Proof. 
   rewrite !cardsU !cards1 !addn1. 
@@ -164,9 +167,6 @@ Proof.
   - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
 Qed.
 
-
-
-(* This looks rather roundabout *)
 Lemma card_le1 (T : finType) (D : pred T) (x y : T) : 
   #|D| <= 1 -> x \in D -> y \in D -> x = y.
 Proof.
@@ -221,18 +221,24 @@ Proof.
   apply:(negP xy). by rewrite (H y x).
 Qed.
 
+Lemma cards2P (T : finType) (A : {set T}): 
+  reflect (exists x y : T, x != y /\ A = [set x;y]) (#|A| == 2).
+Proof.
+  apply: (iffP idP) => [[H]|[x] [y] [xy ->]]; last by rewrite cards2 xy.
+  have/card_gt1P [x [y] [H1 H2 H3]] : 1 < #|A| by rewrite (eqP H).
+  exists x; exists y. split => //. apply/setP => z. rewrite !inE.
+  apply/idP/idP => [zA|/orP[] /eqP-> //]. apply: contraTT H.
+  rewrite negb_or neq_ltn => /andP [z1 z2]. apply/orP;right.
+  apply/card_gt2P. exists x;exists y;exists z => //. by rewrite [_ == z]eq_sym. 
+Qed.  
+
 Lemma card12 (T : finType) (A : {set T}) :
   0 < #|A| -> #|A| <= 2 -> 
                   (exists x, A = [set x]) \/ exists x y, x != y /\ A = [set x;y].
 Proof.
-  case/card_gt0P => x xA. rewrite (cardsD1 x) xA add1n ltnS. 
-  case (boolP (0 < #|A :\ x|)). 
-  - case/card_gt0P => y yA. rewrite (cardsD1 y) yA add1n ltnS leqn0 cards_eq0.
-    move => H. right. exists x. exists y. split. 
-    + move: yA. rewrite !inE eq_sym. by case/andP.
-    + apply/setP => z. by rewrite !inE -(setD1K xA) -(setD1K yA) (eqP H) !inE orbF.
-  - rewrite -eqn0Ngt cards_eq0 => H _. left. exists x. 
-    by rewrite -(setD1K xA) (eqP H) setU0.
+  move => H1 H2. case: (ltnP #|A| 2) => H3.
+  - left. apply/cards1P. by rewrite eqn_leq -ltnS H3.
+  - right. apply/cards2P. by rewrite eqn_leq H2 H3.
 Qed.
 
 Lemma cardsI (T : finType) (A : {set T}) : #|[pred x in A]| = #|A|.

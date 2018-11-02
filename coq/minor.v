@@ -23,10 +23,10 @@ Record sdecomp (T : forest) (G : sgraph) (B : T -> {set G}) := SDecomp
 
 Arguments sdecomp T G B : clear implicits.
 
-Lemma sdecomp_eq (V : finType) (e1 e2 : rel V) (T:forest) (D : T -> {set V}) 
+Lemma sdecomp_subrel (V : finType) (e1 e2 : rel V) (T:forest) (D : T -> {set V}) 
       (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
       (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2):
-  e1 =2 e2 -> 
+  subrel e2 e1 -> 
   sdecomp T (SGraph e1_sym e1_irrefl) D -> 
   sdecomp T (SGraph e2_sym e2_irrefl) D.
 Proof.
