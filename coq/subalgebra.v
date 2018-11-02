@@ -100,8 +100,8 @@ Section Quotients.
       + move => x y. move/sk_rel_mergeE => [? [x0] [y0] /= [? ? ?]]. 
         exists x0;exists y0. split => //. by rewrite -skel_union_join.
       + move => x y. move/eqmodP => /=. case/adm_e => [<-|A].
-        * case: (sbag_cover dec_D' x) => t Ht. exists t. by rewrite Ht.
-        * exists None. rewrite /= -!sub1set -subUset. done.
+        * case: (sbag_cover dec_D' x) => t Ht. left. exists t. by rewrite Ht.
+        * left. exists None. by rewrite /= -!sub1set -subUset. 
     - rewrite /width (bigID (pred1 None)).
       rewrite big_pred1_eq. rewrite geq_max. apply/andP;split => //.
       + rewrite (reindex Some) /=.

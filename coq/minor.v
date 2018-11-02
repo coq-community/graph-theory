@@ -68,7 +68,8 @@ Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp D) (h : G -> 
   hom_s h -> 
   surjective h -> 
   (forall x y : H, x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0]) ->
-  (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
+  (forall x y, h x = h y -> 
+    (exists t, (x \in D t) && (y \in D t)) \/ (exists t1 t2, [/\ t1 -- t2, x \in D t1 & y \in D t2])) ->
   @sdecomp T _ (rename D h).
 Proof.
   move => hom_h sur_h sur_e comp_h. 
@@ -78,14 +79,20 @@ Proof.
   - move => x y xy. case: (sur_e _ _ xy) => x0 [y0] [hx0 hy0 e0].
     case: (sbag_edge dec_D e0) => t /andP [t1 t2]. 
     exists t. apply/andP;split;apply/imsetP;by [exists x0|exists y0].
-  - move => x t1 t2 bg1 bg2. 
-    case/imsetP : (bg1) (bg2) => x0 A B /imsetP [x1 C E]. subst. rewrite E in bg2.
-    case: (comp_h _ _ E) => t /andP [F I]. 
-    apply: (connect_trans (y := t)). 
-    + apply: connect_mono (sbag_conn dec_D A F) => u v /= /andP [/andP [X Y] Z]. 
-      rewrite Z andbT. apply/andP;split; by apply/imsetP;exists x0.
-    + apply: connect_mono (sbag_conn dec_D I C) => u v /= /andP [/andP [X Y] Z]. 
-      rewrite E Z andbT. apply/andP;split; by apply/imsetP;exists x1.
+  - move => x t0 t1 bg1 bg2. 
+    case/imsetP : bg1 bg2 => x0 A B /imsetP [x1 C E]. subst.
+    have connT x t t' : x \in D t -> x \in D t' -> 
+      connect (restrict [pred t | h x \in (rename D h) t] sedge) t t'.
+    { move => Ht Ht'. 
+      apply: connect_mono (sbag_conn dec_D Ht Ht') => u v /= /andP [/andP [X Y] Z].
+      rewrite Z andbT. apply/andP;split; by apply/imsetP;exists x. }
+    case: (comp_h _ _ E).
+    + case => t /andP [F I]. 
+      apply: (connect_trans (y := t)); [exact: connT|rewrite E;exact:connT].
+    + move => [t0'] [t1'] [t0t1 H0 H1].
+      apply: connect_trans (connT _ _ _ A H0) _.
+      rewrite E. apply: connect_trans (connect1 _) (connT _ _ _ H1 C).
+      by rewrite /= t0t1 !inE -{1}E !mem_imset.
 Qed.
 
 Lemma rename_width (T : forest) (G : sgraph) (D : T -> {set G}) (G' : finType) (h : G -> G') :

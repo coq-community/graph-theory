@@ -365,22 +365,23 @@ Proof.
       - move => x y hxEhy.
         case: (altP (x=Py)) => xNy.
         { subst y. case: dec12 => [H1 _ _]. move: (H1 x) => [t Ht].
-          exists (Some t). by rewrite Ht. }
+          left. exists (Some t). by rewrite Ht. }
         wlog: x y hxEhy xNy / exists x' y', x = inl x' /\ y = inr y'.
         { move => W. case Hx: (x) => [lx|rx]; case Hy: (y) => [ly|ry].
           + suff ?: x==y by contrab. rewrite Hx Hy in hxEhy. rewrite Hx Hy inl_eqE.
             apply /eqP. apply val_inj. simpl in hxEhy. simpl. by rewrite hxEhy.
           + rewrite Hx Hy in hxEhy. apply W => //. eexists. eexists. split => //.
           + case: (W y x) => //; first by rewrite eq_sym.
-            { eexists. eexists. rewrite Hx Hy. split => //. }
-            rewrite Hx Hy. move => t /andP [? ?]. by exists t.
+            * eexists. eexists. rewrite Hx Hy. split => //. 
+            * rewrite Hx Hy. case => t /andP [? ?]. left. by exists t.
+            * rewrite Hx Hy. case => t [t'] [? ? ?]. right. exists t';exists t. by rewrite sgP.
           + suff ?: x==y by contrab. rewrite Hx Hy in hxEhy. rewrite Hx Hy inr_eqE.
             apply /eqP. apply val_inj. simpl in hxEhy. simpl. by rewrite hxEhy.
         }
         move => [x' [y' [xx' yy']]]. rewrite xx' yy' in hxEhy. simpl in hxEhy.
         case Hx': (x') => [x0 x0V1]. case Hy': (y') => [y0 y0V2].
         have x0y0: x0 = y0 by rewrite Hx' Hy' in hxEhy. subst x0.
-        simpl in x0V1. simpl in y0V2. exists None.
+        simpl in x0V1. simpl in y0V2. left. exists None.
         rewrite xx' yy'. simpl. rewrite !inE. apply /andP.
         split; apply /orP; [left|right];
           apply /imsetP; (eexists;[|eauto]);
