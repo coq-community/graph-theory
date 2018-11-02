@@ -1225,8 +1225,6 @@ Proof.
          by rewrite neighborC NCs1Pk // inE (negbTE xi) (negbTE xj).
 Qed.
 
-Lemma small_clique (G : sgraph) (S : {set G}) : #|S| <= 1 -> clique S.
-Proof. move/card_le1P => H x y xS yS. by rewrite (H x y) ?eqxx. Qed.
 
 
 Theorem TW2_of_K4F (G : sgraph) :
@@ -1244,37 +1242,25 @@ Proof.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
   have {x0 Hx0 y0 Hy0} V2properG: #|induced V2| < #|G|.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
-  case: (ltngtP #|S| 2) Ssmall2 => // [Sless2|/eqP Ssize2] _.
-  - (* If #|S| < 2, we obtain a tree decomposition by induction *)
-    case: (Hind (induced V1)) => // [|T1 [B1 [sd1 w1]]].
-    { apply: subgraph_K4_free K4free. exact: induced_sub. }
-    case: (Hind (induced V2)) => // [|T2 [B2 [sd2 w2]]].
-    { apply: subgraph_K4_free K4free. exact: induced_sub. } 
-    case separation_decomp with G V1 V2 T1 T2 B1 B2 => // [|T [B [sd w]]].
-    { rewrite -SV12. exact: small_clique. }
-    exists T. exists B. split => //. 
-    apply leq_trans with (maxn (width B1) (width B2)) => //.
-    by rewrite geq_max w1 w2. 
-  - (* If #|S| = 2, find S = [set s1; s2], use (add_edge s1 s2) *)
-    case/cards2P : Ssize2 => s1 [s2] [s1Ns2 S12].
-    (* a tree decomposition for G+s1s2 is enough *)
-    suff: (exists (T : forest) (B : T -> {set G}), 
-           sdecomp T (add_edge s1 s2) B /\ width B <= 3).
-    { move => [T [B [sdec wid]]]. exists T. exists B. split => //. move: sdec. 
+  wlog C : G S Hind K4free {ssepS Ssmall2} V1 V2 sep {prop} SV12 V1properG V2properG
+         / clique (V1 :&: V2).
+  { move => W. case: (ltngtP #|S| 2) Ssmall2 => // [Sless2|/eqP Ssize2] _.
+   - apply W with S V1 V2 => //. 
+     rewrite -SV12. exact: small_clique.
+   - case/cards2P : Ssize2 => s1 [s2] [s1Ns2 S12].
+     case (W (add_edge s1 s2)) with S V1 V2 => // {W}.
+     + exact: K4_free_add_edge_sep_size2 SV12 _ _ S12 s1Ns2.
+     + apply add_edge_separation => //; by rewrite -SV12 S12 !inE eqxx.
+     + rewrite -SV12 S12. apply (@clique2 (add_edge s1 s2)) => /=.
+       by rewrite !eqxx s1Ns2.
+     + move => T [B] [B1 B2]. exists T. exists B. split => //. move: B1. 
       destruct G; apply sdecomp_subrel. exact: subrelUl. }
-    (* G+s1s2 is K4 free *)
-    have K4free_addedge: K4_free (add_edge s1 s2).
-    { apply K4_free_add_edge_sep_size2 with V1 V2 S => //. }
-    (* then use Hind and separation_decomp *)
-    case: (Hind (@induced (add_edge s1 s2) V1)) => // [|T1 [B1 [sd1 w1]]].
-    { apply subgraph_K4_free with (add_edge s1 s2) => //. apply induced_sub. }
-    case: (Hind (@induced (add_edge s1 s2) V2)) => // [|T2 [B2 [sd2 w2]]].
-    { apply subgraph_K4_free with (add_edge s1 s2) => //. apply induced_sub. }
-    case separation_decomp with (add_edge s1 s2) V1 V2 T1 T2 B1 B2 => //.
-    + apply add_edge_separation => //; by rewrite -SV12 S12 !inE eqxx.
-    + rewrite -SV12 S12. apply (@clique2 (add_edge s1 s2)) => /=.
-        by rewrite !eqxx s1Ns2.
-    + move => T [B [sd w]]. exists T. exists B. split => //.
-      apply leq_trans with (maxn (width B1) (width B2)) => //.
-      by rewrite geq_max w1 w2.
+  case: (Hind (induced V1)) => // [|T1 [B1 [sd1 w1]]].
+  { apply: subgraph_K4_free K4free. exact: induced_sub. }
+  case: (Hind (induced V2)) => // [|T2 [B2 [sd2 w2]]].
+  { apply: subgraph_K4_free K4free. exact: induced_sub. } 
+  case separation_decomp with G V1 V2 T1 T2 B1 B2 => // T [B [sd w]].
+  exists T. exists B. split => //. 
+  apply leq_trans with (maxn (width B1) (width B2)) => //.
+  by rewrite geq_max w1 w2.  
 Qed.
