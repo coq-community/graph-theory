@@ -218,63 +218,158 @@ Admitted.
 
 End AddClique.
 
-Definition add_edge (G : sgraph) (s1 s2 : G) := add_clique [set s1; s2].
+ 
+(* Definition add_edge (G : sgraph) (s1 s2 : G) := add_clique [set s1; s2]. *)
 
-Lemma add_edgeC (G : sgraph) (s1 s2 : G) : add_edge s1 s2 = add_edge s2 s1.
-Proof. by rewrite /add_edge setUC. Qed.
+(* TODO: this actually unprovable with the current definition, but can
+be made to hold *)
 
-Lemma add_sedgeC (G : sgraph) (s1 s2 x y : G) : 
-   @sedge (add_edge s1 s2) x y = @sedge (add_edge s2 s1) x y.
-Proof. by rewrite /add_edge setUC. Qed.
+Lemma add_edgeC' (G : sgraph) (s1 s2 : G) : add_edge s1 s2 = add_edge s2 s1.
+Admitted.
+(* Proof. by rewrite /add_edge setUC. Qed. *)
 
+(* Lemma add_sedgeC (G : sgraph) (s1 s2 x y : G) :  *)
+(*    @sedge (add_edge s1 s2) x y = @sedge (add_edge s2 s1) x y. *)
+(* Proof. by rewrite /add_edge setUC. Qed. *)
+
+Lemma nodes_prev (G : sgraph) (x y : G) (p : Path x y) : 
+  nodes (prev p) = rev (nodes p).
+Admitted.
+
+Lemma nodes_pcat (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) : 
+  nodes (pcat p q) = nodes p ++ behead (nodes q).
+Proof. by rewrite !nodesE. Qed.
+
+Notation PATH G x y := (@Path G x y).
+Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
+
+Lemma mem_path' (G : sgraph) (x y : G) (p : Path x y) z :
+  (z \in p) = (z \in nodes p).
+Admitted.
+
+(* TOTHINK: The assumption [s1 != s2] is redundant, but usually available *)
 Lemma add_edge_break (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
+  s1 != s2 ->
   let U := [set s1;s2] in
   irred p -> ~~ @connect G sedge x y ->
   exists u v : G, exists q1 : Path x u, exists q2 : Path v y, 
   [/\ u \in U, v \in U, u != v & nodes p = nodes q1 ++ nodes q2].
+Proof.
+  move => D U Ip NCxy.
+  (* have D : s1 != s2. { } *)
+  have/andP [H1 H2] : (s1 \in p) && (s2 \in p).
+  { rewrite -[_ && _]negbK negb_and. apply: contraNN NCxy => H. 
+    case: (add_edge_avoid p H) => p' Ep. exact: Path_connect. }
+  case: (@split_at_first (add_edge s1 s2) (mem U) _ _ p s1) => //.
+  { by rewrite !inE eqxx. }
+  move => z [p1] [p2] [P1 P2 P3]. subst U.
+  wlog ? : s1 s2 p D Ip NCxy H1 H2 z p1 p2 P1 P3 {P2 H1} / z = s1.
+  { move => W. case/setUP : P2 => /set1P P2; subst z.
+    - by apply W with s1 p1 p2. 
+    - case: (add_edge_pathC p) => p' Ep.
+      case: (add_edge_pathC p1) => p1' Ep1.
+      case: (add_edge_pathC p2) => p2' Ep2.
+      pose G':= add_edge s1 s2. pose G'' := add_edge s2 s1.
+      case: (W s2 s1 p' _ _ _ _ _ s2 p1' p2') => //.
+      + by rewrite eq_sym.
+      + by rewrite irred_nodes Ep.
+      + by rewrite (@mem_path' G'') Ep -(@mem_path' G').
+      + by rewrite (@mem_path' G'') Ep -(@mem_path' G').
+      + apply/eqP. by rewrite -nodes_eqE Ep P1 !nodes_pcat Ep1 Ep2.
+      + move => z. rewrite setUC. rewrite (@mem_path' G'') Ep1 -(@mem_path' G').
+        exact: P3.
+      + move => u [v] [q1] [q2]. rewrite setUC => [[? ? ? E]]. 
+        exists u. exists v. exists q1. exists q2. split => //. congruence. }
+  subst. move: H2. rewrite (@mem_pcat (add_edge s1 s2)).
+  have {P3} s2p1 : s2 \notin p1. apply: contraNN D => C. by rewrite [s2]P3 ?inE ?eqxx.
+  rewrite (negbTE s2p1) /= => s2p2. case/irred_catE : Ip => Ip1 Ip2 Ip12. 
+  case: (splitL p2) => [|z [s1z] [pR [def_p2 _]]].
+  { apply: contraNneq D => ?;subst y. 
+    move: s2p2. by rewrite [p2]irredxx // mem_idp eq_sym. }
+  move: Ip2. rewrite def_p2 irred_edgeL => /andP [s1pR IpR].
+  case: (add_edge_avoid p1) => [|p1' Ep]; first by rewrite s2p1.
+  case: (add_edge_avoid pR) => [|pR' ER]; first by rewrite s1pR.
+  have ? : z = s2. 
+  { apply: contraNeq NCxy => zNs2. move: (s1z) => /=. 
+    rewrite (negbTE zNs2) [z == s1]eq_sym (sg_edgeNeq s1z) ?eqxx.
+    case/or3P => //= s1z'.
+    exact: (Path_connect (pcat p1' (pcat (edgep s1z') pR'))). }
+  subst z. exists s1; exists s2; exists p1'; exists pR'. rewrite !inE ?eqxx. split => //.
+  rewrite Ep ER. by rewrite !nodesE. 
+Qed.
+
+Lemma path_return (G : sgraph) z (A : {set G}) (x y : G) (p : Path x y) :
+  x \in A -> y \in A -> irred p -> 
+  (forall u v, u -- v -> u \in A -> v \notin A -> u = z) -> p \subset A.
 Admitted.
 
+Lemma idx_swap (G : sgraph) (a b x y : G) (p : Path x y) :
+  a \in p -> b \in p -> irred p -> a <[p] b = b <[prev p] a.
+Admitted.
+
+Import set_tac.
 
 Section AddEdge.
   Variables (T : forest) (t0 t1 : T).
   Hypothesis discT : ~~ connect sedge t0 t1.
 
   Let T' := add_edge t0 t1.
-
   Notation Path G x y := (@Path G x y).
 
   Lemma add_edge_is_forest : is_forest [set: T'].
   Proof.
     apply: unique_forestT => x y p q Ip Iq. 
-    apply/eqP. rewrite -nodes_eqE. 
+    have D : t0 != t1 by apply: contraNneq discT => ->.
     case: (boolP (@connect T sedge x y)).
-    - case/uPathP => r Ir. 
+    - case/uPathP => r Ir.
+      apply/eqP. rewrite -nodes_eqE. 
       wlog suff {q Iq} S : p Ip / nodes p = nodes r.
       { by rewrite (S p) ?(S q). }
-      case: (add_clique_lift [set t0; t1] r) => r' Er.
-      admit.
+      suff S : (t0 \notin p) || (t1 \notin p).
+      { case: (add_edge_avoid p S) => p' Ep.
+        by rewrite -Ep (@forestP _ _ _ p' r) // irred_nodes Ep. }
+      rewrite -negb_and. apply:contraNN discT => /andP [T1 T2].
+      wlog before : x y p Ip D r Ir T1 T2 / t0 <[p] t1.
+      { move => W. case: (ltngtP (idx p t0) (idx p t1)).
+        - by apply W with r.
+        - rewrite idx_swap //. 
+          apply W with (prev r); rewrite ?prev_irred //.
+          all: by rewrite (@mem_prev (add_edge t0 t1)). 
+        - move/idx_inj. rewrite -mem_path'. by move/(_ T1)->. }
+      case:(three_way_split Ip T1 T2 before) => p1 [p2] [p3] [_ P2 P3].
+      case:(add_edge_avoid p1 _) => [|p1' _] ; first by rewrite P3.
+      case:(add_edge_avoid p3 _) => [|p3' _] ; first by rewrite P2.
+      have Hr : (t0 \notin r) || (t1 \notin r).
+      { rewrite -negb_and. apply:contraNN discT => /andP [R1 R2].
+        case: (ltngtP (idx r t0) (idx r t1)) => H.
+        - case:(three_way_split Ir R1 R2 H) => _ [r'] _. 
+          exact: (Path_connect r').
+        - case:(three_way_split Ir R2 R1 H) => _ [r'] _.
+          exact: (Path_connect (prev r')).
+        - by move/idx_inj : H => ->. }
+      exact: (Path_connect (pcat (prev p1') (pcat r (prev p3')))).
     - move => NC.
-      case:(add_edge_break Ip NC) => u [u'] [p1] [p2] [U1 U2 U3 E1].
-      case:(add_edge_break Iq NC) => v [v'] [q1] [q2] [V1 V2 V3 E2].
-      rewrite !irred_nodes E1 E2 !cat_uniq in Ip Iq *.
-      case/and3P : Ip => [Ip1 _ Ip2]. case/and3P : Iq => [Iq1 _ Iq2].
-      rewrite (@forestP _ _ _ p1 q1).
-      rewrite -(irred_nodes p1) in Ip1.
-      
-
-      wlog suff W : x u {U1 U2 U3 p q NC} p1 q1 {E1 E2} Ip1 Iq1 / nodes p1 = nodes q1.
-      { rewrite (W _ _ p1 q1) // (W _ _ p2 q2).
-      rewrite lW.
-      
-      have [Ip1 Ip2] : irred p1 /\ irred p2.
-      { move: Ip. rewrite !irred_nodes E1 cat_uniq. by case/and3P. }
-      
-
-
-
-    case: (boolP ((t0 \notin p) || (t1 \notin p))) => H.
-    - admit.
-    - rewrite negb_or !negbK in H. 
+      case:(add_edge_break D Ip NC) => u [u'] [p1] [p2] [U1 U2 U3 E1].
+      wlog [? ?]: x y p q Ip Iq NC u u' p1 p2 E1 {U1 U2 U3} / u = t0 /\ u' = t1.
+      { move => W. 
+        case/setUP : U1 => /set1P U1; case/setUP : U2 => /set1P U2; subst.
+        - by rewrite eqxx in U3.
+        - exact: (W x y p q _ _ _ t0 t1 p1 p2).
+        - have H := (W y x (prev p) (prev q) _ _ _ t0 t1 (prev p2) (prev p1)).
+          rewrite -[p]prevK H ?prevK ?prev_irred // 1?sconnect_sym //.
+          by rewrite !nodes_prev E1 rev_cat.
+        - by rewrite eqxx in U3. }
+      subst. 
+      case:(add_edge_break D Iq NC) => v [v'] [q1] [q2] [V1 V2 V3 E2].
+      have {V1} V1 : v = t0.
+      { apply: contraTeq V1 => H. rewrite !inE (negbTE H) /=.
+        apply: contraNneq discT => <-. exact: (Path_connect (pcat (prev p1) q1)). }
+      have {V2 V3} V2 : v' = t1. 
+      { subst. rewrite !inE eq_sym (negbTE V3) in V2. exact/eqP. }
+      subst. apply/eqP. rewrite -nodes_eqE E1 E2.
+      rewrite !irred_nodes E1 E2 !cat_uniq in Ip Iq.
+      case/and3P : Ip => [? _ ?]. case/and3P : Iq => [? _ ?].
+      rewrite (@forestP _ _ _ p1 q1) 1?(@forestP _ _ _ p2 q2) //.
   Qed.
   
   
