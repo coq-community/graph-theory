@@ -1632,25 +1632,48 @@ Lemma add_edge_sym_iso (G : sgraph) (s1 s2 : G):
   sg_iso (@add_edge G s1 s2) (@add_edge G s2 s1).
 Proof. apply: eq_sg_iso. exact: add_edgeC. Qed.
 
-
-
 Lemma add_edge_connected_sym (G : sgraph) s1 s2 A:
   @connected (@add_edge G s1 s2) A <-> @connected (@add_edge G s2 s1) A.
 Proof. apply: eq_connected => u v. exact: (add_edgeC s1 s2). Qed.
 
+Lemma add_edge_pathC (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
+  exists q : @Path (add_edge s2 s1) x y, nodes q = nodes p.
+Proof.
+  case: (@lift_Path (add_edge s2 s1) (add_edge s1 s2) id x y p) => //.
+  - move => u v. by rewrite add_edgeC.
+  - move => u. by rewrite mem_map // mem_enum.
+  - move => q Hq _. exists q. by rewrite -Hq map_id.
+Qed.
+
+Lemma add_edge_avoid (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) : 
+  (s1 \notin p) || (s2 \notin p) -> exists q : @Path G x y, nodes q = nodes p.
+Proof.
+  move => H. 
+  wlog H : s1 s2 p {H} / s1 \notin p => [W|].
+  { case/orP: H => [|Hs]; first exact: W. 
+    case: (add_edge_pathC p) => p' Hp'. 
+    case: (W _ _ p' _). by rewrite (mem_path p') -nodesE Hp' nodesE -(mem_path p).
+    move => q Hq. exists q. congruence. }
+  have pP u : u \in p -> u == s1 = false. { by apply: contraTF => /eqP->. }
+  case: (@lift_Path_on G (add_edge s1 s2) id x y p) => //.
+  - move => u v up vp /=. by rewrite !(pP u,pP v) //= !andbF !orbF.
+  - move => u. by rewrite mem_map // mem_enum.
+  - move => q Hq _. exists q. by rewrite -Hq map_id.
+Qed.
+
+Arguments add_edge_avoid [G s1 s2 x y] p.  
+
+Require Import set_tac.
+
 Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
   @connected (@add_edge G s1 s2) A -> s1 \notin A -> @connected G A.
 Proof.
-  move => H s1A x y xA yA. case: (altP (x =P y)) => [-> //|xDy].
-  case/uPathRP : (H _ _ xA yA) => // p Ip /subsetP subA. 
-  case: (@lift_Path_on G (add_edge s1 s2) id x y p) => //.
-  - move => u v up vp /=. case: (_ -- _ ) => //=. 
-    case/orP => /and3P[? /eqP ? /eqP ?]; subst; by rewrite subA in s1A. 
-  - move => u. by rewrite mem_map // mem_enum.
-  - move => p' nodeE irrE. apply connectRI with p' => u.
-    rewrite mem_path -nodesE -(mem_map (f := id)) // nodeE nodesE.
-    rewrite -(@mem_path (add_edge s1 s2)). exact: subA.
-Qed.
+  move => H s1A x y xA yA. 
+  case: (altP (x =P y)) => [-> //|xDy].
+  case/uPathRP : (H _ _ xA yA) => // p Ip subA. 
+  case: (add_edge_avoid p) => [|q Hq]. admit. (* path predicate reasoning *)
+  apply connectRI with q. move => u. admit. (* fix nodesE/mem_path *)
+Admitted.
 
 (** Adding Vertices *)
 

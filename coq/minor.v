@@ -190,7 +190,99 @@ Section JoinT.
 
 End JoinT.
 
-(** ** Link Construction *)
+
+(** ** Link Construction (without intermediate node) *)
+
+Section AddClique.
+Variables (G : sgraph) (U : {set G}).
+Implicit Types x y : G.
+
+Definition add_clique_rel := relU sedge [rel x y in U | x != y].
+
+Lemma add_clique_rel_irred : irreflexive add_clique_rel.
+Admitted.
+
+Lemma add_clique_rel_sym : symmetric add_clique_rel.
+Admitted.
+
+Definition add_clique := SGraph add_clique_rel_sym add_clique_rel_irred.
+
+Lemma add_clique_lift x y (p : @Path G x y) : 
+  exists q : @Path add_clique x y, nodes q = nodes p.
+Admitted.
+
+Lemma add_clique_unlift x y (p : @Path add_clique x y) : 
+  #|[set x in U | x \in p]| <= 1 ->
+  exists q : @Path G x y, nodes q = nodes p.
+Admitted.
+
+End AddClique.
+
+Definition add_edge (G : sgraph) (s1 s2 : G) := add_clique [set s1; s2].
+
+Lemma add_edgeC (G : sgraph) (s1 s2 : G) : add_edge s1 s2 = add_edge s2 s1.
+Proof. by rewrite /add_edge setUC. Qed.
+
+Lemma add_sedgeC (G : sgraph) (s1 s2 x y : G) : 
+   @sedge (add_edge s1 s2) x y = @sedge (add_edge s2 s1) x y.
+Proof. by rewrite /add_edge setUC. Qed.
+
+Lemma add_edge_break (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
+  let U := [set s1;s2] in
+  irred p -> ~~ @connect G sedge x y ->
+  exists u v : G, exists q1 : Path x u, exists q2 : Path v y, 
+  [/\ u \in U, v \in U, u != v & nodes p = nodes q1 ++ nodes q2].
+Admitted.
+
+
+Section AddEdge.
+  Variables (T : forest) (t0 t1 : T).
+  Hypothesis discT : ~~ connect sedge t0 t1.
+
+  Let T' := add_edge t0 t1.
+
+  Notation Path G x y := (@Path G x y).
+
+  Lemma add_edge_is_forest : is_forest [set: T'].
+  Proof.
+    apply: unique_forestT => x y p q Ip Iq. 
+    apply/eqP. rewrite -nodes_eqE. 
+    case: (boolP (@connect T sedge x y)).
+    - case/uPathP => r Ir. 
+      wlog suff {q Iq} S : p Ip / nodes p = nodes r.
+      { by rewrite (S p) ?(S q). }
+      case: (add_clique_lift [set t0; t1] r) => r' Er.
+      admit.
+    - move => NC.
+      case:(add_edge_break Ip NC) => u [u'] [p1] [p2] [U1 U2 U3 E1].
+      case:(add_edge_break Iq NC) => v [v'] [q1] [q2] [V1 V2 V3 E2].
+      rewrite !irred_nodes E1 E2 !cat_uniq in Ip Iq *.
+      case/and3P : Ip => [Ip1 _ Ip2]. case/and3P : Iq => [Iq1 _ Iq2].
+      rewrite (@forestP _ _ _ p1 q1).
+      rewrite -(irred_nodes p1) in Ip1.
+      
+
+      wlog suff W : x u {U1 U2 U3 p q NC} p1 q1 {E1 E2} Ip1 Iq1 / nodes p1 = nodes q1.
+      { rewrite (W _ _ p1 q1) // (W _ _ p2 q2).
+      rewrite lW.
+      
+      have [Ip1 Ip2] : irred p1 /\ irred p2.
+      { move: Ip. rewrite !irred_nodes E1 cat_uniq. by case/and3P. }
+      
+
+
+
+    case: (boolP ((t0 \notin p) || (t1 \notin p))) => H.
+    - admit.
+    - rewrite negb_or !negbK in H. 
+  Qed.
+  
+  
+
+End AddEdge.
+
+(** ** Link Construction (with intermediate node) *)
+
 
 Section Link.
   Variables (T : forest) (U : {set T}).
