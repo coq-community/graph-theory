@@ -35,6 +35,20 @@ Proof.
   move => x y /= xy. apply: D2 => /=. by rewrite E.
 Qed.
 
+Lemma sdecomp_tree_subrel 
+      (G:sgraph) (V : finType) (D : V -> {set G}) (e1 e2 : rel V) 
+      (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1)
+      (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2)
+      (e1_forest : is_forest [set: SGraph e1_sym e1_irrefl])
+      (e2_forest : is_forest [set: SGraph e2_sym e2_irrefl]):
+  subrel e1 e2 -> 
+  sdecomp (Forest e1_forest) G D -> sdecomp (Forest e2_forest) G D.
+Proof.
+  move => sub12 [D1 D2 D3]. split => // x t1 t2 X1 X2.
+  move: (D3 x _ _ X1 X2). apply: connect_mono. 
+  move => u v /=. rewrite -!andbA => /and3P [-> -> /=]. exact: sub12.
+Qed.
+
 Definition triv_sdecomp (G : sgraph) :
   sdecomp tunit G (fun _ => [set: G]).
 Proof.
