@@ -92,7 +92,7 @@ Proof.
   { (* ugly: exposes in_nodes *)
     rewrite ![[disjoint p & _]]disjoint_sym in D1 D2 *. 
     rewrite (eq_disjoint (A2 := [predU q1' & q2'])) ?disjointU ?D1 //.
-    move => u. by rewrite !inE mem_pcat mem_prev. }
+    move => u. by rewrite !inE (* mem_pcat mem_prev. *). }
   have {D_aux} D : [disjoint3 p1 & p2' & pz].
   { subst p; apply/and3P. split.
     - apply: disjoint_transR D3. apply/subsetP => u. by rewrite tail_p2. 
@@ -127,7 +127,7 @@ Proof.
         rewrite !inE /phi. by case: (disjoint3P u D).
       * move: (connected_path (p := pz) (ins Hu) (ins Hv)).
         apply: connect_mono. apply: restrict_mono => {u v Hu Hv} u.
-        rewrite !inE /phi. by case: (disjoint3P u D).
+        rewrite [pz]lock !inE -lock /phi. by case: (disjoint3P u D).
     + move => c1 c2.
       wlog: c1 c2 / c1 < c2.
       { move => W. case: (ltngtP c1 c2) => [|A B|A B]; first exact: W.

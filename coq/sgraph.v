@@ -616,6 +616,8 @@ Proof. apply: (can_inj (g := (@prev y x))) => p. exact: prevK. Qed.
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
 Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
 
+Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
+
 Lemma pcatA u v x y (p : Path u v) (q : Path v x) (r : Path x y) : 
   pcat (pcat p q) r = pcat p (pcat q r).
 Proof. apply/eqP. by rewrite -val_eqE /= catA. Qed.
@@ -1066,17 +1068,23 @@ Section PathIndexing.
     case/andP: (valP p) => p1 /eqP p2. 
     by rewrite -rev_rcons -[X in rcons _ X]p2 -lastI index_rev // -?nodesE -?irredE. 
   Qed.
-                                              
-  Lemma idx_swap a b x y (p : Path x y) : a \in p -> b \in p -> irred p ->
+
+  Lemma idx_swap_aux a b x y (p : Path x y) : a \in p -> b \in p -> irred p ->
     idx p a < idx p b -> idx (prev p) b < idx (prev p) a.
   Proof.
-    move => aP bP ip A. 
-    have H : a != b. { apply: contraTN A => /eqP->. by rewrite ltnn. }
-    rewrite !idx_srev //. apply: ltn_sub2l => //. 
+    move => aP bP ip A. rewrite !idx_srev //. apply: ltn_sub2l => //. 
     apply: (@leq_trans (idx p b)) => //. 
     rewrite -ltnS -[X in _ < X]/(size (x :: pval p)).
     by rewrite -nodesE index_mem.
   Qed. 
+
+  Lemma idx_swap a b x y (p : Path x y) :
+    a \in p -> b \in p -> irred p -> a <[p] b = b <[prev p] a.
+  Proof.
+    move => aP bP ip. apply/idP/idP => /idx_swap_aux; auto.
+    rewrite irred_rev prevK !mem_prev. by apply.
+  Qed.
+
 
   Lemma three_way_split x y (p : Path x y) a b :
     irred p -> a \in p -> b \in p -> a <[p] b -> 
@@ -1660,7 +1668,6 @@ Proof.
   - move => u. by rewrite mem_map // mem_enum.
   - move => q Hq _. exists q. by rewrite -Hq map_id.
 Qed.
-
 Arguments add_edge_avoid [G s1 s2 x y] p.  
 
 Require Import set_tac.

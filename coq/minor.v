@@ -2,6 +2,7 @@ Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries sgraph.
+Require Import set_tac.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -193,6 +194,7 @@ End JoinT.
 
 (** ** Link Construction (without intermediate node) *)
 
+(*
 Section AddClique.
 Variables (G : sgraph) (U : {set G}).
 Implicit Types x y : G.
@@ -217,37 +219,24 @@ Lemma add_clique_unlift x y (p : @Path add_clique x y) :
 Admitted.
 
 End AddClique.
-
+*)
  
-(* Definition add_edge (G : sgraph) (s1 s2 : G) := add_clique [set s1; s2]. *)
-
-(* TODO: this actually unprovable with the current definition, but can
-be made to hold *)
-
-Lemma add_edgeC' (G : sgraph) (s1 s2 : G) : add_edge s1 s2 = add_edge s2 s1.
-Admitted.
-(* Proof. by rewrite /add_edge setUC. Qed. *)
-
-(* Lemma add_sedgeC (G : sgraph) (s1 s2 x y : G) :  *)
-(*    @sedge (add_edge s1 s2) x y = @sedge (add_edge s2 s1) x y. *)
-(* Proof. by rewrite /add_edge setUC. Qed. *)
-
-Lemma nodes_prev (G : sgraph) (x y : G) (p : Path x y) : 
-  nodes (prev p) = rev (nodes p).
-Admitted.
 
 Lemma nodes_pcat (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) : 
   nodes (pcat p q) = nodes p ++ behead (nodes q).
 Proof. by rewrite !nodesE. Qed.
 
-Notation PATH G x y := (@Path G x y).
-Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
+Lemma nodes_prev (G : sgraph) (x y : G) (p : Path x y) : 
+  nodes (prev p) = rev (nodes p).
+Admitted.
+
+Local Notation PATH G x y := (@Path G x y).
 
 Lemma mem_path' (G : sgraph) (x y : G) (p : Path x y) z :
   (z \in p) = (z \in nodes p).
 Admitted.
 
-(* TOTHINK: The assumption [s1 != s2] is redundant, but usually available *)
+(* TOTHINK: The assumption [s1 != s2] is redundant, but usually available. *)
 Lemma add_edge_break (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
   s1 != s2 ->
   let U := [set s1;s2] in
@@ -301,13 +290,10 @@ Qed.
 Lemma path_return (G : sgraph) z (A : {set G}) (x y : G) (p : Path x y) :
   x \in A -> y \in A -> irred p -> 
   (forall u v, u -- v -> u \in A -> v \notin A -> u = z) -> p \subset A.
-Admitted.
+Abort.
 
-Lemma idx_swap (G : sgraph) (a b x y : G) (p : Path x y) :
-  a \in p -> b \in p -> irred p -> a <[p] b = b <[prev p] a.
-Admitted.
 
-Import set_tac.
+
 
 Section AddEdge.
   Variables (T : forest) (t0 t1 : T).
@@ -317,12 +303,11 @@ Section AddEdge.
   Notation Path G x y := (@Path G x y).
 
   Lemma add_edge_is_forest : is_forest [set: T'].
-  Proof.
+  Proof using discT.
     apply: unique_forestT => x y p q Ip Iq. 
     have D : t0 != t1 by apply: contraNneq discT => ->.
-    case: (boolP (@connect T sedge x y)).
-    - case/uPathP => r Ir.
-      apply/eqP. rewrite -nodes_eqE. 
+    case: (boolP (@connect T sedge x y)) => [|NC].
+    - case/uPathP => r Ir. apply/eqP. rewrite -nodes_eqE. 
       wlog suff {q Iq} S : p Ip / nodes p = nodes r.
       { by rewrite (S p) ?(S q). }
       suff S : (t0 \notin p) || (t1 \notin p).
@@ -339,17 +324,8 @@ Section AddEdge.
       case:(three_way_split Ip T1 T2 before) => p1 [p2] [p3] [_ P2 P3].
       case:(add_edge_avoid p1 _) => [|p1' _] ; first by rewrite P3.
       case:(add_edge_avoid p3 _) => [|p3' _] ; first by rewrite P2.
-      have Hr : (t0 \notin r) || (t1 \notin r).
-      { rewrite -negb_and. apply:contraNN discT => /andP [R1 R2].
-        case: (ltngtP (idx r t0) (idx r t1)) => H.
-        - case:(three_way_split Ir R1 R2 H) => _ [r'] _. 
-          exact: (Path_connect r').
-        - case:(three_way_split Ir R2 R1 H) => _ [r'] _.
-          exact: (Path_connect (prev r')).
-        - by move/idx_inj : H => ->. }
       exact: (Path_connect (pcat (prev p1') (pcat r (prev p3')))).
-    - move => NC.
-      case:(add_edge_break D Ip NC) => u [u'] [p1] [p2] [U1 U2 U3 E1].
+    - case:(add_edge_break D Ip NC) => u [u'] [p1] [p2] [U1 U2 U3 E1].
       wlog [? ?]: x y p q Ip Iq NC u u' p1 p2 E1 {U1 U2 U3} / u = t0 /\ u' = t1.
       { move => W. 
         case/setUP : U1 => /set1P U1; case/setUP : U2 => /set1P U2; subst.
@@ -371,8 +347,6 @@ Section AddEdge.
       case/and3P : Ip => [? _ ?]. case/and3P : Iq => [? _ ?].
       rewrite (@forestP _ _ _ p1 q1) 1?(@forestP _ _ _ p2 q2) //.
   Qed.
-  
-  
 
 End AddEdge.
 
