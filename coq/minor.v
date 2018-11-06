@@ -222,13 +222,7 @@ End AddClique.
 *)
  
 
-Lemma nodes_pcat (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) : 
-  nodes (pcat p q) = nodes p ++ behead (nodes q).
-Proof. by rewrite !nodesE. Qed.
 
-Lemma nodes_prev (G : sgraph) (x y : G) (p : Path x y) : 
-  nodes (prev p) = rev (nodes p).
-Admitted.
 
 Local Notation PATH G x y := (@Path G x y).
 
@@ -261,7 +255,7 @@ Proof.
       pose G':= add_edge s1 s2. pose G'' := add_edge s2 s1.
       case: (W s2 s1 p' _ _ _ _ _ s2 p1' p2') => //.
       + by rewrite eq_sym.
-      + by rewrite irred_nodes Ep.
+      + by rewrite irredE Ep.
       + by rewrite (@mem_path' G'') Ep -(@mem_path' G').
       + by rewrite (@mem_path' G'') Ep -(@mem_path' G').
       + apply/eqP. by rewrite -nodes_eqE Ep P1 !nodes_pcat Ep1 Ep2.
@@ -312,7 +306,7 @@ Section AddEdge.
       { by rewrite (S p) ?(S q). }
       suff S : (t0 \notin p) || (t1 \notin p).
       { case: (add_edge_avoid p S) => p' Ep.
-        by rewrite -Ep (@forestP _ _ _ p' r) // irred_nodes Ep. }
+        by rewrite -Ep (@forestP _ _ _ p' r) // irredE Ep. }
       rewrite -negb_and. apply:contraNN discT => /andP [T1 T2].
       wlog before : x y p Ip D r Ir T1 T2 / t0 <[p] t1.
       { move => W. case: (ltngtP (idx p t0) (idx p t1)).
@@ -343,7 +337,7 @@ Section AddEdge.
       have {V2 V3} V2 : v' = t1. 
       { subst. rewrite !inE eq_sym (negbTE V3) in V2. exact/eqP. }
       subst. apply/eqP. rewrite -nodes_eqE E1 E2.
-      rewrite !irred_nodes E1 E2 !cat_uniq in Ip Iq.
+      rewrite !irredE E1 E2 !cat_uniq in Ip Iq.
       case/and3P : Ip => [? _ ?]. case/and3P : Iq => [? _ ?].
       rewrite (@forestP _ _ _ p1 q1) 1?(@forestP _ _ _ p2 q2) //.
   Qed.

@@ -543,7 +543,7 @@ Proof.
       rewrite eq_z' eq_o' => p Ip /from_base[p' eq_p'].
       suff : n \in p' by move=> /(map_f val); rewrite -eq_p'.
       have {p Ip eq_p'} Ip' : irred p'.
-      { move: Ip; rewrite !irredE -!nodesE eq_p'. exact: map_uniq. }
+      { move: Ip; rewrite !irredE eq_p'. exact: map_uniq. }
       (* It then restricts to [q : Path (CP_ U') z o] which must have [n] as
        * its penultimate node. Thus [n ∈ q ⊆ p]. *)
       case: (CP_path conn_G' z_cp' o_cp' Ip') => // q [_] q_sub /subsetP. apply.
@@ -587,7 +587,7 @@ Proof.
   have /from_base[p' eq_p'] : i \notin p.
   { by apply/negP => /p_io; rewrite sinterval_bounds. }
   pose q' := pcat (prev (edgep ox)) (edgep oy). have Iq' : irred q'.
-  { by rewrite irredE/= !inE negb_or xNy eq_sym (sg_edgeNeq ox) (sg_edgeNeq oy). }
+  { by rewrite irredE nodesE /= !inE negb_or xNy eq_sym (sg_edgeNeq ox) (sg_edgeNeq oy). }
   have q_sub' : q' \subset CP U'.
   { apply/subsetP=> u. rewrite mem_pcat mem_prev !mem_edgep -orbA.
     by case/or4P=> /eqP->. }

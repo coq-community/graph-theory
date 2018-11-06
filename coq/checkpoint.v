@@ -122,8 +122,7 @@ Section CheckPoints.
       by rewrite -eq_z => pi_o /irredxx->. }
     case/(splitL pi_o) => [v] [zv] [pi'] [eq_pio eq_tail].
     rewrite -{}eq_tail in x_tail.
-    move: irred_o; rewrite eq_pio irredE (lock uniq) /= -(nodesE pi') -lock /=.
-    move=> /andP[zNpi']; rewrite nodesE -irredE => Ipi'.
+    move: irred_o. rewrite eq_pio irred_edgeL => /andP[zNpi' Ipi'].
     move: zNpi'; apply/idP.
     case: (isplitP Ipi' x_tail) z_cpxy => [p1 p2 _ _ _] /cpP/(_ p2).
     by rewrite mem_pcat =>->.
@@ -228,11 +227,11 @@ Section CheckPoints.
   Proof using. 
     have -> : [set x in p] = [set x in nodes p].
     { apply/setP => u. by rewrite inE. }
-    case: p => p pth_p Ip xy. rewrite nodesE irredE /= in Ip *.
+    case: p => p pth_p Ip xy. rewrite irredE nodesE /= in Ip *.
     apply: link_cycle. rewrite /ucycle /= Ip andbT.
     case/andP : pth_p => pth_p /eqP last_p. 
     by rewrite rcons_path pth_p last_p link_sym.
-  Qed.    
+  Qed.
 
   (** ** CP Closure Operator *)
 

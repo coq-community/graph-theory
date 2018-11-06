@@ -13,10 +13,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Separators *)
 
-(** Preliminaries *)
-
-Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
-
 Section Separators.
 Variable (G : sgraph).
 Implicit Types (x y z u v : G) (S U V : {set G}).
@@ -607,7 +603,7 @@ Proof.
       - case: (W _ _ _ _ _ _ _ _ _ _ _ _ _ p32 p12) => //; try by rewrite eq_sym.
         move => x' [p1'] [p2'] [p3'] [[? ? ?] [[? ? ?] [? ? ? ?]]]. 
         exists x'; exists p3'; exists p2'; exists p1'. do ! split => //; exact: left_independent_sym. 
-      - move/idx_inj : H. rewrite nodesE -mem_path P12 => /(_ isT) E. 
+      - move/idx_inj : H. rewrite -mem_path P12 => /(_ isT) E. 
         by rewrite E eqxx in xDy. }
     case: (three_way_split I2 P12 P32 Hxy) => p21 [p22] [p23] [def_p2 Hx Hy].
     subst p2. case/irred_catE : I2 => _ I2 I2'. case/irred_catE : I2 => I22 I23 I2.
@@ -951,8 +947,7 @@ Proof.
       by rewrite [s1]Hlast 1?[s2]Hlast ?inE ?eqxx in E.
   - move => a ap1. rewrite mem_map // mem_enum //.
   - move => p3 t1 _. rewrite inE xA. apply connectRI with p3 => a. 
-    (* TODO: fix nodesE/mem_path lemmase *)
-    rewrite mem_path -nodesE -[_ p3]map_id t1 nodesE -(mem_path p2). 
+    rewrite mem_path -[_ p3]map_id t1 -(mem_path p2). 
     (* TODO: this should be autmatable *)
     subst. move => H. apply: (subsetP subA). exact: (subsetP (subset_pcatR _ _)).
 Qed.

@@ -490,7 +490,7 @@ Section Primitives.
   Definition nodes := locked (x :: val p).
   Lemma nodesE : nodes = x :: val p. by rewrite /nodes -lock. Qed.
   Definition irred := uniq nodes.
-  Lemma irredE : irred = uniq (x :: val p). by rewrite /irred nodesE.  Qed.
+  Lemma irredE : irred = uniq nodes. by []. Qed.
   Definition tail := val p.
 
   Definition pcat_proof := spath_concat (valP p) (valP q).
@@ -530,13 +530,13 @@ Section IPath.
   Canonical IPath_countType := Eval hnf in CountType IPath IPath_countMixin.
 
   Lemma upath_irred p (Up : upath x y p) : irred (Build_Path (upathW Up)).
-  Proof. rewrite irredE. exact: upath_uniq Up. Qed.
+  Proof. rewrite irredE nodesE. exact: upath_uniq Up. Qed.
 
   Lemma irred_upath (p : Path x y) : irred p -> upath x y (val p).
   Proof. 
-    move => Ip. rewrite /upath irredE in Ip *. rewrite Ip /=. 
+    move => Ip. rewrite /upath irredE nodesE in Ip *. rewrite Ip /=. 
     by case: p {Ip}.
-  Qed.    
+  Qed.
 
   Definition irred_of (p0 : UPath x y) : IPath := 
     let (p,Up) := p0 in (Sub (Build_Path (upathW Up)) (upath_irred Up)).
@@ -555,41 +555,37 @@ Section IPath.
   Coercion path_of_ipath : IPath >-> Path.
 End IPath.
 
-(** TODO: This should be [irredE] *)
-Lemma irred_nodes x y (p : Path x y) : irred p = uniq (nodes p).
-Proof. by rewrite irredE nodesE. Qed.
-
 Lemma nodes_eqE x y (p q : Path x y) : (nodes p == nodes q) = (p == q).
 Proof.
   case: q p => q pth_q [p pth_p]. 
   by rewrite !nodesE -val_eqE /= eqseq_cons eqxx.
 Qed.
 
-Lemma mem_path x y (p : Path x y) u : u \in p = (u \in x :: val p).
-Proof. by rewrite in_collective /nodes -lock. Qed.
+Lemma mem_path x y (p : Path x y) u : u \in p = (u \in nodes p).
+Proof. by rewrite in_collective. Qed.
 
 Section PathTheory.
 Variables (x y z : G) (p : Path x y) (q : Path y z).
 
 Lemma in_tail : z != x -> z \in p -> z \in tail p.
-Proof. move => A. by rewrite mem_path inE (negbTE A). Qed.
+Proof. move => A. by rewrite mem_path nodesE inE (negbTE A). Qed.
 
 Lemma path_end : y \in p. 
-Proof. by rewrite mem_path -[in X in X \in _](path_last p) mem_last. Qed.
+Proof. by rewrite mem_path nodesE -[in X in X \in _](path_last p) mem_last. Qed.
 
 Lemma path_begin : x \in p.
-Proof. by rewrite mem_path mem_head. Qed.
+Proof. by rewrite mem_path nodesE mem_head. Qed.
 
 Lemma mem_pcatT u : (u \in pcat p q) = (u \in p) || (u \in tail q).
-Proof. by rewrite !mem_path !inE mem_cat -orbA. Qed.
+Proof. by rewrite !mem_path !nodesE !inE mem_cat -orbA. Qed.
 
 Lemma tailW : {subset tail q <= q}.
-Proof. move => u. rewrite mem_path. exact: mem_tail. Qed.
+Proof. move => u. rewrite mem_path nodesE. exact: mem_tail. Qed.
 
 Lemma mem_pcat u :  (u \in pcat p q) = (u \in p) || (u \in q).
 Proof. 
   rewrite mem_pcatT. case A: (u \in p) => //=. 
-  rewrite mem_path inE (_ : u == y = false) //. 
+  rewrite mem_path !nodesE inE (_ : u == y = false) //. 
   apply: contraFF A => /eqP->. exact: path_end. 
 Qed.
 
@@ -614,7 +610,18 @@ Lemma prev_inj x y : injective (@prev x y).
 Proof. apply: (can_inj (g := (@prev y x))) => p. exact: prevK. Qed.
 
 Lemma mem_prev x y (p : Path x y) u : (u \in prev p) = (u \in p).
-Proof. rewrite !mem_path -srev_nodes //. exact: valP. Qed.
+Proof. rewrite !mem_path !nodesE -srev_nodes //. exact: valP. Qed.
+
+Lemma nodes_prev (x y : G) (p : Path x y) : 
+  nodes (prev p) = rev (nodes p).
+Proof. 
+  apply: rev_inj. rewrite /prev /srev !nodesE /=. 
+  by rewrite rev_cons !revK -{2}[y](path_last p) -lastI.
+Qed.
+
+Lemma nodes_pcat (x y z : G) (p : Path x y) (q : Path y z) : 
+  nodes (pcat p q) = nodes p ++ behead (nodes q).
+Proof. by rewrite !nodesE. Qed.
 
 Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
 
@@ -649,7 +656,7 @@ Proof.
   - move=> H. split; first by apply/negP=>/H/=; rewrite path_end.
     apply/eqP/setP=> u; rewrite !inE.
     apply/andP/eqP; last by [move=>->; rewrite path_begin path_end].
-    case=> u_p. rewrite mem_path inE =>/orP[/eqP//|/H/=]. by rewrite u_p.
+    case=> u_p. rewrite mem_path nodesE inE =>/orP[/eqP//|/H/=]. by rewrite u_p.
   - case=> zNTq. rewrite eqEsubset =>/andP[/subsetP sub _].
     move=> u u_q /=. apply/negP=> u_p.
     case/(_ u _)/Wrap: sub; rewrite inE.
@@ -690,15 +697,15 @@ Proof. apply/spathP. exists (val p). exact: valP. Qed.
 Definition idp (u : G) := Build_Path (spathxx u).
 
 Lemma mem_idp (x u : G) : (x \in idp u) = (x == u).
-Proof. by rewrite mem_path !inE. Qed.
+Proof. by rewrite mem_path nodesE !inE. Qed.
 
 Lemma irred_idp (x : G) : irred (idp x).
-Proof. by rewrite irredE. Qed.
+Proof. by rewrite irredE nodesE. Qed.
 
 Lemma irredxx (x : G) (p : Path x x) : irred p -> p = idp x.
 Proof.
   rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
-  rewrite -lock => p_uniq. apply/val_inj => /=.
+  rewrite nodesE /= -lock => p_uniq. apply/val_inj => /=.
   by have /upath_nil-> : upath x x p by rewrite /upath p_uniq p_pth.
 Qed.
 
@@ -711,18 +718,18 @@ Definition edgep x y (xy : x -- y) := Build_Path (edgep_proof xy).
 
 Lemma mem_edgep x y z (xy : x -- y) :
   z \in edgep xy = (z == x) || (z == y).
-Proof. by rewrite mem_path !inE. Qed.
+Proof. by rewrite mem_path nodesE !inE. Qed.
 
 Fact prev_edge_proof x y (xy : x -- y) : y -- x. by rewrite sgP. Qed.
 Lemma prev_edge x y (xy : x -- y) : prev (edgep xy) = edgep (prev_edge_proof xy).
 Proof. by apply/eqP. Qed.
 
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
-Proof. by rewrite irredE /= andbT inE sg_edgeNeq. Qed.
+Proof. by rewrite irredE nodesE /= andbT inE sg_edgeNeq. Qed.
 
 Lemma irred_edgeL y x z1 (xz1 : x -- z1) (p : Path z1 y) : 
   irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
-Proof. case: p => p pth_p. by rewrite !irredE /= mem_path /=. Qed.
+Proof. case: p => p pth_p. by rewrite !irredE /= mem_path !nodesE /=. Qed.
 
 
   
@@ -802,7 +809,7 @@ CoInductive psplit z x y : Path x y -> Prop :=
 
 Lemma psplitP z x y (p : Path x y) : z \in p -> psplit z p.
 Proof. 
-  move: (valP p) => pth_p in_p. rewrite mem_path in in_p.
+  move: (valP p) => pth_p in_p. rewrite mem_path nodesE in in_p.
   case/(ssplitP in_p) E : _ / pth_p => [p1 p2 P1 P2].
   have -> : p = pcat (Sub p1 P1) (Sub p2 P2) by exact: val_inj.
   by constructor.
@@ -853,11 +860,11 @@ Lemma split_at_first {A : pred G} x y (p : Path x y) k :
   exists z (p1 : Path x z) (p2 : Path z y), 
     [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
 Proof.
-  case: p => p pth_p /= kA kp. rewrite mem_path in kp.
+  case: p => p pth_p /= kA kp. rewrite mem_path nodesE in kp.
   case: (split_at_first_aux pth_p kA kp) => z [p1] [p2] [def_p pth_p1 pth_p2 A1 A2].
   exists z. exists (Build_Path pth_p1). exists (Build_Path pth_p2). split => //.
   + subst p. exact: val_inj.
-  + move => ?. rewrite mem_path. exact: A2.
+  + move => ?. rewrite mem_path nodesE. exact: A2.
 Qed.
 
 Lemma split_at_last {A : pred G} (x y : G) (p : Path x y) (k : G) : 
@@ -875,7 +882,7 @@ Qed.
 Lemma UPath_from_irred x y (p : Path x y) : irred p ->
   exists q : UPath x y, val p = val q.
 Proof.
-  case: p => p pth. rewrite irredE [_ :: _]/= => Up /=.
+  case: p => p pth. rewrite irredE nodesE [_ :: _]/= => Up /=.
   have {pth Up} Up : upath x y p by rewrite /upath; apply/andP; split.
   by exists (Sub p Up).
 Qed.
@@ -884,7 +891,7 @@ Lemma uncycle x y (p : Path x y) :
   exists2 p' : Path x y, {subset p' <= p} & irred p'.
 Proof.
   case: p => p pth_p. case/spath_shorten : (pth_p) => p' [A B C].
-  exists (Build_Path A). move => z. rewrite !mem_path !SubK.
+  exists (Build_Path A). move => z. rewrite !mem_path !nodesE !SubK.
   + rewrite !inE. case/predU1P => [->|/C ->] //. by rewrite eqxx.
   + by rewrite /irred nodesE.
 Qed.
@@ -910,7 +917,7 @@ Lemma Path_to_induced (G : sgraph) (S : {set G}) (x y : induced S)
   {subset p <= S} -> exists q : Path x y, map val (nodes q) = nodes p.
 Proof.
   case: p => p pth_p sub_p. case: (path_to_induced pth_p).
-  - move=> z z_p; apply: sub_p. by rewrite mem_path /= inE z_p.
+  - move=> z z_p; apply: sub_p. by rewrite mem_path nodesE /= inE z_p.
   - move=> q pth_q eq_p. exists (Sub q pth_q). by rewrite !nodesE /= eq_p.
 Qed.
 
@@ -920,7 +927,7 @@ Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x
 Proof. 
   case: p => p pth_p.
   exists (Build_Path (induced_path pth_p)); last by rewrite !nodesE.
-  move=> z; rewrite mem_path /= -map_cons => /mapP[z' _ ->]; exact: valP.
+  move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
 Qed.
 
 (* TOTHINK: Use this to prove the lemmas above? *)
@@ -929,11 +936,11 @@ Lemma lift_Path_on (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) :
   exists2 p : Path a b, map f (nodes p) = nodes p' & irred p = irred p'.
 Proof.
   move => A I S. case: (lift_spath_on _ I (valP p') _).
-  - move => x y. rewrite -!mem_path. exact: A.
-  - move => x V. apply: S. by rewrite mem_path inE V.
+  - move => x y. rewrite -!nodesE -!mem_path. exact: A.
+  - move => x V. apply: S. by rewrite mem_path nodesE inE V.
   - move => p [p1 p2]. exists (Sub p p1). 
     + by rewrite !nodesE /= p2. 
-    + by rewrite !irredE -p2 -map_cons map_inj_uniq.
+    + by rewrite !irredE !nodesE -p2 -map_cons map_inj_uniq.
 Qed.
 
 Lemma lift_Path (G H : sgraph) (f : G -> H) a b (p' : Path (f a) (f b)) : 
@@ -984,9 +991,9 @@ Section PathIndexing.
     move=> uNp vNp. rewrite /idx (nodesE (pcat _ _)) (lock index)/= -lock.
     rewrite -cat_cons lastI cat_rcons path_last -nodesE !index_cat.
     have /negbTE-> : u \notin belast x (val p).
-    { apply: contraNN uNp. by rewrite mem_path lastI mem_rcons inE =>->. }
+    { apply: contraNN uNp. by rewrite mem_path nodesE lastI mem_rcons inE =>->. }
     have /negbTE-> : v \notin belast x (val p).
-    { apply: contraNN vNp. by rewrite mem_path lastI mem_rcons inE =>->. }
+    { apply: contraNN vNp. by rewrite mem_path nodesE lastI mem_rcons inE =>->. }
     by rewrite leq_add2l.
   Qed.
 
@@ -1119,7 +1126,7 @@ Proof.
     { rewrite /spath p2 eqxx andbT. 
       apply: sub_path p1. exact: subrel_restrict. }
     exists (Build_Path pth_p); first by rewrite /irred nodesE.
-    apply/subsetP => z. rewrite mem_path SubK inE. 
+    apply/subsetP => z. rewrite mem_path nodesE SubK inE. 
     case: p p1 p2 {p3 pth_p} => [/= _ /eqP?|a p pth_p _]; first by contrab.
     case/predU1P => [->|]; last exact: path_restrict pth_p _.
     move: pth_p => /=. by case: (x \in A).
@@ -1127,7 +1134,7 @@ Proof.
     exists (val p); split => //; last by rewrite /irred nodesE in irr_p.
     have/andP [A1 A2] : (x \in A) && (val p \subset A).
     { move/subsetP : subA => H. rewrite !H ?path_begin //=. 
-      apply/subsetP => z Hz. apply: H. by rewrite mem_path !inE Hz. }
+      apply/subsetP => z Hz. apply: H. by rewrite mem_path nodesE !inE Hz. }
     apply: restrict_path => //. exact/subsetP.
 Qed.
 
@@ -1660,7 +1667,7 @@ Proof.
   wlog H : s1 s2 p {H} / s1 \notin p => [W|].
   { case/orP: H => [|Hs]; first exact: W. 
     case: (add_edge_pathC p) => p' Hp'. 
-    case: (W _ _ p' _). by rewrite (mem_path p') -nodesE Hp' nodesE -(mem_path p).
+    case: (W _ _ p' _). by rewrite (mem_path p') Hp' -(mem_path p).
     move => q Hq. exists q. congruence. }
   have pP u : u \in p -> u == s1 = false. { by apply: contraTF => /eqP->. }
   case: (@lift_Path_on G (add_edge s1 s2) id x y p) => //.
@@ -1738,7 +1745,7 @@ Proof.
   case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
   case: (add_node_lift_Path U p) => q E. 
   apply: (connectRI (p := q)) => ?. 
-  rewrite !inE mem_path -nodesE E.
+  rewrite !inE mem_path E.
   case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
 Qed.
 
