@@ -224,7 +224,7 @@ Qed.
 Lemma cards2P (T : finType) (A : {set T}): 
   reflect (exists x y : T, x != y /\ A = [set x;y]) (#|A| == 2).
 Proof.
-  apply: (iffP idP) => [[H]|[x] [y] [xy ->]]; last by rewrite cards2 xy.
+  apply: (iffP idP) => [H|[x] [y] [xy ->]]; last by rewrite cards2 xy.
   have/card_gt1P [x [y] [H1 H2 H3]] : 1 < #|A| by rewrite (eqP H).
   exists x; exists y. split => //. apply/setP => z. rewrite !inE.
   apply/idP/idP => [zA|/orP[] /eqP-> //]. apply: contraTT H.
