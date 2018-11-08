@@ -415,7 +415,6 @@ Proof.
     { setoid_rewrite <- or_comm. by apply: W; rewrite 1?setIC // separation_sym. }
     case: notF. case/forallPn : A => i /negPn Hi. case/forallPn : B => j /negPn Hj.
     case: (altP (i =P j)) => [E|E].
-    (* TOTHINK: Make set_tac make use of [A == set0] and [A != set0]? *)
     - subst j. case/set0Pn : (P1 i) => x Hx. case/setUP : (sepV.1 x) => Hx'.
       + move/eqP/setP/(_ x) : Hi. by rewrite !inE Hx Hx'.
       + move/eqP/setP/(_ x) : Hj. by rewrite !inE Hx Hx'.
@@ -920,16 +919,6 @@ Qed.
 for K4-free graphs. *)
 
 
-Ltac set_tac_close_plus ::=
-  match goal with
-  | [ H : is_true (?x \in _ (pcat ?p ?q)) |- _] =>
-    first[notHyp (x \in p)|notHyp (x \in q)];
-    (* use explicit have to ensure termination in case of ambiguous typing *)
-    have/andP [? ?]: (x \in p) && (x \in q) by rewrite mem_pcat in H
-  | [ H : is_true (?x \notin _ (pcat ?p ?q)) |- _] =>
-    first[notHyp (x \notin p)|notHyp (x \notin q)];
-    have/andP [? ?]: (x \notin p) && (x \notin q) by rewrite mem_pcat negb_or in H
-  end.
 
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
   K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
@@ -1004,16 +993,13 @@ Proof.
       * subst x. case: (altP (y =P i)) => yi.
         -- subst y. apply/neighborP; exists z. exists s1. split => //; by rewrite ?inE // sgP.
         -- apply: (neighborW G (phi j) (phi y)); rewrite ?subsetUl //.
-           apply: neighbor_del_edgeR (map3 _ _ xy).
-           by rewrite (disjointFl (map2 _ _ yi)).
-           by rewrite (disjointFl (map2 _ _ yNj)).
-      * apply: neighbor_del_edge2 (map3 _ _ xy).
-        by rewrite (disjointFl (map2 _ _ xj)).
-        by rewrite (disjointFl (map2 _ _ yNj)). }
+           move: (map2 _ _ yi) (map2 _ _ yNj) => *.
+           apply: neighbor_del_edgeR (map3 _ _ xy); by set_tac.
+      * move: (map2 _ _ xj) (map2 _ _ yNj) => *. 
+        apply: neighbor_del_edge2 (map3 _ _ xy); by set_tac. }
 
   case: (cases_without_edge K4free rmapphi) => [twobags|onebag].
-
-  - apply caseA with s1 s2 phi => //.
+  -  apply caseA with s1 s2 phi => //. 
 
   - (* case B, s1 and s2 in same bag, not connected *)
     move: onebag => [i [s1i s2i notconi]].

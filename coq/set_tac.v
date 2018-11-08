@@ -34,19 +34,40 @@ Ltac extend H T := notHyp H; have ? : H by T.
 Ltac convertible A B := assert_succeeds (assert (A = B) by reflexivity).
 
 (** NOTE: since Ltac is untyped, we need to provide the coercions
-usually hidden, e.g., [is_true] or [SetDef.pred_of_set] *)
+usually hidden, e.g., [is_true] or [SetDef.pred_of_set]. *)
 
-  (* lazymatch goal with *)
-  (* | [H : is_true (?x \in ?A), S : is_true (?A' \subset ?B) |- _] =>  *)
-  (*   convertible A A'; extend (x \in B) ltac:(apply: (subsetP S)) *)
-  (* end. *)
+(** TOTHINK: For some collective predicates, in particular for paths,
+the coercion to a predicates can take several different forms. This
+means that rules involving [_ \subset _] should match up to conversion
+to not miss instances. Similarly, we need to ensure that the 'notHyp'
+test is performed on exactly the same term that ends up on the
+branch. Otherwise the same hypotheses gets added ad infinitum *)
+
+(** NOTE: The only rules that introduce hypotheses of the form
+[_\subset _] are those eliminating equalities between sets. Since
+these remove their hypotheses, the trivial subset assumption 
+[[set _] \subset A] can be modified in place *)
 
 Local Notation pos := SetDef.pred_of_set.
 
-(* TODO: subsumption rules ??*)
+(** TODO:
+- reverse propagation for subset 
+- dealing with setT and set0
+- dealing with existential hypotheses 
+  + A != B (possibly do the A != set0 case separately)
+  + ~~ (A \subset B) (this is never generated, do as init?)
+
+*)
+
+Ltac no_inhabitant A :=
+  match goal with [ _ : ?x \in _ A |- _ ] => fail 1 | _ => idtac end.
+
 (* non-branching rules *)
 Ltac set_tab_close := 
   match goal with 
+
+  | [ H : is_true (_ \in _ set0) |- _] => by rewrite in_set0 in H  
+
   | [H : is_true (?x \in pos (?A :&: ?B)) |- _] => 
     first [notHyp (x \in A)|notHyp(x \in B)]; case/setIP : (H) => [? ?]
   | [H : is_true (?x \in _ (?A :\: ?B)) |- _] => 
@@ -54,23 +75,34 @@ Ltac set_tab_close :=
   | [H : is_true (?x \in _ [set ?y]) |- _ ] => 
     assert_fails (have: x = y by []); (* [x = y] is nontrivial and unknown *)
     move/set1P : (H) => ?;subst
-  | [H : is_true (?x \in ?B), D : is_true [disjoint ?A & ?B] |- _] => 
-    notHyp (x \notin A); have ? : x \notin A by rewrite (disjointFl D H)
-  | [H : is_true (?x \in ?A), D : is_true [disjoint ?A & ?B] |- _] => 
-    notHyp (x \notin B); have ? : x \notin B by rewrite (disjointFr D H)
-  | [H : is_true (?x \in ?A), S : is_true (?A' \subset ?B) |- _] => 
-    convertible A A';
-    extend (x \in B) ltac:(move/(subsetP S) : (H) => ?)
+
   | [ H : ?A = ?B :> {set _} |- _] => 
     move/eqP : H; rewrite eqEsubset => /andP [? ?]
+  | [ H : is_true (?A == ?B :> {set _}) |- _] => 
+    move : H; rewrite eqEsubset => /andP [? ?]
+
   | [ H : is_true (_ (_ :|: _) \subset _) |- _] => 
     case/set_tac_subUl : H => [? ?]
   | [ H : is_true (_ \subset _ (_ :&: _)) |- _] => 
     case/set_tac_subIr : H => [? ?]
-  | [ H : is_true (_ [set _] \subset _) |- _] => 
-    rewrite sub1set in H 
+
+  | [ H : is_true (_ [set _] \subset _) |- _] => rewrite sub1set in H 
+  | [ H : is_true (_ set0 \subset _) |- _ ] => clear H (* useless*)
+  | [ H : is_true (_ \subset _ setT) |- _ ] => clear H (* useless*)
+
+  | [H : is_true (?x \in ?A), S : is_true (?A' \subset ?B) |- _] => 
+    convertible A A'; extend (x \in B) ltac:(move/(subsetP S) : (H) => ?)
+
+  | [H : is_true (?x \in ?B), D : is_true [disjoint ?A & ?B] |- _] => 
+    notHyp (x \notin A); have ? : x \notin A by rewrite (disjointFl D H)
+  | [H : is_true (?x \in ?A), D : is_true [disjoint ?A & ?B] |- _] => 
+    notHyp (x \notin B); have ? : x \notin B by rewrite (disjointFr D H)
+
+  | [ H : is_true (?A != set0) |- _] => 
+    no_inhabitant A; case/set0Pn : H => [? ?]
+                                         
   | [ xA : is_true (?x \in _ ?A), xB : is_true (?x \in _ ?B), 
-    H : is_true (_ (?A :&: ?B) \subset ?D) |- _] =>
+       H : is_true (_ (?A :&: ?B) \subset ?D) |- _] =>
     notHyp (x \in D); have ? := set_tac_subIl xA xB H
   end.
 
