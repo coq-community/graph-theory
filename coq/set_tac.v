@@ -76,9 +76,11 @@ Ltac set_tab_close :=
     assert_fails (have: x = y by []); (* [x = y] is nontrivial and unknown *)
     move/set1P : (H) => ?;subst
 
-  | [ H : ?A = ?B :> {set _} |- _] => 
+    (* These rules will be tried (and fail) on equalities between non-sets, but
+    set types can take many different shapes *)
+  | [ H : ?A = ?B |- _] => 
     move/eqP : H; rewrite eqEsubset => /andP [? ?]
-  | [ H : is_true (?A == ?B :> {set _}) |- _] => 
+  | [ H : is_true (?A == ?B) |- _] => 
     move : H; rewrite eqEsubset => /andP [? ?]
 
   | [ H : is_true (_ (_ :|: _) \subset _) |- _] => 
@@ -188,4 +190,8 @@ Proof. move => *. by rewrite inD orbT. Qed.
 Goal forall (T:finType) (A B : {set T}) x b, x \notin A -> B \subset A -> (x \notin B) || b.
 Proof. move => T A B x b H D. by rewrite notinD. Qed.
 
+Goal forall (T:finType) (A B : {set T}) x,  x \in A -> A = B -> x \in B.
+Proof. by set_tac. Qed.
 
+Goal forall (T:finType) (A B : {set T}) x,  x \in A -> A == B -> x \in B.
+Proof. by set_tac. Qed.
