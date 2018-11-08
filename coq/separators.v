@@ -13,6 +13,8 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Separators *)
 
+(** TODO: using clauses to speed up make quick *)
+
 Section Separators.
 Variable (G : sgraph).
 Implicit Types (x y z u v : G) (S U V : {set G}).
@@ -371,7 +373,7 @@ Proof.
   case: (altP (x =P y)) => [->|xDy]; first exact: connect0.
   case/uPathRP : (conA _ _ X1 Y1) => // p Ip subA. 
   case: (boolP (p \subset B)) => subB.
-  - apply connectRI with p => z zp. by rewrite inD. (* set_tac fails due to [mem] *)
+  - apply connectRI with p => z zp. by clean_mem;set_tac.
   - case/subsetPn : subB => z Z1 Z2. 
     gen have C,Cx : x y p Ip subA X1 X2 Y1 Y2 Z1 Z2 {xDy} / 
         exists2 s, s \in S :&: A :&: B & connect (restrict (mem (A :&: B)) sedge) x s.
@@ -917,60 +919,68 @@ Qed.
 (* This lemma is the core of the construction of tree decompositions
 for K4-free graphs. *)
 
+
+Ltac set_tac_close_plus ::=
+  match goal with
+  | [ H : is_true (?x \in _ (pcat ?p ?q)) |- _] =>
+    first[notHyp (x \in p)|notHyp (x \in q)];
+    (* use explicit have to ensure termination in case of ambiguous typing *)
+    have/andP [? ?]: (x \in p) && (x \in q) by rewrite mem_pcat in H
+  | [ H : is_true (?x \notin _ (pcat ?p ?q)) |- _] =>
+    first[notHyp (x \notin p)|notHyp (x \notin q)];
+    have/andP [? ?]: (x \notin p) && (x \notin q) by rewrite mem_pcat negb_or in H
+  end.
+
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
   K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
   S = [set s1; s2] -> s1 != s2 -> K4_free (add_edge s1 s2).
 Proof.
   move => K4free SV12 psep ssepS S12 s1Ns2 K4G'.
-  case: (@separation_K4side (add_edge s1 s2) V1 V2) => //.
-  { apply add_edge_separation; try by rewrite -SV12 S12 !inE eqxx. exact psep.1. }
-  { rewrite -SV12 S12. apply: clique2. by rewrite /= !eqxx s1Ns2. }
-  { by rewrite -SV12 S12 cards2 s1Ns2. }
-  move => phi rmapphi {K4G'}.
-  (* wlog forall k, Ik \subset V1 *)
-  wlog: V1 V2 psep SV12 / forall x : K4, phi x \subset V1.
-  { move => H [?|?].
-    - apply H with V1 V2 => //. by left.
-    - apply H with V2 V1 => //. by apply proper_separation_symmetry.
-      by rewrite setIC. by left. }
-  move => HphiV1 _. apply K4free. rewrite SV12 in S12.
-
-  (* case A, s1 and s2 in different bags *)
+  wlog [phi rmapphi HphiV1] : {K4G'} V1 V2 psep SV12 / exists2 phi : K4 -> {set add_edge s1 s2},
+         minor_rmap phi & forall x : K4, phi x \subset V1.
+  { move => W.  case: (@separation_K4side (add_edge s1 s2) V1 V2) => //.
+    - apply add_edge_separation; try by rewrite -SV12 S12 !inE eqxx. exact psep.1. 
+    - rewrite -SV12 S12. apply: clique2. by rewrite /= !eqxx s1Ns2. 
+    - by rewrite -SV12 S12 cards2 s1Ns2. 
+    - move => phi map_phi [subV1|subV2]; first by apply: (W V1 V2) => //; exists phi.
+      apply: (W V2 V1) => //; rewrite 1?proper_separation_symmetry 1?setIC //.
+      by exists phi. }
+  apply K4free. rewrite SV12 in S12.
+  (* case A :  s1 and s2 in different bags 
+     we generalize over s1,s2 and phi, so that case B reduces to this case. *)
   gen have caseA: s1 s2 s1Ns2 S12 phi rmapphi HphiV1 /
     (exists i j : K4, [/\ s1 \in phi i, s2 \in phi j & i != j]) -> minor G K4.
   { move => [i [j [s1i s2j iNj]]]. rewrite SV12 in ssepS.
-    (* s1 as a neighbour z /notin V1 *)
+    (* s1 as a neighbour [z \notin V1] *)
     case: (@sseparator_neighbours _ _ _ s1 psep ssepS) => [|_ [z [_ zNV1 _ s1z]]].
     { by rewrite S12 !inE eqxx. }
     (* path from z to s2 avoiding s1 *)
-    case: (@avoid_nonseperator G [set s1] z s2) => [|||p irp dis].
-    { apply ssepS.2. by rewrite S12 cards1 cards2 s1Ns2. }
-    { by rewrite inE eq_sym ?(sg_edgeNeq s1z). }
-    { by rewrite inE eq_sym. }
+    have [p irp dis] : exists2 p : Path z s2, irred p & [disjoint p & [set s1]].
+    { apply: (@avoid_nonseperator G [set s1] z s2).
+      - apply ssepS.2. by rewrite S12 cards1 cards2 s1Ns2. 
+      - by rewrite inE eq_sym ?(sg_edgeNeq s1z). 
+      - by rewrite inE eq_sym. }
+    rewrite disjoint_sym disjoints1 in dis.
     (* path included in V2 *)
-    have pV2: p \subset V2. (* TODO: simplify *)
-    { case: (boolP (p \subset V2)) => // /subsetPn [z' z'p z'Nv2].
-      case /psplitP pcatz': _/z'p => [pzz' pz's2].
-      move: psep. rewrite proper_separation_symmetry => psep'.
-      move: (separation_separates psep'.1 zNV1 z'Nv2) => [zNS z'NS Hp].
-      move: (Hp pzz') => [s sp].
-      rewrite setIC S12 !inE => /orP [] /eqP ?; subst s.
-      - exfalso. apply: (@disjointE _ _ _ s1 dis); by rewrite ?pcatz' !inE ?sp.
-      - rewrite pcatz' in irp. move: (irred_catE irp) => [_ _ Hir].
-        have s2z': s2 = z' by apply Hir. subst z'.
-        rewrite setIC S12 !inE negb_or eqxx in z'NS. by case/andP: z'NS. }
-    (* phi' := phi[k := phi k `union` p] *)
+    have pV2: p \subset V2. 
+    { apply: contraTT isT => /subsetPn [z' z'p z'NV2].
+      case/psplitP: _ / z'p irp dis => {p} [p1 p2] /irred_catE [_ _ Ip] s1p.
+      move/proper_separation_symmetry in psep.
+      case: (separation_separates psep.1 zNV1 z'NV2) => _ _ /(_ p1) [s S1 S2].
+      rewrite -(Ip s2) // in z'NV2; by set_tac. }
+    (* phi' := phi[j := phi j :|: p] *)
     pose phi' (k : K4) := if k==j then phi j :|: [set a in p] else phi k .
-    suff HH: @minor_rmap G K4 phi' by apply (minor_of_map (minor_map_rmap HH)).
+    suff HH: @minor_rmap G K4 phi' by apply: minor_of_rmap HH.
     have disjE := (rmap_disjE rmapphi).
     destruct rmapphi as [map0 map1 map2 map3].
     rewrite /phi'. split => [x|x|x y xNy|x y xy].
     + case: (altP (x =P j)) => xj //=. apply /set0Pn. exists s2. by rewrite !inE.
-    + case: (altP (x =P j)) => xj //=.
+    + case: (altP (x =P j)) => xj.
       * apply connectedU_common_point with s2 => //. by rewrite !inE.
-        apply add_edge_keep_connected_l => //. apply: contraNN iNj => s1x.
-        by rewrite (disjE s1 i j s1i s1x). by apply connected_path.
-      * apply (@add_edge_keep_connected_l G s2 s1) => //.
+        -- apply add_edge_keep_connected_l => //. 
+           apply: contraNN iNj => s1x. by rewrite (disjE s1 i j s1i s1x). 
+        -- by apply connected_path.
+      * apply (@add_edge_keep_connected_l G s2 s1) => //. (* TODO: _r variant *)
         -- by apply add_edge_connected_sym. 
         -- apply: contraNN xj => s1x. by rewrite (disjE s2 x j s1x s2j).
     + wlog yNj: x y xNy / y!=j.
@@ -980,14 +990,10 @@ Proof.
           + move: (H y x xNy xj). rewrite (negbTE xj) yj => ?. by rewrite disjoint_sym.
         - move: (H x y xNy yj). by rewrite (negbTE yj). }
       rewrite (negbTE yNj). case: (altP (x=Pj)) => ? //=; [ subst x | by apply map2].
-      rewrite disjointsU => //. by apply map2. apply /disjointP => a ap ay.
-      rewrite inE in ap.
-      move/(subsetP (HphiV1 _)) : (ay) => aV1.
-      move/(subsetP pV2) : (ap) => aV2.
-      have: a \in [set s1; s2] by rewrite -S12 !inE.
-      rewrite !inE => /orP [/eqP as1|/eqP as2]; subst a.
-      * apply: (@disjointE _ _ _ s1 dis) => //. by rewrite inE. 
-      * by rewrite (disjE s2 j y s2j ay) eqxx in xNy. 
+      rewrite disjointsU ?map2 //. apply /disjointP => a ap ay. rewrite inE in ap.
+      have/setU1P[H|H] : a \in [set s1; s2] by move: (HphiV1 y); set_tac.
+      - by subst; contrab.
+      - move: (map2 _ _ xNy). by set_tac.
     + wlog yNj: x y xy / y!=j.
       { move => H. case: (boolP (y==j)) => yj //=.
         - simpl in xy. rewrite eq_sym in xy. case: (altP (x =P j)) => xj //=.

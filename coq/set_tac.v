@@ -1,5 +1,10 @@
 From mathcomp Require Import all_ssreflect.
+
 Require Import preliminaries.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 (** * Simple Experimental Tactic for finite sets *)
 
@@ -42,18 +47,20 @@ Local Notation pos := SetDef.pred_of_set.
 (* non-branching rules *)
 Ltac set_tab_close := 
   match goal with 
-  | [H : is_true (_ \in pos (_ :&: _)) |- _] => 
-    case/setIP : H => [? ?]
+  | [H : is_true (?x \in pos (?A :&: ?B)) |- _] => 
+    first [notHyp (x \in A)|notHyp(x \in B)]; case/setIP : (H) => [? ?]
   | [H : is_true (?x \in _ (?A :\: ?B)) |- _] => 
-    case/setDP : H => [? ?]
+    first [notHyp (x \in A)|notHyp(x \notin B)]; case/setDP : (H) => [? ?]
   | [H : is_true (?x \in _ [set ?y]) |- _ ] => 
-    move/set1P : H => ?;subst
+    assert_fails (have: x = y by []); (* [x = y] is nontrivial and unknown *)
+    move/set1P : (H) => ?;subst
   | [H : is_true (?x \in ?B), D : is_true [disjoint ?A & ?B] |- _] => 
     notHyp (x \notin A); have ? : x \notin A by rewrite (disjointFl D H)
   | [H : is_true (?x \in ?A), D : is_true [disjoint ?A & ?B] |- _] => 
     notHyp (x \notin B); have ? : x \notin B by rewrite (disjointFr D H)
-  | [H : is_true (?x \in ?A), S : is_true (?A \subset ?B) |- _] => 
-    notHyp (x \in B); move/(subsetP S) : (H) => ?
+  | [H : is_true (?x \in ?A), S : is_true (?A' \subset ?B) |- _] => 
+    convertible A A';
+    extend (x \in B) ltac:(move/(subsetP S) : (H) => ?)
   | [ H : ?A = ?B :> {set _} |- _] => 
     move/eqP : H; rewrite eqEsubset => /andP [? ?]
   | [ H : is_true (_ (_ :|: _) \subset _) |- _] => 
@@ -61,7 +68,7 @@ Ltac set_tab_close :=
   | [ H : is_true (_ \subset _ (_ :&: _)) |- _] => 
     case/set_tac_subIr : H => [? ?]
   | [ H : is_true (_ [set _] \subset _) |- _] => 
-    rewrite sub1set in H
+    rewrite sub1set in H 
   | [ xA : is_true (?x \in _ ?A), xB : is_true (?x \in _ ?B), 
     H : is_true (_ (?A :&: ?B) \subset ?D) |- _] =>
     notHyp (x \in D); have ? := set_tac_subIl xA xB H
@@ -88,12 +95,27 @@ Ltac set_init :=
   | [ |- _ ] => idtac (* nothing to be done here *)
   end.
 
-Ltac clean_mem := repeat match goal with [ H : _ |- _] => rewrite !mem_mem in H end.
+Ltac clean_mem := 
+  repeat match goal with 
+           [ H : _ |- _ ] => rewrite !mem_mem in H 
+         end; rewrite !mem_mem.
+
+Ltac set_tac_close_plus := fail.
+Ltac set_tac_branch_plus := fail.
+
+Ltac eqxx := match goal with
+             | [ H : is_true (?x != ?x) |- _ ] => by rewrite eqxx in H
+             end.
+
+(** Use theory rules (_plus) before set rules *)
+Ltac set_tac_step := first [eqxx
+                           |contrab
+                           |set_tac_close_plus
+                           |set_tab_close
+                           |set_tac_branch_plus
+                           |set_tab_branch].
                                           
-Ltac set_tac := set_init; subst; clean_mem;
-                repeat (first [contrab
-                              |set_tab_close
-                              |set_tab_branch]).
+Ltac set_tac := set_init; subst; repeat set_tac_step.
 
 (** Use typeclass inference to trigger set_tac using rewrite lemmas *)
 
@@ -133,3 +155,5 @@ Proof. move => *. by rewrite inD orbT. Qed.
 (** NOTE: This does not require backward propagation of \subset since [x \in B] is assumed *)
 Goal forall (T:finType) (A B : {set T}) x b, x \notin A -> B \subset A -> (x \notin B) || b.
 Proof. move => T A B x b H D. by rewrite notinD. Qed.
+
+

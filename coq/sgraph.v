@@ -1677,7 +1677,19 @@ Proof.
 Qed.
 Arguments add_edge_avoid [G s1 s2 x y] p.  
 
+(* TODO: load earlier *)
 Require Import set_tac.
+
+Ltac set_tac_close_plus ::=
+  match goal with
+  | [ H : is_true (?x \in _ (pcat ?p ?q)) |- _] =>
+    first[notHyp (x \in p)|notHyp (x \in q)];
+    (* use explicit have to ensure termination in case of ambiguous typing *)
+    have/andP [? ?]: (x \in p) && (x \in q) by rewrite mem_pcat in H
+  | [ H : is_true (?x \notin _ (pcat ?p ?q)) |- _] =>
+    first[notHyp (x \notin p)|notHyp (x \notin q)];
+    have/andP [? ?]: (x \notin p) && (x \notin q) by rewrite mem_pcat negb_or in H
+  end.
 
 Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
   @connected (@add_edge G s1 s2) A -> s1 \notin A -> @connected G A.
@@ -1685,9 +1697,10 @@ Proof.
   move => H s1A x y xA yA. 
   case: (altP (x =P y)) => [-> //|xDy].
   case/uPathRP : (H _ _ xA yA) => // p Ip subA. 
-  case: (add_edge_avoid p) => [|q Hq]. admit. (* path predicate reasoning *)
-  apply connectRI with q. move => u. admit. (* fix nodesE/mem_path *)
-Admitted.
+  case: (add_edge_avoid p) => [|q Hq]; first by rewrite notinD.
+  apply connectRI with q. move => u. 
+  rewrite mem_path Hq -(mem_path p). by set_tac.
+Qed.
 
 (** Adding Vertices *)
 
