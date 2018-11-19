@@ -919,12 +919,12 @@ Qed.
 for K4-free graphs. *)
 
 
-
-Lemma K4_free_add_edge_sep_size2 (G : sgraph) (V1 V2 S: {set G}) (s1 s2 : G):
-  K4_free G -> S = V1 :&: V2 -> proper_separation V1 V2 -> smallest separator S ->
-  S = [set s1; s2] -> s1 != s2 -> K4_free (add_edge s1 s2).
+(* TODO: remove [V1] [V2] and the separation assumption *)
+Lemma K4_free_add_edge_sep_size2 (G : sgraph) (s1 s2 : G):
+  K4_free G -> smallest separator [set s1; s2] -> s1 != s2 -> K4_free (add_edge s1 s2).
 Proof.
-  move => K4free SV12 psep ssepS S12 s1Ns2 K4G'.
+  move S12 : [set s1;s2] => S. move/esym in S12. move => K4free ssepS s1Ns2 K4G'.
+  case: (separator_separation ssepS.1) => V1 [V2] [psep SV12].
   wlog [phi rmapphi HphiV1] : {K4G'} V1 V2 psep SV12 / exists2 phi : K4 -> {set add_edge s1 s2},
          minor_rmap phi & forall x : K4, phi x \subset V1.
   { move => W.  case: (@separation_K4side (add_edge s1 s2) V1 V2) => //.
@@ -1182,7 +1182,7 @@ Proof.
      rewrite -SV12. exact: small_clique.
    - case/cards2P : Ssize2 => s1 [s2] [s1Ns2 S12].
      case (W (add_edge s1 s2)) with S V1 V2 => // {W}.
-     + exact: K4_free_add_edge_sep_size2 SV12 _ _ S12 s1Ns2.
+     + rewrite S12 in ssepS. exact: K4_free_add_edge_sep_size2 ssepS s1Ns2.
      + apply add_edge_separation => //; by rewrite -SV12 S12 !inE eqxx.
      + rewrite -SV12 S12. apply (@clique2 (add_edge s1 s2)) => /=.
        by rewrite !eqxx s1Ns2.
