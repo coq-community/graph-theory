@@ -214,17 +214,25 @@ Proof.
 Qed.
 
 (* TOTHINK: This definition really only makes sense for irredundant paths *)
+Definition interior x y (p : Path x y) := [set x in p] :\: [set x;y].
+
 Definition independent x y (p q : Path x y) := 
-  forall z, z \in p -> z \in q -> z = x \/ z = y.
+  [disjoint interior p & interior q].
 
 Lemma independent_sym x y (p q : Path x y):
   independent p q -> independent q p.
-Proof. move => ipq z zq zp. by case: (ipq z zp zq) => H; auto. Qed.
+Proof. by rewrite /independent disjoint_sym. Qed.
 
+(* Definition left_independent x y y' (p : Path x y) (q : Path x y') :=  *)
+(*   [disjoint [set z in p] :\ x & [set z in q] :\ x]. *)
+
+(* Lemma left_independent_sym (x y y' : G) (p : Path x y) (q : Path x y') : *)
+(*   left_independent p q -> left_independent q p. *)
+(* Proof. by rewrite /left_independent disjoint_sym. Qed. *)
 
 Definition left_independent x y y' (p : Path x y) (q : Path x y') := 
   forall z, z \in p -> z \in q -> z = x.
-
+ 
 Lemma left_independent_sym (x y y' : G) (p : Path x y) (q : Path x y') :
   left_independent p q -> left_independent q p.
 Proof. move => H z A B. exact: H. Qed.
@@ -647,22 +655,110 @@ Proof.
       {Ns23 Ns31 iry2 ind_pys2pys3 irx2 ind_pxs2pxs3 iry1 ind_pys3pys1 irx1 ind_pxs3pxs1 p1 p2}
       ind_pxs1pxs2 ind_pys1pys2 pxs1V1 pxs2V1 pys1V2 pys2V2 Ns12 s2S s1S px1Ss1 px2Ss2 py1Ss1 py2Ss2
       / independent (pcat pxs1 (prev pys1)) (pcat pxs2 (prev pys2)).
-  { move => z. rewrite !inE => /orP [zpxs1 | zpys1] /orP [zpxs2 | zpys2].
-    + left. by apply ind_pxs1pxs2.
-    + exfalso. move/eqP : Ns12. apply.
-      move: (pxs1V1 z zpxs1) (pys2V2 z zpys2) => zV1 zV2.
-      rewrite -(px1Ss1 z) ?inE // -(py2Ss2 z) ?inE //.
-    + exfalso. move/eqP : Ns12; apply.
-      move: (pxs2V1 z zpxs2) (pys1V2 z zpys1) => zV1 zV2.
-      rewrite -(px2Ss2 z) ?inE // -(py1Ss1 z) ?inE //.
-    + right. by apply ind_pys1pys2.
-  }
-
+  { apply/disjointP => z.
+    repeat match goal with [H : {subset _ <= _} |- _] => move/subsetP in H end.
+    rewrite !inE negb_or -!andbA => /and3P [zx zy H1] /and3P[_ _ H2]. 
+    case/orP : H1; case/orP : H2 => H1 H2. 
+    + by rewrite [z]ind_pxs1pxs2 ?eqxx in zx.
+    + rewrite -(px1Ss1 z) // [z]py2Ss2 ?eqxx // in Ns12; by set_tac.
+    + rewrite -(px2Ss2 z) // [z]py1Ss1 ?eqxx // in Ns12; by set_tac.
+    + by rewrite [z]ind_pys1pys2 ?eqxx in zy. }
   split; [|split].
   - (* irred *) split; by apply irredpi.
   - (* si \in p & si \in S *) split; [exists s1|exists s2|exists s3] => //; by rewrite !inE.
   - (* x/y \notin V2/V1 + independent *) split => //; by apply indep.
 Qed.
+
+Lemma pcat_idL (G : sgraph) (x y : G) (p : Path x y) : 
+  pcat (idp x) p = p.
+Proof. exact: val_inj. Qed.
+
+Lemma pcat_idR (G : sgraph) (x y : G) (p : Path x y) : 
+  pcat p (idp y) = p.
+Proof. apply: val_inj => /=. by rewrite cats0. Qed.
+
+Lemma interior_edgep (G : sgraph) (x y : G) (xy : x -- y) : 
+  interior (edgep xy) = set0.
+Proof. apply/setP => z. rewrite !inE mem_edgep. by do 2 (case: (_ == _)). Qed.
+
+Lemma interior_idp (G : sgraph) (x : G): 
+  interior (idp x) = set0.
+Proof. apply/setP => z. rewrite !inE mem_idp. by (case: (_ == _)). Qed.
+
+Lemma interior0E (G : sgraph) (x y : G) (p : Path x y) : 
+  x != y -> irred p -> interior p = set0 -> exists xy, p = edgep xy.
+Proof.
+  move => xNy Ip P0. 
+  case: (splitL p xNy) Ip => z [xz] [p'] [E _]. 
+  rewrite E. case/irred_catE => _ Ip' ?. 
+  suff zNy : z = y. { subst. exists xz. by rewrite (irredxx Ip') pcat_idR. }
+  apply: contra_eq P0 => C. apply/set0Pn. exists z. 
+  by rewrite !inE negb_or C eq_sym (sg_edgeNeq xz) E !inE.
+Qed.
+
+Lemma path_neighborL (G : sgraph) (x y : G) (p : Path x y) (A : {set G}) :
+  irred p -> interior p != set0 -> x \in A -> neighbor A (interior p).
+Proof.
+  move => Ip /set0Pn [z Hz] xA. 
+  have xDy : x != y.
+  { apply: contraTneq Hz => ?; subst y. rewrite (irredxx Ip).
+    rewrite !inE mem_idp. by case: (z == x). }
+  case: (splitL p xDy) => u [xu] [p'] [E _]. rewrite E irred_edgeL in Ip.
+  apply/neighborP; exists x; exists u; split => //. case/andP : Ip => Hp Ip.
+  rewrite E !inE /= andbT eq_sym sg_edgeNeq //=.
+  apply: contraTneq Hz => ?. subst u. 
+  by rewrite E (irredxx Ip) pcat_idR interior_edgep inE.
+Qed.
+
+Lemma connected0 (G : sgraph) : connected (@set0 G).
+Proof. move => x y. by rewrite inE. Qed.
+
+Lemma connected_interior (G : sgraph) (x y : G) (p : Path x y) :
+  irred p -> connected (interior p).
+Proof.
+  case: (altP (x =P y)) => [?|xNy] Ip; subst.
+  - rewrite (irredxx Ip) interior_idp. exact: connected0.
+  - case: (splitL p xNy) => x' [xx'] [p'] [E _]. 
+    rewrite E irred_edgeL in Ip. case/andP : Ip => xp Ip'.
+    case: (altP (x' =P y)) => [?|x'Ny]; subst. 
+    + rewrite (irredxx Ip') pcat_idR interior_edgep. exact: connected0.
+    + case: (splitR p' x'Ny) => z [q] [zy] ?. subst.
+      rewrite irred_edgeR in Ip'. case/andP : Ip' => yq Iq.
+      suff -> : interior (pcat (edgep xx') (pcat q (edgep zy))) = [set u in q].
+      { exact: connected_path. }
+      apply/setP => u. rewrite !inE !mem_edgep.
+      rewrite negb_or -andbA. case: (boolP (u \in q)) => Hu /=. 
+      * rewrite orbT andbT. by apply/andP; split; set_tac.
+      * apply: contraNF Hu. case/and3P. do 2 move/negbTE => -> /=. 
+        by case/or3P => //; set_tac.
+Qed.
+
+Lemma interior_rev (G : sgraph) (x y : G) (p : Path x y): 
+  interior (prev p) = interior p.
+Proof. apply/setP => z. by rewrite !inE orbC. Qed.
+
+Lemma path_neighborR (G : sgraph) (x y : G) (p : Path x y) (A : {set G}) :
+  irred p -> interior p != set0 -> y \in A -> neighbor A (interior p).
+Proof. 
+  move => Ip P0 yA. rewrite -interior_rev. 
+  apply: path_neighborL; by rewrite // ?irred_rev ?interior_rev.
+Qed.
+
+Lemma interiorN (G : sgraph) (x y z : G) (p : Path x y) :
+  z \in interior p -> z \notin [set x; y].
+Proof. rewrite inE. by case (_ \in _). Qed.
+
+Lemma interiorT (G : sgraph) (x y z : G) (p : Path x y) :
+  z \in interior p -> z \in p.
+Proof. rewrite !inE. case: (_ \in _) => //. by rewrite andbF. Qed.
+
+Lemma neighborUl (G : sgraph) (A B C : {set G}) : 
+  neighbor A B -> neighbor A (B :|: C).
+Proof. apply: neighborW => //. exact: subsetUl. Qed.
+
+Lemma neighborUr (G : sgraph) (A B C : {set G}) : 
+  neighbor A C -> neighbor A (B :|: C).
+Proof. apply: neighborW => //. exact: subsetUr. Qed.
 
 
 Lemma K4_of_separators (G : sgraph) : 
@@ -676,120 +772,92 @@ Proof.
   move: (minsep3 S sS) => S3elt. clear x y xNy xNEy.
   case: (@independent_paths _ V1 V2) => // => x [y [p1 [p2 [p3 [[ir1 ir2 ir3]
     [[[s1 s1p1 s1S] [s2 s2p2 s2S] [s3 s3p3 s3S]] [xNV2 yNV1 ind12 ind23 ind31]]]]]]].
-  have temp: forall s, s \in S -> s!=x /\ s!=y. (* this is ugly! *)
-  { move => s. rewrite /S inE => /andP [? ?].
-    split; apply: contraTN isT => /eqP ?; subst s; contrab. }
-  move: (temp s1 s1S) (temp s2 s2S) => [s1Nx s1Ny] [s2Nx s2Ny]. clear temp.
+  gen have X,s1Ip1 : s1 p1 s1S ir1 s1p1 {ind12 ind23 ind31} / s1 \in interior p1. 
+  { rewrite !inE s1p1 andbT negb_or. 
+    apply/andP;split; by apply: contraTneq s1S; set_tac. }
+  have s2Ip2 : s2 \in interior p2 by apply: X.
+  have s3Ip3 : s3 \in interior p3 by apply: X.
+  clear s1p1 s1S s2p2 s2S s3p3 s3S.
   have xNy: x!=y.
   { apply: contraTN isT => /eqP ?; subst x. move: (sepV.1 y). by set_tac. }
-  case (@avoid_nonseperator G [set x; y] s1 s2) => //; try by set_tac.
+  case (@avoid_nonseperator G [set x; y] s1 s2) => //; try (apply: interiorN; eassumption).
   { apply HS. by rewrite cards2 xNy. }
-  move => p irp dispxy.
-  case: (@split_at_first G (predU (mem p2) (mem p3)) s1 s2 p s2) => //.  
-  { by rewrite !inE s2p2. }
-  move => s2' [p' [p'' [catp s2'p23 s2'firstp23]]].
+  move => q Iq av_xy. 
+  case: (@split_at_first G [predU interior p2 & interior p3] s1 s2 q s2) => //.  
+  { by rewrite inE /= s2Ip2. }
+  move => s2' [q1 [q2 [catp s2'p23 s2'firstp23]]].
+  subst q. case/irred_catE : Iq => Iq _ _.
+  have {av_xy} av_xy : [disjoint q1 & [set x; y]] by apply/disjointP => z; set_tac. 
 
-  wlog s2'p2: p2 p3 {s3p3 s2p2} ir2 ir3 s2'firstp23 ind12 ind23 ind31 s2'p23 / (s2' \in p2).
-  { move => W. move: (s2'p23). rewrite inE /= => /orP [s2'p2|s2'p3].
-    - by apply W with p2 p3. 
-    - apply W with p3 p2 => //; try exact: independent_sym.
-      + move => z' H1 H2. apply s2'firstp23 => //. move: H1. by rewrite !inE orbC. 
-      + by rewrite !inE /= s2'p3. }
-
-  case: (splitR p3 xNy) => [y3 [p3' [y3y catp3]]].
-  case: (splitL p2 xNy) => [x2 [xx2 [p2' [catp2' _]]]].
-  case: (splitL p1 xNy) => [x1 [xx1 [p1' [catp1' _]]]].
-  case: (@splitR G x1 y p1') => // [|y1 [p1'' [y1y catp1'']]].
-  { apply: contraTneq (xx1) => ?. subst x1. by rewrite sepV. }
-  case: (@splitR G x2 y p2') => // [|y2 [p2'' [y2y catp2'']]].
-  { apply: contraTneq (xx2) => ?. subst x2. by rewrite sepV. }
-  case: (@splitR G s1 s2' p') => // [|s' [ps1s' [s's2' catps1s']]].
-  { apply: contraTneq isT => ?. subst s2'.
-    move: (ind12 s1 s1p1 s2'p2) => [/eqP aa|/eqP bb]; contrab. }
-
-  set M1 := [set y].
-  set M2 := [set z in p3'].
-  set M3 := [set z in p2''].
-  set M4 := [set z in p1''] :|: [set z in ps1s'].
-
+  wlog s2'p2: p2 p3 s2 s3 ir2 ir3 ind12 ind23 ind31 s3Ip3 {q2 s2Ip2 s2'p23} s2'firstp23 / 
+              (s2' \in interior p2).
+  { move => W. case/orP: (s2'p23) => /= [s2'p2|s2'p3].
+    - by apply W with p2 p3 s3.
+    - apply W with p3 p2 s2 => //; try exact: independent_sym. 
+      move => z' H1 H2. apply s2'firstp23 => //. move: H1. by rewrite !inE orbC. }
+  
   pose phi (i : K4) := match i with
-                  | Ordinal 0 _ => M1
-                  | Ordinal 1 _ => M2
-                  | Ordinal 2 _ => M3
-                  | Ordinal 3 _ => M4
+                  | Ordinal 0 _ => [set x]
+                  | Ordinal 1 _ => interior p1 :|: interior q1
+                  | Ordinal 2 _ => interior p2
+                  | Ordinal 3 _ => y |: interior p3
                   | Ordinal p n => set0
                   end.
   suff: minor_rmap phi by apply minor_of_rmap.
-
-  have s2'M3: s2' \in M3. (* TOTHINK: this looks roundabout *)
-  { rewrite !inE. rewrite catp2' catp2'' in s2'p2.
-    rewrite -mem_prev prev_cat mem_pcatT mem_prev mem_pcatT !inE in s2'p2.
-    have temp: s2' \in p by rewrite catp inE path_end.
-    move: (disjointFr dispxy temp). rewrite !inE. move => /negbT temp2.
-    rewrite negb_or in temp2. move: temp2 => /andP [? ?].
-    case/orP: s2'p2 => [/orP [?|?]|?] => //=; contrab. }
-
-  have irrE := (irred_edgeL,irred_edgeR,irred_cat).
-
-  (* only used in the 'have:' below *)
-  have ?: y \notin p3'. { apply: contraTN ir3 => C. by subst; rewrite !irrE C. }
-  have ?: y \notin p1''. { apply: contraTN ir1 => C. by subst; rewrite !irrE C. }
-  have ?: y \notin p2''. { apply: contraTN ir2 => C. by subst; rewrite !irrE C. }
-  have N1: y \notin ps1s'.
-  { suff: (y \notin p). { apply: contraNN. by subst; rewrite !inE => ->. }
-    rewrite (@disjointFl _ (mem p) (mem [set x; y])) => //. by rewrite !inE eqxx. }
-  have ?: x \notin p2''. { apply: contraTN ir2 => C. by subst; rewrite !irrE !inE C. }
-  have ?: x \notin p1''. { apply: contraTN ir1 => C. by subst; rewrite !irrE !inE C. }
-  have N2: s2' \notin ps1s'. { apply: contraTN irp => C. by subst; rewrite !irrE C. }
-  
   split.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn.
-    + exists y. by rewrite inE.
-    + exists x. by rewrite inE.
-    + exists s2'. done.
-    + exists s1. by rewrite !inE.
+    + exists x. by set_tac.
+    + exists s1. by set_tac. 
+    + by exists s2'.
+    + exists s3. by set_tac.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=.
     + exact: connected1.
-    + exact: connected_path.
-    + exact: connected_path.
-    + apply connectedU_common_point with s1; try exact: connected_path.
-     rewrite catp1' catp1'' in s1p1.
-     rewrite -mem_prev prev_cat mem_pcatT mem_prev mem_pcatT !inE in s1p1.
-     case/orP: s1p1 => [/orP [?|?]|?] => //=; try contrab; by rewrite inE.
-     by rewrite !inE.
+    + case: (altP (interior q1 =P set0)) => [->|H].
+      * rewrite setU0. exact: connected_interior.
+      * apply: neighbor_connected; try exact: connected_interior.
+        exact: path_neighborL.
+    + exact: connected_interior.
+    + apply: neighbor_connected; [exact: connected1|exact: connected_interior|].
+      apply: path_neighborR => //; by set_tac.
   - move => i j iNj. wlog iltj: i j {iNj} / i < j.
     { move => H. rewrite /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite disjoint_sym]; exact: H. }
     destruct i as [m i]. destruct j as [n j].
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
-    + by rewrite disjoints1 inE.
-    + by rewrite disjoints1 inE.
-    + rewrite disjoints1 !inE negb_or. by apply/andP.
-    + apply/disjointP => z. rewrite !inE => zp3' zp2''.
-      case: (ind23 z); solve [ by subst; rewrite ?inE ?zp2'' ?zp3'
-                             | move => ?; subst z; contrab].
-    + apply/disjointP => z. rewrite !inE => zp3' /orP [zp1''|zps1s'].
-      * case: (ind31 z); solve [by subst; rewrite ?inE ?zp1'' ?zp3'
-                               | move => ?; subst z; contrab].
-      * suff: z = s2' by move => ?; subst z; contrab.
-        apply s2'firstp23; subst; by rewrite ?inE mem_edgep ?zp3' ?zps1s'.
-    + apply/disjointP => z. rewrite !inE => zp2'' /orP [zp1''|zps1s'].
-      * case: (ind12 z); solve [by subst; rewrite ?inE ?zp1'' ?zp2''
-                               | move => ?; subst z; contrab].
-      * suff: z = s2' by move => ?; subst z; contrab.
-        apply s2'firstp23; subst; by rewrite ?inE !mem_edgep ?zp2'' ?zps1s'.
+    + rewrite disjoints1. rewrite inE negb_or /interior notinD /=. 
+      have: (x \in [set x; y]); by set_tac.
+    + rewrite disjoints1. by rewrite /interior; set_tac.
+    + rewrite disjoints1. by rewrite /interior; set_tac.
+    + apply: disjointsU => //. apply/disjointP => z Z1 Z2. 
+      suff: z = s2' by move: Z1 Z2; rewrite /interior; set_tac.
+      apply: s2'firstp23. by rewrite inE /= Z2. exact: interiorT.
+    + apply: disjointsU => //.
+      * rewrite disjoint_sym. apply: disjointsU => //. rewrite /interior. 
+        apply/disjointP; by set_tac.
+      * rewrite disjoint_sym. apply: disjointsU.
+        -- apply/disjointP. rewrite /interior. have: (y \in [set x; y]); by set_tac. 
+        -- apply/disjointP => z Z1 Z2. 
+           suff: z = s2' by move: Z1 Z2; rewrite /interior; set_tac.
+           apply: s2'firstp23. by rewrite inE /= Z1. exact: interiorT.
+    + rewrite disjoint_sym. apply: disjointsU. 
+      * rewrite disjoints1 /interior. by set_tac.
+      * by rewrite disjoint_sym.
   - move => i j iNj. wlog iltj: i j {iNj} / i < j.
     { move => H. rewrite /= neq_ltn in iNj. 
-      move: iNj => /orP [?|?]; [|rewrite neighborC]; exact: H. }
-    destruct i as [m i]. destruct j as [n j]. apply/neighborP.
-    case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=;
-      [ exists y; exists y3  (* M1 M2 *)
-      | exists y; exists y2  (* M1 M3 *)
-      | exists y; exists y1  (* M1 M4 *)
-      | exists x; exists x2  (* M2 M3 *)
-      | exists x; exists x1  (* M2 M4 *)
-      | exists s2'; exists s'(* M3 M4 *)
-      ]; split; try done; try (by rewrite !inE); by rewrite sg_sym.
+      move: iNj => /orP [iltj|jlti]; [|rewrite neighborC]; exact: H. }
+    destruct i as [m i]. destruct j as [n j].
+    case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
+    + apply: neighborUl. apply: path_neighborL => //; by set_tac.
+    + apply: path_neighborL => //; by set_tac.
+    + apply: neighborUr. apply: path_neighborL => //; by set_tac.
+    + case: (altP (interior q1 =P set0)) => [E|H]. 
+      * rewrite E setU0. apply/neighborP; exists s1; exists s2'. split => //.
+        case/interior0E : E => //. apply: contraTneq ind12. 
+        by rewrite /independent; set_tac.
+      * rewrite neighborC. apply: neighborUr. exact: path_neighborR.
+    + apply: neighborUl. rewrite neighborC. apply: neighborUl.
+      apply: path_neighborR => //; by set_tac.
+    + apply: neighborUl. rewrite neighborC. apply: path_neighborR => //; by set_tac.
 Qed.
 
 Lemma no_K4_smallest_separator (G : sgraph) :
@@ -917,7 +985,7 @@ Qed.
 
 (* This lemma is the core of the construction of tree decompositions
 for K4-free graphs. *)
-
+Local Notation pos := SetDef.pred_of_set.
 
 (* TODO: remove [V1] [V2] and the separation assumption *)
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (s1 s2 : G):
@@ -1197,3 +1265,5 @@ Proof.
   apply leq_trans with (maxn (width B1) (width B2)) => //.
   by rewrite geq_max w1 w2.  
 Qed.
+
+Print Assumptions TW2_of_K4F.

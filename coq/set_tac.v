@@ -27,6 +27,10 @@ Lemma setIPn (T : finType) (A B : {set T}) (x:T) :
   reflect (x \notin A \/ x \notin B) (x \notin A :&: B).
 Proof. rewrite !inE negb_and. exact: orP. Qed.
 
+Lemma setUPn (T : finType) (A B : {set T}) (x:T) : 
+  reflect (x \notin A /\ x \notin B) (x \notin A :|: B).
+Proof. rewrite !inE negb_or. exact: andP. Qed.
+
 Ltac notHyp b := match goal with [_ : is_true b |- _] => fail 1 | _ => idtac end.
 
 Ltac extend H T := notHyp H; have ? : H by T.
@@ -65,35 +69,47 @@ Ltac no_inhabitant A :=
 (* non-branching rules *)
 Ltac set_tab_close := 
   match goal with 
-
-  | [ H : is_true (_ \in _ set0) |- _] => by rewrite in_set0 in H  
+  | [H : is_true (?x == ?y) |- _ ] =>
+    assert_fails (have: x = y by []); (* [x = y] is nontrivial and unknown *)
+    move/eqP : (H) => ?; subst
+  | [H : is_true (_ \in _ set0) |- _] => by rewrite in_set0 in H  
 
   | [H : is_true (?x \in pos (?A :&: ?B)) |- _] => 
     first [notHyp (x \in A)|notHyp(x \in B)]; case/setIP : (H) => [? ?]
   | [H : is_true (?x \in _ (?A :\: ?B)) |- _] => 
     first [notHyp (x \in A)|notHyp(x \notin B)]; case/setDP : (H) => [? ?]
+  | [H : is_true (?x \notin _ (?A :|: ?B)) |- _] => 
+    first [notHyp (x \notin A)|notHyp(x \notin B)]; case/setUPn : (H) => [? ?]
+
+  | [H : is_true (?x \in _ [set _ in ?p]) |- _ ] => 
+    extend (x \in p) ltac:(move: H; rewrite inE)
+  | [H : is_true (?x \notin _ [set _ in ?p]) |- _ ] => 
+    extend (x \notin p) ltac:(move: H; rewrite inE)
+
   | [H : is_true (?x \in _ [set ?y]) |- _ ] => 
     assert_fails (have: x = y by []); (* [x = y] is nontrivial and unknown *)
     move/set1P : (H) => ?;subst
+  | [H : is_true (?x \notin _ [set ?y]) |- _ ] => 
+    extend (x != y) ltac:(move: H ; rewrite inE)
 
     (* These rules will be tried (and fail) on equalities between non-sets, but
     set types can take many different shapes *)
   | [ H : ?A = ?B |- _] => 
-    move/eqP : H; rewrite eqEsubset => /andP [? ?]
-  | [ H : is_true (?A == ?B) |- _] => 
-    move : H; rewrite eqEsubset => /andP [? ?]
+    first [notHyp (A \subset B)|notHyp(B \subset A)];
+    have/andP[? ?]: (A \subset B) && (B \subset A) by 
+      (move/eqP : (H); rewrite eqEsubset; apply)
+  | [ H : is_true (pos (?A :|: ?B) \subset ?C) |- _] => 
+    first[notHyp (A \subset C)|notHyp (B \subset C)];
+    case/set_tac_subUl : (H) => [? ?]
+  | [ H : is_true (?A \subset pos (?B :&: ?C)) |- _] => 
+    first[notHyp (A \subset B)|notHyp (A \subset C)];
+    case/set_tac_subIr : (H) => [? ?]
+  | [ H : is_true (pos [set ?x] \subset ?A) |- _] => 
+    extend (x \in A) ltac:(move: (H); rewrite sub1set; apply)
 
-  | [ H : is_true (_ (_ :|: _) \subset _) |- _] => 
-    case/set_tac_subUl : H => [? ?]
-  | [ H : is_true (_ \subset _ (_ :&: _)) |- _] => 
-    case/set_tac_subIr : H => [? ?]
-
-  | [ H : is_true (_ [set _] \subset _) |- _] => rewrite sub1set in H 
-  | [ H : is_true (_ set0 \subset _) |- _ ] => clear H (* useless*)
-  | [ H : is_true (_ \subset _ setT) |- _ ] => clear H (* useless*)
-
-  | [H : is_true (?x \in ?A), S : is_true (?A' \subset ?B) |- _] => 
-    convertible A A'; extend (x \in B) ltac:(move/(subsetP S) : (H) => ?)
+  | [H : is_true (in_mem ?x (mem ?A)), S : is_true (subset (mem ?A') (mem ?B)) |- _] => 
+    convertible (mem A) (mem A'); 
+    extend (x \in B) ltac:(move/(subsetP S) : (H) => ?)
 
   | [H : is_true (?x \in ?B), D : is_true [disjoint ?A & ?B] |- _] => 
     notHyp (x \notin A); have ? : x \notin A by rewrite (disjointFl D H)

@@ -1682,13 +1682,26 @@ Require Import set_tac.
 
 Ltac set_tac_close_plus ::=
   match goal with
-  | [ H : is_true (?x \in _ (pcat ?p ?q)) |- _] =>
-    first[notHyp (x \in p)|notHyp (x \in q)];
-    (* use explicit have to ensure termination in case of ambiguous typing *)
-    have/andP [? ?]: (x \in p) && (x \in q) by rewrite mem_pcat in H
+  (* coercion free variants ... *)                                                                         
+  | [ H : is_true (?x \notin (pcat ?p ?q)) |- _] => 
+    first[notHyp (x \notin p)|notHyp (x \notin q)];
+    have/andP [? ?]: (x \notin p) && (x \notin q) by rewrite mem_pcat negb_or in H
+  | [H : is_true (?u \notin (@edgep _ ?x ?y _)) |- _] => 
+    first[notHyp (u != x)|notHyp (u != y)];
+    have/andP[? ?]: (u != x) && (u != y) by (move: H; rewrite mem_edgep negb_or; apply)
+  | [H : is_true (?x \notin ?p), p : Path ?x _ |- _] => by rewrite path_begin in H
+  | [H : is_true (?x \notin ?p), p : Path _ ?x |- _] => by rewrite path_end in H
+  (* variant with coercions ... TOHINK: remove? *)
   | [ H : is_true (?x \notin _ (pcat ?p ?q)) |- _] =>
     first[notHyp (x \notin p)|notHyp (x \notin q)];
     have/andP [? ?]: (x \notin p) && (x \notin q) by rewrite mem_pcat negb_or in H
+  end.
+
+Ltac set_tac_branch_plus ::=
+  match goal with
+  | [ H : is_true (?x \in (pcat ?p ?q)) |- _] =>
+    notHyp (x \in p);notHyp (x \in q);
+    have/orP [?|?]: (x \in p) || (x \in q) by rewrite mem_pcat in H
   end.
 
 Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
