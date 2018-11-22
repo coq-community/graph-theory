@@ -240,10 +240,6 @@ End AddClique.
 
 Local Notation PATH G x y := (@Path G x y).
 
-Lemma mem_path' (G : sgraph) (x y : G) (p : Path x y) z :
-  (z \in p) = (z \in nodes p).
-Admitted.
-
 (* TOTHINK: The assumption [s1 != s2] is redundant, but usually available. *)
 Lemma add_edge_break (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
   s1 != s2 ->
@@ -270,10 +266,10 @@ Proof.
       case: (W s2 s1 p' _ _ _ _ _ s2 p1' p2') => //.
       + by rewrite eq_sym.
       + by rewrite irredE Ep.
-      + by rewrite (@mem_path' G'') Ep -(@mem_path' G').
-      + by rewrite (@mem_path' G'') Ep -(@mem_path' G').
+      + by rewrite (@mem_path G'') Ep -(@mem_path G').
+      + by rewrite (@mem_path G'') Ep -(@mem_path G').
       + apply/eqP. by rewrite -nodes_eqE Ep P1 !nodes_pcat Ep1 Ep2.
-      + move => z. rewrite setUC. rewrite (@mem_path' G'') Ep1 -(@mem_path' G').
+      + move => z. rewrite setUC. rewrite (@mem_path G'') Ep1 -(@mem_path G').
         exact: P3.
       + move => u [v] [q1] [q2]. rewrite setUC => [[? ? ? E]]. 
         exists u. exists v. exists q1. exists q2. split => //. congruence. }
@@ -328,7 +324,7 @@ Section AddEdge.
         - rewrite idx_swap //. 
           apply W with (prev r); rewrite ?prev_irred //.
           all: by rewrite (@mem_prev (add_edge t0 t1)). 
-        - move/idx_inj. rewrite -mem_path'. by move/(_ T1)->. }
+        - move/idx_inj. rewrite -mem_path. by move/(_ T1)->. }
       case:(three_way_split Ip T1 T2 before) => p1 [p2] [p3] [_ P2 P3].
       case:(add_edge_avoid p1 _) => [|p1' _] ; first by rewrite P3.
       case:(add_edge_avoid p3 _) => [|p3' _] ; first by rewrite P2.

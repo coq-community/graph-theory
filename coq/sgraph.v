@@ -702,6 +702,14 @@ Proof. by rewrite mem_path nodesE !inE. Qed.
 Lemma irred_idp (x : G) : irred (idp x).
 Proof. by rewrite irredE nodesE. Qed.
 
+Lemma pcat_idL (x y : G) (p : Path x y) : 
+  pcat (idp x) p = p.
+Proof. exact: val_inj. Qed.
+
+Lemma pcat_idR (x y : G) (p : Path x y) : 
+  pcat p (idp y) = p.
+Proof. apply: val_inj => /=. by rewrite cats0. Qed.
+
 Lemma irredxx (x : G) (p : Path x x) : irred p -> p = idp x.
 Proof.
   rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
@@ -1247,6 +1255,9 @@ Proof.
   + move => z _. apply/codomP. exists (g z). by rewrite can_g.
   + move => p' [Hp' _]. apply/spathP. by exists p'.
 Qed.
+
+Lemma connected0 (G : sgraph) : connected (@set0 G).
+Proof. move => x y. by rewrite inE. Qed.
 
 Lemma connected1 (G : sgraph) (x : G) : connected [set x].
 Proof. move => ? ? /set1P <- /set1P <-. exact: connect0. Qed.
@@ -1807,7 +1818,12 @@ Section Neighbor.
     apply/neighborP; exists x; exists y. by rewrite subA ?subB.
   Qed.
 
-  
+  Lemma neighborUl A B C : neighbor A B -> neighbor A (B :|: C).
+  Proof. apply: neighborW => //. exact: subsetUl. Qed.
+
+  Lemma neighborUr A B C : neighbor A C -> neighbor A (B :|: C).
+  Proof. apply: neighborW => //. exact: subsetUr. Qed.
+
 End Neighbor.
 Arguments neighborW : clear implicits.
 
@@ -1850,3 +1866,89 @@ Proof.
   move/subsetP => S /neighborP [u] [v] [? /S H E]. apply/orP.
   by case/setUP : H => ?; [left|right]; apply/neighborP; exists u; exists v.
 Qed.
+
+(** ** Interor (of irredundant paths) *)
+
+(* TOTHINK: This definition really only makes sense for irredundant paths *)
+Section Interior.
+Variable (G : sgraph) (x y : G).
+Implicit Types (p : Path x y).
+
+Definition interior p := [set x in p] :\: [set x;y].
+
+Lemma interior_edgep (xy : x -- y) : interior (edgep xy) = set0.
+Proof. apply/setP => z. rewrite !inE mem_edgep. by do 2 (case: (_ == _)). Qed.
+
+Lemma interiorN p z : z \in interior p -> z \notin [set x; y].
+Proof. rewrite inE. by case (_ \in _). Qed.
+
+Lemma interiorW p z : z \in interior p -> z \in p.
+Proof. rewrite !inE. case: (_ \in _) => //. by rewrite andbF. Qed.
+
+Lemma interior0E p : x != y -> irred p -> interior p = set0 -> exists xy, p = edgep xy.
+Proof.
+  move => xNy Ip P0. 
+  case: (splitL p xNy) Ip => z [xz] [p'] [E _]. 
+  rewrite E. case/irred_catE => _ Ip' ?. 
+  suff zNy : z = y. { subst. exists xz. by rewrite (irredxx Ip') pcat_idR. }
+  apply: contra_eq P0 => C. apply/set0Pn. exists z. 
+  by rewrite !inE negb_or C eq_sym (sg_edgeNeq xz) E !inE.
+Qed.
+
+Definition independent (p q : Path x y) := 
+  [disjoint interior p & interior q].
+
+Lemma independent_sym (p q : Path x y):
+  independent p q -> independent q p.
+Proof. by rewrite /independent disjoint_sym. Qed.
+
+End Interior.
+
+Lemma path_neighborL (G : sgraph) (x y : G) (p : Path x y) (A : {set G}) :
+  irred p -> interior p != set0 -> x \in A -> neighbor A (interior p).
+Proof.
+  move => Ip /set0Pn [z Hz] xA. 
+  have xDy : x != y.
+  { apply: contraTneq Hz => ?; subst y. rewrite (irredxx Ip).
+    rewrite !inE mem_idp. by case: (z == x). }
+  case: (splitL p xDy) => u [xu] [p'] [E _]. rewrite E irred_edgeL in Ip.
+  apply/neighborP; exists x; exists u; split => //. case/andP : Ip => Hp Ip.
+  rewrite E !inE /= andbT eq_sym sg_edgeNeq //=.
+  apply: contraTneq Hz => ?. subst u. 
+  by rewrite E (irredxx Ip) pcat_idR interior_edgep inE.
+Qed.
+
+Lemma interior_idp (G : sgraph) (x : G) : interior (idp x) = set0.
+Proof. apply/setP => z. rewrite !inE mem_idp. by (case: (_ == _)). Qed.
+
+Lemma interior_rev (G : sgraph) (x y : G) (p : Path x y): 
+  interior (prev p) = interior p.
+Proof. apply/setP => z. by rewrite !inE orbC. Qed.
+
+Lemma path_neighborR (G : sgraph) (x y : G) (p : Path x y) (A : {set G}) :
+  irred p -> interior p != set0 -> y \in A -> neighbor A (interior p).
+Proof. 
+  move => Ip P0 yA. rewrite -interior_rev. 
+  apply: path_neighborL; by rewrite // ?irred_rev ?interior_rev.
+Qed.
+
+Lemma connected_interior (G : sgraph) (x y : G) (p : Path x y) :
+  irred p -> connected (interior p).
+Proof.
+  case: (altP (x =P y)) => [?|xNy] Ip; subst.
+  - rewrite (irredxx Ip) interior_idp. exact: connected0.
+  - case: (splitL p xNy) => x' [xx'] [p'] [E _]. 
+    rewrite E irred_edgeL in Ip. case/andP : Ip => xp Ip'.
+    case: (altP (x' =P y)) => [?|x'Ny]; subst. 
+    + rewrite (irredxx Ip') pcat_idR interior_edgep. exact: connected0.
+    + case: (splitR p' x'Ny) => z [q] [zy] ?. subst.
+      rewrite irred_edgeR in Ip'. case/andP : Ip' => yq Iq.
+      suff -> : interior (pcat (edgep xx') (pcat q (edgep zy))) = [set u in q].
+      { exact: connected_path. }
+      apply/setP => u. rewrite !inE !mem_edgep.
+      rewrite negb_or -andbA. case: (boolP (u \in q)) => Hu /=. 
+      * rewrite orbT andbT. by apply/andP; split; set_tac.
+      * apply: contraNF Hu. case/and3P. do 2 move/negbTE => -> /=. 
+        by case/or3P => //; set_tac.
+Qed.
+
