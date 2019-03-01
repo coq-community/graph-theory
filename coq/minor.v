@@ -1,7 +1,7 @@
 Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph.
+Require Import edone finite_quotient preliminaries path sgraph.
 Require Import set_tac.
 
 Set Implicit Arguments.
@@ -31,8 +31,8 @@ Lemma sdecomp_subrel (V : finType) (e1 e2 : rel V) (T:forest) (D : T -> {set V})
   sdecomp T (SGraph e1_sym e1_irrefl) D -> 
   sdecomp T (SGraph e2_sym e2_irrefl) D.
 Proof.
-  move => E [D1 D2 D3]. split => //.
-  move => x y /= xy. apply: D2 => /=. by rewrite E.
+  move => E [D1 D2 D3]. split => //=.
+  move => x y /= xy. apply: D2 => /=. exact: E xy.
 Qed.
 
 Lemma sdecomp_tree_subrel 
@@ -284,7 +284,7 @@ Proof.
   case: (add_edge_avoid pR) => [|pR' ER]; first by rewrite s1pR.
   have ? : z = s2. 
   { apply: contraNeq NCxy => zNs2. move: (s1z) => /=. 
-    rewrite (negbTE zNs2) [z == s1]eq_sym (sg_edgeNeq s1z) ?eqxx.
+    rewrite /edge_rel/= (negbTE zNs2) [z == s1]eq_sym (sg_edgeNeq s1z) ?eqxx.
     case/or3P => //= s1z'.
     exact: (Path_connect (pcat p1' (pcat (edgep s1z') pR'))). }
   subst z. exists s1; exists s2; exists p1'; exists pR'. rewrite !inE ?eqxx. split => //.

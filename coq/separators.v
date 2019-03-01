@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 (* Note: ssrbool is empty and shadows Coq.ssr.ssrbool, use Coq.ssrbool for "Find" *)
 
 Require Import edone finite_quotient preliminaries set_tac.
-Require Import sgraph minor.
+Require Import path sgraph minor.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -12,6 +12,8 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 (** * Separators *)
+
+Ltac notHyp b ::= assert_fails (assert b by assumption).
 
 (** TODO: using clauses to speed up make quick *)
 
@@ -342,10 +344,10 @@ Proof.
       * move/val_inj => ?;subst y. 
         case: (dec1A x) => t Ht. left. exists (inl t). 
         by rewrite /B /decompU /= mem_imset.
-      * move => Exy. right. exists (inl t1). exists (inr t2). 
-        by rewrite !(X _ _ Exy) /= !eqxx.
+      * move => Exy. right. exists (inl t1). exists (inr t2).
+        by rewrite /edge_rel/= !(X _ _ Exy) /= !eqxx.
       * move/esym => Eyx. right. exists (inr t2). exists (inl t1). 
-        by rewrite !(X _ _ Eyx) /= !eqxx.
+        by rewrite /edge_rel/= !(X _ _ Eyx) /= !eqxx.
       * move/val_inj => ?;subst y. 
         case: (dec2A x) => t Ht. left. exists (inr t). 
         by rewrite /B /decompU /= mem_imset.
@@ -724,7 +726,7 @@ Proof.
       move: iNj => /orP [iltj|jlti]; [|rewrite disjoint_sym]; exact: H. }
     destruct i as [m i]. destruct j as [n j].
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
-    + rewrite disjoints1. rewrite inE negb_or /interior notinD /=. 
+    + rewrite disjoints1. rewrite inE negb_or /interior notinD /=.
       have: (x \in [set x; y]); by set_tac.
     + rewrite disjoints1. by rewrite /interior; set_tac.
     + rewrite disjoints1. by rewrite /interior; set_tac.
@@ -743,7 +745,7 @@ Proof.
       * rewrite disjoints1 /interior. by set_tac.
       * by rewrite disjoint_sym.
   - move => i j iNj. wlog iltj: i j {iNj} / i < j.
-    { move => H. rewrite /= neq_ltn in iNj. 
+    { move => H. rewrite /edge_rel /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite neighborC]; exact: H. }
     destruct i as [m i]. destruct j as [n j].
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
@@ -832,8 +834,8 @@ Lemma add_edge_separation (G : sgraph) V1 V2 s1 s2:
   @separation (add_edge s1 s2) V1 V2.
 Proof.
   move => sep s1S s2S. split; first by move => x; apply sep.  
-  move => x1 x2 x1V2 x2V1 /=. rewrite sep //=. apply: contraTF isT.
-  case/orP => [] /and3P[_ /eqP ? /eqP ?]; by set_tac.
+  move => x1 x2 x1V2 x2V1 /=. rewrite /edge_rel/= sep //=.
+  apply: contraTF isT. case/orP => [] /and3P[_ /eqP ? /eqP ?]; by set_tac.
 Qed.
 
 (** TODO: simplify below ... *)
@@ -895,7 +897,7 @@ Proof.
          minor_rmap phi & forall x : K4, phi x \subset V1.
   { move => W.  case: (@separation_K4side (add_edge s1 s2) V1 V2) => //.
     - apply: add_edge_separation psep.1 _ _; by rewrite -SV12 S12 !inE eqxx.
-    - rewrite -SV12 S12. apply: clique2. by rewrite /= !eqxx s1Ns2. 
+    - rewrite -SV12 S12. apply: clique2. by rewrite /edge_rel/= !eqxx s1Ns2. 
     - by rewrite -SV12 S12 cards2 s1Ns2. 
     - move => phi map_phi [subV1|subV2]; first by apply: (W V1 V2) => //; exists phi.
       apply: (W V2 V1) => //; rewrite 1?proper_separation_symmetry 1?setIC //.
@@ -951,7 +953,7 @@ Proof.
       - move: (map2 _ _ xNy). by set_tac.
     + wlog yNj: x y xy / y!=j.
       { move => H. case: (boolP (y==j)) => yj //=.
-        - simpl in xy. rewrite eq_sym in xy. case: (altP (x =P j)) => xj //=.
+        - simpl in xy. rewrite /edge_rel/= eq_sym in xy. case: (altP (x =P j)) => xj //=.
           + subst x. contrab.
           + move: (H y x xy xj). by rewrite (negbTE xj) yj neighborC. 
         - move: (H x y xy yj). by rewrite (negbTE yj). }
@@ -1106,14 +1108,14 @@ Proof.
       * rewrite /= in xy.
         wlog yNj : x y xy / y != j; last rewrite (negbTE yNj).
         { move => W. case: {-}_ / (altP (y =P j)) => [E|H]; last exact: W.
-          by rewrite neighborC W // -?E // eq_sym. }
+          by rewrite neighborC W // -?E // /edge_rel/= eq_sym. }
         case:(altP (x =P i)) => xi. 
         { rewrite eq_sym -xi (negbTE xy). apply NCs1Pk.
           by rewrite inE (negbTE yNj) -xi eq_sym (negbTE xy). }
         case:(altP (x =P j)) => xj. 
         { subst x. case: (altP (y =P i)) => [E|yNi].
           - rewrite neighborC. apply: neighborUr. 
-            apply/neighborP; exists s1; exists s2. by rewrite s1C s2C /= s1Ns2 !eqxx.
+            apply/neighborP; exists s1; exists s2. by rewrite s1C s2C /edge_rel /= s1Ns2 !eqxx.
           - rewrite neighborC. apply: neighborUl. exact: map3. }
         case:(altP (y =P i)) => yi; last exact: map3.
         by rewrite neighborC NCs1Pk // inE (negbTE xi) (negbTE xj).
@@ -1146,7 +1148,7 @@ Proof.
      + rewrite S12 in ssepS. exact: K4_free_add_edge_sep_size2 ssepS s1Ns2.
      + apply add_edge_separation => //; by rewrite -SV12 S12 !inE eqxx.
      + rewrite -SV12 S12. apply (@clique2 (add_edge s1 s2)) => /=.
-       by rewrite !eqxx s1Ns2.
+       by rewrite /edge_rel/= !eqxx s1Ns2.
      + move => T [B] [B1 B2]. exists T. exists B. split => //. move: B1. 
       destruct G; apply sdecomp_subrel. exact: subrelUl. }
   case: (Hind (induced V1)) => // [|T1 [B1 [sd1 w1]]].

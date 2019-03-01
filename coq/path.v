@@ -1,0 +1,475 @@
+From mathcomp Require Import all_ssreflect.
+Require Import edone preliminaries.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+(* TOTHINK: the underlying type could be more permissice [e.g. countType or even eqType]. *)
+Record relType := RelType { rel_car :> finType; edge_rel : rel rel_car }.
+Notation "x -- y" := (edge_rel x y) (at level 30).
+Prenex Implicits edge_rel.
+
+Section PathP.
+Variable (T : relType).
+Implicit Types (x y : T) (p : seq T).
+
+Definition pathp x y p := path (@edge_rel T) x p && (last x p == y).
+
+Lemma pathpW y x p : pathp x y p -> path edge_rel x p.
+Proof. by case/andP. Qed.
+
+Lemma pathp_last y x p : pathp x y p -> last x p = y.
+Proof. by case/andP => _ /eqP->. Qed.
+
+Lemma pathp_cat x y p1 p2 : 
+  pathp x y (p1++p2) = (pathp x (last x p1) p1) && (pathp (last x p1) y p2).
+Proof. by rewrite {1}/pathp cat_path last_cat /pathp eqxx andbT /= -andbA. Qed.
+
+Lemma pathp_concat x y z p q : 
+  pathp x y p -> pathp y z q -> pathp x z (p++q).
+Proof. 
+  move => /andP[A B] /andP [C D]. 
+  rewrite pathp_cat (eqP B) /pathp -andbA. exact/and4P.
+Qed.
+
+Lemma pathpxx x : pathp x x [::].
+Proof. exact: eqxx. Qed.
+
+Lemma pathp_nil x y : pathp x y [::] -> x = y.
+Proof. by case/andP => _ /eqP. Qed.
+
+Lemma pathp_cons x y z p : 
+  pathp x y (z :: p) = x -- z && pathp z y p.
+Proof. by rewrite -cat1s pathp_cat {1}/pathp /= eqxx !andbT. Qed.
+
+Lemma pathp_rcons x y z p: pathp x y (rcons p z) -> y = z.
+Proof. case/andP => _ /eqP <-. exact: last_rcons. Qed.
+
+CoInductive pathp_split z x y : seq T -> Prop := 
+  PPSplit p1 p2 : pathp x z p1 -> pathp z y p2 -> pathp_split z x y (p1 ++ p2).
+
+Lemma psplitP z x y p : z \in x :: p -> pathp x y p -> pathp_split z x y p.
+Proof. 
+  case/splitPl => p1 p2 /eqP H1 /andP [H2 H3]. 
+  rewrite cat_path last_cat in H2 H3. case/andP : H2 => H2 H2'.
+  constructor; last rewrite -(eqP H1); exact/andP. 
+Qed.
+
+Lemma pathp_shorten x y p :
+  pathp x y p -> exists p', [/\ pathp x y p', uniq (x::p') & {subset p' <= p}].
+Proof. case/andP. case/shortenP => p' *. by exists p'. Qed.
+
+(** Irredundant paths *)
+
+Definition upath x y p := uniq (x::p) && pathp x y p.
+
+Lemma upathW x y p : upath x y p -> pathp x y p.
+Proof. by case/andP. Qed.
+
+Lemma upathWW x y p : upath x y p -> path edge_rel x p.
+Proof. by move/upathW/pathpW. Qed.
+
+Lemma upath_uniq x y p : upath x y p -> uniq (x::p).
+Proof. by case/andP. Qed.
+
+Lemma upath_cons x y z p : 
+  upath x y (z::p) = [&& x -- z, x \notin (z::p) & upath z y p].
+Proof. 
+  rewrite /upath pathp_cons [z::p]lock /= -lock.
+  case: (x -- z) => //. by case (uniq _).
+Qed.
+
+Lemma upath_consE x y z p : 
+  upath x y (z :: p) -> [/\ x -- z, x \notin z :: p & upath z y p].
+Proof. rewrite upath_cons. by move/and3P. Qed.
+
+Lemma upath_nil x p : upath x x p -> p = [::].
+Proof. case: p => //= a p /and3P[/= A B C]. by rewrite -(eqP C) mem_last in A. Qed.
+
+End PathP.
+
+Section Pack.
+Variables (T : relType).
+Implicit Types x y z : T.
+
+Section PathDef.
+  Variables (x y : T).
+
+  Record Path : predArgType := { pval : seq T; _ : pathp x y pval }.
+
+  Canonical Path_subType := [subType for pval].
+  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:].
+  Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
+  Definition Path_choiceMixin := Eval hnf in [choiceMixin of Path by <:].
+  Canonical Path_choiceType := Eval hnf in ChoiceType Path Path_choiceMixin.
+  Definition Path_countMixin := Eval hnf in [countMixin of Path by <:].
+  Canonical Path_countType := Eval hnf in CountType Path Path_countMixin.
+
+  Record UPath : predArgType := { uval : seq T; _ : upath x y uval }.
+
+  Canonical UPath_subType := [subType for uval].
+  Definition UPath_eqMixin := Eval hnf in [eqMixin of UPath by <:].
+  Canonical UPath_eqType := Eval hnf in EqType UPath UPath_eqMixin.
+  Definition UPath_choiceMixin := Eval hnf in [choiceMixin of UPath by <:].
+  Canonical UPath_choiceType := Eval hnf in ChoiceType UPath UPath_choiceMixin.
+  Definition UPath_countMixin := Eval hnf in [countMixin of UPath by <:].
+  Canonical UPath_countType := Eval hnf in CountType UPath UPath_countMixin.
+
+End PathDef.
+End Pack.
+
+Section PathOps.
+Variables (T : relType) (x y z : T) (p : Path x y) (q : Path y z).
+
+Definition nodes := locked (x :: val p).
+Lemma nodesE : nodes = x :: val p. by rewrite /nodes -lock. Qed.
+Definition irred := uniq nodes.
+Lemma irredE : irred = uniq nodes. by []. Qed.
+Definition tail := val p.
+
+Definition pcat_proof := pathp_concat (valP p) (valP q).
+Definition pcat : Path x z := Sub (val p ++ val q) pcat_proof.
+
+Lemma path_last: last x (val p) = y.
+Proof. move: (valP p). exact: pathp_last. Qed.
+
+End PathOps.
+
+Definition in_nodes (T : relType) (x y : T) (p : Path x y) : collective_pred T := 
+  [pred u | u \in nodes p].
+Canonical Path_predType (T : relType) (x y :T) := 
+  Eval hnf in @mkPredType T (Path x y) (@in_nodes T x y).
+Coercion in_nodes : Path >-> collective_pred.
+
+Section PathTheory.
+Variable (G : relType).
+Implicit Types (x y z u : G).
+
+Lemma nodes_eqE x y (p q : Path x y) : (nodes p == nodes q) = (p == q).
+Proof.
+  case: q p => q pth_q [p pth_p]. 
+  by rewrite !nodesE -val_eqE /= eqseq_cons eqxx.
+Qed.
+
+Lemma mem_path x y (p : Path x y) u : u \in p = (u \in nodes p).
+Proof. by rewrite in_collective. Qed.
+
+Section Fixed.
+Variables (x y z : G) (p : Path x y) (q : Path y z).
+
+Lemma in_tail : z != x -> z \in p -> z \in tail p.
+Proof. move => A. by rewrite mem_path nodesE inE (negbTE A). Qed.
+
+Lemma path_end : y \in p. 
+Proof. by rewrite mem_path nodesE -[in X in X \in _](path_last p) mem_last. Qed.
+
+Lemma path_begin : x \in p.
+Proof. by rewrite mem_path nodesE mem_head. Qed.
+
+Lemma mem_pcatT u : (u \in pcat p q) = (u \in p) || (u \in tail q).
+Proof. by rewrite !mem_path !nodesE !inE mem_cat -orbA. Qed.
+
+Lemma tailW : {subset tail q <= q}.
+Proof. move => u. rewrite mem_path nodesE. exact: mem_tail. Qed.
+
+Lemma mem_pcat u :  (u \in pcat p q) = (u \in p) || (u \in q).
+Proof. 
+  rewrite mem_pcatT. case A: (u \in p) => //=. 
+  rewrite mem_path !nodesE inE (_ : u == y = false) //. 
+  apply: contraFF A => /eqP->. exact: path_end. 
+Qed.
+
+Lemma nodes_pcat : nodes (pcat p q) = nodes p ++ behead (nodes q).
+Proof. by rewrite !nodesE. Qed.
+
+End Fixed.
+
+Lemma pcatA u v x y (p : Path u v) (q : Path v x) (r : Path x y) : 
+  pcat (pcat p q) r = pcat p (pcat q r).
+Proof. apply/eqP. by rewrite -val_eqE /= catA. Qed.
+
+(** The one-node path *)
+
+Definition idp (u : G) := Build_Path (pathpxx u).
+
+Lemma mem_idp (x u : G) : (x \in idp u) = (x == u).
+Proof. by rewrite mem_path nodesE !inE. Qed.
+
+Lemma irred_idp (x : G) : irred (idp x).
+Proof. by rewrite irredE nodesE. Qed.
+
+Lemma pcat_idL (x y : G) (p : Path x y) : 
+  pcat (idp x) p = p.
+Proof. exact: val_inj. Qed.
+
+Lemma pcat_idR (x y : G) (p : Path x y) : 
+  pcat p (idp y) = p.
+Proof. apply: val_inj => /=. by rewrite cats0. Qed.
+
+Lemma irredxx (x : G) (p : Path x x) : irred p -> p = idp x.
+Proof.
+  rewrite irredE /tail (lock uniq); case: p => p p_pth /=.
+  rewrite nodesE /= -lock => p_uniq. apply/val_inj => /=.
+  by have /upath_nil-> : upath x x p by rewrite /upath p_uniq p_pth.
+Qed.
+
+(** Paths with a single edge using an injection from (proofs of) [x -- y] *)
+
+Lemma edgep_proof x y (xy : x -- y) : pathp x y [:: y]. 
+Proof. by rewrite pathp_cons xy pathpxx. Qed.
+
+Definition edgep x y (xy : x -- y) := Build_Path (edgep_proof xy).
+
+Lemma mem_edgep x y z (xy : x -- y) :
+  z \in edgep xy = (z == x) || (z == y).
+Proof. by rewrite mem_path nodesE !inE. Qed.
+
+Lemma irred_edgeL y x z1 (xz1 : x -- z1) (p : Path z1 y) : 
+  irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
+Proof. case: p => p pth_p. by rewrite !irredE /= mem_path !nodesE /=. Qed.
+
+(** Induction principles for packaged paths *)
+
+Lemma Path_ind P (y : G) : 
+  P y y (idp y) -> 
+  (forall x z (p : Path z y) (xz : x -- z), 
+      P z y p -> P x y (pcat (edgep xz) p)) -> 
+  forall x (p : Path x y), P x y p.
+Proof. 
+  move => Hbase Hstep x [p pth_p]. 
+  elim: p x pth_p => [|z p IH] x A. 
+  - have ?: x = y. { exact: pathp_nil. }
+    subst y. rewrite [Build_Path _](_ : _ = idp x) //. exact: val_inj.
+  - move: {-}(A). rewrite pathp_cons => /andP [xz B2].
+    have -> : Build_Path A = 
+             (pcat (edgep xz) (Build_Path B2)) by exact: val_inj.
+    apply: Hstep. exact: IH.
+Qed.
+
+
+Lemma irred_ind P (y : G) :
+  P y y (idp y) ->
+  (forall x z (p : Path z y) (xz : x -- z),
+      irred p -> x \notin p -> P z y p -> P x y (pcat (edgep xz) p)) ->
+  forall x (p : Path x y), irred p -> P x y p.
+Proof.
+  move => Hbase Hstep.
+  apply: (Path_ind (P := (fun x y p => irred p -> P x y p))) => //.
+  move => x z p xz IH. rewrite irred_edgeL => /andP[A B].
+  by apply: Hstep; auto.
+Qed.
+
+
+Lemma path_closed (A : pred G) x y (p : Path x y) : 
+  x \in A -> (forall y z, y \in A -> y -- z -> z \in A) -> {subset p <= A}.
+Proof.
+  move => xA clos_A. move: x p xA. 
+  apply (Path_ind (P := fun x y p => x \in A -> {subset p <= A})).
+  - move => yA z. by rewrite mem_idp => /eqP->.
+  - move => x z p xz IH xA u. rewrite mem_pcat mem_edgep -orbA.
+    have ? : z \in A by exact: clos_A xz.
+    case/or3P => [/eqP->|/eqP->|] //. exact: IH. 
+Qed.
+
+End PathTheory.
+
+
+(** ** Finite Relation Types - unlabeled digraphs *)
+
+(* 
+Record diGraph := DiGraph { di_vertex : finType; 
+                            di_edge : rel di_vertex }.
+
+Canonical digraph_relType (D : diGraph) := RelType (@di_edge D).
+Coercion digraph_relType : diGraph >-> relType.
+Coercion di_vertex : diGraph >-> finType.
+Prenex Implicits di_edge. 
+*)
+
+(** The simple setup above causes the coercion to [finType] to be
+different (but convertible) from the coercions to other. This causes
+certain problems, like the failure of certain hints (see below) *)
+
+Notation diGraph := relType (only parsing).
+Notation DiGraph := RelType (only parsing).
+Notation di_edge := edge_rel (only parsing).
+Goal forall (T : diGraph) (A : pred T), A \subset [set: T]. by []. Qed.
+
+Section DiGraphTheory.
+Variables (D : diGraph).
+Implicit Types (x y : D).
+
+Lemma upath_size x y p : upath x y p -> size p < #|D|.
+Proof. move=> /upath_uniq/card_uniqP/= <-. exact: max_card. Qed.
+
+CoInductive usplit z x y : seq D -> Prop := 
+  USplit p1 p2 : upath x z p1 -> upath z y p2 -> [disjoint x::p1 & p2]
+                 -> usplit z x y (p1 ++ p2).
+
+Lemma usplitP z x y p : z \in x :: p -> upath x y p -> usplit z x y p.
+Proof. 
+  move => in_p /andP [U P]. case: (psplitP in_p P) U  => p1 p2 sp1 sp2.
+  rewrite -cat_cons cat_uniq -disjoint_has disjoint_sym => /and3P [? C ?].
+  suff H: z \notin p2 by constructor.
+  apply/negP. apply: disjointE C _. by rewrite -(pathp_last sp1) // mem_last. 
+Qed.
+
+Lemma upathP x y : reflect (exists p, upath x y p) (connect di_edge x y).
+Proof.
+  apply: (iffP connectP) => [[p p1 p2]|[p /and3P [p1 p2 /eqP p3]]]; last by exists p.
+  exists (shorten x p). case/shortenP : p1 p2 => p' ? ? _ /esym/eqP ?. exact/and3P. 
+Qed.
+
+Lemma pathpP x y : reflect (exists p, pathp x y p) (connect di_edge x y).
+Proof. 
+  apply: (iffP idP) => [|[p] /andP[A /eqP B]]; last by apply/connectP; exists p.
+  case/upathP => p /upathW ?. by exists p.
+Qed.
+
+(* Set Printing All. *)
+
+Section Fixed.
+Variables (x y z : D) (p : Path x y) (q : Path y z).
+
+(** NOTE: [rewrite mem_pcat] requres [digraph_relType] to be canonical *)
+Lemma subset_pcatL : p \subset pcat p q.
+Proof. apply/subsetP => u. by rewrite mem_pcat => ->. Qed.
+
+Lemma subset_pcatR : q \subset pcat p q.
+Proof. apply/subsetP => u. by rewrite mem_pcat => ->. Qed.
+
+Lemma pcat_subset (A : pred D) : p \subset A -> q \subset A -> pcat p q \subset A.
+Proof. 
+  move => /subsetP Hp /subsetP Hq. apply/subsetP => u. 
+  rewrite !mem_pcat. case/orP; [exact: Hp|exact: Hq].
+Qed.
+
+(** TOTHINK: This is easy to prove and in some contetxt exact what is
+needed. However, it introduces an unpleasant asymmetry between [p] and [q]. *)
+Lemma irred_catD :
+  irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
+Proof.
+  rewrite /irred {1}/nodes -lock /pcat SubK -cat_cons cat_uniq.
+  rewrite -disjoint_has disjoint_sym -nodesE.
+  case A : [disjoint _ & _] => //. case: (uniq (nodes p)) => //=. rewrite nodesE /=.
+  case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // path_end.
+Qed.
+
+(** This lemma is more symmetric than [irred_catD]. However, the set
+equality is sometimes cumbersome to use. Better elimination lemma? *) 
+Lemma irred_cat : 
+  irred (pcat p q) = [&& irred p, irred q & [set u : D in p | u \in q] == [set y]].
+Proof.
+  rewrite /irred {1}nodesE (lock uniq) /= -lock -cat_cons -nodesE cat_uniq.
+  congr (_ && _). rewrite (nodesE q) /=. case: uniq => //; rewrite !andbT.
+  apply/hasPn/andP.
+  - move=> H. split; first by apply/negP=>/H/=; rewrite path_end.
+    apply/eqP/setP=> u; rewrite !inE.
+    apply/andP/eqP; last by [move=>->; rewrite path_begin path_end].
+    case=> u_p. rewrite mem_path nodesE inE =>/orP[/eqP//|/H/=]. by rewrite u_p.
+  - case=> zNTq. rewrite eqEsubset =>/andP[/subsetP sub _].
+    move=> u u_q /=. apply/negP=> u_p.
+    case/(_ u _)/Wrap: sub; rewrite inE.
+    + rewrite u_p /=; exact: tailW.
+    + apply/negP; by apply: contraNneq zNTq =>{1}<-.
+Qed.
+
+(** TODO: This lemma should be used instead of the [irred_cat] where appropriate *)
+Lemma irred_catE : 
+  irred (pcat p q) -> [/\ irred p, irred q & forall k, k \in p -> k \in q -> k = y].
+Proof.
+  rewrite irred_cat. case/and3P => [? ? A]. split => // k K1 K2.
+  apply/eqP. move/eqP/setP/(_ k) : A. by rewrite !inE K1 K2. 
+Qed.
+
+End Fixed.
+
+Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect di_edge x y).
+Proof.
+  apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]].
+  + exists (Sub p P).  by rewrite /irred nodesE.
+  + exists (val p). apply/andP;split; by [rewrite /irred nodesE in I| exact: valP].
+Qed.
+
+Lemma Path_connect x y (p : Path x y) : connect di_edge x y.
+Proof. apply/pathpP. exists (val p). exact: valP. Qed.
+
+End DiGraphTheory.
+
+
+Section DiPathTheory.
+Variable (G : diGraph).
+Implicit Types (x y z : G).
+
+Section Finite.
+  Variables x y : G.
+  Notation UPath := (UPath x y).
+
+  Definition UPath_tuple (up : UPath) : {n : 'I_#|G| & n.-tuple G} :=
+    let (p, Up) := up in existT _ (Ordinal (upath_size Up)) (in_tuple p).
+  Definition tuple_UPath (s : {n : 'I_#|G| & n.-tuple G}) : option UPath :=
+    let (_, p) := s in match boolP (upath x y p) with
+      | AltTrue Up => Some (Sub (val p) Up)
+      | AltFalse _ => None
+    end.
+  Lemma UPath_tupleK : pcancel UPath_tuple tuple_UPath.
+  Proof.
+    move=> [/= p Up].
+    case: {-}_ / boolP; last by rewrite Up.
+    by move=> Up'; rewrite (bool_irrelevance Up' Up).
+  Qed.
+
+  Definition UPath_finMixin := Eval hnf in PcanFinMixin UPath_tupleK.
+  Canonical UPath_finType := Eval hnf in FinType UPath UPath_finMixin.
+
+  Definition UPathW (up : UPath) : Path x y := let (p, Up) := up in Sub p (upathW Up).
+  Coercion UPathW : UPath >-> Path.
+End Finite.
+
+(** ** Packaged Irredundant Paths
+
+Quantification over all paths is, a priori, undecidable. However,
+quantification over irredundant paths is decidable and usually
+sufficient. We define a type family of irredundant paths and endow it
+with a finType structure. *)
+
+Section IPath.
+  Variables (x y : G).
+  Record IPath : predArgType := { ival : Path x y; ivalP : irred ival }.
+  
+  Canonical IPath_subType := [subType for ival].
+  Definition IPath_eqMixin := Eval hnf in [eqMixin of IPath by <:].
+  Canonical IPath_eqType := Eval hnf in EqType IPath IPath_eqMixin.
+  Definition IPath_choiceMixin := Eval hnf in [choiceMixin of IPath by <:].
+  Canonical IPath_choiceType := Eval hnf in ChoiceType IPath IPath_choiceMixin.
+  Definition IPath_countMixin := Eval hnf in [countMixin of IPath by <:].
+  Canonical IPath_countType := Eval hnf in CountType IPath IPath_countMixin.
+
+  Lemma upath_irred p (Up : upath x y p) : irred (Build_Path (upathW Up)).
+  Proof. rewrite irredE nodesE. exact: upath_uniq Up. Qed.
+
+  Lemma irred_upath (p : Path x y) : irred p -> upath x y (val p).
+  Proof. 
+    move => Ip. rewrite /upath irredE nodesE in Ip *. rewrite Ip /=. 
+    by case: p {Ip}.
+  Qed.
+
+  Definition irred_of (p0 : UPath x y) : IPath := 
+    let (p,Up) := p0 in (Sub (Build_Path (upathW Up)) (upath_irred Up)).
+  Definition upath_of (p0 : IPath) : UPath x y := 
+    let (p,Ip) := p0 in Sub (val p) (irred_upath Ip).
+
+  Lemma can_irred_of : cancel upath_of irred_of. 
+  Proof. (do 2 case) => p ? ?. by do 2 apply: val_inj. Qed.
+
+  Definition IPath_finMixin := Eval hnf in CanFinMixin can_irred_of.
+  Canonical IPath_finType := Eval hnf in FinType IPath IPath_finMixin.
+
+  Definition path_of_ipath (p : IPath) := ival p. 
+  Definition in_ipath p x := x \in path_of_ipath p.
+  Canonical IPath_predType := Eval hnf in @mkPredType G (IPath) in_ipath.
+  Coercion path_of_ipath : IPath >-> Path.
+End IPath.
+
+End DiPathTheory.
