@@ -49,7 +49,7 @@ Proof. case/andP => _ /eqP <-. exact: last_rcons. Qed.
 CoInductive pathp_split z x y : seq T -> Prop := 
   PPSplit p1 p2 : pathp x z p1 -> pathp z y p2 -> pathp_split z x y (p1 ++ p2).
 
-Lemma psplitP z x y p : z \in x :: p -> pathp x y p -> pathp_split z x y p.
+Lemma ppsplitP z x y p : z \in x :: p -> pathp x y p -> pathp_split z x y p.
 Proof. 
   case/splitPl => p1 p2 /eqP H1 /andP [H2 H3]. 
   rewrite cat_path last_cat in H2 H3. case/andP : H2 => H2 H2'.
@@ -272,6 +272,16 @@ Proof.
     case/or3P => [/eqP->|/eqP->|] //. exact: IH. 
 Qed.
 
+Lemma uncycle x y (p : Path x y) :
+  exists2 p' : Path x y, {subset p' <= p} & irred p'.
+Proof.
+  case: p => p pth_p. case/pathp_shorten : (pth_p) => p' [A B C].
+  exists (Build_Path A). move => z. rewrite !mem_path !nodesE !SubK.
+  + rewrite !inE. case/predU1P => [->|/C ->] //. by rewrite eqxx.
+  + by rewrite /irred nodesE.
+Qed.
+
+
 End PathTheory.
 
 
@@ -309,7 +319,7 @@ CoInductive usplit z x y : seq D -> Prop :=
 
 Lemma usplitP z x y p : z \in x :: p -> upath x y p -> usplit z x y p.
 Proof. 
-  move => in_p /andP [U P]. case: (psplitP in_p P) U  => p1 p2 sp1 sp2.
+  move => in_p /andP [U P]. case: (ppsplitP in_p P) U  => p1 p2 sp1 sp2.
   rewrite -cat_cons cat_uniq -disjoint_has disjoint_sym => /and3P [? C ?].
   suff H: z \notin p2 by constructor.
   apply/negP. apply: disjointE C _. by rewrite -(pathp_last sp1) // mem_last. 
@@ -394,6 +404,97 @@ Qed.
 
 Lemma Path_connect x y (p : Path x y) : connect di_edge x y.
 Proof. apply/pathpP. exists (val p). exact: valP. Qed.
+
+
+(** *** Splitting Paths **)
+
+Lemma splitL x y (p : Path x y) : 
+  x != y -> exists z xz (p' : Path z y), p = pcat (edgep xz) p' /\ p' =i tail p.
+Proof.
+  move => xy. case: p => p. elim: p x xy => [|a p IH] x xy H.
+  - move/pathp_nil : (H) => ?. subst y. by rewrite eqxx in xy.
+  - move: (H) => H'. move: H. rewrite pathp_cons => /andP [A B].
+    exists a. exists A. exists (Build_Path B). split; first exact: val_inj.
+    move => w. by rewrite in_collective nodesE !inE.
+Qed.
+
+Lemma splitR x y (p : Path x y) : 
+  x != y -> exists z (p' : Path x z) zy, p = pcat p' (edgep zy).
+Proof.
+  move => xy. case: p. elim/last_ind => [|p a IH] H.
+  - move/pathp_nil : (H) => ?. subst y. by rewrite eqxx in xy.
+  - move: (H) => H'. 
+    case/andP : H. rewrite rcons_path => /andP [A B] C.
+    have sP : pathp x (last x p) p by rewrite /pathp A eqxx.
+    move: (pathp_rcons H') => ?; subst a.
+    exists (last x p). exists (Build_Path sP). exists B. 
+    apply: val_inj => /=. by rewrite cats1.
+Qed.
+
+CoInductive psplit z x y : Path x y -> Prop := 
+  PSplit (p1 : Path x z) (p2 : Path z y) : psplit z (pcat p1 p2).
+
+Lemma psplitP z x y (p : Path x y) : z \in p -> psplit z p.
+Proof. 
+  move: (valP p) => pth_p in_p. rewrite mem_path nodesE in in_p.
+  case/(ppsplitP in_p) E : _ / pth_p => [p1 p2 P1 P2].
+  have -> : p = pcat (Sub p1 P1) (Sub p2 P2) by exact: val_inj.
+  by constructor.
+Qed.
+
+(** This should be the canonical way to split irredundant paths *)
+CoInductive isplit z x y : Path x y -> Prop := 
+  ISplit (p1 : Path x z) (p2 : Path z y) : 
+    irred p1 -> irred p2 -> (forall k, k \in p1 -> k \in p2 -> k = z) -> isplit z (pcat p1 p2).
+
+Lemma isplitP z x y (p : Path x y) : irred p -> z \in p -> isplit z p.
+Proof.
+  move => I in_p. case/psplitP : _ / in_p I => p1 p2 /irred_catE [*]. 
+  by constructor.
+Qed.
+
+Lemma split_at_first_aux {A : pred D} x y (p : seq D) k : 
+    pathp x y p -> k \in A -> k \in x::p -> 
+    exists z p1 p2, [/\ p = p1 ++ p2, pathp x z p1, pathp z y p2, z \in A 
+                & forall z', z' \in A -> z' \in x::p1 -> z' = z].
+Proof.
+  move => pth_p in_A in_p. 
+  pose n := find A (x::p). 
+  pose p1 := take n p.
+  pose p2 := drop n p.
+  pose z := last x p1.
+  have def_p : p = p1 ++ p2 by rewrite cat_take_drop.
+  move: pth_p. rewrite {1}def_p pathp_cat. case/andP => pth_p1 pth_p2.
+  have X : has A (x::p) by apply/hasP; exists k.
+  exists z. exists p1. exists p2. split => //.
+  - suff -> : z = nth x (x :: p) (find A (x :: p)) by exact: nth_find.
+    rewrite /z /p1 last_take // /n -ltnS. by rewrite has_find in X. 
+  - move => z' in_A' in_p'. 
+    have has_p1 : has A (x::p1) by (apply/hasP;exists z').
+    rewrite /z (last_nth x) -[z'](nth_index x in_p').
+    suff -> : index z' (x::p1) = size p1 by [].
+    apply/eqP. rewrite eqn_leq. apply/andP;split.
+    + by rewrite -ltnS -[(size p1).+1]/(size (x::p1)) index_mem.
+    + rewrite leqNgt. apply: contraTN in_A' => C.
+      rewrite -[z'](nth_index x in_p') unfold_in before_find //.
+      apply: leq_trans C _. 
+      have -> : find A (x :: p1) = n by rewrite /n def_p -cat_cons find_cat has_p1. 
+      rewrite size_take. by case: (ltngtP n (size p)) => [|/ltnW|->].
+Qed.
+
+
+Lemma split_at_first {A : pred D} x y (p : Path x y) k :
+  k \in A -> k \in p ->
+  exists z (p1 : Path x z) (p2 : Path z y), 
+    [/\ p = pcat p1 p2, z \in A & forall z', z' \in A -> z' \in p1 -> z' = z].
+Proof.
+  case: p => p pth_p /= kA kp. rewrite mem_path nodesE in kp.
+  case: (split_at_first_aux pth_p kA kp) => z [p1] [p2] [def_p pth_p1 pth_p2 A1 A2].
+  exists z. exists (Build_Path pth_p1). exists (Build_Path pth_p2). split => //.
+  + subst p. exact: val_inj.
+  + move => ?. rewrite mem_path nodesE. exact: A2.
+Qed.
+
 
 End DiGraphTheory.
 

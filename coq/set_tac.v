@@ -31,7 +31,8 @@ Lemma setUPn (T : finType) (A B : {set T}) (x:T) :
   reflect (x \notin A /\ x \notin B) (x \notin A :|: B).
 Proof. rewrite !inE negb_or. exact: andP. Qed.
 
-Ltac notHyp b := match goal with [_ : is_true b |- _] => fail 1 | _ => idtac end.
+(* Ltac notHyp b := match goal with [_ : is_true b |- _] => fail 1 | _ => idtac end. *)
+Ltac notHyp b := assert_fails (assert b by assumption).
 
 Ltac extend H T := notHyp H; have ? : H by T.
 
