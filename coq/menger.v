@@ -7,6 +7,28 @@ Unset Printing Implicit Defensive.
 
 (** Preliminaries *)
 
+Definition inE := (inE,mem_pcat,path_begin,path_end).
+
+(** TOTHINK: [#|P| <= #|aT|] would suffice, the other direction is
+implied. But the same is true for [inj_card_onto]. *)
+Lemma inj_card_onto_pred (aT rT : finType) (f : aT -> rT) (P : pred rT) : 
+  injective f -> (forall x, f x \in P) -> #|aT| = #|P| -> {in P, forall y, y \in codom f}.
+Proof.
+  move => f_inj fP E y yP.
+  pose rT' := { y : rT | P y}.
+  pose f' (x:aT) : rT' := Sub (f x) (fP x).
+  have/inj_card_onto f'_inj : injective f'. { move => x1 x2 []. exact: f_inj. }
+  rewrite card_sig E in f'_inj. 
+  case/mapP : (f'_inj erefl (Sub y yP)) => x _ [] ->. exact: codom_f. 
+Qed.
+
+Lemma irred_catI (G : diGraph) (x y z : G) (p : Path x z) (q : Path z y) : 
+  (forall k : G, k \in p -> k \in q -> k = z) -> irred p -> irred q -> irred (pcat p q).
+Proof. 
+  move => H Ip Iq. rewrite irred_cat Ip Iq /=. apply/eqP/setP => k.
+  rewrite !inE. apply/andP/eqP => [[]|->]. exact: H. by rewrite path_begin path_end.
+Qed.
+
 Lemma irred_ind (G : relType) (P : forall x x0 : G, Path x x0 -> Type) (y : G) (x : G) (p : Path x y) : 
   P y y (idp y) ->
   (forall (x z : G) (p : Path z y) (xz : x -- z),
@@ -35,7 +57,16 @@ Implicit Types (x y : G) (A B S : {set G}).
 Definition pathS := { x : G * G & Path x.1 x.2 }.
 Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1 x.2) (x,y) p.
 
-Definition in_pathS (p : pathS) := [pred x | x \in tagged p].
+(* Definition pathS_eqE (p q : pathS) : (p == q) = (nodes (tagged p) == nodes (tagged q)). *)
+(* Proof.  *)
+(*   case: p => [[x y] p]. case: q => [[u v] q]. rewrite /= in p q *.  *)
+(*   case: p => p pth_p. case: q => q pth_q /=. rewrite !nodesE eqseq_cons /=.  *)
+(*   case: (altP (x =P u)) => [?|H /=].  *)
+(*   - subst u. admit.  *)
+(*   - apply: contraNF H. admit. *)
+(* Admitted. *)
+
+Definition in_pathS (p : pathS) : collective_pred G := [pred x | x \in tagged p].
 Canonical pathS_predType := Eval hnf in mkPredType (@in_pathS).
 
 Arguments in_pathS _ /.
@@ -56,11 +87,42 @@ Arguments nodesS _ /.
 
 (* Arguments PathS x y _ /. *)
 
+(** TOTHINK: [conn_disjoint] could also be expressed as [x \in p i -> x \in p j ->  i = j] *)
 Record connector (A B : {set G}) n (p : 'I_n -> pathS) : Prop := 
-  { conn_irred    : forall i, irredS (p i);
+  { conn_irred    : forall i, irred (tagged (p i)); (* forall i, irredS (p i); *)
     conn_begin    : forall i, [set x in p i] :&: A = [set fst (p i)];
     conn_end      : forall i, [set x in p i] :&: B = [set lst (p i)];
     conn_disjoint :  forall i j, i != j -> [set x in p i] :&: [set x in p j] = set0 }.
+
+Section ConnectorTheory.
+Variables (A B : {set G}) (n : nat) (p : 'I_n -> pathS).
+Hypothesis conn_p : connector A B p.
+
+Lemma connector_fst i : fst (p i) \in A.
+Proof. 
+  move/setP : (conn_begin conn_p i) => /(_ (fst (p i))). 
+  rewrite !inE eqxx. by case/andP.
+Qed.
+
+Lemma connector_lst i : lst (p i) \in B.
+Proof. 
+  move/setP : (conn_end conn_p i) => /(_ (lst (p i))). 
+  rewrite !inE eqxx. by case/andP.
+Qed.
+
+Lemma connector_left i x : x \in p i -> x \in A -> x = fst (p i).
+Proof.
+  move => in_pi in_A. move/setP : (conn_begin conn_p i) => /(_ x). 
+  rewrite !inE in_pi in_A /=. by move/esym/eqP.
+Qed.
+
+Lemma connector_right i x : x \in p i -> x \in B -> x = lst (p i).
+Proof.
+  move => in_pi in_B. move/setP : (conn_end conn_p i) => /(_ x). 
+  rewrite !inE in_pi in_B /=. by move/esym/eqP.
+Qed.
+
+End ConnectorTheory.
 
 Definition separator (A B S : {set G}) :=
   forall (a b : G) (p : Path a b), a \in A -> b \in B -> exists2 s, s \in S & s \in p.
@@ -102,16 +164,156 @@ Lemma separator_min A B S :
   separator A B S -> #|A :&: B| <= #|S|.
 Proof. move/separator_cap. exact: subset_leq_card. Qed.
 
-Lemma connector_replace A B n (p : 'I_n -> pathS) x y i : 
-  x \notin \bigcup_i [set z in p i] -> fst (p i) = y -> x -- y ->
+Lemma fst_mem (p : pathS) : fst p \in p.
+Proof. case: p => [[x y] p] /=. exact: path_begin. Qed.
+
+Lemma lst_mem (p : pathS) : lst p \in p.
+Proof. case: p => [[x y] p] /=. exact: path_end. Qed.
+
+Lemma fst_inj A B n (p : 'I_n -> pathS) : 
+  connector A B p -> injective (fst \o p).
+Proof. 
+  move => conn_p. apply/injectiveP. 
+  apply: wlog_neg => /injectivePn [i] [j] /(conn_disjoint conn_p)/setP S /= H.
+  move/(_ (fst (p i))) : S. by rewrite !inE /fst H fst_mem.
+Qed.
+
+Lemma lst_inj A B n (p : 'I_n -> pathS) : 
+  connector A B p -> injective (lst \o p).
+Proof. 
+  move => conn_p. apply/injectiveP. 
+  apply: wlog_neg => /injectivePn [i] [j] /(conn_disjoint conn_p)/setP S /= H.
+  move/(_ (lst (p i))) : S. by rewrite !inE /lst H lst_mem. 
+Qed.
+  
+Definition castL (x' x y : G) (E : x = x') (p : Path x y) : Path x' y :=
+  match E in (_ = y0) return (Path y0 y) with erefl => p end.
+
+Definition pcatS (p1 p2 : pathS) : pathS :=
+  let: (existT x p,existT y q) := (p1,p2) in
+  match altP (y.1 =P x.2) with
+    AltTrue E => PathS (pcat p (castL E q))
+  | AltFalse _ => PathS p
+  end.
+
+Lemma pcatSE (x y z : G) (p : Path x y) (q : Path y z) : 
+  pcatS (PathS p) (PathS q) = PathS (pcat p q).
+Proof. 
+  rewrite /pcatS /=. case: {-}_ /altP => [E|]; last by rewrite eqxx.
+  rewrite /castL. by rewrite (eq_irrelevance E erefl).
+Qed.
+
+Lemma pathS_eta n (p : 'I_n -> pathS) i : p i = @PathS (fst (p i)) (lst (p i)) (tagged (p i)).
+Proof. by case: (p i) => [[x y] ri]. Qed.
+
+Notation PATHS x y p := (@PathS x y p).
+
+Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u : 
+  reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
+Proof. 
+  rewrite !inE mem_edgep -orbA. apply: (iffP or3P) => [|[->|->]]; rewrite ?eqxx. 
+  - case => [/eqP->|/eqP->|->]; rewrite ?inE. all: by firstorder.
+Qed.
+
+
+Lemma connector_extend A B n (p : 'I_n -> pathS) x y i : 
+  x \notin \bigcup_i [set z in p i] -> fst (p i) = y -> x -- y -> x \notin B ->
   connector A B p -> exists q : 'I_n -> pathS, connector (x |: (A :\ y)) B q.
+Proof.
+  move => Hx Hy xy xB conn_p.
+  have xDy : x != y. 
+  { admit. }
+  set A' := _ |: _.
+  pose q (j : 'I_n) := if j == i then pcatS (PathS (edgep xy)) (p j) else p j. 
+  have Hj (j : 'I_n) u : j != i -> u \in tagged (p j) -> (u == y = false)*(u == x = false).
+  { admit. }
+  exists q. split.
+  - move => j. rewrite /q /=. 
+    case: (altP (j =P i)) => [E|D]; last exact: (conn_irred conn_p).
+    subst j. rewrite pathS_eta. subst y. rewrite pcatSE /= irred_edgeL.
+    rewrite (conn_irred conn_p) andbT. apply: contraNN Hx => Hx.
+    apply/bigcupP. exists i => //. by rewrite inE.
+  - move => j. rewrite /q. case: (altP (j =P i)) => [E|D].
+    + subst j. rewrite pathS_eta. subst y. rewrite pcatSE /=.
+      apply/setP => u. rewrite [A']lock !inE -lock. apply/andP/idP.
+      * rewrite !inE mem_edgep /=. case: (altP (u =P x)) => [-> //|/=].
+        rewrite -/(fst (p i)). case: (altP (u =P fst (p i))) => [_ _ [_ ?] //|].
+        rewrite /= -/(fst (p i)) => [H1 H2 [H3 H4]].
+        by rewrite -(connector_left conn_p _ H4) ?eqxx in H1.
+      * move/eqP->. by rewrite mem_edgep /= !inE eqxx.
+    + rewrite -(conn_begin conn_p). 
+      apply/setP => u. rewrite !inE. case e: (u \in _) => //=. by rewrite !(Hj j) /=.
+  - move => j.  rewrite /q. case: (altP (j =P i)) => [E|D].
+    + subst j. rewrite pathS_eta. subst y. rewrite pcatSE /=. admit.
+    + admit.
+  - move => j1 j2. rewrite /q. 
+    have jP j : i != j -> [set x0 in pcatS (PATHS x y (edgep xy)) (p i)] :&: [set x0 in p j] = set0.
+    { move => jDi. rewrite pathS_eta. subst y. rewrite pcatSE. 
+      apply: contra_eq (conn_disjoint conn_p jDi). case/set0Pn => u /setIP []. 
+      rewrite 2!inE /=. case/edgeLP => /= [-> Hx'|Hu ?]. 
+      * apply: contraNN Hx => _. apply/bigcupP; exists j => //. by rewrite inE.
+      * apply/set0Pn. exists u. by rewrite !inE Hu. }
+    case: (altP (j1 =P i)); case: (altP (j2 =P i)). 
+    + move => -> -> . by rewrite eqxx.
+    + rewrite eq_sym => Hj2 ->. exact: jP.
+    + rewrite eq_sym setIC. move => -> Hj2 _. exact: jP.
+    + move => _ _. exact: (conn_disjoint conn_p).
 Admitted.
+
+
+(* have pqE i : pq i = PathS (pcat (tagged (p i))  *)
+(*                           (castL (svalP (mtch i)) (tagged (q (sval (mtch i)))))). *)
+(* { admit. } *)
 
 Lemma connector_cat (P A B : {set G}) n (p q : 'I_n -> pathS) : 
   #|P| = n -> separator A B P ->
   connector A P p -> connector P B q -> 
   exists (r : 'I_n -> pathS), connector A B r.
-Admitted. (* Induction on n, using the fact that p and q cover P *)
+Proof.
+  move => card_P. subst n. move => sep_P con_p con_q. 
+  (** For every [i], we can obtain some [j] such that [p i] and [q j] compose. *)
+  have mtch i : { j | fst (q j) = lst (p i) }.
+  { pose x := lst (p i).
+    have Hx : x \in codom (fst \o q). 
+    { apply: (inj_card_onto_pred (P := mem P)). 
+      - exact: fst_inj con_q.
+      - move => j. exact: connector_fst con_q _.
+      - by rewrite card_ord.
+      - exact: connector_lst con_p _. }
+    exists (iinv Hx). rewrite -[fst _]/((fst \o q) (iinv Hx)). by rewrite f_iinv. }
+  (** Compose matching paths *)
+  pose pq i := pcatS (p i) (q (sval (mtch i))).
+  (** Elimination lemma for pq to encapsulate dependent types reasoning *)
+  have pqE i : exists j x y z (pi : Path x y) (qi : Path y z), 
+      [/\ p i = PathS pi, j = sval (mtch i), q j = PathS qi & pq i = PathS (pcat pi qi) ].
+  { pose j := sval (mtch i). 
+    have jP := svalP (mtch i) : fst (q j) = lst (p i). 
+    exists j. exists (fst (p i)). exists (lst (p i)). exists (lst (q j)). 
+    exists (tagged (p i)). exists (castL jP (tagged (q j))). split => //.
+    - by rewrite {1}pathS_eta. 
+    - rewrite {1}pathS_eta. move: (jP). rewrite -jP => jP'.
+      by rewrite (eq_irrelevance jP' erefl).
+    - rewrite /pq -/j. rewrite -pcatSE -pathS_eta. move: (jP). rewrite -jP => jP'.
+      by rewrite (eq_irrelevance jP' erefl) /= -pathS_eta. }
+  have sepP i j x : x \in p i -> x \in q j -> x \in P.
+  { move => x_pi x_qj. apply: wlog_neg => xP. 
+    have [Hx Hy] : x != lst (p i) /\ x != fst (p j). admit. (* those are in P *)
+    (* split [p i] and [q j] at [x] *) admit. }
+  exists pq. split. 
+  - move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=. 
+    apply: irred_catI => [u u_p u_q||]. 
+    + have uP : u \in P. apply: (sepP i j u); rewrite ?Ep ?Eq //.
+      move: (conn_end con_p i) => /setP/(_ u). rewrite Ep !inE /= u_p uP /=. 
+      by move/esym/eqP.
+    + move: (conn_irred con_p i). by rewrite Ep.
+    + move: (conn_irred con_q j). by rewrite Eq.
+  - move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=.
+    apply/setP => u. rewrite !inE /=. apply/andP/eqP.
+    admit.
+    admit.
+  - admit.
+  - admit.
+Admitted. 
 
 Lemma trivial_connector A B : exists p : 'I_#|A :&: B| -> pathS, connector A B p.
 Proof.
@@ -321,12 +523,35 @@ Proof.
     { (* same as above *) admit. }
     have size_AP T : separator G' A P T -> s <= #|T|. move/lift_AP. exact: min_s.
     have size_QB T : separator G' Q B T -> s <= #|T|. move/lift_QB. exact: min_s.
-    case: (IH _ _ size_AP) => X /del_edge_connector conn_X.
-    case: (IH _ _ size_QB) => Y /del_edge_connector conn_Y.
-    case: (altP (x =P y)) => [?|xDy].
-    - subst y. 
-      apply: connector_cat conn_X conn_Y => //. admit.
-    - admit.
+    have card_S u : separator G A B (u |: S) -> u \notin S /\ #|u |: S| = s.
+    { move => HS. 
+      have Hu : u \notin S. 
+      { apply: contraTN ltn_s => uS. by rewrite -leqNgt min_s // -(setU1_mem uS). }
+      split => //. apply/eqP. 
+      by rewrite eqn_leq min_s // andbT cardsU1 Hu /= add1n. }
+    case: (IH _ _ size_AP) => X (* /del_edge_connector *) conn_X.
+    case: (IH _ _ size_QB) => Y (* /del_edge_connector *) conn_Y.
+    have xB : x \notin B. 
+    { have [j Hj] : exists j, lst (X j) = x. 
+      { admit. }
+      move: (connector_fst conn_X j) => HA. 
+      move: (conn_end conn_X j). rewrite Hj => HP.
+      case: (card_S _ sep_G_P) => xS _. apply: contraNN xS => xB. 
+      have [u U1 U2] : exists2 u, u \in S & u \in X j. 
+      { rewrite -Hj in xB. case: (X j) HA xB => [[a b] /= p]. exact: sepS. }
+      move/setP/(_ u)/esym : HP. by rewrite !inE U1 U2 orbT /= => /eqP <-. }
+    move/del_edge_connector in conn_X.
+    move/del_edge_connector in conn_Y.
+    case: (altP (x =P y)) => [?|xDy]. 
+    - subst y. apply: connector_cat conn_X conn_Y => //. by apply card_S.
+    - have [i iP] : exists i : 'I_s, fst (Y i) = y :> G. 
+      { admit. }
+      case: (connector_extend (G := G) (i := i) _ _ xy xB conn_Y) => //. 
+      + admit.
+      + admit.
+    - move => Y'. rewrite [_ |: _](_ : _ = P) => [conn_Y'|].
+        + apply: connector_cat conn_X conn_Y' => //. by apply card_S.
+        + admit.
 Admitted.
 
 Require Import sgraph.
