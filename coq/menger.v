@@ -135,6 +135,12 @@ Proof.
   rewrite !inE H. by move/esym/eqP. 
 Qed.
 
+Lemma fst_idp i : fst (p i) \in B -> fst (p i) = lst (p i).
+Proof.
+  move => H. move/setP : (conn_end conn_p i) => /(_ (fst (p i))).
+  rewrite !inE H. by move/esym/eqP. 
+Qed.
+
 Lemma connector_eq i j x : x \in p i -> x \in p j -> i = j.
 Proof. 
   move => Hi Hj. apply: contraTeq isT => /(conn_disjoint conn_p)/setP/(_ x).
@@ -293,15 +299,24 @@ Lemma connector_sep P A B n (p q : 'I_n -> pathS) i j x :
   x \in p i -> x \in q j -> (x \in P) (* * (lst (p i) = fst (q j)) *).
 Proof.
   move => sep_P con_p con_q x_pi x_qj. 
-  apply: wlog_neg => xP. 
   case def_pi : (p i) => [[u v] /= pi]. 
   case def_qj : (q j) => [[u' v'] /= qj]. rewrite -!/(PathS _) in def_pi def_qj.
   have [x_pi' x_qj'] : x \in pi /\ x \in qj by rewrite def_pi def_qj in x_pi x_qj.
-  (* - split pi and qj at x
-     - The ux prefix of pi avoids P, since [v] is the only vertex of pi in P.
-     - Likewise, the xv' suffix of jq avoids P. 
-     - the concatenation of the two paths yields and AB-path avoding P, contradition *)
-Admitted.
+  have Ip : irred pi. { move: (conn_irred con_p i). by rewrite def_pi. }
+  have Iq : irred qj. { move: (conn_irred con_q j). by rewrite def_qj. }
+  case/(isplitP Ip) def_p : _ / x_pi' => {Ip} [p1 p2 Ip1 Ip2 Ip].
+  case/(isplitP Iq) def_q : _ / x_qj' => {Iq} [q1 q2 Iq1 Iq2 Iq].
+  case: (sep_P _ _ (pcat p1 q2)).
+  - move: (connector_fst con_p i). by rewrite def_pi.
+  - move: (connector_lst con_q j). by rewrite def_qj.
+  - move => s in_P. rewrite inE. case/orP => [in_p1|in_q2].
+    + suff ? : s = v by subst s; rewrite [v]Ip // inE in in_P.
+      rewrite [s](connector_right con_p (i := i)) // def_pi //. 
+      change (s \in pi). by rewrite def_p inE in_p1.
+    + suff ? : s = u' by subst s; rewrite [u']Iq // inE in in_P.
+      rewrite [s](connector_left con_q (i := j)) // def_qj //. 
+      change (s \in qj). by rewrite def_q inE in_q2.
+Qed.
 
 Lemma connector_cat (P A B : {set G}) n (p q : 'I_n -> pathS) : 
   #|P| = n -> separator A B P ->
@@ -349,14 +364,35 @@ Proof.
   - move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=.
     apply/setP => u. rewrite !inE /=. apply/andP/eqP => [[/orP[u_pi|u_qj] uA]|->].
     + move/(_ i u): (connector_left con_p). rewrite Ep /= u_pi uA. by apply.
-    + have uy : u = y.
+    + have uy : u = y. 
       { (* y is the only element of P in qj, so if [u != y], the uz-path avoids P *) 
-        admit. }
+        have Iq : irred qj. move: (conn_irred con_q j). by rewrite Eq.
+        case/(isplitP Iq) def_q : _ / u_qj => [q1 q2 _ _ I].
+        have zB : z \in B. { move: (connector_lst con_q j). by rewrite Eq. } 
+        case: (sep_P _ _ q2) => // s sP in_q2. 
+        have ? : s = y. 
+        { by rewrite [s](connector_left con_q (i := j)) // Eq // def_q mem_pcat in_q2. }
+        subst s. by rewrite [y]I // inE. }
       subst u. 
       suff: lst (p i) = fst (p i). by rewrite Ep. 
       apply: (lst_idp con_p _). by rewrite !Ep. 
     + by rewrite inE [x](_ : _ = fst (p i)) ?(connector_fst con_p) // Ep. 
-  - admit. (* symmetric to the argument above *)
+  - (* symmetric to the argument above *)
+    move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=.
+    apply/setP => u. rewrite !inE /=. apply/andP/eqP => [[/orP[u_pi|u_qj] uB]|->].
+    + have uz : u = y.
+      { have Ip : irred pi. move: (conn_irred con_p i). by rewrite Ep.
+        case/(isplitP Ip) def_p : _ / u_pi => [p1 p2 _ _ I].
+        have xA : x \in A. { move: (connector_fst con_p i). by rewrite Ep. } 
+        case: (sep_P _ _ p1) => // s sP in_p1. 
+        have ? : s = y. 
+        { by rewrite [s](connector_right con_p (i := i)) // Ep // def_p mem_pcat in_p1. }
+        subst s. by rewrite [y]I // inE. }
+      subst u. 
+      suff: fst (q j) = lst (q j). by rewrite Eq. 
+      apply: (fst_idp con_q _). by rewrite Eq. 
+    + move/(_ j u): (connector_right con_q). rewrite Eq /= u_qj uB. by apply.
+    + by rewrite inE [z](_ : _ = lst (q j)) ?(connector_lst con_q) // Eq.
   - move => i j iDj.
     move: (pqE i) => [i2] [x] [y] [z] [pi] [qi2] [Ep Ei Eq ->] /=. 
     move: (pqE j) => [j2] [x'] [y'] [z'] [pj] [qj2] [Ep' Ej Eq' ->] /=.
@@ -373,7 +409,7 @@ Proof.
       rewrite -Ei -Ej. apply: (connector_eq con_q (x := u)); by rewrite ?Eq ?Eq' inE.
     - have uP : u \in P. 
       { apply: (@connector_sep P A B _ p q j i2 u) => // ; by rewrite ?Ep' ?Eq. }
-      have [? ?] : y' = u /\ y = u. (* admit. *)
+      have [? ?] : y' = u /\ y = u. 
       { split.
         - by rewrite {1}[u](connector_right con_p (i := j)) ?Ep'.
         - by rewrite {1}[u](connector_left con_q (i := i2)) ?Eq. }
@@ -382,7 +418,7 @@ Proof.
     - apply: contraNT iDj => _. apply/eqP. apply: mtch_inj. rewrite -Ei -Ej.
       apply: contraTeq isT => iDj.
       move/setP/(_ u): (conn_disjoint con_q iDj). by rewrite Eq Eq' !inE Hi Hj.
-Admitted. 
+Qed.
 
 Lemma trivial_connector A B : exists p : 'I_#|A :&: B| -> pathS, connector A B p.
 Proof.
@@ -407,7 +443,7 @@ End Connector.
 
 Lemma nat_size_ind (X : Type) (P : X -> Type) (x : X) (f : X -> nat) :
        (forall x : X, (forall y : X, f y < f x -> P y) -> P x) -> P x.
-Admitted.
+Proof. move => H. apply: nat_size_ind. exact: H. Qed.
 
 Lemma subrel_pathp (T : finType) (e1 e2 : rel T) (x y : T) (p : seq T) :
   subrel e1 e2 -> @pathp (DiGraph e1) x y p -> @pathp (DiGraph e2) x y p.
