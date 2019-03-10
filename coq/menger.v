@@ -172,8 +172,8 @@ Proof.
     case: (H a b p) => // s S1 S2. by exists s.
 Qed.
 
-Definition separates x y (S : {set G}) := 
-  [/\ x \notin S, y \notin S & forall p : Path x y, exists2 z, z \in p & z \in S].
+(* Definition separates x y (S : {set G}) :=  *)
+(*   [/\ x \notin S, y \notin S & forall p : Path x y, exists2 z, z \in p & z \in S]. *)
 
 (* Definition independent x y n (p : 'I_n -> Path x y) :=  *)
 (*  (forall i, irred (p i)) /\ (forall i j, i != j -> [set x in p i] :&: [set x in p j] = set0). *)
@@ -717,9 +717,80 @@ Theorem Menger_sgraph (G : sgraph) (A B : {set G}) s :
   (forall S, separator G A B S -> s <= #|S|) -> exists (p : 'I_s -> pathS G), connector A B p.
 Proof. exact: Menger. Qed. 
 
+Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
+  { q : Path (val x) (val y) | {subset q <= S} & nodes q = map val (nodes p) }.
+Proof. 
+  case: p => p pth_p.
+  exists (Build_Path (induced_path pth_p)); last by rewrite !nodesE.
+  move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
+Qed.
+
+Lemma mem_pcatEl (G : diGraph) (x y z : G) (xy : x -- y) (p : Path y z) u : 
+  (u \in pcat (edgep xy) p) = (u == x) || (u \in p).
+Admitted.
+
+Lemma mem_pcatEr (G : diGraph) (x y z : G) (yz : y -- z) (p : Path x y) u : 
+  (u \in pcat p (edgep yz)) = (u == z) || (u \in p).
+Admitted.
+
+Require Import separators.
+
+(** TODO: resolve nameclash for [separator] *)
+
+Lemma separatesI (G : sgraph) (x y : G) (U : {set G}) :
+  [/\ x \notin U, y \notin U & forall p : Path x y, irred p -> exists2 z, z \in p & z \in U] -> separates x y U.
+Admitted. 
+
+(** TODO: should be [G : diGraph] *)
 Corollary theta (G : sgraph) (x y : G) s :
-  ~~ x -- y ->
+  ~~ x -- y -> x != y ->
   (forall S, separates x y S -> s <= #|S|) -> 
   exists (p : 'I_s -> Path x y), forall i j : 'I_s, i != j -> independent (p i) (p j).
 Proof.
-Admitted.
+  move => xNy xDy min_s. 
+  pose G' := induced (~: [set x;y]).
+  pose A := [set z : G' | x -- val z].
+  pose B := [set z : G' | val z -- y].
+  (** Every AB-separator also separates x and y *)
+  have sepAB S : Top.separator G' A B S -> separates x y [set val x | x in S].
+  { move => sepS. apply: separatesI; split.
+    - apply/negP. case/imsetP => x' _ E. move: (valP x'). by rewrite !inE -E eqxx.
+    - apply/negP. case/imsetP => y' _ E. move: (valP y'). by rewrite !inE -E eqxx orbT.
+    - move => p Ip. case: (splitL p xDy) => a [xA] [p'] [Ep _].
+      have aDy : (a != y) by apply: contraNneq xNy => <-. 
+      case: (splitR p' aDy) => b [q] [By] Ep'. 
+      have Hq : {subset q <= ~: [set x;y]}.
+      { subst. rewrite irred_edgeL irred_edgeR mem_pcatEr (negbTE xDy) /= in Ip.
+        case/and3P : Ip => I1 I2 _ u. rewrite inE. 
+        apply: contraTN. case/setU1P => [->//|]. by move/set1P->. }
+      have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
+      case: (@Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
+      case: (sepS _ _ q'); rewrite ?inE // => s0 in_S in_q'.
+      exists (val s0); last exact: mem_imset. subst. 
+      by rewrite !inE [_ \in q]mem_path -Eq map_f. }
+  have min_s' S : Top.separator G' A B S -> s <= #|S|.
+  { move => HS. 
+    rewrite -[#|S|](_ : #|[set val x | x in S]| = _) ?min_s ?card_imset //. 
+    + exact: sepAB.
+    + exact: val_inj. }
+  have [p conn_p] := Menger min_s'.
+  have xA (i : 'I_s) : x -- val (fst (p i)).
+  { move: (connector_fst conn_p i). by rewrite inE. } 
+  have By (i : 'I_s) : val (lst (p i)) -- y.
+  { move: (connector_lst conn_p i). by rewrite inE. } 
+  have X (i : 'I_s) : { pi : @Path G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
+  { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
+    case: (Path_from_induced pi) => pi' P1 P2. 
+    have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
+    subst. exists (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
+    apply/setP => u. apply/setDP/imsetP => [[U1 U2]|].
+    - move: (U2) U1. rewrite 4!inE negb_or mem_pcatEl mem_pcatEr => /andP [/negbTE-> /negbTE->] /=.
+      by rewrite mem_path P2 => /mapP. 
+    - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
+      rewrite mem_path P2 mem_map //. exact: val_inj. }
+  exists (fun i => sval (X i)). 
+  move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
+  case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
+  have ? : u1 = u2 by apply: val_inj; congruence.
+  subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
+Time Qed.
