@@ -5,6 +5,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Set Bullet Behavior "Strict Subproofs".
+
 (** Preliminaries *)
 
 Definition inE := (inE,mem_pcat,path_begin,path_end).
@@ -63,15 +65,6 @@ Implicit Types (x y : G) (A B S : {set G}).
 Definition pathS := { x : G * G & Path x.1 x.2 }.
 Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1 x.2) (x,y) p.
 
-(* Definition pathS_eqE (p q : pathS) : (p == q) = (nodes (tagged p) == nodes (tagged q)). *)
-(* Proof.  *)
-(*   case: p => [[x y] p]. case: q => [[u v] q]. rewrite /= in p q *.  *)
-(*   case: p => p pth_p. case: q => q pth_q /=. rewrite !nodesE eqseq_cons /=.  *)
-(*   case: (altP (x =P u)) => [?|H /=].  *)
-(*   - subst u. admit.  *)
-(*   - apply: contraNF H. admit. *)
-(* Admitted. *)
-
 Definition in_pathS (p : pathS) : collective_pred G := [pred x | x \in tagged p].
 Canonical pathS_predType := Eval hnf in mkPredType (@in_pathS).
 
@@ -83,15 +76,6 @@ Definition lst (p : pathS) := (tag p).2.
 
 Arguments fst _ /.
 Arguments lst _ /.
-
-Definition irredS : (pathS -> Prop) := uncurry (fun (x : G * G) (p : Path x.1 x.2) => irred p).
-Definition nodesS : (pathS -> seq G) := uncurry (fun (x : G * G) (p : Path x.1 x.2) => nodes p).
-
-Arguments uncurry aT rT P _ _ /.
-Arguments irredS _ /.
-Arguments nodesS _ /.
-
-(* Arguments PathS x y _ /. *)
 
 (** TOTHINK: [conn_disjoint] could also be expressed as [x \in p i -> x \in p j ->  i = j] *)
 (** NOTE: Unlike the definition of Göring, we do not allow single edge paths inside [A :&: B] *)
@@ -172,18 +156,12 @@ Proof.
     case: (H a b p) => // s S1 S2. by exists s.
 Qed.
 
-(* Definition separates x y (S : {set G}) :=  *)
-(*   [/\ x \notin S, y \notin S & forall p : Path x y, exists2 z, z \in p & z \in S]. *)
-
-(* Definition independent x y n (p : 'I_n -> Path x y) :=  *)
-(*  (forall i, irred (p i)) /\ (forall i j, i != j -> [set x in p i] :&: [set x in p j] = set0). *)
-
 Lemma separator_cap A B S : 
   separator A B S -> A :&: B \subset S.
 Proof.
   move => sepS. apply/subsetP => x /setIP [xA xB]. 
   case: (sepS _ _ (idp x)) => // s in_S. by rewrite mem_idp => /eqP <-.
-Qed.  
+Qed.
 
 Lemma separator_min A B S : 
   separator A B S -> #|A :&: B| <= #|S|.
@@ -237,9 +215,8 @@ Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u :
   reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
 Proof. 
   rewrite !inE mem_edgep -orbA. apply: (iffP or3P) => [|[->|->]]; rewrite ?eqxx. 
-  - case => [/eqP->|/eqP->|->]; rewrite ?inE. all: by firstorder.
+  1: case => [/eqP->|/eqP->|->]; rewrite ?inE. all: by firstorder.
 Qed.
-
 
 Lemma connector_extend A B n (p : 'I_n -> pathS) x y i : 
   x \notin \bigcup_i [set z in p i] -> fst (p i) = y -> x -- y -> x \notin B ->
@@ -289,10 +266,6 @@ Proof.
     + rewrite eq_sym setIC. move => -> Hj2 _. exact: jP.
     + move => _ _. exact: (conn_disjoint conn_p).
 Qed.
-
-(* have pqE i : pq i = PathS (pcat (tagged (p i))  *)
-(*                           (castL (svalP (mtch i)) (tagged (q (sval (mtch i)))))). *)
-(* { admit. } *)
 
 Lemma connector_sep P A B n (p q : 'I_n -> pathS) i j x : 
   separator A B P -> connector A P p -> connector P B q -> 
@@ -364,18 +337,17 @@ Proof.
   - move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=.
     apply/setP => u. rewrite !inE /=. apply/andP/eqP => [[/orP[u_pi|u_qj] uA]|->].
     + move/(_ i u): (connector_left con_p). rewrite Ep /= u_pi uA. by apply.
-    + have uy : u = y. 
-      { (* y is the only element of P in qj, so if [u != y], the uz-path avoids P *) 
-        have Iq : irred qj. move: (conn_irred con_q j). by rewrite Eq.
-        case/(isplitP Iq) def_q : _ / u_qj => [q1 q2 _ _ I].
-        have zB : z \in B. { move: (connector_lst con_q j). by rewrite Eq. } 
-        case: (sep_P _ _ q2) => // s sP in_q2. 
-        have ? : s = y. 
-        { by rewrite [s](connector_left con_q (i := j)) // Eq // def_q mem_pcat in_q2. }
-        subst s. by rewrite [y]I // inE. }
-      subst u. 
-      suff: lst (p i) = fst (p i). by rewrite Ep. 
-      apply: (lst_idp con_p _). by rewrite !Ep. 
+    + suff ? : u = y. 
+      { subst. suff: lst (p i) = fst (p i) by rewrite Ep. 
+        apply: (lst_idp con_p _). by rewrite !Ep. }
+      (* y is the only element of P in qj, so if [u != y], the uz-path avoids P *) 
+      have Iq : irred qj. move: (conn_irred con_q j). by rewrite Eq.
+      case/(isplitP Iq) def_q : _ / u_qj => [q1 q2 _ _ I].
+      have zB : z \in B. { move: (connector_lst con_q j). by rewrite Eq. } 
+      case: (sep_P _ _ q2) => // s sP in_q2. 
+      have ? : s = y. 
+      { by rewrite [s](connector_left con_q (i := j)) // Eq // def_q mem_pcat in_q2. }
+      subst s. by rewrite [y]I // inE. 
     + by rewrite inE [x](_ : _ = fst (p i)) ?(connector_fst con_p) // Ep. 
   - (* symmetric to the argument above *)
     move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=.
@@ -398,8 +370,8 @@ Proof.
     move: (pqE j) => [j2] [x'] [y'] [z'] [pj] [qj2] [Ep' Ej Eq' ->] /=.
     apply/eqP. apply: wlog_neg. case/set0Pn => u. rewrite !inE => /andP[]. 
     case/orP => Hi; case/orP => Hj; case: notF.
-    - move/setP/(_ u): (conn_disjoint con_p iDj). by rewrite Ep Ep' !inE Hi Hj.
-    - have uP : u \in P. 
+    + move/setP/(_ u): (conn_disjoint con_p iDj). by rewrite Ep Ep' !inE Hi Hj.
+    + have uP : u \in P. 
       { apply: (@connector_sep P A B _ p q i j2 u) => //; by rewrite ?Ep ?Eq'. }
       have [? ?] : y' = u /\ y = u.
       { split.
@@ -407,7 +379,7 @@ Proof.
         - by rewrite {1}[u](connector_right con_p (i := i)) ?Ep. }
       subst y' y. apply: contraNT iDj => _. apply/eqP. apply: mtch_inj. 
       rewrite -Ei -Ej. apply: (connector_eq con_q (x := u)); by rewrite ?Eq ?Eq' inE.
-    - have uP : u \in P. 
+    + have uP : u \in P. 
       { apply: (@connector_sep P A B _ p q j i2 u) => // ; by rewrite ?Ep' ?Eq. }
       have [? ?] : y' = u /\ y = u. 
       { split.
@@ -415,7 +387,7 @@ Proof.
         - by rewrite {1}[u](connector_left con_q (i := i2)) ?Eq. }
       subst y' y. apply: contraNT iDj => _. apply/eqP. apply: mtch_inj. 
       rewrite -Ei -Ej. apply: (connector_eq con_q (x := u)); by rewrite ?Eq ?Eq' inE.
-    - apply: contraNT iDj => _. apply/eqP. apply: mtch_inj. rewrite -Ei -Ej.
+    + apply: contraNT iDj => _. apply/eqP. apply: mtch_inj. rewrite -Ei -Ej.
       apply: contraTeq isT => iDj.
       move/setP/(_ u): (conn_disjoint con_q iDj). by rewrite Eq Eq' !inE Hi Hj.
 Qed.
@@ -486,14 +458,6 @@ Proof.
   - exists (a,b); by rewrite !inE //= !eqxx.
 Qed.
 
-(* Lemma del_edge_unlift (x y : G) (p : Path x y) :  *)
-(*   (a \notin p) || (b \notin p) -> exists p' : @Path del_edge x y, nodes p = nodes p'. *)
-(* Admitted.  *)
-
-(* Lemma del_edge_unlift_loop (x y : G) (p : Path x y) :  *)
-(*   a = b -> exists p' : @Path del_edge x y, nodes p = nodes p'. *)
-(* Admitted. *)
-
 (** This is the fundamental case analysis for irredundant paths in [G] in
 terms of paths in [del_edge a b] *)
 
@@ -545,11 +509,6 @@ Qed.
 
 End DelEdge.
 
-Arguments uncurry aT rT P _ _ /.
-Arguments irredS _ _ /.
-Arguments nodesS _ _ /.
-
-
 Lemma del_edge_lift_proof (G : diGraph) (a b x y : G) p : 
   @pathp (del_edge a b) x y p -> @pathp G x y p.
 Proof. case: G a b x y p => T e a b x y p. apply: subrel_pathp. exact: subrel_del_edge. Qed.
@@ -600,8 +559,8 @@ Proof.
     apply: min_s => a b p aA bB. 
     (* If a != b then p must have an edge, contradition - Lemma? *) 
     revert aA bB. pattern a,b,p. apply Path_ind. 
-    - move => bA bB. exists b; by rewrite !inE ?bA.
-    - move => x y ? xy. case: notF. apply: contraNT E0 => _. 
+    + move => bA bB. exists b; by rewrite !inE ?bA.
+    + move => x y ? xy. case: notF. apply: contraNT E0 => _. 
       apply/existsP;exists x. by apply/existsP; exists y. 
   - case/existsP : E => x /existsP [y xy].
     pose G' := del_edge x y.
@@ -616,25 +575,23 @@ Proof.
     have xP : x \in P by rewrite /P; set_tac.
     pose Q := y |: S.
     have yQ : y \in Q by rewrite /Q; set_tac.
-    have sep_G_P : separator G A B P. 
-    { apply: separatorI => a b p Ip aA bB. case: (del_edge_path_case x y Ip).
-      - move => [p1] [p2] [H1 H2 H3]. exists x => //. 
-        rewrite mem_path H1 mem_cat. by rewrite -(@mem_path G') path_end.
-      - move => [p1 Ep]. case/sepS : (p1) => // z Z1 Z2. exists z => //. by rewrite/P; set_tac.
-        by rewrite mem_path Ep -(@mem_path G'). }
-    have sep_G_Q : separator G A B Q.
-    { (* same as above *) 
-      apply: separatorI => a b p Ip aA bB. case: (del_edge_path_case x y Ip).
-      - move => [p1] [p2] [H1 H2 H3]. exists y => //.
-        rewrite mem_path H1 mem_cat. by rewrite -!(@mem_path G') inE.
-      - move => [p1 Ep]. case/sepS : (p1) => // z Z1 Z2. exists z => //. by rewrite/Q; set_tac.
-        by rewrite mem_path Ep -(@mem_path G'). }
+    have [sep_G_P sep_G_Q] : separator G A B P /\ separator G A B Q.
+    { have Hp (a b : G) (p : Path a b) : 
+        irred p -> a \in A -> b \in B -> (x \in p /\ y \in p) \/ exists2 s, s \in S & s \in p.
+      { move => Ip aA bB. case: (del_edge_path_case x y Ip).
+        - move => [p1] [p2] [H1 H2 H3]. left. 
+          rewrite !mem_path H1 !mem_cat. by rewrite -!(@mem_path G') !inE.
+        - move => [p1 Ep]. right. case/sepS : (p1) => // z Z1 Z2. exists z => //.
+          by rewrite (@mem_path G) Ep -(@mem_path G'). }
+      split; apply: separatorI => a b p Ip aA bB. 
+      all: case: (Hp _ _ _ Ip aA bB) => [[xp yp]|[s0 in_S in_p]]. 
+      all: solve [by exists x | by exists y | exists s0; rewrite /P /Q; set_tac]. }
     have lift_AP T : separator G' A P T -> separator G A B T.
     { move => sepT. apply/separatorI => a b p Ip aA bB. 
-      case/sep_G_P : (p) => // z zP zp. case: (del_edge_path_case x y Ip).
+      case: (del_edge_path_case x y Ip).
       - move => [p1] [p2] [E Nx Ny]. case/sepT : (p1) => // t T1 T2.  
         exists t => //. by rewrite mem_path E mem_cat -(@mem_path G') T2.
-      - case. case => p' Ip' /= E. 
+      - case. case => p' Ip' /= E. case/sep_G_P : (p) => // z zP zp. 
         have zp' : z \in p' by rewrite (@mem_path G') -E -(@mem_path G).
         case: (split_at_first (D := G') zP zp') => u [p1] [p2] [E' uP ?].
         case/sepT : (p1) => // t tT tp1. exists t => //. 
@@ -646,7 +603,7 @@ Proof.
       - move => [p1] [p2] [E Nx Ny]. case/sepT : (p2) => // t T1 T2.  
         exists t => //. by rewrite mem_path E mem_cat -(@mem_path G') T2.
       - case. case => p' Ip' /= E. 
-        have zp' : z \in p' by rewrite (@mem_path G') -E -(@mem_path G).
+        have zp' : z \in p' by rewrite (@mem_path G') -E -(@mem_path G). 
         case: (split_at_first (D := G') zP zp') => u [p1] [p2] [E' uP ?].
         case/sepT : (p2) => // t tT tp1. exists t => //. 
         by rewrite mem_path E -(@mem_path G') E' mem_pcat tp1. } 
