@@ -132,6 +132,19 @@ Proof.
   case: (boolP (y == x)) => // /eqP ->. by rewrite H.
 Qed.
 
+(** TOTHINK: [#|P| <= #|aT|] would suffice, the other direction is
+implied. But the same is true for [inj_card_onto]. *)
+Lemma inj_card_onto_pred (aT rT : finType) (f : aT -> rT) (P : pred rT) : 
+  injective f -> (forall x, f x \in P) -> #|aT| = #|P| -> {in P, forall y, y \in codom f}.
+Proof.
+  move => f_inj fP E y yP.
+  pose rT' := { y : rT | P y}.
+  pose f' (x:aT) : rT' := Sub (f x) (fP x).
+  have/inj_card_onto f'_inj : injective f'. { move => x1 x2 []. exact: f_inj. }
+  rewrite card_sig E in f'_inj. 
+  case/mapP : (f'_inj erefl (Sub y yP)) => x _ [] ->. exact: codom_f. 
+Qed.
+
 (** TODO: check whether the collection of lemmas on sets/predicates
 and their cardinalities can be simplified *)
 

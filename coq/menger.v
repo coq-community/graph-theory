@@ -11,26 +11,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 Definition inE := (inE,mem_pcat,path_begin,path_end).
 
-(** TOTHINK: [#|P| <= #|aT|] would suffice, the other direction is
-implied. But the same is true for [inj_card_onto]. *)
-Lemma inj_card_onto_pred (aT rT : finType) (f : aT -> rT) (P : pred rT) : 
-  injective f -> (forall x, f x \in P) -> #|aT| = #|P| -> {in P, forall y, y \in codom f}.
-Proof.
-  move => f_inj fP E y yP.
-  pose rT' := { y : rT | P y}.
-  pose f' (x:aT) : rT' := Sub (f x) (fP x).
-  have/inj_card_onto f'_inj : injective f'. { move => x1 x2 []. exact: f_inj. }
-  rewrite card_sig E in f'_inj. 
-  case/mapP : (f'_inj erefl (Sub y yP)) => x _ [] ->. exact: codom_f. 
-Qed.
-
-Lemma irred_catI (G : diGraph) (x y z : G) (p : Path x z) (q : Path z y) : 
-  (forall k : G, k \in p -> k \in q -> k = z) -> irred p -> irred q -> irred (pcat p q).
-Proof. 
-  move => H Ip Iq. rewrite irred_cat Ip Iq /=. apply/eqP/setP => k.
-  rewrite !inE. apply/andP/eqP => [[]|->]. exact: H. by rewrite path_begin path_end.
-Qed.
-
 Lemma irred_ind (G : relType) (P : forall x x0 : G, Path x x0 -> Type) (y : G) (x : G) (p : Path x y) : 
   P y y (idp y) ->
   (forall (x z : G) (p : Path z y) (xz : x -- z),
@@ -43,9 +23,6 @@ Lemma Path_ind (G : relType) (P : forall x x0 : G, Path x x0 -> Type) (y : G) (x
   (forall (x z : G) (p : Path z y) (xz : x -- z), P z y p -> P x y (pcat (edgep xz) p)) ->
   P x y p.
 Proof. move => A B. exact: Path_ind. Qed.
-
-Definition uncurry (aT rT : Type) (P : aT -> Type) (f : forall (x : aT), P x -> rT) (a : { aT & P aT }) := 
-  @f (tag a) (tagged a).
 
 Record mGraph := MGraph { vertex : finType;
                           edge: finType;
@@ -70,7 +47,7 @@ Canonical pathS_predType := Eval hnf in mkPredType (@in_pathS).
 
 Arguments in_pathS _ /.
 
-(* We can override fst because MathComp uses .1 *)
+(** We can override fst because MathComp uses .1 *)
 Definition fst (p : pathS) := (tag p).1.
 Definition lst (p : pathS) := (tag p).2.
 
@@ -682,21 +659,8 @@ Proof.
   move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
 Qed.
 
-Lemma mem_pcatEl (G : diGraph) (x y z : G) (xy : x -- y) (p : Path y z) u : 
-  (u \in pcat (edgep xy) p) = (u == x) || (u \in p).
-Admitted.
-
-Lemma mem_pcatEr (G : diGraph) (x y z : G) (yz : y -- z) (p : Path x y) u : 
-  (u \in pcat p (edgep yz)) = (u == z) || (u \in p).
-Admitted.
-
 Require Import separators.
-
 (** TODO: resolve nameclash for [separator] *)
-
-Lemma separatesI (G : sgraph) (x y : G) (U : {set G}) :
-  [/\ x \notin U, y \notin U & forall p : Path x y, irred p -> exists2 z, z \in p & z \in U] -> separates x y U.
-Admitted. 
 
 (** TODO: should be [G : diGraph] *)
 Corollary theta (G : sgraph) (x y : G) s :
@@ -717,7 +681,7 @@ Proof.
       have aDy : (a != y) by apply: contraNneq xNy => <-. 
       case: (splitR p' aDy) => b [q] [By] Ep'. 
       have Hq : {subset q <= ~: [set x;y]}.
-      { subst. rewrite irred_edgeL irred_edgeR mem_pcatEr (negbTE xDy) /= in Ip.
+      { subst. rewrite irred_edgeL irred_edgeR mem_pcat_edgeR (negbTE xDy) /= in Ip.
         case/and3P : Ip => I1 I2 _ u. rewrite inE. 
         apply: contraTN. case/setU1P => [->//|]. by move/set1P->. }
       have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
@@ -741,7 +705,7 @@ Proof.
     have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
     subst. exists (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
     apply/setP => u. apply/setDP/imsetP => [[U1 U2]|].
-    - move: (U2) U1. rewrite 4!inE negb_or mem_pcatEl mem_pcatEr => /andP [/negbTE-> /negbTE->] /=.
+    - move: (U2) U1. rewrite 4!inE negb_or mem_pcat_edgeL mem_pcat_edgeR => /andP [/negbTE-> /negbTE->] /=.
       by rewrite mem_path P2 => /mapP. 
     - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
       rewrite mem_path P2 mem_map //. exact: val_inj. }

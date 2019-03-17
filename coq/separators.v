@@ -26,13 +26,21 @@ Definition separates x y U := [/\ x \notin U, y \notin U & forall p : Path x y, 
 (** Standard trick to show decidability: quantify only over irredundant paths *)
 Definition separatesb x y U := [&& x \notin U, y \notin U & [forall p : IPath x y, exists z in p, z \in U]].
 
+Lemma separatesI x y (U : {set G}) :
+  [/\ x \notin U, y \notin U & forall p : Path x y, irred p -> exists2 z, z \in p & z \in U] -> separates x y U.
+Proof.
+  case => S1 S2 S3. split => // p.
+  case: (uncycle p) => p' sub_p Ip'. 
+  case: (S3 _ Ip') => z Z1 Z2. exists z => //. exact: sub_p.
+Qed.
+
 Lemma separatesP x y U : reflect (separates x y U) (separatesb x y U).
 Proof. 
-  apply: (iffP and3P) => [[? ? A]|[? ? A]]; split => //.
-  - move => p. case: (uncycle p) => p' sub_p Ip'. 
-    move/forallP/(_ (Build_IPath Ip')) : A. 
-    case/exists_inP => z Z1 Z2. exists z => //. exact: sub_p.
-  - apply/forallP => p. by move/exists_inP : (A p). 
+  apply: (iffP and3P) => [[? ? A]|[? ? A]].
+  - apply: separatesI. split => // p Ip.
+    move/forallP/(_ (Build_IPath Ip)) : A. 
+    case/exists_inP => z Z1 Z2. by exists z. 
+  - split => //. apply/forallP => p. by move/exists_inP : (A p). 
 Qed.
 Arguments separatesP [x y U].
 

@@ -225,6 +225,19 @@ Lemma mem_edgep x y z (xy : x -- y) :
   z \in edgep xy = (z == x) || (z == y).
 Proof. by rewrite mem_path nodesE !inE. Qed.
 
+Lemma mem_pcat_edgeL x y z (xy : x -- y) (p : Path y z) u : 
+  (u \in pcat (edgep xy) p) = (u == x) || (u \in p).
+Proof.
+  rewrite mem_pcat mem_edgep. case: (altP (u =P y)) => //= ->. by rewrite path_begin.
+Qed.
+
+Lemma mem_pcat_edgeR x y z (yz : y -- z) (p : Path x y) u : 
+  (u \in pcat p (edgep yz)) = (u == z) || (u \in p).
+Proof.
+  rewrite mem_pcat mem_edgep. 
+  case: (altP (u =P y)) => //= [->|]; by rewrite ?path_end 1?orbC.
+Qed.
+
 Lemma irred_edgeL y x z1 (xz1 : x -- z1) (p : Path z1 y) : 
   irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
 Proof. case: p => p pth_p. by rewrite !irredE /= mem_path !nodesE /=. Qed.
@@ -383,6 +396,13 @@ Proof.
     case/(_ u _)/Wrap: sub; rewrite inE.
     + rewrite u_p /=; exact: tailW.
     + apply/negP; by apply: contraNneq zNTq =>{1}<-.
+Qed.
+
+Lemma irred_catI  : 
+  (forall k : D, k \in p -> k \in q -> k = y) -> irred p -> irred q -> irred (pcat p q).
+Proof. 
+  move => H Ip Iq. rewrite irred_cat Ip Iq /=. apply/eqP/setP => k.
+  rewrite !inE. apply/andP/eqP => [[]|->]. exact: H. by rewrite path_begin path_end.
 Qed.
 
 (** TODO: This lemma should be used instead of the [irred_cat] where appropriate *)
