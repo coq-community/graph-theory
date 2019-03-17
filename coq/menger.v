@@ -1,39 +1,11 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries path set_tac.
+Require Import edone preliminaries path sgraph set_tac.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
-
-(** Preliminaries *)
-
-Definition inE := (inE,mem_pcat,path_begin,path_end).
-
-Lemma irred_ind (G : relType) (P : forall x x0 : G, Path x x0 -> Type) (y : G) (x : G) (p : Path x y) : 
-  P y y (idp y) ->
-  (forall (x z : G) (p : Path z y) (xz : x -- z),
-      irred p -> x \notin p -> P z y p -> P x y (pcat (edgep xz) p)) ->
-  irred p -> P x y p.
-Proof. move => A B C. exact: irred_ind. Qed.
-
-Lemma Path_ind (G : relType) (P : forall x x0 : G, Path x x0 -> Type) (y : G) (x : G) (p : Path x y) :
-  P y y (idp y) ->
-  (forall (x z : G) (p : Path z y) (xz : x -- z), P z y p -> P x y (pcat (edgep xz) p)) ->
-  P x y p.
-Proof. move => A B. exact: Path_ind. Qed.
-
-Record mGraph := MGraph { vertex : finType;
-                          edge: finType;
-                          source : edge -> vertex;
-                          target : edge -> vertex }.
-
-Definition mgraph_rel (G : mGraph) : rel (vertex G) := 
-  fun x y => [exists e, (source e == x) && (target e == y)].
-
-Definition mgraph_relType (G : mGraph) := DiGraph (@mgraph_rel G).
-Coercion mgraph_relType : mGraph >-> diGraph.
 
 Section Connector.
 Variables (G : diGraph).
@@ -44,20 +16,18 @@ Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1
 
 Definition in_pathS (p : pathS) : collective_pred G := [pred x | x \in tagged p].
 Canonical pathS_predType := Eval hnf in mkPredType (@in_pathS).
-
 Arguments in_pathS _ /.
 
 (** We can override fst because MathComp uses .1 *)
 Definition fst (p : pathS) := (tag p).1.
 Definition lst (p : pathS) := (tag p).2.
-
 Arguments fst _ /.
 Arguments lst _ /.
 
 (** TOTHINK: [conn_disjoint] could also be expressed as [x \in p i -> x \in p j ->  i = j] *)
 (** NOTE: Unlike the definition of Göring, we do not allow single edge paths inside [A :&: B] *)
 Record connector (A B : {set G}) n (p : 'I_n -> pathS) : Prop := 
-  { conn_irred    : forall i, irred (tagged (p i)); (* forall i, irredS (p i); *)
+  { conn_irred    : forall i, irred (tagged (p i)); 
     conn_begin    : forall i, [set x in p i] :&: A = [set fst (p i)];
     conn_end      : forall i, [set x in p i] :&: B = [set lst (p i)];
     conn_disjoint :  forall i j, i != j -> [set x in p i] :&: [set x in p j] = set0 }.
@@ -432,7 +402,7 @@ Lemma card_del_edge : num_edges del_edge < num_edges G.
 Proof.
   apply: proper_card. apply/properP; split.
   - apply/subrelP. exact: subrel_del_edge. 
-  - exists (a,b); by rewrite !inE //= !eqxx.
+  - exists (a,b); by rewrite !inE //= /edge_rel /= !eqxx. 
 Qed.
 
 (** This is the fundamental case analysis for irredundant paths in [G] in
@@ -446,10 +416,10 @@ Lemma del_edge_path_case (x y : G) (p : Path x y) (Ip : irred p) :
         [/\ nodes p = nodes p1 ++ nodes p2, a \notin p2 & b \notin p1])
   \/ (exists p1 : @IPath del_edge x y, nodes p = nodes p1).
 Proof.
-  pattern x, y, p. set P := (fun _ _ _ => _). apply irred_ind => //; unfold P in *.
-  - move => {P p Ip}. 
+  pattern x, y, p. apply irred_ind => //.
+  - move => {p Ip}.  
     have Ip : irred (@idp del_edge y) by apply: irred_idp. by right;exists (Sub _ Ip).
-  - move => {x p Ip P} x z p xz Ip xp [[p1] [p2] [A B C]|[p1] E].
+  - move => {x p Ip} x z p xz Ip xp [[p1] [p2] [A B C]|[p1] E].
     + left. 
       have xyD : (x:del_edge) -- z. 
       { rewrite /edge_rel/= xz (_ : x != a) //. apply: contraNneq xp => -> .
@@ -644,74 +614,3 @@ Proof.
       * apply: connector_cat conn_X' conn_xY => //. by apply esym,card_S.
       * apply/setP => u. rewrite /Q setU1K //. by apply card_S.
 Qed.
-
-Require Import sgraph.
-
-Theorem Menger_sgraph (G : sgraph) (A B : {set G}) s : 
-  (forall S, separator G A B S -> s <= #|S|) -> exists (p : 'I_s -> pathS G), connector A B p.
-Proof. exact: Menger. Qed. 
-
-Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
-  { q : Path (val x) (val y) | {subset q <= S} & nodes q = map val (nodes p) }.
-Proof. 
-  case: p => p pth_p.
-  exists (Build_Path (induced_path pth_p)); last by rewrite !nodesE.
-  move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
-Qed.
-
-Require Import separators.
-(** TODO: resolve nameclash for [separator] *)
-
-(** TODO: should be [G : diGraph] *)
-Corollary theta (G : sgraph) (x y : G) s :
-  ~~ x -- y -> x != y ->
-  (forall S, separates x y S -> s <= #|S|) -> 
-  exists (p : 'I_s -> Path x y), forall i j : 'I_s, i != j -> independent (p i) (p j).
-Proof.
-  move => xNy xDy min_s. 
-  pose G' := induced (~: [set x;y]).
-  pose A := [set z : G' | x -- val z].
-  pose B := [set z : G' | val z -- y].
-  (** Every AB-separator also separates x and y *)
-  have sepAB S : Top.separator G' A B S -> separates x y [set val x | x in S].
-  { move => sepS. apply: separatesI; split.
-    - apply/negP. case/imsetP => x' _ E. move: (valP x'). by rewrite !inE -E eqxx.
-    - apply/negP. case/imsetP => y' _ E. move: (valP y'). by rewrite !inE -E eqxx orbT.
-    - move => p Ip. case: (splitL p xDy) => a [xA] [p'] [Ep _].
-      have aDy : (a != y) by apply: contraNneq xNy => <-. 
-      case: (splitR p' aDy) => b [q] [By] Ep'. 
-      have Hq : {subset q <= ~: [set x;y]}.
-      { subst. rewrite irred_edgeL irred_edgeR mem_pcat_edgeR (negbTE xDy) /= in Ip.
-        case/and3P : Ip => I1 I2 _ u. rewrite inE. 
-        apply: contraTN. case/setU1P => [->//|]. by move/set1P->. }
-      have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
-      case: (@Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
-      case: (sepS _ _ q'); rewrite ?inE // => s0 in_S in_q'.
-      exists (val s0); last exact: mem_imset. subst. 
-      by rewrite !inE [_ \in q]mem_path -Eq map_f. }
-  have min_s' S : Top.separator G' A B S -> s <= #|S|.
-  { move => HS. 
-    rewrite -[#|S|](_ : #|[set val x | x in S]| = _) ?min_s ?card_imset //. 
-    + exact: sepAB.
-    + exact: val_inj. }
-  have [p conn_p] := Menger min_s'.
-  have xA (i : 'I_s) : x -- val (fst (p i)).
-  { move: (connector_fst conn_p i). by rewrite inE. } 
-  have By (i : 'I_s) : val (lst (p i)) -- y.
-  { move: (connector_lst conn_p i). by rewrite inE. } 
-  have X (i : 'I_s) : { pi : @Path G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
-  { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
-    case: (Path_from_induced pi) => pi' P1 P2. 
-    have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
-    subst. exists (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
-    apply/setP => u. apply/setDP/imsetP => [[U1 U2]|].
-    - move: (U2) U1. rewrite 4!inE negb_or mem_pcat_edgeL mem_pcat_edgeR => /andP [/negbTE-> /negbTE->] /=.
-      by rewrite mem_path P2 => /mapP. 
-    - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
-      rewrite mem_path P2 mem_map //. exact: val_inj. }
-  exists (fun i => sval (X i)). 
-  move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
-  case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
-  have ? : u1 = u2 by apply: val_inj; congruence.
-  subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
-Time Qed.

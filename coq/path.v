@@ -244,13 +244,12 @@ Proof. case: p => p pth_p. by rewrite !irredE /= mem_path !nodesE /=. Qed.
 
 (** Induction principles for packaged paths *)
 
-Lemma Path_ind P (y : G) : 
-  P y y (idp y) -> 
-  (forall x z (p : Path z y) (xz : x -- z), 
-      P z y p -> P x y (pcat (edgep xz) p)) -> 
-  forall x (p : Path x y), P x y p.
+Lemma Path_ind (P : forall x x0 : G, Path x x0 -> Type) (y : G) (x : G) (p : Path x y) :
+  P y y (idp y) ->
+  (forall (x z : G) (p : Path z y) (xz : x -- z), P z y p -> P x y (pcat (edgep xz) p)) ->
+  P x y p.
 Proof. 
-  move => Hbase Hstep x [p pth_p]. 
+  move => Hbase Hstep. case: p => [p pth_p]. 
   elim: p x pth_p => [|z p IH] x A. 
   - have ?: x = y. { exact: pathp_nil. }
     subst y. rewrite [Build_Path _](_ : _ = idp x) //. exact: val_inj.
@@ -260,25 +259,22 @@ Proof.
     apply: Hstep. exact: IH.
 Qed.
 
-
 Lemma irred_ind P (y : G) :
   P y y (idp y) ->
   (forall x z (p : Path z y) (xz : x -- z),
       irred p -> x \notin p -> P z y p -> P x y (pcat (edgep xz) p)) ->
   forall x (p : Path x y), irred p -> P x y p.
 Proof.
-  move => Hbase Hstep.
-  apply: (Path_ind (P := (fun x y p => irred p -> P x y p))) => //.
-  move => x z p xz IH. rewrite irred_edgeL => /andP[A B].
-  by apply: Hstep; auto.
+  move => Hbase Hstep x p.
+  pattern x,y,p. apply: Path_ind => // {x p} x z p xz IH. 
+  rewrite irred_edgeL => /andP[A B]. by apply: Hstep; auto.
 Qed.
 
 
 Lemma path_closed (A : pred G) x y (p : Path x y) : 
   x \in A -> (forall y z, y \in A -> y -- z -> z \in A) -> {subset p <= A}.
 Proof.
-  move => xA clos_A. move: x p xA. 
-  apply (Path_ind (P := fun x y p => x \in A -> {subset p <= A})).
+  move => xA clos_A. move: xA. pattern x,y,p. apply: Path_ind => {x p}.
   - move => yA z. by rewrite mem_idp => /eqP->.
   - move => x z p xz IH xA u. rewrite mem_pcat mem_edgep -orbA.
     have ? : z \in A by exact: clos_A xz.
@@ -594,3 +590,16 @@ Section IPath.
 End IPath.
 
 End DiPathTheory.
+
+(** Multigraphs as instance of digraphs *)
+
+Record mGraph := MGraph { vertex : finType;
+                          edge: finType;
+                          source : edge -> vertex;
+                          target : edge -> vertex }.
+
+Definition mgraph_rel (G : mGraph) : rel (vertex G) := 
+  fun x y => [exists e, (source e == x) && (target e == y)].
+
+Definition mgraph_relType (G : mGraph) := DiGraph (@mgraph_rel G).
+Coercion mgraph_relType : mGraph >-> diGraph.

@@ -445,7 +445,7 @@ Qed.
 
 
 Lemma Path_from_induced (G : sgraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
-  exists2 q : Path (val x) (val y), {subset q <= S} & nodes q = map val (nodes p).
+  { q : Path (val x) (val y) | {subset q <= S} & nodes q = map val (nodes p) }.
 Proof. 
   case: p => p pth_p.
   exists (Build_Path (induced_path pth_p)); last by rewrite !nodesE.

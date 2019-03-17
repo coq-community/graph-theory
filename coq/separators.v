@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 (* Note: ssrbool is empty and shadows Coq.ssr.ssrbool, use Coq.ssrbool for "Find" *)
 
 Require Import edone finite_quotient preliminaries set_tac.
-Require Import path sgraph minor.
+Require Import path sgraph minor menger.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -285,6 +285,61 @@ Proof.
 Qed.
 
 End Separators.
+
+(** TODO: should be [G : diGraph] *)
+Corollary theta (G : sgraph) (x y : G) s :
+  ~~ x -- y -> x != y ->
+  (forall S, separates x y S -> s <= #|S|) -> 
+  exists (p : 'I_s -> Path x y), forall i j : 'I_s, i != j -> independent (p i) (p j).
+Proof.
+  move => xNy xDy min_s. 
+  pose G' := induced (~: [set x;y]).
+  pose A := [set z : G' | x -- val z].
+  pose B := [set z : G' | val z -- y].
+  (** Every AB-separator also separates x and y *)
+  have sepAB S : menger.separator G' A B S -> separates x y [set val x | x in S].
+  { move => sepS. apply: separatesI; split.
+    - apply/negP. case/imsetP => x' _ E. move: (valP x'). by rewrite !inE -E eqxx.
+    - apply/negP. case/imsetP => y' _ E. move: (valP y'). by rewrite !inE -E eqxx orbT.
+    - move => p Ip. case: (splitL p xDy) => a [xA] [p'] [Ep _].
+      have aDy : (a != y) by apply: contraNneq xNy => <-. 
+      case: (splitR p' aDy) => b [q] [By] Ep'. 
+      have Hq : {subset q <= ~: [set x;y]}.
+      { subst. rewrite irred_edgeL irred_edgeR mem_pcat_edgeR (negbTE xDy) /= in Ip.
+        case/and3P : Ip => I1 I2 _ u. rewrite inE. 
+        apply: contraTN. case/setU1P => [->//|]. by move/set1P->. }
+      have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
+      case: (@Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
+      case: (sepS _ _ q'); rewrite ?inE // => s0 in_S in_q'.
+      exists (val s0); last exact: mem_imset. subst. 
+      by rewrite !inE [_ \in q]mem_path -Eq map_f. }
+  have min_s' S : menger.separator G' A B S -> s <= #|S|.
+  { move => HS. 
+    rewrite -[#|S|](_ : #|[set val x | x in S]| = _) ?min_s ?card_imset //. 
+    + exact: sepAB.
+    + exact: val_inj. }
+  have [p conn_p] := Menger min_s'.
+  have xA (i : 'I_s) : x -- val (fst (p i)).
+  { move: (connector_fst conn_p i). by rewrite inE. } 
+  have By (i : 'I_s) : val (lst (p i)) -- y.
+  { move: (connector_lst conn_p i). by rewrite inE. } 
+  have X (i : 'I_s) : { pi : @Path G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
+  { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
+    case: (Path_from_induced pi) => pi' P1 P2. 
+    have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
+    subst. exists (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
+    apply/setP => u. apply/setDP/imsetP => [[U1 U2]|].
+    - move: (U2) U1. rewrite 4!inE negb_or mem_pcat_edgeL mem_pcat_edgeR => /andP [/negbTE-> /negbTE->] /=.
+      by rewrite mem_path P2 => /mapP. 
+    - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
+      rewrite mem_path P2 mem_map //. exact: val_inj. }
+  exists (fun i => sval (X i)). 
+  move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
+  case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
+  have ? : u1 = u2 by apply: val_inj; congruence.
+  subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
+Qed.
+
 
 Prenex Implicits separator.
 Implicit Types G H : sgraph.
@@ -1134,7 +1189,7 @@ Qed.
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  move: G. apply: (@nat_size_ind _ _ (fun G => #|G|)) => G Hind K4free. 
+  pattern G. apply (@nat_size_ind _ _ _ (fun G => #|G|)) => {G} G Hind K4free. 
   (* Either G is small, or it has a smallest separator of size at most two *)
   case (no_K4_smallest_separator K4free) =>[|[S [ssepS Ssmall2]]].
   { move => Gsmall. exists tunit. exists (fun _ => [set: G]). split.
@@ -1168,5 +1223,3 @@ Proof.
   apply leq_trans with (maxn (width B1) (width B2)) => //.
   by rewrite geq_max w1 w2.  
 Qed.
-
-Print Assumptions TW2_of_K4F.
