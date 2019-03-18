@@ -9,8 +9,8 @@ sgraph.v
 minor.v
 menger.v
 separators.v
-#checkpoint.v
-#cp_minor.v
+checkpoint.v
+cp_minor.v
 #multigraph.v
 #skeleton.v
 #subalgebra.v

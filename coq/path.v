@@ -46,6 +46,9 @@ Proof. by rewrite -cat1s pathp_cat {1}/pathp /= eqxx !andbT. Qed.
 Lemma pathp_rcons x y z p: pathp x y (rcons p z) -> y = z.
 Proof. case/andP => _ /eqP <-. exact: last_rcons. Qed.
 
+Lemma rcons_pathp x y p : path edge_rel x (rcons p y) = pathp x y (rcons p y).
+Proof. by rewrite /pathp last_rcons eqxx andbT. Qed.
+
 CoInductive pathp_split z x y : seq T -> Prop := 
   PPSplit p1 p2 : pathp x z p1 -> pathp z y p2 -> pathp_split z x y (p1 ++ p2).
 

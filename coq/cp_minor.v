@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 
-Require Import edone finite_quotient preliminaries sgraph minor checkpoint.
+Require Import edone finite_quotient preliminaries path sgraph minor checkpoint.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -18,7 +18,7 @@ extraction function. *)
 Lemma linkNeq (G : sgraph) (x y : link_graph G) : x -- y -> x != y.
 Proof. move => A. by rewrite sg_edgeNeq. Qed.
 
-Arguments Path G x y : clear implicits.
+Arguments Path T x y : clear implicits.
 
 Section CheckpointsAndMinors.
 Variables (G : sgraph).
@@ -41,14 +41,14 @@ Proof.
   { apply: link_cpN => //; first (by rewrite sg_sym) ;apply: linkNeq => //. 
     by rewrite sg_sym. }
   have [Yq Yp] : y \in q /\ y \in p by split;apply: path_end.
-  case: (split_at_first (G := G) (A := mem p) Yp Yq) => n1 [q1] [q2] [def_q Q1 Q2]. 
+  case: (split_at_first (D := G) (A := mem p) Yp Yq) => n1 [q1] [q2] [def_q Q1 Q2]. 
   have Hn : n1 != x.
   { apply: contraNN av_x => /eqP<-. by rewrite def_q mem_pcat path_end. }
   have {q irr_q av_x Yq def_q q2 Yp} irr_q1 : irred q1 by subst; case/irred_catE :irr_q.
   have/cpPn [q irr_q av_n1] : n1 \notin @cp G z x. 
   { apply link_cpN => //. apply: contraNN av_z => /eqP?. by subst n1. }
   have [Xq Xp] : x \in q /\ x \in p by split; rewrite /= ?path_end ?path_begin. 
-  case: (split_at_first (G := G) (A := mem p) Xp Xq) => n2 [q2] [q2'] [def_q Q3 Q4].
+  case: (split_at_first (D := G) (A := mem p) Xp Xq) => n2 [q2] [q2'] [def_q Q3 Q4].
   have N : n1 != n2. 
   { apply: contraNN av_n1 => /eqP->. by rewrite def_q mem_pcat path_end. }
   have {q irr_q av_n1 Xp Xq q2' def_q} irr_q2 : irred q2.
@@ -324,9 +324,10 @@ Arguments iend {G x y}.
 Lemma add_edge_swap (G : sgraph) (i o : G) :
   sg_iso (add_edge G i o) (add_edge G o i).
 Proof.
-  exists (id : add_edge G o i -> add_edge G i o) id;
-    move=>//= x y /orP[->//|]/orP[]/andP[xNy]/andP[->->]/=;
-    by rewrite [in _ && true]eq_sym xNy.
+  exists (id : add_edge G o i -> add_edge G i o) id => //.
+  all: rewrite /edge_rel/=.
+  all: move=>//= x y /orP[->//|]/orP[]/andP[xNy]/andP[->->]/=;
+       by rewrite [in _ && true]eq_sym xNy.
 Qed.
 
 (* TOTHINK: This lemma can have a more general statement.
@@ -341,10 +342,13 @@ Proof.
   have TofS z : z \in S -> z \in T by rewrite eq_ST.
   set g : induced T -> induced S := fun z => Sub (val z) (SofT (val z) (valP z)).
   set f : induced S -> induced T := fun z => Sub (val z) (TofS (val z) (valP z)).
-  exists (g : add_edge _ x y -> add_edge _ u v) f; rewrite {}/f {}/g;
-    [ move=> ?; exact: val_inj .. | | ]; move=> a b /=/orP[->//|];
-    rewrite -!(inj_eq val_inj) /= eq_ux eq_vy =>/orP[]/andP[aNb]/andP[->->];
-    by rewrite /= aNb.
+  exists (g : add_edge _ x y -> add_edge _ u v) f; rewrite {}/f {}/g.
+  - move => ?. exact: val_inj.
+  - move => ?. exact: val_inj.
+  - move => a b; rewrite /edge_rel /= /edge_rel /=.
+    rewrite -!(inj_eq val_inj) /=. by rewrite eq_ux eq_vy.
+  - move => a b. rewrite /edge_rel /= /edge_rel /=.
+    rewrite -!(inj_eq val_inj) /=. by rewrite eq_ux eq_vy.
 Qed.
 
 (** ** K4-freenes of Intervals *)
@@ -406,14 +410,14 @@ Proof.
       by rewrite inE u_xy u_I.
   + move=> u v /orP[].
     - move/phi_edge => [u'] [v'] [? ? uv'].
-      by exists u'; exists v'; split; rewrite //= uv'.
+      by exists u'; exists v'; split; rewrite /edge_rel //= uv'.
     - wlog [-> -> _] : u v / u = istart /\ v = iend.
       { case/(_ istart iend); [ by split | by rewrite /= !eqxx xNy | ].
         move=> u' [v'] [? ? ?]. have ? : v' -- u' by rewrite sg_sym.
         case/orP=> /andP[_]/andP[/eqP->/eqP->];
           [ by exists u'; exists v' | by exists v'; exists u' ]. }
       rewrite 2?preim_phixy ?inE ?eqxx // ![val _]/=.
-      by exists i; exists o; split; rewrite //= iNo !eqxx.
+      by exists i; exists o; split; rewrite /edge_rel //= iNo !eqxx.
 Qed.
 
 Lemma igraph_K4F_add_node (G : sgraph) (U : {set G}) :
@@ -501,8 +505,9 @@ Proof.
       - move=> xy. by move: (valP x); rewrite !inE  xy eqxx.
       - move=> xy. by move: (valP y); rewrite !inE -xy eqxx.
     + have Hyp (z : G') : z \in U' -> (i : add_edge G i o) -- val z.
-      { by rewrite !inE /= =>/orP[/eqP->|->//]; rewrite io2 !eqxx. }
-      case=> [x|] [y|] //=; [by move=>->| |]; move=> /Hyp; by [|rewrite sg_sym]. }
+      { rewrite !inE /= =>/orP[/eqP->|]; first by rewrite /edge_rel /= io2 !eqxx. 
+        by rewrite {2}/edge_rel/= => ->. }
+      case=> [x|] [y|]; do 2 rewrite /edge_rel //= ; [by move=>->| |]; move=> /Hyp; by [|rewrite sg_sym]. }
 
   have i_link x : i -- x -> exists2 x' : link_graph G', x = val x' & x' \in CP U'.
   { move=> ix. have Hx : x \in [set~ i] by rewrite in_setC1 eq_sym sg_edgeNeq.

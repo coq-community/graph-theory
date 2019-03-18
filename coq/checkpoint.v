@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph.
+Require Import edone finite_quotient preliminaries path sgraph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -179,15 +179,15 @@ Section CheckPoints.
   Qed.
 
   Lemma link_avoid (x y z : G) : 
-    z \notin [set x; y] -> link_rel x y -> exists2 p, spath x y p & z \notin (x::p).
+    z \notin [set x; y] -> link_rel x y -> exists2 p, pathp x y p & z \notin (x::p).
   Abort. (* not acutally used *)
 
   Lemma link_seq_cp (y x : G) p :
-    @spath link_graph x y p -> cp x y \subset x :: p.
+    @pathp link_graph x y p -> cp x y \subset x :: p.
   Proof using.
     elim: p x => [|z p IH] x /=.
-    - move/spath_nil->. rewrite cpxx. apply/subsetP => z. by rewrite !inE.
-    - rewrite spath_cons => /andP [/= /andP [A B] /IH C]. 
+    - move/pathp_nil->. rewrite cpxx. apply/subsetP => z. by rewrite !inE.
+    - rewrite pathp_cons => /andP [/= /andP [A B] /IH C]. 
       apply: subset_trans (cp_triangle z) _.
       rewrite subset_seqR. apply/subUsetP; split. 
       + apply: subset_trans B _. by rewrite !set_cons setUA subsetUl.
@@ -201,24 +201,24 @@ Section CheckPoints.
     exact: (valP p). 
   Qed.
 
+
   (* Lemma 10 *)
   Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
   Proof using. 
-    move => cycle_p x y. rewrite !inE /= => xp yp xy. rewrite xy /=.
+    move => cycle_p x y. rewrite !inE /= => xp yp xy. rewrite /edge_rel/= xy /=.
     case/andP : cycle_p => C1 C2. 
     case: (rot_to_arc C2 xp yp xy) => i p1 p2 _ _ I. 
     have {C1} C1 : cycle sedge (x :: p1 ++ y :: p2) by rewrite -I rot_cycle. 
     have {C2} C2 : uniq (x :: p1 ++ y :: p2) by rewrite -I rot_uniq.
-    rewrite /cycle -cat_rcons rcons_cat cat_path last_rcons in C1. 
-    case/andP : C1 => /rcons_spath P1 /rcons_spath /spath_rev P2. 
-    rewrite srev_rcons in P2. 
+    rewrite /cycle -cat_rcons rcons_cat cat_path last_rcons !rcons_pathp in C1. 
+    case/andP : C1 => P1 /pathp_rev P2. 
     move/link_seq_cp in P1. move/link_seq_cp in P2.
     have D: [disjoint p1 & p2].
     { move: C2 => /= /andP [_]. rewrite cat_uniq -disjoint_has disjoint_cons disjoint_sym.
       by case/and3P => _ /andP [_ ?] _. }
     apply: contraTT D. case/subsetPn => z. rewrite !inE negb_or => A /andP [B C].
-    move: (subsetP P1 _ A) (subsetP P2 _ A). 
-    rewrite !(inE,mem_rcons,negbTE B,negbTE C,mem_rev) /=. 
+    move: (subsetP P1 _ A) (subsetP P2 _ A).
+    rewrite /srev belast_rcons !(inE,mem_rev,mem_rcons) (negbTE B) (negbTE C) /=.
     exact: disjointNI.
   Qed.
 
@@ -342,7 +342,7 @@ Section CheckPoints.
   (** *** Checkpoint graph *)
 
   Arguments Path : clear implicits.
-  Arguments spath : clear implicits.
+  Arguments pathp : clear implicits.
 
   (* Lemma 14 *)
   Lemma CP_path (U : {set G}) (x y : G) (p : Path G x y) :
@@ -419,7 +419,7 @@ Section CheckPoints.
   Qed.
 
   Arguments Path : default implicits.
-  Arguments spath : default implicits.
+  Arguments pathp : default implicits.
 
   (** ** Intervals and bags *)
 
