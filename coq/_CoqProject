@@ -11,8 +11,8 @@ menger.v
 separators.v
 checkpoint.v
 cp_minor.v
-#multigraph.v
-#skeleton.v
+multigraph.v
+skeleton.v
 #subalgebra.v
 #tm_iso.v
 #extraction_def.v

@@ -1,7 +1,7 @@
 Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph minor checkpoint.
+Require Import edone finite_quotient preliminaries path sgraph minor checkpoint.
 Require Import multigraph.
 
 Set Implicit Arguments.
@@ -43,7 +43,7 @@ Qed.
 
 Definition sk_rel (G : graph) : rel G := fun x y => (x != y) && adjacent x y.
 
-Arguments sk_rel G _ _ : clear implicits.
+Arguments sk_rel G _ _ / : clear implicits.
 
 Lemma sk_rel_sym (G : graph) : symmetric (sk_rel G).
 Proof. move=> x y. by rewrite /sk_rel/= eq_sym adjacent_sym. Qed.
@@ -76,7 +76,7 @@ Proof.
   - move => A. split => //. move: xy. pattern x, y. apply adjacentP => //.
     + move => {x y A} x y H xy. 
       case: H => [|x0 [y0] [? ? /andP [E A]]]; first by rewrite eq_sym.
-      exists y0; exists x0. by rewrite eq_sym adjacent_sym A E. 
+      exists y0; exists x0. by rewrite /edge_rel/= eq_sym adjacent_sym A E. 
     + move => e0. exists (@source G e0). exists (@target G e0).
       split => // ; last apply/andP;split => //. 
       * apply: contraNN xy => /eqP H. by rewrite eqmodE H.
@@ -123,14 +123,14 @@ Abort.
 
 Lemma hom2_sskel (G1 G2 : graph2) h :
   @hom_g2 G1 G2 h -> bijective h.1 ->
-  forall x y, @sedge (sskeleton G1) x y -> @sedge (sskeleton G2) (h.1 x) (h.1 y).
+  forall x y, @edge_rel (sskeleton G1) x y -> @edge_rel (sskeleton G2) (h.1 x) (h.1 y).
 Proof.
   move => hom_h bij. apply sskelP. 
   - move => x y. by rewrite sgP.
-  - move => e He. rewrite /= [sk_rel _ _ _](_ : _ = true) // /sk_rel.
+  - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /edge_rel //=.
     rewrite bij_eq ?He //=. apply/existsP; exists (h.2 e). 
     by rewrite !inE !hom_h !eqxx.
-  - move => H. by rewrite /= bij_eq // H !hom_h !eqxx. 
+  - move => H. by rewrite /edge_rel /= bij_eq // H !hom_h !eqxx. 
 Qed.
 
 Lemma iso2_sskel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso (sskeleton G1) (sskeleton G2).
@@ -180,17 +180,18 @@ Proof.
   rewrite /hom_s. move => x y xy _. move: x y xy. apply sskelP.
   - move=> x y. by rewrite sg_sym.
   - move=> e sNt. apply/orP; left. apply/andP. split=> //. exact: adjacent_edge.
-  - move=> /= iNo. by rewrite iNo !eqxx.
+  - move=> /= iNo. by rewrite /edge_rel /= iNo !eqxx.
 Qed.
 
 Lemma sskeleton_adjacent (G : graph) (i o : G) :
   adjacent i o -> sg_iso (skeleton G) (sskeleton (point G i o)).
 Proof.
   move=> Aio. pose id_G := id : vertex G -> vertex G.
-  exists id_G id_G => // x y; last by move=> /= ->.
-  move: x y. apply sskelP; first by move=> x y; rewrite sg_sym.
-  - rewrite /=/sk_rel => e -> /=. exact: adjacent_edge.
-  - by rewrite /=/sk_rel => ->.
+  exists id_G id_G => // x y; last by rewrite {2}/edge_rel/= => ->.
+  move: x y. apply sskelP.
+  - move=> x y. by rewrite sg_sym.
+  - rewrite /edge_rel/= => e -> /=. exact: adjacent_edge.
+  - by rewrite /edge_rel/= => ->.
 Qed.
 
 (** We treat [remove_edges] separately from [subgraph_for] since
@@ -211,6 +212,7 @@ Proof.
   have Esame x y : x != y -> @edges (remove_edges E) x y = val @^-1: @edges G x y.
   { move=> xNy. apply/setP=> e. by rewrite !inE. }
   exists id_G id_G => // x y; rewrite /id_G /=/sk_rel => /andP[xNy].
+  all: rewrite /edge_rel/=.
   all: rewrite xNy /adjacent/= !Esame // 1?eq_sym // -preimsetU.
   - case/existsP=> e. rewrite inE => He. apply/existsP. by exists (val e).
   - case/existsP=> e He.
@@ -260,14 +262,14 @@ Proof.
   exists id_G id_G; move=> //; rewrite {}/id_G; apply sskelP.
   - move=> x y. by rewrite sg_sym.
   - move=> e sNt /=. case: (boolP (e \in E)) => Ee; last first.
-    + apply/orP; left. rewrite /sk_rel sNt /=. apply/existsP; exists (Sub e Ee).
+    + apply/orP; left. rewrite /edge_rel/= sNt /=. apply/existsP; exists (Sub e Ee).
       by rewrite !inE !eqxx.
-    + move: Ee sNt => /(subsetP E_subIO). rewrite !inE.
+    + move: Ee sNt => /(subsetP E_subIO). rewrite !inE /edge_rel/=.
       by case/andP=> /orP[]/eqP-> /orP[]/eqP->; rewrite !eqxx // eq_sym => ->.
-  - move=> /= ->. by rewrite !eqxx.
+  - rewrite /edge_rel/= => ->. by rewrite !eqxx.
   - move=> x y. by rewrite sg_sym.
-  - move=> e sNt. apply/orP; left. rewrite /=/sk_rel sNt /=. exact: adjacent_edge.
-  - move=> /= ->. by rewrite !eqxx.
+  - move=> e sNt. apply/orP; left. rewrite /edge_rel/= sNt /=. exact: adjacent_edge.
+  - rewrite /edge_rel /= => ->. by rewrite !eqxx.
 Qed.
 
 (** ** Interval and Bag Graphs *)
@@ -549,8 +551,8 @@ Lemma connected_skeleton' (G : graph) V E (con : @consistent G V E) :
 Proof.
   move => U. set U' := val @: U => conn_U all_edges x y x_U y_U.
   case/connectP: (conn_U _ _ (mem_imset val x_U) (mem_imset val y_U)) => p.
-  elim: p x x_U => [|a p IH] x x_U /=; first by move=> _ /val_inj <-; exact: connect0.
-  rewrite (lock sk_rel) -!andbA -lock. case/and4P=> _ a_U' xa.
+  elim: p x x_U => [|a p IH] x x_U; first by move=> _ /val_inj <-; exact: connect0.
+  rewrite (lock edge_rel) /= -!andbA -lock. case/and4P=> _ a_U' xa.
   have Ha : a \in V by case/imsetP: a_U' => b _ ->; exact: valP.
   set b : subgraph_for con := Sub a Ha. rewrite -[a]/(val b) => p_path p_last.
   have b_U : b \in U by rewrite -(inj_imset _  _ val_inj).
@@ -559,7 +561,7 @@ Proof.
 
   rewrite -[a]/(val b).
   move: b x b_U x_U {p_last p_path a_U' IH p} => {a Ha} b x b_U x_U.
-  rewrite /sk_rel -val_eqE. case/andP=> xNb. rewrite xNb /= => adjv_xb.
+  rewrite /edge_rel/= -val_eqE. case/andP=> xNb. rewrite xNb /= => adjv_xb.
   wlog [e0] : b x b_U x_U xNb {adjv_xb} / exists e, e \in edges (val x) (val b).
   { move=> Hyp. case/existsP: adjv_xb => e. rewrite inE => /orP[]He.
     - by apply: Hyp => //; exists e.
@@ -605,9 +607,10 @@ Qed.
 Lemma iso_pointxx (G : graph) (x : G) :
   sg_iso (sskeleton (point _ x x)) (skeleton G).
 Proof.
-  exists (id : skeleton G -> sskeleton (point G x x)) id => // u v /=;
-  first by move=>->. case/or3P => // /and3P[uNv /eqP eq1 /eqP eq2];
-  move: uNv; by rewrite eq1 eq2 eqxx.
+  exists (id : skeleton G -> sskeleton (point G x x)) id => // u v /=.
+  - by rewrite {2}/edge_rel/= => ->.
+  - case/or3P => // /and3P[uNv /eqP eq1 /eqP eq2];
+    move: uNv; by rewrite eq1 eq2 eqxx.
 Qed.
 
 Lemma sub_pointxx (G : graph) (x:G) :
@@ -622,7 +625,7 @@ Proof.
   move => [[hv he]] [/= hom_h lab_h] [/= inj_hv inj_he]. 
   exists hv => // x y xy _. move: x y xy. 
   apply skelP; first by move=> x y; rewrite sg_sym.
-  move=> e sNt. by rewrite /=/sk_rel (inj_eq inj_hv) sNt !hom_h adjacent_edge.
+  move=> e sNt. by rewrite /edge_rel/= (inj_eq inj_hv) sNt !hom_h adjacent_edge.
 Qed.
 
 Definition flesh_out_graph (G : sgraph) (z : G) : graph2 :=
@@ -638,7 +641,7 @@ Proof.
   suff iso : sg_iso (skeleton G') G.
   { split=> //. apply: sg_iso_trans iso. exact: iso_pointxx. }
   exists (id : G -> skeleton G') id; move=> //= x y; rewrite /sk_rel.
-  - move=> xy. rewrite sg_edgeNeq //=.
+  - move=> xy. rewrite /edge_rel /= sg_edgeNeq //=.
     apply/existsP; exists (Sub (x, y) xy). by rewrite !inE !eqxx.
   - case/andP=> _ /existsP[][/=][u v /=] uv. rewrite !inE /=.
     case/orP=> /andP[/eqP<- /eqP<-] //; by rewrite sg_sym.
