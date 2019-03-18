@@ -290,7 +290,7 @@ End Separators.
 Corollary theta (G : sgraph) (x y : G) s :
   ~~ x -- y -> x != y ->
   (forall S, separates x y S -> s <= #|S|) -> 
-  exists (p : 'I_s -> Path x y), forall i j : 'I_s, i != j -> independent (p i) (p j).
+  exists p : 'I_s -> IPath x y, forall i j : 'I_s, i != j -> independent (p i) (p j).
 Proof.
   move => xNy xDy min_s. 
   pose G' := induced (~: [set x;y]).
@@ -323,23 +323,42 @@ Proof.
   { move: (connector_fst conn_p i). by rewrite inE. } 
   have By (i : 'I_s) : val (lst (p i)) -- y.
   { move: (connector_lst conn_p i). by rewrite inE. } 
-  have X (i : 'I_s) : { pi : @Path G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
+  have X (i : 'I_s) : { pi : @IPath G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
   { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
     case: (Path_from_induced pi) => pi' P1 P2. 
     have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
-    subst. exists (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
+    subst. 
+    set q := (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
+    have Iq : irred q. 
+    { rewrite /q irred_edgeL irred_edgeR mem_pcat_edgeR negb_or xDy /=. apply/and3P;split.
+      - apply/negP => /P1. by rewrite !inE eqxx.
+      - apply/negP => /P1. by rewrite !inE eqxx orbT.
+      - rewrite irredE P2 map_inj_uniq; last exact: val_inj. 
+        move: (conn_irred conn_p i). by rewrite -(@irredE G') [in irred _]def_pi. }
+    exists (Sub q Iq).
     apply/setP => u. apply/setDP/imsetP => [[U1 U2]|].
     - move: (U2) U1. rewrite 4!inE negb_or mem_pcat_edgeL mem_pcat_edgeR => /andP [/negbTE-> /negbTE->] /=.
       by rewrite mem_path P2 => /mapP. 
     - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
       rewrite mem_path P2 mem_map //. exact: val_inj. }
   exists (fun i => sval (X i)). 
-  move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
-  case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
-  have ? : u1 = u2 by apply: val_inj; congruence.
-  subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
+  + move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
+    case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
+    have ? : u1 = u2 by apply: val_inj; congruence.
+    subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
 Qed.
 
+Corollary theta_vertices (G : sgraph) (x y : G) s (p : 'I_s -> IPath x y) :
+  x != y -> ~~ x -- y ->
+  exists (f : 'I_s -> G), forall i, f i \in interior (p i).
+Proof.
+  move => xDy xNy.
+  suff S i : { s | s \in interior (p i) }. 
+  { exists (fun i => val (S i)) => i. exact: (svalP (S i)). }
+  case: (set_0Vmem (interior (p i))) => [I0|//].
+  exfalso. case: (interior0E xDy (valP (p i)) I0) => xy.
+  by rewrite xy in xNy.
+Qed.
 
 Prenex Implicits separator.
 Implicit Types G H : sgraph.
@@ -732,58 +751,55 @@ Proof.
   move => G4elt minsep3.
   case: (boolP (cliqueb [set: G])) => [|/cliquePn [x] [y] [_ _ xNy xNEy]].
   { move/cliqueP. apply: minor_of_clique. by rewrite cardsT. }
-  move: (minimal_separation xNy xNEy) => [V1 [V2 [[sepV propV] [sS HS]]]].
-  set S := V1 :&: V2. rewrite -/S in HS sS.
-  move: (minsep3 S sS) => S3elt. clear x y xNy xNEy.
-  case: (@independent_paths _ V1 V2) => // => x [y [p1 [p2 [p3 [[ir1 ir2 ir3]
-    [[[s1 s1p1 s1S] [s2 s2p2 s2S] [s3 s3p3 s3S]] [xNV2 yNV1 ind12 ind23 ind31]]]]]]].
-  gen have X,s1Ip1 : s1 p1 s1S ir1 s1p1 {ind12 ind23 ind31} / s1 \in interior p1. 
-  { rewrite !inE s1p1 andbT negb_or. 
-    apply/andP;split; by apply: contraTneq s1S; set_tac. }
-  have s2Ip2 : s2 \in interior p2 by apply: X.
-  have s3Ip3 : s3 \in interior p3 by apply: X.
-  clear s1p1 s1S s2p2 s2S s3p3 s3S.
-  have xNy: x!=y.
-  { apply: contraTN isT => /eqP ?; subst x. move: (sepV.1 y). by set_tac. }
-  case (@avoid_nonseperator G [set x; y] s1 s2) => //; try (apply: interiorN; eassumption).
-  { apply HS. by rewrite cards2 xNy. }
+  have minsep_xy S : separates x y S -> 3 <= #|S|.
+  { move => A. apply: minsep3. by exists x; exists y. }
+  case: (theta xNEy xNy minsep_xy) => p ind_p.
+  case: (theta_vertices p xNy xNEy) => s Hs.
+  (** name [p1] and [p2] (plus assumptions) because we will need to generalize over them *)
+  pose p1 := p ord1. pose p2 := p ord2.
+  pose s1 := s ord1. pose s2 := s ord2.
+  have ind12 : independent p1 p2 by apply: ind_p.
+  have ind01 : independent (p ord0) p1 by apply: ind_p.
+  have ind02 : independent (p ord0) p2 by apply: ind_p.
+  have sp1 : s1 \in interior p1 by rewrite Hs.
+  have sp2 : s2 \in interior p2 by rewrite Hs.
+  case (@avoid_nonseperator G [set x; y] (s ord0) (s1)) => //; try (apply: interiorN; eauto).
+  { move/minsep3. by rewrite cards2 xNy. }
   move => q Iq av_xy. 
-  case: (@split_at_first G [predU interior p2 & interior p3] s1 s2 q s2) => //.  
-  { by rewrite inE /= s2Ip2. }
-  move => s2' [q1 [q2 [catp s2'p23 s2'firstp23]]].
+  case: (@split_at_first G [predU interior p1 & interior p2] (s ord0) s1 q s1) => //.  
+  { by rewrite inE /= sp1. }
+  move => s1' [q1 [q2 [catp s1'p12 s1'firstp12]]].
   subst q. case/irred_catE : Iq => Iq _ _.
   have {av_xy} av_xy : [disjoint q1 & [set x; y]] by apply/disjointP => z; set_tac. 
-
-  wlog s2'p2: p2 p3 s2 s3 ir2 ir3 ind12 ind23 ind31 s3Ip3 {q2 s2Ip2 s2'p23} s2'firstp23 / 
-              (s2' \in interior p2).
-  { move => W. case/orP: (s2'p23) => /= [s2'p2|s2'p3].
-    - by apply W with p2 p3 s3.
-    - apply W with p3 p2 s2 => //; try exact: independent_sym. 
-      move => z' H1 H2. apply s2'firstp23 => //. move: H1. by rewrite !inE orbC. }
+  wlog in_p1: p1 p2 s1 s2 ind01 ind02 ind12 sp1 sp2 {q2 s1'p12} s1'firstp12 / s1' \in interior p1.
+  { move => W. case/orP: (s1'p12) => /= [s1'p1|s1'p2].
+    - by apply W with p1 p2 s1 s2.
+    - apply W with p2 p1 s2 s1 => //. by apply: independent_sym.
+      move => z' H1 H2. apply s1'firstp12 => //. move: H1. by rewrite !inE orbC. }
   
   pose phi (i : K4) := match i with
                   | Ordinal 0 _ => [set x]
-                  | Ordinal 1 _ => interior p1 :|: interior q1
-                  | Ordinal 2 _ => interior p2
-                  | Ordinal 3 _ => y |: interior p3
+                  | Ordinal 1 _ => interior (p ord0) :|: interior q1
+                  | Ordinal 2 _ => interior p1
+                  | Ordinal 3 _ => y |: interior p2
                   | Ordinal p n => set0
                   end.
   suff: minor_rmap phi by apply minor_of_rmap.
   split.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn.
     + exists x. by set_tac.
-    + exists s1. by set_tac. 
-    + by exists s2'.
-    + exists s3. by set_tac.
+    + exists (s ord0). by rewrite inE Hs.
+    + by exists s1.
+    + exists y. by set_tac.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=.
     + exact: connected1.
     + case: (altP (interior q1 =P set0)) => [->|H].
-      * rewrite setU0. exact: connected_interior.
-      * apply: neighbor_connected; try exact: connected_interior.
+      * rewrite setU0. apply: connected_interior. exact: valP. 
+      * apply: neighbor_connected; try apply: connected_interior => //. exact: valP.
         exact: path_neighborL.
-    + exact: connected_interior.
-    + apply: neighbor_connected; [exact: connected1|exact: connected_interior|].
-      apply: path_neighborR => //; by set_tac.
+    + apply: connected_interior. exact: valP.
+    + apply: neighbor_connected; [exact: connected1|apply: connected_interior; exact: valP |].
+      apply: path_neighborR => //. exact: valP. all: by set_tac.
   - move => i j iNj. wlog iltj: i j {iNj} / i < j.
     { move => H. rewrite /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite disjoint_sym]; exact: H. }
@@ -794,16 +810,17 @@ Proof.
     + rewrite disjoints1. by rewrite /interior; set_tac.
     + rewrite disjoints1. by rewrite /interior; set_tac.
     + apply: disjointsU => //. apply/disjointP => z Z1 Z2. 
-      suff: z = s2' by move: Z1 Z2; rewrite /interior; set_tac.
-      apply: s2'firstp23. by rewrite inE /= Z2. exact: interiorW.
+      suff: z = s1' by move: Z1 Z2; rewrite /interior; set_tac.
+      apply: s1'firstp12. by rewrite inE /= Z2. exact: interiorW.
     + apply: disjointsU => //.
-      * rewrite disjoint_sym. apply: disjointsU => //. rewrite /interior. 
-        apply/disjointP; by set_tac.
+      * rewrite disjoint_sym. apply: disjointsU. 
+        -- rewrite /interior. apply/disjointP; by set_tac.
+        -- by rewrite disjoint_sym. 
       * rewrite disjoint_sym. apply: disjointsU.
         -- apply/disjointP. rewrite /interior. have: (y \in [set x; y]); by set_tac. 
         -- apply/disjointP => z Z1 Z2. 
-           suff: z = s2' by move: Z1 Z2; rewrite /interior; set_tac.
-           apply: s2'firstp23. by rewrite inE /= Z1. exact: interiorW.
+           suff: z = s1' by move: Z1 Z2; rewrite /interior; set_tac.
+           apply: s1'firstp12. by rewrite inE /= Z1. exact: interiorW.
     + rewrite disjoint_sym. apply: disjointsU. 
       * rewrite disjoints1 /interior. by set_tac.
       * by rewrite disjoint_sym.
@@ -811,14 +828,16 @@ Proof.
     { move => H. rewrite /edge_rel /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite neighborC]; exact: H. }
     destruct i as [m i]. destruct j as [n j].
+    (** Hints for automation *)
+    have [[[? ?] ?] ?] := (valP (p ord0),(Hs ord0),valP p1, valP p2).
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
     + apply: neighborUl. apply: path_neighborL => //; by set_tac.
     + apply: path_neighborL => //; by set_tac.
     + apply: neighborUr. apply: path_neighborL => //; by set_tac.
     + case: (altP (interior q1 =P set0)) => [E|H]. 
-      * rewrite E setU0. apply/neighborP; exists s1; exists s2'. split => //.
-        case/interior0E : E => //. apply: contraTneq ind12. 
-        by rewrite /independent; set_tac.
+      * rewrite E setU0. apply/neighborP; exists (s ord0); exists s1'. split => //.
+        case/interior0E : E => //. apply: contraTneq ind01. 
+        rewrite /independent; set_tac. 
       * rewrite neighborC. apply: neighborUr. exact: path_neighborR.
     + apply: neighborUl. rewrite neighborC. apply: neighborUl.
       apply: path_neighborR => //; by set_tac.
