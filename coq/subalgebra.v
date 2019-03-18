@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries sgraph minor multigraph skeleton.
+Require Import edone finite_quotient preliminaries path sgraph minor multigraph skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,6 +9,8 @@ Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
 Implicit Types (G H : graph) (U : sgraph) (T : forest).
+
+Open Scope implicit_scope.
 
 (** * Subalgebra of Tree-Width 2 Graphs *)
 
@@ -24,10 +26,10 @@ Lemma sdecomp_sskel (T : forest) (G : graph2) (B : T -> {set G}) :
 Proof.
   split. 
   - case => [D1 D2 D3]. split. split => //. 
-    + move => x y /= xy. apply: D2. by rewrite /= xy. 
+    + move => x y /= xy. apply: D2. by rewrite /edge_rel/= xy. 
     + case: (altP (g_in =P g_out :> skeleton G)) => E. 
       * case: (D1 g_in) => t Ht. exists t. by rewrite -E !Ht.
-      * suff: (g_in : sskeleton G) -- g_out by apply: D2. by rewrite /= E !eqxx.
+      * suff: (g_in : sskeleton G) -- g_out by apply: D2. by rewrite /edge_rel/= E !eqxx.
   - move => [[D1 D2 D3] C]. split => //= x y. case/or3P; first exact: D2.
     + case/and3P => ? /eqP E1 /eqP E2. by subst. 
     + case/and3P => ? /eqP E1 /eqP E2. subst. 
@@ -40,19 +42,19 @@ Lemma hom_eqL (V : finType) (e1 e2 : rel V) (G : sgraph) (h : V -> G)
   e1 =2 e2 ->
   @hom_s (SGraph e1_sym e1_irrefl) G h -> 
   @hom_s (SGraph e2_sym e2_irrefl) G h.
-Proof. move => E hom_h x y. rewrite /= -E. exact: hom_h. Qed.
+Proof. move => E hom_h x y. rewrite /edge_rel/= -E. exact: hom_h. Qed.
 
 
 Lemma skel_union_join (G1 G2 : graph) : sk_rel (union G1 G2) =2 @join_rel G1 G2.
 Proof.
   move => [x|x] [y|y] /=. 
-  - rewrite /sk_rel sum_eqE. 
+  - rewrite /edge_rel/= sum_eqE. 
     case: (boolP (x == y)) => //= E. apply/existsP/existsP. 
     + move => [[e|e]]; rewrite !inE //= !sum_eqE. by exists e; rewrite !inE.
     + move => [e] H. exists (inl e). by rewrite !inE /= !sum_eqE in H *. 
-  - apply: contraTF isT => /andP [_ /existsP [[e|e]]]; by rewrite !inE //= andbC.
-  - apply: contraTF isT => /andP [_ /existsP [[e|e]]]; by rewrite !inE //= andbC.
-  - rewrite /sk_rel sum_eqE. 
+  - apply: contraTF isT => /existsP [[e|e]]; by rewrite !inE //= andbC.
+  - apply: contraTF isT => /existsP [[e|e]]; by rewrite !inE //= andbC.
+  - rewrite /edge_rel/= sum_eqE. 
     case: (boolP (x == y)) => //= E. apply/existsP/existsP. 
     + move => [[e|e]]; rewrite !inE //= !sum_eqE. by exists e; rewrite !inE.
     + move => [e] H. exists (inr e). by rewrite !inE /= !sum_eqE in H *. 
@@ -98,7 +100,7 @@ Section Quotients.
       + apply: hom_eqL (pi_hom e). exact: skel_union_join.
       + exact: emb_surj.
       + move => x y. move/sk_rel_mergeE => [? [x0] [y0] /= [? ? ?]]. 
-        exists x0;exists y0. split => //. by rewrite -skel_union_join.
+        exists x0;exists y0. split => //. by rewrite /edge_rel/= -skel_union_join.
       + move => x y. move/eqmodP => /=. case/adm_e => [<-|A].
         * case: (sbag_cover dec_D' x) => t Ht. left. exists t. by rewrite Ht.
         * left. exists None. by rewrite /= -!sub1set -subUset. 

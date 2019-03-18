@@ -235,11 +235,6 @@ Admitted.
 End AddClique.
 *)
  
-
-
-
-Local Notation PATH G x y := (@Path G x y).
-
 (* TOTHINK: The assumption [s1 != s2] is redundant, but usually available. *)
 Lemma add_edge_break (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
   s1 != s2 ->

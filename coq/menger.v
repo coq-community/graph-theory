@@ -156,8 +156,6 @@ Qed.
 Lemma pathS_eta n (p : 'I_n -> pathS) i : p i = @PathS (fst (p i)) (lst (p i)) (tagged (p i)).
 Proof. by case: (p i) => [[x y] ri]. Qed.
 
-Notation PATHS x y p := (@PathS x y p).
-
 Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u : 
   reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
 Proof. 
@@ -201,7 +199,7 @@ Proof.
     rewrite !andbT. apply/edgeLP/idP => /=; last by right. case => [?|//]. 
     subst. by rewrite uB in xB. 
   - move => j1 j2. rewrite /q. 
-    have jP j : i != j -> [set x0 in pcatS (PATHS x y (edgep xy)) (p i)] :&: [set x0 in p j] = set0.
+    have jP j : i != j -> [set x0 in pcatS (PathS (edgep xy)) (p i)] :&: [set x0 in p j] = set0.
     { move => jDi. rewrite pathS_eta. subst y. rewrite pcatSE. 
       apply: contra_eq (conn_disjoint conn_p jDi). case/set0Pn => u /setIP []. 
       rewrite 2!inE /=. case/edgeLP => /= [-> Hx'|Hu ?]. 
@@ -383,9 +381,6 @@ Proof. apply: (iffP subsetP) => [S x y /(S (x,y)) //|S [x y]]. exact: S. Qed.
 
 
 Section DelEdge.
-
-Notation PATH G x y := (@Path G x y). 
-Notation IPATH G x y := (@IPath G x y). 
 
 Variable (G : diGraph) (a b : G).
 

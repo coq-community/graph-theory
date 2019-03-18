@@ -40,7 +40,7 @@ Lemma pathp_nil x y : pathp x y [::] -> x = y.
 Proof. by case/andP => _ /eqP. Qed.
 
 Lemma pathp_cons x y z p : 
-  pathp x y (z :: p) = x -- z && pathp z y p.
+  pathp x y (z :: p) = x -- z && pathp z y p. 
 Proof. by rewrite -cat1s pathp_cat {1}/pathp /= eqxx !andbT. Qed.
 
 Lemma pathp_rcons x y z p: pathp x y (rcons p z) -> y = z.
@@ -593,6 +593,14 @@ Section IPath.
 End IPath.
 
 End DiPathTheory.
+
+(** In some constructions a vertex can be typed as belonging to different
+graphs. This makes [Path x y] or [x -- y] insufficent for understanding the
+proofs *)
+
+Notation "x -- y :> G" := (@edge_rel G x y) (at level 30, y at next level) : implicit_scope.
+Notation "'PATH' G x y" := (@Path G x y) (at level 4) : implicit_scope.
+Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.
 
 (** Multigraphs as instance of digraphs *)
 

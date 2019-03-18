@@ -3,7 +3,7 @@ Require Import RelationClasses Morphisms Setoid Omega.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries.
-Require Import sgraph minor checkpoint cp_minor. 
+Require Import path sgraph minor checkpoint cp_minor. 
 Require Import multigraph subalgebra skeleton bounded.
 
 Set Implicit Arguments.
@@ -150,7 +150,7 @@ Proof.
   apply/equivalence_partition_gt1P.
   - move => x y z _ _ _. exact: (sedge_in_equiv (G := skeleton G)).
   - set H := sinterval _ _. apply: ssplit_K4_nontrivial (E) _ (D).
-    + by rewrite /=/sk_rel A.
+    + by rewrite /edge_rel/= A.
     + by case/and3P : B.
     + apply/eqP. apply: edgeless_bag => //=. 
       * apply: (@CP_extensive G); by rewrite !inE eqxx.
@@ -250,9 +250,9 @@ Lemma sskeleton_add (G : graph) (x y : G) :
 Proof.
   exists id => // u v uv _; move: u v uv. apply sskelP.
   - move=> u v. by rewrite sg_sym.
-  - move=> e sNt. rewrite /= -!val_eqE /=. apply/orP; left.
-    by rewrite /sk_rel sNt adjacent_edge.
-  - by rewrite /=/sk_rel -!val_eqE /= !eqxx => ->.
+  - move=> e sNt. rewrite /edge_rel /= -!val_eqE /=. apply/orP; left.
+    by rewrite /edge_rel/=/edge_rel/= sNt adjacent_edge.
+  - by rewrite /edge_rel/= -!val_eqE /= !eqxx => ->.
 Qed.
 
 Lemma CK4F_igraph (G : graph2) (x y : G) : 
@@ -283,13 +283,13 @@ Qed.
 induced subgraphs for multigraphs *)
 Lemma connected_induced (G : graph) (V : {set skeleton G}) : 
   connected V -> connected [set: skeleton (induced V)].
-Proof. 
+Proof.
   move => conV. apply: connectedTI => u v. 
   move: (conV (val u) (val v) (valP u) (valP v)). 
   case/upathPR => p /upathW.
   elim: p u => [?|a p IH u]. 
-  - move/spath_nil/val_inj ->. exact: connect0.
-  - rewrite spath_cons /= (lock sk_rel) -!andbA -lock => /and4P [A B C D].
+  - move/pathp_nil/val_inj ->. exact: connect0.
+  - rewrite pathp_cons /= (lock sk_rel) -!andbA -lock => /and5P [A B C D E].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
     apply: connect1. move: C. by rewrite /sk_rel -val_eqE adjacent_induced.
 Qed.
@@ -321,11 +321,11 @@ Proof.
   split; first exact: connected_induced.
   case: G_CK4F => _. apply: subgraph_K4_free.
   exists val; first exact: val_inj.
-  move=> x y xy _. move: xy. rewrite /= -!(inj_eq val_inj) /=.
+  move=> x y xy _. move: xy. rewrite /edge_rel/= -!(inj_eq val_inj) /=.
   case/or3P=> [xy|->|->] //. apply/orP. left.
   pattern x, y. revert x y xy.
-  apply skelP; first by move=> x y xy; rewrite sk_rel_sym.
-  move=> e. rewrite /sk_rel/= -!(inj_eq val_inj)/= => -> /=.
+  apply skelP; first by move=> x y xy; rewrite sgP.
+  move=> e. rewrite /edge_rel/= -!(inj_eq val_inj)/= => -> /=.
   exact: adjacent_edge.
 Qed.
 
@@ -389,7 +389,7 @@ Proof.
   have conn_iC : @connected G (g_in |: C).
   { apply: (@connectedU_edge G _ _ g_in z) => //.
     - by rewrite set11.
-    - rewrite /=/sk_rel Z2 andbT.
+    - rewrite /edge_rel/= Z2 andbT.
       move/(subsetP Csub) in Z1. by rewrite !inE eq_sym in Z1. 
     - apply: connected1.
     - apply: connected_in_components HC.  }
