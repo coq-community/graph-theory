@@ -823,6 +823,14 @@ Proof.
   by apply: connect1; rewrite /= !inE x_U y_V xy.
 Qed.
 
+Lemma path_in_connected (G:sgraph) (T : {set G}) x y : connected T -> x \in T -> y \in T ->
+  exists2 p : Path x y, irred p & p \subset T.
+Proof. 
+  move => C Hx Hy. 
+  case: (altP (x =P y)) => [?|D]. 
+  - subst y. exists (idp x); rewrite ?irred_idp //. apply/subsetP => A. by rewrite mem_idp => /eqP->.
+  - case/uPathRP : (C _ _ Hx Hy) => // p Ip Sp. by exists p.
+Qed.
 
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
   connected [set z in p].
