@@ -514,9 +514,19 @@ Proof.
   + move => ?. rewrite mem_path nodesE. exact: A2.
 Qed.
 
+Lemma irred_is_edge (x y : D) (p : Path x y) :
+  irred p -> x != y -> {subset p <= [set x;y]} -> exists xy : x -- y, p = edgep xy.
+Proof.
+  move => Ip xDy sub_xy. case: (splitL p xDy) => y' [xy'] [p' [def_p _]]. 
+  subst. move: Ip. rewrite irred_edgeL => /andP[xp' Ip'].
+  suff ? : y' = y. { subst. rewrite [p']irredxx // pcat_idR. by exists xy'. }
+  move/(_ y') : sub_xy. rewrite mem_pcat path_begin orbT !inE => /(_ isT). 
+  case/orP => /eqP ?; subst => //. by rewrite path_begin in xp'.
+Qed.
 
 End DiGraphTheory.
 
+Arguments irred_is_edge [D x y] p.
 
 Section DiPathTheory.
 Variable (G : diGraph).

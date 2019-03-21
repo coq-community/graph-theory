@@ -98,7 +98,8 @@ Lemma separatorP (A B S : {set G}) : reflect (separator A B S) (separatorb A B S
 Proof.
   rewrite /separatorb. apply: (iffP forall_inP) => [H|H a aA].
   - apply: separatorI => a b p Ip aA bB. 
-    move/(_ _ aA) : H => /forall_inP /(_ _ bB) /forallP /(_ (Sub p Ip)) /exists_inP [s sS in_p]. by exists s.
+    move/(_ _ aA) : H => /forall_inP /(_ _ bB) /forallP /(_ (Sub p Ip)) /exists_inP [s sS in_p]. 
+    by exists s.
   - apply/forall_inP => b bB. apply/forallP => [[p ?]]. apply/exists_inP. 
     case: (H a b p) => // s S1 S2. by exists s.
 Qed.
@@ -608,4 +609,80 @@ Proof.
     + move => Y'. rewrite [_ |: _](_ : _ = P) => [conn_xY|].
       * apply: connector_cat conn_X' conn_xY => //. by apply esym,card_S.
       * apply/setP => u. rewrite /Q setU1K //. by apply card_S.
+Qed.
+
+(** TOTHINK what is this a good definition for mathing on simple graphs? *)
+(* Record upair (T : finType) := UPair { upval :> {set T} ; _ : #|upval| == 2 }. *)
+(* Definition matching (G : sgraph) (M : {set {set G}}) := ??? *)
+
+
+(** ** Hall's Marriage Theorem *)
+
+(** This definition only makes sense on digraphs, where it enfoces all
+edges to go from [A] to [~: A]. The only simple graphs satisfying the
+definition are those without edges *)
+Definition bipartition (G : diGraph) (A : {set G}) :=
+  forall x y : G, x -- y -> (x \in A) * (y \in A = false).
+
+(** This only constitutes a matching if G is bipartite with uniformly directed edges *)
+Definition bimatching (G : diGraph) (M : {set G * G}) :=
+    (forall e, e \in M -> e.1 -- e.2) 
+  /\ {in M &, forall e1 e2, (e1.1 == e2.1) = (e1.2 == e2.2) }.
+
+Definition N (G : diGraph) (A : {set G}) := 
+  [set y in ~: A | [exists x in A, x -- y]].
+
+Lemma connectorC_edge (G : diGraph) (A : {set G}) (p : 'I_#|A| -> pathS G) i : 
+  connector A (~: A) p -> 
+  exists fl : fst (p i) -- lst (p i), p i = PathS (edgep fl).
+Proof.
+  move => conn_p. 
+  case def_q : (p i) => [[a b] /= q]. rewrite -/(PathS q) in def_q *.
+  case: (irred_is_edge q). 
+  - move: (conn_irred conn_p i). by rewrite def_q.
+  - case: (altP (a =P b)) => // ?; subst. 
+    move: (connector_fst conn_p i) (connector_lst conn_p i). 
+    by rewrite def_q !inE => ->.
+  - move => z zq. rewrite !inE. case: (boolP (z \in A)) => [zA|zNA].
+    + by rewrite [z](connector_left conn_p (i := i)) ?def_q // eqxx.
+    + by rewrite {2}[z](connector_right conn_p (i := i)) ?def_q ?inE // eqxx.
+  - move => ab ->. by exists ab.
+Qed.
+    
+Theorem Hall (G : diGraph) A : 
+  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+  exists M, bimatching M /\ A = [set x.1 | x in M].
+Proof.
+  move => bip_A N_A. 
+  have sep_A S : separator G A (~:A) S -> #|A| <= #|S|.
+  { move => sep_S. 
+    rewrite -[#|A|](cardsID S). 
+    apply: (@leq_trans (#|A :&: S| + #|N (A :\: S)|)).
+    - by rewrite leq_add2l N_A // subsetDl.
+    - rewrite -[#|S|](cardsID A) setIC leq_add2l. apply: subset_leq_card.
+      rewrite subsetD [X in X && _](_ : _ = true) //=.
+      + apply/disjointP => z. rewrite !inE => /andP [_ /exists_inP [x /setDP [_ _ xz]]].
+        apply/negP. by rewrite (bip_A _ _ xz).
+      + apply/subsetP => z. rewrite !inE => /andP [H /exists_inP [x] /setDP [xA xNS xz]].
+        case: (boolP (z \in S)) H => //= zNS zNA. 
+        move: (sep_S _ _ (edgep xz)). rewrite inE xA zNA. case => // s sS.
+        rewrite mem_edgep => /orP[]/eqP ?; subst; by contrab.
+  }
+  case: (Menger sep_A) => p con_p. 
+  pose M := [set (fst (p i),lst (p i)) | i : 'I_#|A| ].
+  exists M. split.
+  - split.
+    + move => e. case/imsetP => i _ -> /=. 
+      by case: (connectorC_edge i con_p).
+    + move => [a b] [a' b'] /imsetP [i _ [-> ->]] /imsetP [j _ [-> ->]] /=. 
+      case: (altP (i =P j)) => [<-|iDj]; first by rewrite !eqxx.
+      apply/eqP/eqP;[move/fst_inj|move/lst_inj]; move/(_ _ _ con_p) => ?; by subst.
+  - apply/setP => a. apply/idP/imsetP => [inA|[x]].
+    + move: (inj_card_onto_pred (f := fun i => fst (p i)) (P := (mem A))) => /=.
+      case/(_ _ _ _ _ inA)/Wrap => //. 
+      * apply: fst_inj con_p. 
+      * apply: connector_fst con_p.
+      * by rewrite card_ord.
+      * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
+    + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
 Qed.
