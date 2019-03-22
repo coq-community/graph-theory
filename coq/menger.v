@@ -618,11 +618,29 @@ Qed.
 
 (** ** Hall's Marriage Theorem *)
 
+Definition bipartition (G : diGraph) (A : {set G}) :=
+  forall x y : G, x -- y -> (x \in A) = (y \notin A).
+
+Definition edges (G : sgraph) := [set [set x;y] | x in G, y in G & x -- y].
+
+Lemma edgesP (G : sgraph) (e : {set G}) : 
+  reflect (exists x y, e = [set x;y] /\ x -- y) (e \in edges G).
+Proof.
+  apply: (iffP imset2P) => [[x y]|[x] [y] [E xy]].
+  - rewrite !inE /= => _ xy ->. by exists x; exists y.
+  - exists x y => //. by rewrite inE.
+Qed.
+
+Definition matching (G : sgraph) (M : {set {set G}}) := 
+  {subset M <= edges G} /\ {in M&, forall (e1 e2 : {set G}) (x:G), x \in e1 -> x \in e2 -> e1 = e2}.
+
+
 (** This definition only makes sense on digraphs, where it enfoces all
 edges to go from [A] to [~: A]. The only simple graphs satisfying the
 definition are those without edges *)
-Definition bipartition (G : diGraph) (A : {set G}) :=
+Definition dipartition (G : diGraph) (A : {set G}) :=
   forall x y : G, x -- y -> (x \in A) * (y \in A = false).
+
 
 (** This only constitutes a matching if G is bipartite with uniformly directed edges *)
 Definition bimatching (G : diGraph) (M : {set G * G}) :=
@@ -649,8 +667,8 @@ Proof.
   - move => ab ->. by exists ab.
 Qed.
     
-Theorem Hall (G : diGraph) A : 
-  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+Theorem Hall' (G : diGraph) A : 
+  dipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
   exists M, bimatching M /\ A = [set x.1 | x in M].
 Proof.
   move => bip_A N_A. 
@@ -685,4 +703,47 @@ Proof.
       * by rewrite card_ord.
       * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
     + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
+Qed.
+
+Definition direct_out (G : sgraph) (A : {set G}) := 
+  DiGraph [rel x y | (x -- y) && (x \in A)].
+
+Definition matching_of (G : diGraph) (M' : {set G * G}) := 
+  [set [set e.1;e.2] | e in M'].
+
+Lemma matching_of_bimatching (G : sgraph) (A : {set G}) M : 
+  bipartition A ->
+  @bimatching (direct_out A) M -> matching (matching_of M).
+Proof.
+  move => bip_A [M1 M2]. split.  
+  - move => e. case/imsetP => x /M1 /andP[? ?] ?. apply/edgesP. by exists x.1; exists x.2. 
+  - move => e1 e2 /imsetP [x X1 X2] /imsetP [y Y1 Y2] z. subst e1 e2. 
+    gen have D,Dx : x y X1 Y1 / x.1 != y.2. 
+    { case/andP : (M1 _ X1) => /bip_A _ H2. case/andP : (M1 _ Y1) => /bip_A H3 H4. 
+      apply: contraTneq (H4) => Eq. by rewrite H3 -Eq negbK. }
+    case/set2P => ->. 
+    + rewrite !inE (negbTE Dx) orbF => H. rewrite (eqP H). 
+      rewrite M2 // in H. by rewrite (eqP H).
+    + rewrite !inE eq_sym (negbTE (D _ _ _ _)) //= => H. 
+      rewrite (eqP H). rewrite -M2 // in H. by rewrite (eqP H).
+Qed.
+
+Theorem Hall (G : sgraph) A : 
+  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+  exists M, matching M /\ A \subset cover M.
+Proof.
+  move => bip_A N_A.
+  pose E (x y : G) := x -- y && (x \in A).
+  pose G' := DiGraph E.
+  case: (@Hall' G' A) => [||M' [M1 M2]].
+  - move => x y /andP [xy xA]. by rewrite (bip_A y x) ?xA // sgP.
+  - move => S S_in_A. apply: leq_trans (N_A _ S_in_A) _. apply: subset_leq_card.
+    apply/subsetP => y. 
+    rewrite !inE {2}/edge_rel/= => /andP [yS /exists_inP [x xS xy]].
+    rewrite yS /=. apply/exists_inP. exists x => //. rewrite /E xy /=. 
+    exact:(subsetP S_in_A).
+  - case: M1 => M1 M1'. exists (matching_of M'). 
+    split; first exact: matching_of_bimatching.
+    rewrite M2. apply/subsetP => a. case/imsetP => e E1 E2. apply/bigcupP. 
+    exists [set e.1; e.2]; last by rewrite E2 !inE eqxx. exact: mem_imset.
 Qed.
