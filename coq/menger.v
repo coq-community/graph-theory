@@ -24,6 +24,12 @@ Definition lst (p : pathS) := (tag p).2.
 Arguments fst _ /.
 Arguments lst _ /.
 
+Lemma fst_mem (p : pathS) : fst p \in p.
+Proof. case: p => [[x y] p] /=. exact: path_begin. Qed.
+
+Lemma lst_mem (p : pathS) : lst p \in p.
+Proof. case: p => [[x y] p] /=. exact: path_end. Qed.
+
 (** TOTHINK: [conn_disjoint] could also be expressed as [x \in p i -> x \in p j ->  i = j] *)
 (** NOTE: Unlike the definition of Göring, we do not allow single edge paths inside [A :&: B] *)
 Record connector (A B : {set G}) n (p : 'I_n -> pathS) : Prop := 
@@ -78,6 +84,12 @@ Proof.
   by rewrite !inE Hi Hj.
 Qed.
 
+Lemma fst_lst_eq i j : fst (p i) = lst (p j) -> i = j.
+Proof.
+  move => E. apply: (connector_eq (x := fst (p i))); first exact: fst_mem.
+  by rewrite E lst_mem.
+Qed.
+
 End ConnectorTheory.
 
 Definition separator (A B S : {set G}) :=
@@ -114,12 +126,6 @@ Qed.
 Lemma separator_min A B S : 
   separator A B S -> #|A :&: B| <= #|S|.
 Proof. move/separator_cap. exact: subset_leq_card. Qed.
-
-Lemma fst_mem (p : pathS) : fst p \in p.
-Proof. case: p => [[x y] p] /=. exact: path_begin. Qed.
-
-Lemma lst_mem (p : pathS) : lst p \in p.
-Proof. case: p => [[x y] p] /=. exact: path_end. Qed.
 
 Lemma fst_inj A B n (p : 'I_n -> pathS) : 
   connector A B p -> injective (fst \o p).
@@ -618,8 +624,21 @@ Qed.
 
 (** ** Hall's Marriage Theorem *)
 
+(** Neighboorhoods and bipartitions are the same for digraphs and simple graphs *)
+
+Definition N (G : diGraph) (A : {set G}) := 
+  [set y in ~: A | [exists x in A, x -- y]].
+
 Definition bipartition (G : diGraph) (A : {set G}) :=
   forall x y : G, x -- y -> (x \in A) = (y \notin A).
+
+(** The (natural) notion of a matching on digraphs - a set of ordered
+pairs - is not a resonable notion of matching on simple graphs, where
+we should use unordered pairs. Hence, we have two separate definitions *)
+
+Definition dimatching (G : diGraph) (M : {set G * G}) :=
+    (forall e, e \in M -> e.1 -- e.2) 
+  /\ {in M &, forall e1 e2 x, x \in [set e1.1;e1.2] -> x \in [set e2.1 ; e2.2] -> e1 = e2}.
 
 Definition edges (G : sgraph) := [set [set x;y] | x in G, y in G & x -- y].
 
@@ -632,23 +651,8 @@ Proof.
 Qed.
 
 Definition matching (G : sgraph) (M : {set {set G}}) := 
-  {subset M <= edges G} /\ {in M&, forall (e1 e2 : {set G}) (x:G), x \in e1 -> x \in e2 -> e1 = e2}.
-
-
-(** This definition only makes sense on digraphs, where it enfoces all
-edges to go from [A] to [~: A]. The only simple graphs satisfying the
-definition are those without edges *)
-Definition dipartition (G : diGraph) (A : {set G}) :=
-  forall x y : G, x -- y -> (x \in A) * (y \in A = false).
-
-
-(** This only constitutes a matching if G is bipartite with uniformly directed edges *)
-Definition bimatching (G : diGraph) (M : {set G * G}) :=
-    (forall e, e \in M -> e.1 -- e.2) 
-  /\ {in M &, forall e1 e2, (e1.1 == e2.1) = (e1.2 == e2.2) }.
-
-Definition N (G : diGraph) (A : {set G}) := 
-  [set y in ~: A | [exists x in A, x -- y]].
+  {subset M <= edges G} /\ 
+  {in M&, forall (e1 e2 : {set G}) (x:G), x \in e1 -> x \in e2 -> e1 = e2}.
 
 Lemma connectorC_edge (G : diGraph) (A : {set G}) (p : 'I_#|A| -> pathS G) i : 
   connector A (~: A) p -> 
@@ -667,34 +671,33 @@ Proof.
   - move => ab ->. by exists ab.
 Qed.
     
-Theorem Hall' (G : diGraph) A : 
-  dipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
-  exists M, bimatching M /\ A = [set x.1 | x in M].
+Theorem diHall (G : diGraph) A : 
+  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+  exists M, dimatching M /\ A = [set x.1 | x in M].
 Proof.
   move => bip_A N_A. 
   have sep_A S : separator G A (~:A) S -> #|A| <= #|S|.
-  { move => sep_S. 
-    rewrite -[#|A|](cardsID S). 
+  { move => sep_S. rewrite -[#|A|](cardsID S). 
     apply: (@leq_trans (#|A :&: S| + #|N (A :\: S)|)).
     - by rewrite leq_add2l N_A // subsetDl.
-    - rewrite -[#|S|](cardsID A) setIC leq_add2l. apply: subset_leq_card.
-      rewrite subsetD [X in X && _](_ : _ = true) //=.
-      + apply/disjointP => z. rewrite !inE => /andP [_ /exists_inP [x /setDP [_ _ xz]]].
-        apply/negP. by rewrite (bip_A _ _ xz).
-      + apply/subsetP => z. rewrite !inE => /andP [H /exists_inP [x] /setDP [xA xNS xz]].
-        case: (boolP (z \in S)) H => //= zNS zNA. 
-        move: (sep_S _ _ (edgep xz)). rewrite inE xA zNA. case => // s sS.
-        rewrite mem_edgep => /orP[]/eqP ?; subst; by contrab.
-  }
+    - rewrite -cardsUI [X in _ + X]eq_card0 ?addn0.
+      + apply: subset_leq_card. rewrite subUset subsetIr.
+        apply/subsetP => z. rewrite !inE negb_and negbK. case: (boolP (z \in S)) => //=.
+        move => zS /andP [zA /exists_inP [x /setDP [xA xS] xz]]. 
+        move: (sep_S _ _ (edgep xz)). rewrite xA inE zA. case => // s sS. 
+        rewrite mem_edgep => /orP[]/eqP ?; subst; by contrab. 
+      + move => z. rewrite !inE. case: (boolP (z \in A)) => //=. 
+        apply: contraTF => /and3P[_ _ /exists_inP [x /setDP [xA xS] xz]]. 
+        by rewrite -(bip_A _ _ xz). }
   case: (Menger sep_A) => p con_p. 
   pose M := [set (fst (p i),lst (p i)) | i : 'I_#|A| ].
   exists M. split.
   - split.
     + move => e. case/imsetP => i _ -> /=. 
       by case: (connectorC_edge i con_p).
-    + move => [a b] [a' b'] /imsetP [i _ [-> ->]] /imsetP [j _ [-> ->]] /=. 
-      case: (altP (i =P j)) => [<-|iDj]; first by rewrite !eqxx.
-      apply/eqP/eqP;[move/fst_inj|move/lst_inj]; move/(_ _ _ con_p) => ?; by subst.
+    + move => [a b] [a' b'] /imsetP [i _ [-> ->]] /imsetP [j _ [-> ->]] /= x /set2P [->|->]. 
+      * case/set2P; by [move/(fst_inj con_p) -> | move/(fst_lst_eq con_p) ->]. 
+      * case/set2P; by [move/(lst_inj con_p) -> | move/esym/(fst_lst_eq con_p) ->].
   - apply/setP => a. apply/idP/imsetP => [inA|[x]].
     + move: (inj_card_onto_pred (f := fun i => fst (p i)) (P := (mem A))) => /=.
       case/(_ _ _ _ _ inA)/Wrap => //. 
@@ -705,43 +708,23 @@ Proof.
     + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
 Qed.
 
-Definition direct_out (G : sgraph) (A : {set G}) := 
-  DiGraph [rel x y | (x -- y) && (x \in A)].
-
 Definition matching_of (G : diGraph) (M' : {set G * G}) := 
   [set [set e.1;e.2] | e in M'].
 
 Lemma matching_of_bimatching (G : sgraph) (A : {set G}) M : 
-  bipartition A ->
-  @bimatching (direct_out A) M -> matching (matching_of M).
+  dimatching M -> @matching G (matching_of M).
 Proof.
-  move => bip_A [M1 M2]. split.  
-  - move => e. case/imsetP => x /M1 /andP[? ?] ?. apply/edgesP. by exists x.1; exists x.2. 
-  - move => e1 e2 /imsetP [x X1 X2] /imsetP [y Y1 Y2] z. subst e1 e2. 
-    gen have D,Dx : x y X1 Y1 / x.1 != y.2. 
-    { case/andP : (M1 _ X1) => /bip_A _ H2. case/andP : (M1 _ Y1) => /bip_A H3 H4. 
-      apply: contraTneq (H4) => Eq. by rewrite H3 -Eq negbK. }
-    case/set2P => ->. 
-    + rewrite !inE (negbTE Dx) orbF => H. rewrite (eqP H). 
-      rewrite M2 // in H. by rewrite (eqP H).
-    + rewrite !inE eq_sym (negbTE (D _ _ _ _)) //= => H. 
-      rewrite (eqP H). rewrite -M2 // in H. by rewrite (eqP H).
+  move => [M1 M2]. split.  
+  - move => e. case/imsetP => x /M1 ? ?. apply/edgesP. by exists x.1; exists x.2. 
+  - move => e1 e2 /imsetP [x X1 X2] /imsetP [y Y1 Y2] z. subst e1 e2.  
+    move => Z1 Z2. by rewrite (M2 x y X1 Y1 z Z1 Z2).
 Qed.
 
 Theorem Hall (G : sgraph) A : 
   bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
   exists M, matching M /\ A \subset cover M.
 Proof.
-  move => bip_A N_A.
-  pose E (x y : G) := x -- y && (x \in A).
-  pose G' := DiGraph E.
-  case: (@Hall' G' A) => [||M' [M1 M2]].
-  - move => x y /andP [xy xA]. by rewrite (bip_A y x) ?xA // sgP.
-  - move => S S_in_A. apply: leq_trans (N_A _ S_in_A) _. apply: subset_leq_card.
-    apply/subsetP => y. 
-    rewrite !inE {2}/edge_rel/= => /andP [yS /exists_inP [x xS xy]].
-    rewrite yS /=. apply/exists_inP. exists x => //. rewrite /E xy /=. 
-    exact:(subsetP S_in_A).
+  move => bip_A N_A. case: (@diHall G A) => [//|//|M' [M1 M2]].
   - case: M1 => M1 M1'. exists (matching_of M'). 
     split; first exact: matching_of_bimatching.
     rewrite M2. apply/subsetP => a. case/imsetP => e E1 E2. apply/bigcupP. 
