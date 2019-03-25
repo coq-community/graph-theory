@@ -654,7 +654,7 @@ Definition matching (G : sgraph) (M : {set {set G}}) :=
   {subset M <= edges G} /\ 
   {in M&, forall (e1 e2 : {set G}) (x:G), x \in e1 -> x \in e2 -> e1 = e2}.
 
-Lemma connectorC_edge (G : diGraph) (A : {set G}) (p : 'I_#|A| -> pathS G) i : 
+Lemma connectorC_edge (G : diGraph) (A : {set G}) n (p : 'I_n -> pathS G) i : 
   connector A (~: A) p -> 
   exists fl : fst (p i) -- lst (p i), p i = PathS (edgep fl).
 Proof.
@@ -669,6 +669,27 @@ Proof.
     + by rewrite [z](connector_left conn_p (i := i)) ?def_q // eqxx.
     + by rewrite {2}[z](connector_right conn_p (i := i)) ?def_q ?inE // eqxx.
   - move => ab ->. by exists ab.
+Qed.
+
+Definition dimatching_of (G : diGraph) n (p : 'I_n -> pathS G) := 
+  [set (fst (p i),lst (p i)) | i : 'I_n].
+
+Lemma connector_dimatching (G : diGraph) (A : {set G} ) n (p : 'I_n -> pathS G) :
+  connector A (~:A) p -> dimatching (dimatching_of p).
+Proof. 
+  move => con_p. split.
+  + move => e. case/imsetP => i _ -> /=. 
+    by case: (connectorC_edge i con_p).
+  + move => [a b] [a' b'] /imsetP [i _ [-> ->]] /imsetP [j _ [-> ->]] /= x /set2P [->|->]. 
+    * case/set2P; by [move/(fst_inj con_p) -> | move/(fst_lst_eq con_p) ->]. 
+    * case/set2P; by [move/(lst_inj con_p) -> | move/esym/(fst_lst_eq con_p) ->].
+Qed.
+
+Lemma card_dimatching_of (G : diGraph) A B n (p : 'I_n -> pathS G) :
+  connector A B p -> #|dimatching_of p| = n.
+Proof.
+  move => con_p. rewrite /dimatching_of card_imset ?card_ord // => i j.
+  case. by move/(fst_inj con_p).
 Qed.
     
 Theorem diHall (G : diGraph) A : 
@@ -689,23 +710,17 @@ Proof.
       + move => z. rewrite !inE. case: (boolP (z \in A)) => //=. 
         apply: contraTF => /and3P[_ _ /exists_inP [x /setDP [xA xS] xz]]. 
         by rewrite -(bip_A _ _ xz). }
-  case: (Menger sep_A) => p con_p. 
-  pose M := [set (fst (p i),lst (p i)) | i : 'I_#|A| ].
-  exists M. split.
-  - split.
-    + move => e. case/imsetP => i _ -> /=. 
-      by case: (connectorC_edge i con_p).
-    + move => [a b] [a' b'] /imsetP [i _ [-> ->]] /imsetP [j _ [-> ->]] /= x /set2P [->|->]. 
-      * case/set2P; by [move/(fst_inj con_p) -> | move/(fst_lst_eq con_p) ->]. 
-      * case/set2P; by [move/(lst_inj con_p) -> | move/esym/(fst_lst_eq con_p) ->].
-  - apply/setP => a. apply/idP/imsetP => [inA|[x]].
-    + move: (inj_card_onto_pred (f := fun i => fst (p i)) (P := (mem A))) => /=.
-      case/(_ _ _ _ _ inA)/Wrap => //. 
-      * apply: fst_inj con_p. 
-      * apply: connector_fst con_p.
-      * by rewrite card_ord.
-      * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
-    + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
+  case: (Menger sep_A) => p con_p. clear sep_A bip_A.
+  (* pose M := [set (fst (p i),lst (p i)) | i : 'I_#|A| ]. *)
+  exists (dimatching_of p). split; first exact: connector_dimatching con_p.
+  apply/setP => a. apply/idP/imsetP => [inA|[x]].
+  + move: (inj_card_onto_pred (f := fun i => fst (p i)) (P := (mem A))) => /=.
+    case/(_ _ _ _ _ inA)/Wrap => //. 
+    * apply: fst_inj con_p. 
+    * apply: connector_fst con_p.
+    * by rewrite card_ord.
+    * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
+  + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
 Qed.
 
 Definition matching_of (G : diGraph) (M' : {set G * G}) := 
@@ -719,6 +734,14 @@ Proof.
   - move => e1 e2 /imsetP [x X1 X2] /imsetP [y Y1 Y2] z. subst e1 e2.  
     move => Z1 Z2. by rewrite (M2 x y X1 Y1 z Z1 Z2).
 Qed.
+
+Lemma card_matching_of (G : diGraph) (M : {set G * G}) : 
+  dimatching M -> #|matching_of M| = #|M|.
+Proof.
+  move => [? dim_M]. rewrite /matching_of card_in_imset //.
+  move => e1 e2 /= inM1 inM2 E. apply dim_M with e1.1 => //.
+  all: by rewrite -?E !inE eqxx.
+Qed. 
 
 Theorem Hall (G : sgraph) A : 
   bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
@@ -739,29 +762,100 @@ Variables (G : sgraph) (V :{set G}).
 (* Definition vcover := forall x y, x -- y -> (x \in V) \/ (y \in V). *)
 Definition vcover := [forall x, forall (y | x -- y), (x \in V) || (y \in V)].
 
-Lemma vcover_edge (x y : G) : x -- y -> (x \in V) \/ (y \in V).
+Lemma vcoverP : reflect (forall x y, x -- y -> (x \in V) \/ (y \in V)) vcover.
 Admitted.
+
+Lemma vcover_edge : vcover -> forall (x y : G), x -- y -> (x \in V) \/ (y \in V).
+Admitted.
+
+(** The [x0] is needed to ensure that [G] is inhabited. 
+    Otherwise, [{set G} -> G] is empty as well. *)
+Lemma matching_cover_map (x0 : G) M :
+  matching M -> vcover -> 
+  exists2 f : {set G} -> G, (forall e : {set G}, e \in M -> f e \in V :&: e) & {in M&, injective f}.
+Proof.
+  move => [M1 M2] cover_V.
+  pose f (A : {set G}) := if [pick x | x \in V :&: A] is Some x then x else x0.
+  have fP e : e \in M -> f e \in V :&: e.
+  { move/M1. case/edgesP => x [y] [E xy]. 
+    rewrite /f. case: pickP => [//|]. 
+    case/(vcover_edge cover_V) : xy => xV; 
+    [move/(_ x)|move/(_ y)]; by rewrite E !inE xV eqxx ?orbT. }
+  exists f => // e1 e2 eM1 eM2. 
+  move: (eM1) (eM2) => /fP [/setIP [V1 E1]] /fP [/setIP [V2 E2]] E.
+  apply M2 with (f e1) => //. by rewrite E.
+Qed.
 
 Lemma cover_matching (M :{set {set G}}) : 
   matching M -> vcover -> #|M| <= #|V|.
 Proof.
   move => [M1 M2] cover_V.
-  wlog [x0] : / inhabited G. (* needed to totalize f below *)
+  wlog [x0] : / inhabited G.
   { move => W. case: (set_0Vmem M) => [->|[e /M1]]; first by rewrite cards0.
     case/edgesP => x _. exact: W. }
-  pose f (A : {set G}) := if [pick x | x \in V :&: A] is Some x then x else x0.
-  have fP e : e \in M -> exists2 x, f e = x & x \in V :&: e.
-  { move/M1. case/edgesP => x [y] [E xy]. 
-    rewrite /f. case: pickP => [z|]; first by exists z.
-    case/vcover_edge : xy => xV; 
-      [move/(_ x)|move/(_ y)]; by rewrite E !inE xV eqxx ?orbT. }
-  have f_V e : e \in M -> f e \in V by case/fP => x <- /setIP [].
-  have f_inj : {in M&, injective f}. 
-  { move => e1 e2 eM1 eM2. 
-    move: (eM1) (eM2) => /fP [x1 eq1 /setIP [V1 E1]] /fP [x2 eq2 /setIP [V2 E2]].
-    rewrite eq1 eq2 => X. apply M2 with x1 => //. by rewrite X. }
-  rewrite -(card_in_image f_inj). apply: subset_leq_card.
+  case: (matching_cover_map x0 (conj M1 M2) cover_V) => f F1 F2.
+  have f_V e : e \in M -> f e \in V by move/F1 => /setIP[].
+  rewrite -(card_in_image F2). apply: subset_leq_card.
   apply/subsetP => y /mapP [x Hx ->]. apply: f_V. by rewrite mem_enum in Hx.
 Qed.
 
+(** If #|M| = #|V|, then the injective function from M to V must indeed be surjective *)
+
 End vcover.
+
+Prenex Implicits vcover.
+
+Lemma bip_separation_vcover (G : sgraph) (A S : {set G}) : 
+  bipartition A -> separator G A (~: A) S -> vcover S.
+Proof.
+  move => bip_A sep_S. apply/vcoverP => x y xy.
+  wlog/andP [xA yNA] : x y xy / (x \in A) && (y \notin A). 
+  { move: (bip_A x y xy). case: (boolP (y \in A)) => /= yA xA; last by apply.
+    rewrite or_comm. apply; by rewrite 1?sgP ?xA ?yA. }
+  move: (sep_S _ _ (edgep xy)). rewrite xA inE yNA. case => // s sS. 
+  rewrite mem_edgep => /orP [/eqP<-|/eqP<-]; by tauto.
+Qed.
+
+(* TODO: use [smallest] / [largest] *)
+Lemma min_vcover_matching (G : sgraph) (A V : {set G}) : 
+  bipartition A -> vcover V -> (forall V' : {set G}, vcover V' -> #|V| <= #|V'|) ->
+  exists2 M, @matching G M & #|V| = #|M|.
+Proof.
+  move => bip_A cover_V min_V. 
+  have sep_A S : separator G A (~:A) S -> #|V| <= #|S|.
+  { move/bip_separation_vcover => /(_ bip_A). exact: min_V. }
+  case: (Menger sep_A) => p conn_p. 
+  move/connector_dimatching : (conn_p) => dim_M.
+  exists (matching_of (dimatching_of p)). exact: matching_of_bimatching.
+  by rewrite card_matching_of // (card_dimatching_of conn_p).
+Qed.
+
+Theorem Konig (G : sgraph) (A V : {set G}) (M : {set {set G}}) : 
+  bipartition A -> 
+  vcover V -> (forall V' : {set G}, vcover V' -> #|V| <= #|V'|) ->
+  matching M -> (forall M' : {set {set G}}, matching M -> #|M'| <= #|M|) ->
+  #|V| = #|M|.
+Proof.
+  move => bip_A cov_V min_V match_M max_M. apply/eqP.
+  rewrite eqn_leq cover_matching // andbT.
+  case: (min_vcover_matching bip_A cov_V min_V) => M' H ->. exact: max_M.
+Qed.
+
+Lemma min_max_cover (G : sgraph) (V : {set G}) (M : {set {set G}}) :  
+  vcover V -> matching M -> #|M| = #|V| -> V \subset cover M.
+Proof.
+  move => cov_V match_V MV. 
+  wlog [x0] : / inhabited G.
+  { move => W. case: (set_0Vmem V) => [-> //|[x _]]; first by rewrite sub0set.
+    exact: W. }
+  case: (matching_cover_map x0 match_V cov_V) => f F1 F2.
+  pose f' (e : { e | e \in M}) := f (val e).
+  have inj_f' : injective f'. 
+  { case => e1 M1. case => e2 M2. rewrite /f' /= => E. 
+    apply/eqP. change (e1 == e2). by rewrite (F2 _ _ M1 M2 E). }
+  move: (inj_card_onto_pred (P := (mem V)) inj_f') => /=. case/(_ _ _)/Wrap.
+  - case => e inM. by case/setIP : (F1 _ inM).
+  - by rewrite card_sig. 
+  - move => X. apply/subsetP => v vV. case/mapP : (X _ vV) => /= [[e inM] _ E].
+    apply/bigcupP. exists e => //. rewrite E /f' /=. by case/setIP : (F1 _ inM).
+Qed. 
