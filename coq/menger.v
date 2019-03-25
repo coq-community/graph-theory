@@ -730,3 +730,38 @@ Proof.
     rewrite M2. apply/subsetP => a. case/imsetP => e E1 E2. apply/bigcupP. 
     exists [set e.1; e.2]; last by rewrite E2 !inE eqxx. exact: mem_imset.
 Qed.
+
+(** ** König's Theorem *)
+
+Section vcover.
+Variables (G : sgraph) (V :{set G}).
+
+(* Definition vcover := forall x y, x -- y -> (x \in V) \/ (y \in V). *)
+Definition vcover := [forall x, forall (y | x -- y), (x \in V) || (y \in V)].
+
+Lemma vcover_edge (x y : G) : x -- y -> (x \in V) \/ (y \in V).
+Admitted.
+
+Lemma cover_matching (M :{set {set G}}) : 
+  matching M -> vcover -> #|M| <= #|V|.
+Proof.
+  move => [M1 M2] cover_V.
+  wlog [x0] : / inhabited G. (* needed to totalize f below *)
+  { move => W. case: (set_0Vmem M) => [->|[e /M1]]; first by rewrite cards0.
+    case/edgesP => x _. exact: W. }
+  pose f (A : {set G}) := if [pick x | x \in V :&: A] is Some x then x else x0.
+  have fP e : e \in M -> exists2 x, f e = x & x \in V :&: e.
+  { move/M1. case/edgesP => x [y] [E xy]. 
+    rewrite /f. case: pickP => [z|]; first by exists z.
+    case/vcover_edge : xy => xV; 
+      [move/(_ x)|move/(_ y)]; by rewrite E !inE xV eqxx ?orbT. }
+  have f_V e : e \in M -> f e \in V by case/fP => x <- /setIP [].
+  have f_inj : {in M&, injective f}. 
+  { move => e1 e2 eM1 eM2. 
+    move: (eM1) (eM2) => /fP [x1 eq1 /setIP [V1 E1]] /fP [x2 eq2 /setIP [V2 E2]].
+    rewrite eq1 eq2 => X. apply M2 with x1 => //. by rewrite X. }
+  rewrite -(card_in_image f_inj). apply: subset_leq_card.
+  apply/subsetP => y /mapP [x Hx ->]. apply: f_V. by rewrite mem_enum in Hx.
+Qed.
+
+End vcover.
