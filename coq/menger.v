@@ -7,6 +7,10 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
 
+(** * Menger's Theorem *)
+
+(** ** Separators and Connectors *)
+
 Section Connector.
 Variables (G : diGraph).
 Implicit Types (x y : G) (A B S : {set G}).
@@ -617,11 +621,6 @@ Proof.
       * apply/setP => u. rewrite /Q setU1K //. by apply card_S.
 Qed.
 
-(** TOTHINK what is this a good definition for mathing on simple graphs? *)
-(* Record upair (T : finType) := UPair { upval :> {set T} ; _ : #|upval| == 2 }. *)
-(* Definition matching (G : sgraph) (M : {set {set G}}) := ??? *)
-
-
 (** ** Hall's Marriage Theorem *)
 
 (** Neighboorhoods and bipartitions are the same for digraphs and simple graphs *)
@@ -691,37 +690,6 @@ Proof.
   move => con_p. rewrite /dimatching_of card_imset ?card_ord // => i j.
   case. by move/(fst_inj con_p).
 Qed.
-    
-Theorem diHall (G : diGraph) A : 
-  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
-  exists M, dimatching M /\ A = [set x.1 | x in M].
-Proof.
-  move => bip_A N_A. 
-  have sep_A S : separator G A (~:A) S -> #|A| <= #|S|.
-  { move => sep_S. rewrite -[#|A|](cardsID S). 
-    apply: (@leq_trans (#|A :&: S| + #|N (A :\: S)|)).
-    - by rewrite leq_add2l N_A // subsetDl.
-    - rewrite -cardsUI [X in _ + X]eq_card0 ?addn0.
-      + apply: subset_leq_card. rewrite subUset subsetIr.
-        apply/subsetP => z. rewrite !inE negb_and negbK. case: (boolP (z \in S)) => //=.
-        move => zS /andP [zA /exists_inP [x /setDP [xA xS] xz]]. 
-        move: (sep_S _ _ (edgep xz)). rewrite xA inE zA. case => // s sS. 
-        rewrite mem_edgep => /orP[]/eqP ?; subst; by contrab. 
-      + move => z. rewrite !inE. case: (boolP (z \in A)) => //=. 
-        apply: contraTF => /and3P[_ _ /exists_inP [x /setDP [xA xS] xz]]. 
-        by rewrite -(bip_A _ _ xz). }
-  case: (Menger sep_A) => p con_p. clear sep_A bip_A.
-  (* pose M := [set (fst (p i),lst (p i)) | i : 'I_#|A| ]. *)
-  exists (dimatching_of p). split; first exact: connector_dimatching con_p.
-  apply/setP => a. apply/idP/imsetP => [inA|[x]].
-  + move: (inj_card_onto_pred (f := fun i => fst (p i)) (P := (mem A))) => /=.
-    case/(_ _ _ _ _ inA)/Wrap => //. 
-    * apply: fst_inj con_p. 
-    * apply: connector_fst con_p.
-    * by rewrite card_ord.
-    * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
-  + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
-Qed.
 
 Definition matching_of (G : diGraph) (M' : {set G * G}) := 
   [set [set e.1;e.2] | e in M'].
@@ -742,6 +710,36 @@ Proof.
   move => e1 e2 /= inM1 inM2 E. apply dim_M with e1.1 => //.
   all: by rewrite -?E !inE eqxx.
 Qed. 
+    
+Theorem diHall (G : diGraph) A : 
+  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+  exists M, dimatching M /\ A = [set x.1 | x in M].
+Proof.
+  move => bip_A N_A. 
+  have sep_A S : separator G A (~:A) S -> #|A| <= #|S|.
+  { move => sep_S. rewrite -[#|A|](cardsID S). 
+    apply: (@leq_trans (#|A :&: S| + #|N (A :\: S)|)).
+    - by rewrite leq_add2l N_A // subsetDl.
+    - rewrite -cardsUI [X in _ + X]eq_card0 ?addn0.
+      + apply: subset_leq_card. rewrite subUset subsetIr.
+        apply/subsetP => z. rewrite !inE negb_and negbK. case: (boolP (z \in S)) => //=.
+        move => zS /andP [zA /exists_inP [x /setDP [xA xS] xz]]. 
+        move: (sep_S _ _ (edgep xz)). rewrite xA inE zA. case => // s sS. 
+        rewrite mem_edgep => /orP[]/eqP ?; subst; by contrab. 
+      + move => z. rewrite !inE. case: (boolP (z \in A)) => //=. 
+        apply: contraTF => /and3P[_ _ /exists_inP [x /setDP [xA xS] xz]]. 
+        by rewrite -(bip_A _ _ xz). }
+  case: (Menger sep_A) => p con_p. clear sep_A bip_A.
+  exists (dimatching_of p). split; first exact: connector_dimatching con_p.
+  apply/setP => a. apply/idP/imsetP => [inA|[x]].
+  + move: (inj_card_onto_pred (f := fun i => fst (p i)) (P := (mem A))) => /=.
+    case/(_ _ _ _ _ inA)/Wrap => //. 
+    * apply: fst_inj con_p. 
+    * apply: connector_fst con_p.
+    * by rewrite card_ord.
+    * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
+  + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
+Qed.
 
 Theorem Hall (G : sgraph) A : 
   bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
@@ -759,14 +757,15 @@ Qed.
 Section vcover.
 Variables (G : sgraph) (V :{set G}).
 
-(* Definition vcover := forall x y, x -- y -> (x \in V) \/ (y \in V). *)
 Definition vcover := [forall x, forall (y | x -- y), (x \in V) || (y \in V)].
 
 Lemma vcoverP : reflect (forall x y, x -- y -> (x \in V) \/ (y \in V)) vcover.
-Admitted.
-
-Lemma vcover_edge : vcover -> forall (x y : G), x -- y -> (x \in V) \/ (y \in V).
-Admitted.
+Proof. 
+  apply: (equivP idP).
+  rewrite /vcover -(rwP forallP).
+  setoid_rewrite <- (rwP forall_inP).
+  by setoid_rewrite <- (rwP orP).
+Qed.
 
 (** The [x0] is needed to ensure that [G] is inhabited. 
     Otherwise, [{set G} -> G] is empty as well. *)
@@ -779,7 +778,7 @@ Proof.
   have fP e : e \in M -> f e \in V :&: e.
   { move/M1. case/edgesP => x [y] [E xy]. 
     rewrite /f. case: pickP => [//|]. 
-    case/(vcover_edge cover_V) : xy => xV; 
+    case/(vcoverP cover_V) : xy => xV; 
     [move/(_ x)|move/(_ y)]; by rewrite E !inE xV eqxx ?orbT. }
   exists f => // e1 e2 eM1 eM2. 
   move: (eM1) (eM2) => /fP [/setIP [V1 E1]] /fP [/setIP [V2 E2]] E.
@@ -799,10 +798,26 @@ Proof.
   apply/subsetP => y /mapP [x Hx ->]. apply: f_V. by rewrite mem_enum in Hx.
 Qed.
 
-(** If #|M| = #|V|, then the injective function from M to V must indeed be surjective *)
+Proposition min_max_cover (M : {set {set G}}) :  
+  vcover -> matching M -> #|M| = #|V| -> V \subset cover M.
+Proof.
+  move => cov_V match_V MV. 
+  wlog [x0] : / inhabited G.
+  { move => W. case: (set_0Vmem V) => [-> //|[x _]]; first by rewrite sub0set.
+    exact: W. }
+  case: (matching_cover_map x0 match_V cov_V) => f F1 F2.
+  pose f' (e : { e | e \in M}) := f (val e).
+  have inj_f' : injective f'. 
+  { case => e1 M1. case => e2 M2. rewrite /f' /= => E. 
+    apply/eqP. change (e1 == e2). by rewrite (F2 _ _ M1 M2 E). }
+  move: (inj_card_onto_pred (P := (mem V)) inj_f') => /=. case/(_ _ _)/Wrap.
+  - case => e inM. by case/setIP : (F1 _ inM).
+  - by rewrite card_sig. 
+  - move => X. apply/subsetP => v vV. case/mapP : (X _ vV) => /= [[e inM] _ E].
+    apply/bigcupP. exists e => //. rewrite E /f' /=. by case/setIP : (F1 _ inM).
+Qed. 
 
 End vcover.
-
 Prenex Implicits vcover.
 
 Lemma bip_separation_vcover (G : sgraph) (A S : {set G}) : 
@@ -841,21 +856,3 @@ Proof.
   case: (min_vcover_matching bip_A cov_V min_V) => M' H ->. exact: max_M.
 Qed.
 
-Lemma min_max_cover (G : sgraph) (V : {set G}) (M : {set {set G}}) :  
-  vcover V -> matching M -> #|M| = #|V| -> V \subset cover M.
-Proof.
-  move => cov_V match_V MV. 
-  wlog [x0] : / inhabited G.
-  { move => W. case: (set_0Vmem V) => [-> //|[x _]]; first by rewrite sub0set.
-    exact: W. }
-  case: (matching_cover_map x0 match_V cov_V) => f F1 F2.
-  pose f' (e : { e | e \in M}) := f (val e).
-  have inj_f' : injective f'. 
-  { case => e1 M1. case => e2 M2. rewrite /f' /= => E. 
-    apply/eqP. change (e1 == e2). by rewrite (F2 _ _ M1 M2 E). }
-  move: (inj_card_onto_pred (P := (mem V)) inj_f') => /=. case/(_ _ _)/Wrap.
-  - case => e inM. by case/setIP : (F1 _ inM).
-  - by rewrite card_sig. 
-  - move => X. apply/subsetP => v vV. case/mapP : (X _ vV) => /= [[e inM] _ E].
-    apply/bigcupP. exists e => //. rewrite E /f' /=. by case/setIP : (F1 _ inM).
-Qed. 
