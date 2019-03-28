@@ -17,38 +17,11 @@ Ltac notHyp b ::= assert_fails (assert b by assumption).
 
 (** TODO: using clauses to speed up make quick *)
 
+Arguments separatesP [G x y U].
+
 Section Separators.
 Variable (G : sgraph).
 Implicit Types (x y z u v : G) (S U V : {set G}).
-
-Definition separates x y U := [/\ x \notin U, y \notin U & forall p : Path x y, exists2 z, z \in p & z \in U].
-
-(** Standard trick to show decidability: quantify only over irredundant paths *)
-Definition separatesb x y U := [&& x \notin U, y \notin U & [forall p : IPath x y, exists z in p, z \in U]].
-
-Lemma separatesI x y (U : {set G}) :
-  [/\ x \notin U, y \notin U & forall p : Path x y, irred p -> exists2 z, z \in p & z \in U] -> separates x y U.
-Proof.
-  case => S1 S2 S3. split => // p.
-  case: (uncycle p) => p' sub_p Ip'. 
-  case: (S3 _ Ip') => z Z1 Z2. exists z => //. exact: sub_p.
-Qed.
-
-Lemma separatesP x y U : reflect (separates x y U) (separatesb x y U).
-Proof. 
-  apply: (iffP and3P) => [[? ? A]|[? ? A]].
-  - apply: separatesI. split => // p Ip.
-    move/forallP/(_ (Build_IPath Ip)) : A. 
-    case/exists_inP => z Z1 Z2. by exists z. 
-  - split => //. apply/forallP => p. by move/exists_inP : (A p). 
-Qed.
-Arguments separatesP [x y U].
-
-Fact separatesNeq x y U : separates x y U -> x != y.
-Proof. 
-  case => Hx _ Hp. apply: contraNN Hx => /eqP C. subst y. case: (Hp (idp x)).
-  move => ?. by rewrite mem_idp => /eqP->. 
-Qed.
 
 Fact separates_sym x y U : separates x y U <-> separates y x U.
 Proof.
@@ -57,20 +30,13 @@ Proof.
   move: (H (prev p)) => [z zpp zU]. exists z; by try rewrite mem_prev in zpp.
 Qed.
 
-Fact separates0P x y : reflect (separates x y set0) (~~ connect sedge x y).
-Proof.
-  apply:(iffP idP) => [nconn_xy|]. 
-  - rewrite /separates !inE. split => // p. by rewrite Path_connect in nconn_xy.
-  - case => _ _ H. apply/negP. case/uPathP => p _. case: (H p) => z. by rewrite inE.
-Qed.
-
-Lemma separatesNE x y U : 
-  x \notin U -> y \notin U -> ~ separates x y U -> connect (restrict [predC U] sedge) x y.
+Lemma separatesNE x y U :
+  x \notin U -> y \notin U -> ~ separates x y U -> connect (restrict [predC U] edge_rel) x y.
 Proof.
   move => xU yU /(introN separatesP). rewrite /separatesb xU yU !negb_and //= negb_forall.
   case: (altP (x =P y)) => [<-|xDy H]; first by rewrite connect0.
-  apply/uPathRP => //. case/existsP : H => p Hp. exists p => //. exact: ivalP. 
-  by rewrite -disjoint_subset disjoint_exists. 
+  apply/uPathRP => //. case/existsP : H => p Hp. exists p => //. exact: ivalP.
+  by rewrite -disjoint_subset disjoint_exists.
 Qed.
 
 Definition separator U := exists x y, separates x y U.
@@ -270,79 +236,7 @@ Qed.
 
 End Separators.
 
-(** TODO: should be [G : diGraph] *)
-Corollary theta (G : sgraph) (x y : G) s :
-  ~~ x -- y -> x != y ->
-  (forall S, separates x y S -> s <= #|S|) -> 
-  exists p : 'I_s -> IPath x y, forall i j : 'I_s, i != j -> independent (p i) (p j).
-Proof.
-  move => xNy xDy min_s. 
-  pose G' := induced (~: [set x;y]).
-  pose A := [set z : G' | x -- val z].
-  pose B := [set z : G' | val z -- y].
-  (** Every AB-separator also separates x and y *)
-  have sepAB S : menger.separator G' A B S -> separates x y [set val x | x in S].
-  { move => sepS. apply: separatesI; split.
-    - apply/negP. case/imsetP => x' _ E. move: (valP x'). by rewrite !inE -E eqxx.
-    - apply/negP. case/imsetP => y' _ E. move: (valP y'). by rewrite !inE -E eqxx orbT.
-    - move => p Ip. case: (splitL p xDy) => a [xA] [p'] [Ep _].
-      have aDy : (a != y) by apply: contraNneq xNy => <-. 
-      case: (splitR p' aDy) => b [q] [By] Ep'. 
-      have Hq : {subset q <= ~: [set x;y]}.
-      { subst. rewrite irred_edgeL irred_edgeR mem_pcat_edgeR (negbTE xDy) /= in Ip.
-        case/and3P : Ip => I1 I2 _ u. rewrite inE. 
-        apply: contraTN. case/setU1P => [->//|]. by move/set1P->. }
-      have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
-      case: (@Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
-      case: (sepS _ _ q'); rewrite ?inE // => s0 in_S in_q'.
-      exists (val s0); last exact: mem_imset. subst. 
-      by rewrite !inE [_ \in q]mem_path -Eq map_f. }
-  have min_s' S : menger.separator G' A B S -> s <= #|S|.
-  { move => HS. 
-    rewrite -[#|S|](_ : #|[set val x | x in S]| = _) ?min_s ?card_imset //. 
-    + exact: sepAB.
-    + exact: val_inj. }
-  have [p conn_p] := Menger min_s'.
-  have xA (i : 'I_s) : x -- val (fst (p i)).
-  { move: (connector_fst conn_p i). by rewrite inE. } 
-  have By (i : 'I_s) : val (lst (p i)) -- y.
-  { move: (connector_lst conn_p i). by rewrite inE. } 
-  have X (i : 'I_s) : { pi : @IPath G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
-  { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
-    case: (Path_from_induced pi) => pi' P1 P2. 
-    have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
-    subst. 
-    set q := (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).
-    have Iq : irred q. 
-    { rewrite /q irred_edgeL irred_edgeR mem_pcat_edgeR negb_or xDy /=. apply/and3P;split.
-      - apply/negP => /P1. by rewrite !inE eqxx.
-      - apply/negP => /P1. by rewrite !inE eqxx orbT.
-      - rewrite irredE P2 map_inj_uniq; last exact: val_inj. 
-        move: (conn_irred conn_p i). by rewrite -(@irredE G') [in irred _]def_pi. }
-    exists (Sub q Iq).
-    apply/setP => u. apply/setDP/imsetP => [[U1 U2]|].
-    - move: (U2) U1. rewrite 4!inE negb_or mem_pcat_edgeL mem_pcat_edgeR => /andP [/negbTE-> /negbTE->] /=.
-      by rewrite mem_path P2 => /mapP. 
-    - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
-      rewrite mem_path P2 mem_map //. exact: val_inj. }
-  exists (fun i => sval (X i)). 
-  + move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
-    case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
-    have ? : u1 = u2 by apply: val_inj; congruence.
-    subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
-Qed.
 
-Corollary theta_vertices (G : sgraph) (x y : G) s (p : 'I_s -> IPath x y) :
-  x != y -> ~~ x -- y ->
-  exists (f : 'I_s -> G), forall i, f i \in interior (p i).
-Proof.
-  move => xDy xNy.
-  suff S i : { s | s \in interior (p i) }. 
-  { exists (fun i => val (S i)) => i. exact: (svalP (S i)). }
-  case: (set_0Vmem (interior (p i))) => [I0|//].
-  exfalso. case: (interior0E xDy (valP (p i)) I0) => xy.
-  by rewrite xy in xNy.
-Qed.
 
 Prenex Implicits separator.
 Implicit Types G H : sgraph.

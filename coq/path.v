@@ -120,6 +120,34 @@ Proof. case: p => //= a p /and3P[/= A B C]. by rewrite -(eqP C) mem_last in A. Q
 
 End PathP.
 
+(** Lifting Lemmas *)
+
+Lemma lift_pathp_on (G H : relType) (f : G -> H) a b p' : 
+  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
+  pathp (f a) (f b) p' -> {subset p' <= codom f} -> exists p, pathp a b p /\ map f p = p'.
+Proof. 
+  move => A I /andP [B /eqP C] D.  case: (lift_path A B D) => p [p1 p2]; subst. 
+  exists p. split => //. apply/andP. split => //. rewrite last_map in C. by rewrite (I _ _ C).
+Qed.
+
+Lemma lift_pathp (G H : relType) (f : G -> H) a b p' : 
+  (forall x y, f x -- f y -> x -- y) -> injective f -> 
+  pathp (f a) (f b) p' -> {subset p' <= codom f} -> exists p, pathp a b p /\ map f p = p'.
+Proof. move => I. apply: lift_pathp_on. auto. Qed.
+
+Lemma lift_upath_on (G H : relType) (f : G -> H) a b p' : 
+  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
+  upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
+Proof.
+  move => A B /andP [C D] E. case: (lift_pathp_on A B D E) => p [p1 p2].
+  exists p. split => //. apply/andP. split => //. by rewrite -(map_inj_uniq B) /= p2.
+Qed.
+Lemma lift_upath (G H : relType) (f : G -> H) a b p' : 
+  (forall x y, f x -- f y -> x -- y) -> injective f -> 
+  upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
+Proof. move => I. apply: lift_upath_on. auto. Qed.
+
+
 (** ** Packaged paths *)
 
 (** We now define packaged paths (i.e., a vertex-indexed collection of
@@ -276,9 +304,22 @@ Proof.
   case: (altP (u =P y)) => //= [->|]; by rewrite ?path_end 1?orbC.
 Qed.
 
+(** These are easier to prove by breaking the abstraction barrier than by using
+[irred_cat] below. *)
+
+Lemma irred_edge x y (xy: x -- y) : irred (edgep xy) = (x != y).
+Proof. by rewrite irredE nodesE /= inE andbT. Qed.
+
 Lemma irred_edgeL y x z1 (xz1 : x -- z1) (p : Path z1 y) : 
   irred (pcat (edgep xz1) p) = (x \notin p) && irred p.
 Proof. case: p => p pth_p. by rewrite !irredE /= mem_path !nodesE /=. Qed.
+
+Lemma irred_edgeR y x z (yz : y -- z) (p : Path x y) : 
+  irred (pcat p (edgep yz)) = (z \notin p) && irred p.
+Proof.
+  rewrite !irredE !mem_path !nodesE /= cats1 rcons_uniq mem_rcons !inE.
+  rewrite eq_sym !negb_or. case: (x \notin pval p); by rewrite andbA.
+Qed.
 
 (** Induction principles for packaged paths *)
 
@@ -650,6 +691,55 @@ types for the most frequently used constructions *)
 Notation "x -- y :> G" := (@edge_rel G x y) (at level 30, y at next level) : implicit_scope.
 Notation "'PATH' G x y" := (@Path G x y) (at level 4) : implicit_scope.
 Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.
+
+(** * Basic Constructions on digraphs *)
+
+Section InducedSubgraph.
+  Variables (G : diGraph) (S : {set G}).
+
+  Definition induced_type := sig [eta mem S].
+
+  Definition induced_rel := [rel x y : induced_type | val x -- val y].
+
+  Definition induced := DiGraph induced_rel.
+
+End InducedSubgraph.
+
+Lemma path_to_induced (G : diGraph) (S : {set G}) (x y : induced S) p' : 
+  @pathp G (val x) (val y) p' -> {subset p' <= S} -> 
+  exists2 p, pathp x y p & p' = map val p.
+Proof.
+  move=> pth_p' sub_p'.
+  case: (lift_pathp _ _ pth_p' _) => //; first exact: val_inj.
+  - move=> z /sub_p' z_S. by apply/codomP; exists (Sub z z_S).
+  - move=> p [pth_p /esym eq_p']. by exists p.
+Qed.
+
+Lemma induced_path (G : diGraph) (S : {set G}) (x y : induced S) (p : seq (induced S)) : 
+  pathp x y p -> @pathp G (val x) (val y) (map val p).
+Proof.
+  elim: p x => /= [|z p IH] x pth_p.
+  - by rewrite (pathp_nil pth_p) pathpxx.
+  - rewrite !pathp_cons in pth_p *. 
+    case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
+Qed.
+
+Lemma Path_to_induced (G : diGraph) (S : {set G}) (x y : induced S) 
+  (p : Path (val x) (val y)) : {subset p <= S} -> exists q : Path x y, map val (nodes q) = nodes p.
+Proof.
+  case: p => p pth_p sub_p. case: (path_to_induced pth_p).
+  - move=> z z_p; apply: sub_p. by rewrite mem_path nodesE /= inE z_p.
+  - move=> q pth_q eq_p. exists (Sub q pth_q). by rewrite !nodesE /= eq_p.
+Qed.
+
+Lemma Path_from_induced (G : diGraph) (S : {set G}) (x y : induced S) (p : Path x y) : 
+  { q : Path (val x) (val y) | {subset q <= S} & nodes q = map val (nodes p) }.
+Proof. 
+  case: p => p pth_p.
+  exists (Build_Path (induced_path pth_p)); last by rewrite !nodesE.
+  move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
+Qed.
+
 
 (** Multigraphs as instance of digraphs *)
 

@@ -267,31 +267,6 @@ Proof.
   rewrite upath_cons u1 u2 /=. exact: IH.
 Qed.
 
-Lemma lift_pathp_on (G H : sgraph) (f : G -> H) a b p' : 
-  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
-  pathp (f a) (f b) p' -> {subset p' <= codom f} -> exists p, pathp a b p /\ map f p = p'.
-Proof. 
-  move => A I /andP [B /eqP C] D.  case: (lift_path A B D) => p [p1 p2]; subst. 
-  exists p. split => //. apply/andP. split => //. rewrite last_map in C. by rewrite (I _ _ C).
-Qed.
-
-Lemma lift_pathp (G H : sgraph) (f : G -> H) a b p' : 
-  (forall x y, f x -- f y -> x -- y) -> injective f -> 
-  pathp (f a) (f b) p' -> {subset p' <= codom f} -> exists p, pathp a b p /\ map f p = p'.
-Proof. move => I. apply: lift_pathp_on. auto. Qed.
-
-Lemma lift_upath_on (G H : sgraph) (f : G -> H) a b p' : 
-  (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
-  upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
-Proof.
-  move => A B /andP [C D] E. case: (lift_pathp_on A B D E) => p [p1 p2].
-  exists p. split => //. apply/andP. split => //. by rewrite -(map_inj_uniq B) /= p2.
-Qed.
-
-Lemma lift_upath (G H : sgraph) (f : G -> H) a b p' : 
-  (forall x y, f x -- f y -> x -- y) -> injective f -> 
-  upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
-Proof. move => I. apply: lift_upath_on. auto. Qed.
 
 (* TOTHINK: is this the best way to transfer path from induced subgraphs *)
 Lemma induced_path (G : sgraph) (S : {set G}) (x y : induced S) (p : seq (induced S)) : 
@@ -358,12 +333,8 @@ Proof. by apply/eqP. Qed.
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
 Proof. by rewrite irredE nodesE /= andbT inE sg_edgeNeq. Qed.
 
-(** TODO: The following two lemmas hold for digraphs, but their proofs use
+(** TODO: The following lemma hold for digraphs, but the proof uses
 symmetry of the edge relation *)
-
-Lemma irred_edgeR y x z (xz : y -- z) (p : Path x y) : 
-  irred (pcat p (edgep xz)) = (z \notin p) && irred p.
-Proof. by rewrite -irred_rev prev_cat prev_edge irred_edgeL irred_rev mem_prev. Qed.
                                                                 
 Lemma split_at_last {A : pred G} (x y : G) (p : Path x y) (k : G) : 
   k \in A -> k \in p ->
@@ -1350,7 +1321,7 @@ Qed.
 
 (* TOTHINK: This definition really only makes sense for irredundant paths *)
 Section Interior.
-Variable (G : sgraph) (x y : G).
+Variable (G : diGraph) (x y : G).
 Implicit Types (p : Path x y).
 
 Definition interior p := [set x in p] :\: [set x;y].
@@ -1368,10 +1339,11 @@ Lemma interior0E p : x != y -> irred p -> interior p = set0 -> exists xy, p = ed
 Proof.
   move => xNy Ip P0. 
   case: (splitL p xNy) Ip => z [xz] [p'] [E _]. 
-  rewrite E. case/irred_catE => _ Ip' ?. 
+  rewrite E irred_edgeL => /andP [xNp Ip']. 
   suff zNy : z = y. { subst. exists xz. by rewrite (irredxx Ip') pcat_idR. }
   apply: contra_eq P0 => C. apply/set0Pn. exists z. 
-  by rewrite !inE negb_or C eq_sym (sg_edgeNeq xz) E !inE.
+  rewrite !inE negb_or C eq_sym E !inE /= !andbT. 
+  apply: contraNneq xNp => ?. by subst z. 
 Qed.
 
 Definition independent (p q : Path x y) := 
