@@ -8,21 +8,7 @@ Unset Printing Implicit Defensive.
 (** * Simple Graphs
 
 This file defines (finite) simple graphs, i.e. undirected and
-unlabeled graphs without self-loops. We provide a number of
-constructions and lemmas to reason about paths in simple graphs:
-
-For [G : sgraph] and [x, y : G] we define two auxiliary notions:
-
-[spath x y p] == the list (x::p) is an xy-path in G.
-
-[upath x y p] == the list (x::p) is an irredundant xy-path in G.
-
-Due to the asymmetry in the definitions of of [path],[spath], and
-[upath], these are ill-suited for the symmetry reasoning prevalent in
-graph theory. We remedy this by providing a type family of packaged
-paths [Path x y] which abstracts away this asymmetry. We then list
-many of the lemmas from the path library to the setting of simple
-graphs. *)
+unlabeled graphs without self-loops. *)
 
 Record sgraph := SGraph { svertex : finType ; 
                           sedge: rel svertex; 
@@ -32,8 +18,7 @@ Record sgraph := SGraph { svertex : finType ;
 Canonical digraph_of (G : sgraph) := DiGraph (@sedge G).
 Coercion digraph_of : sgraph >-> diGraph.
 
-(** This is required to maintain the notation [x -- y] under simplification *)
-Arguments edge_rel : simpl never.
+(** The notation [x -- y] is now inherited *)
 (* Notation "x -- y" := (sedge x y) (at level 30). *)
 
 Definition sg_sym (G : sgraph) : symmetric (@edge_rel G). exact: sg_sym'. Qed.
@@ -139,7 +124,7 @@ Definition srestrict (G : sgraph) (A : pred G) :=
   Eval hnf in SGraph (symmetric_restrict A (@sg_sym G))
                      (irreflexive_restrict A (@sg_irrefl G)).
 
-(** *** Isomorphism of graphs *)
+(** ** Isomorphism of simple graphs *)
 
 CoInductive sg_iso (G H : sgraph) : Prop :=
   SgIso (g : H -> G) (h : G -> H) : cancel g h -> cancel h g ->
@@ -204,9 +189,10 @@ Proof.
   - by move => [x|x] [y|y] xy.
 Qed.
 
-(** ** Unpackaged Simple Paths 
+(** ** Unpackaged Simple Paths
 
-We only establish those constructions that require symmetry or irreflexivity *)
+We establish those properties of [pathp] and [upath] that require symmetry or
+irreflexivity, i.e. path reversal *)
 
 Section SimplePaths.
 Variable (G : sgraph).
@@ -251,17 +237,6 @@ Proof.
   rewrite (pathp_rcons H). by case: (a == x).
 Qed.
 
-End SimplePaths.
-Arguments pathp_last [T].
-
-
-(** ** Unpackaged Irredundant Paths *)
- 
-Section Upath.
-Variable (G : sgraph).
-Implicit Types (x y z : G).
-
-
 Lemma rev_upath x y p : upath x y p -> upath y x (srev x p).
 Proof. 
   case/andP => A B. apply/andP; split; last exact: pathp_rev.
@@ -275,10 +250,10 @@ Proof.
   move => U p q Hp Hq. 
   suff S: last y p = last y q. 
   { apply: last_belast_eq S _; apply: rev_inj; apply: U; exact: rev_upath. }
-  rewrite !(pathp_last x) //; exact: upathW.
+  rewrite !(@pathp_last _ x) //; exact: upathW.
 Qed.
 
-End Upath.
+End SimplePaths.
 
 Lemma upathPR (G : sgraph) (x y : G) A :
   reflect (exists p : seq G, @upath (srestrict A) x y p)
@@ -327,14 +302,6 @@ Proof.
   - rewrite !pathp_cons in pth_p *. 
     case/andP : pth_p => p1 p2. apply/andP; split => //. exact: IH.
 Qed.
-
-
-(** ** Packaged paths *)
-
-(** We now define packaged paths (i.e., a vertex-indexed collection of
-types [Path x y] whose elements are the paths between [x] and [y]). In
-particular, this abstracts from the asymmetry in [spath x y p] which
-states that [x::p] is an xy-path (paths are never empty). *)
 
 Section Packaged.
 Variables (G : sgraph).
@@ -391,11 +358,12 @@ Proof. by apply/eqP. Qed.
 Lemma irred_edge x y (xy : x -- y) : irred (edgep xy).
 Proof. by rewrite irredE nodesE /= andbT inE sg_edgeNeq. Qed.
 
-(** TODO: This does not actually rely on symmety *)
+(** TODO: The following two lemmas hold for digraphs, but their proofs use
+symmetry of the edge relation *)
+
 Lemma irred_edgeR y x z (xz : y -- z) (p : Path x y) : 
   irred (pcat p (edgep xz)) = (z \notin p) && irred p.
 Proof. by rewrite -irred_rev prev_cat prev_edge irred_edgeL irred_rev mem_prev. Qed.
-
                                                                 
 Lemma split_at_last {A : pred G} (x y : G) (p : Path x y) (k : G) : 
   k \in A -> k \in p ->
@@ -406,15 +374,6 @@ Proof.
   case: (split_at_first kA kp) => z [p1] [p2] [E zA I].
   exists z. exists (prev p2). exists (prev p1). rewrite -prev_cat -E prevK. 
   split => // z'. rewrite mem_prev. exact: I. 
-Qed.
-
-
-Lemma UPath_from_irred x y (p : Path x y) : irred p ->
-  exists q : UPath x y, val p = val q.
-Proof.
-  case: p => p pth. rewrite irredE nodesE [_ :: _]/= => Up /=.
-  have {pth Up} Up : upath x y p by rewrite /upath; apply/andP; split.
-  by exists (Sub p Up).
 Qed.
 
 
@@ -872,8 +831,6 @@ Proof.
   exists z; last by []; apply: p_S.
   by rewrite in_collective nodesE inE -eqi_p' path_begin.
 Qed.
-
-
 
 (** *** Connected components *)
 
@@ -1473,4 +1430,3 @@ Proof.
       * apply: contraNF Hu. case/and3P. do 2 move/negbTE => -> /=. 
         by case/or3P => //; set_tac.
 Qed.
-

@@ -5,10 +5,38 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* TOTHINK: the underlying type could be more permissice [e.g. countType or even eqType]. *)
+(** * Directed Graphs  *)
+
+(** This file contains a number of constructions and lemmas to reason about
+paths in (finite) graphs. The most basic notion of a graph is just a type
+packaged together with a relation. *)
+
+(** The underlying type could be more permissive e.g. [countType] or even
+[eqType]. However, this would required a more complicated setup in order to
+ensure that the coercions to [countType] and [finType] (for finite graphs) are
+not just convertible but indeed equal. Otherwise, some automation using [auto]
+fails. So far, we only deal with with finite graphs, so "telescopes suffice" *)
+
 Record relType := RelType { rel_car :> finType; edge_rel : rel rel_car }.
 Notation "x -- y" := (edge_rel x y) (at level 30).
 Prenex Implicits edge_rel.
+
+(** maintain the notation [x -- y] under simplification *)
+Arguments edge_rel : simpl never.
+
+(** For [G : relType] and [x, y : G] we define two auxiliary notions:
+
+[pathp x y p] == the list (x::p) is an xy-path in G.
+
+[upath x y p] == the list (x::p) is an irredundant xy-path in G.
+
+Due to the asymmetry in the definitions of of [path],[pathp], and [upath], these
+are ill-suited for the symmetry reasoning prevalent in graph theory. We remedy
+this by providing a type family of packaged paths [Path x y] which abstracts
+away this asymmetry. We then lift many of the lemmas from the path library to
+the setting of simple graphs. *)
+
+(** ** Unpackaged Paths *)
 
 Section PathP.
 Variable (T : relType).
@@ -91,6 +119,13 @@ Lemma upath_nil x p : upath x x p -> p = [::].
 Proof. case: p => //= a p /and3P[/= A B C]. by rewrite -(eqP C) mem_last in A. Qed.
 
 End PathP.
+
+(** ** Packaged paths *)
+
+(** We now define packaged paths (i.e., a vertex-indexed collection of
+types [Path x y] whose elements are the paths between [x] and [y]). In
+particular, this abstracts from the asymmetry in [spath x y p] which
+states that [x::p] is an xy-path (paths are never empty). *)
 
 Section Pack.
 Variables (T : relType).
@@ -296,8 +331,9 @@ Qed.
 
 End PathTheory.
 
-
-(** ** Finite Relation Types - unlabeled digraphs *)
+(** NOTE: Up to here, nothing depends on the vertex type being finite. The
+constuctions below make use of functions that are only defined on finite types,
+e.g., [connect] or [#|G|] *)
 
 (* 
 Record diGraph := DiGraph { di_vertex : finType; 
@@ -309,12 +345,12 @@ Coercion di_vertex : diGraph >-> finType.
 Prenex Implicits di_edge. 
 *)
 
-(** The simple setup above causes the coercion to [finType] to be
-different (but convertible) from the coercions to other. This causes
-certain problems, like the failure of certain hints (see below) *)
+(** The simple setup above causes the coercion to [finType] to be different from
+(but convertible to) the coercions to [choiceType]. This causes [auto] and hence
+[trivial] and [by] to fail. *)
 
-Notation diGraph := relType (only parsing).
-Notation DiGraph := RelType (only parsing).
+Notation diGraph := relType.
+Notation DiGraph := RelType.
 Notation di_edge := edge_rel (only parsing).
 Goal forall (T : diGraph) (A : pred T), A \subset [set: T]. by []. Qed.
 
@@ -367,8 +403,8 @@ Proof.
   rewrite !mem_pcat. case/orP; [exact: Hp|exact: Hq].
 Qed.
 
-(** TOTHINK: This is easy to prove and in some contetxt exact what is
-needed. However, it introduces an unpleasant asymmetry between [p] and [q]. *)
+(** This is easy to prove and in some contetxs exactly what is needed. However,
+it introduces an unpleasant asymmetry between [p] and [q]. *)
 Lemma irred_catD :
   irred (pcat p q) = [&& irred p, irred q & [disjoint p & tail q]].
 Proof.
@@ -378,8 +414,8 @@ Proof.
   case: (uniq _) => //=. by rewrite !andbT (disjointFr A _) // path_end.
 Qed.
 
-(** This lemma is more symmetric than [irred_catD]. However, the set
-equality is sometimes cumbersome to use. Better elimination lemma? *) 
+(** This lemma is more symmetric than [irred_catD], but the set equality is
+sometimes cumbersome to use. *)
 Lemma irred_cat : 
   irred (pcat p q) = [&& irred p, irred q & [set u : D in p | u \in q] == [set y]].
 Proof.
@@ -397,7 +433,9 @@ Proof.
     + apply/negP; by apply: contraNneq zNTq =>{1}<-.
 Qed.
 
-Lemma irred_catI  : 
+(** Introduction and elimination lemmas for [irred (pcat p q)] that avoid the
+use of set equality *)
+Lemma irred_catI : 
   (forall k : D, k \in p -> k \in q -> k = y) -> irred p -> irred q -> irred (pcat p q).
 Proof. 
   move => H Ip Iq. rewrite irred_cat Ip Iq /=. apply/eqP/setP => k.
@@ -606,7 +644,8 @@ End DiPathTheory.
 
 (** In some constructions a vertex can be typed as belonging to different
 graphs. This makes [Path x y] or [x -- y] insufficent for understanding the
-proofs *)
+proofs. In these contexts one can open the implicit scope to display implicit
+types for the most frequently used constructions *)
 
 Notation "x -- y :> G" := (@edge_rel G x y) (at level 30, y at next level) : implicit_scope.
 Notation "'PATH' G x y" := (@Path G x y) (at level 4) : implicit_scope.
