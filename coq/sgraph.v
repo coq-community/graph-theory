@@ -1361,14 +1361,14 @@ Lemma neighbor_del_edgeR (G : sgraph) (s1 s2 : G) (A B : {set G}) :
   s1 \notin B -> s2 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
 Proof.
   move => H1 H2 /neighborP [x] [y] [/= N1 N2 N3]. apply/neighborP. exists x; exists y.
-  case/or3P : N3 => [-> //|] /and3P [_ /eqP ? /eqP ?]; by subst;contrab.
+  case/or3P : N3 => [-> //||] /and3P [_ /eqP ? /eqP ?]; by subst;contrab.
 Qed.
 
 Lemma neighbor_del_edge2 (G : sgraph) (s1 s2 : G) (A B : {set G}) :
   s2 \notin A -> s2 \notin B -> @neighbor (add_edge s1 s2) A B -> @neighbor G A B.
 Proof.
   move => H1 H2 /neighborP [x] [y] [/= N1 N2 N3]. apply/neighborP. exists x; exists y.
-  case/or3P : N3 => [-> //|] /and3P [_ /eqP ? /eqP ?]; by subst;contrab.
+  case/or3P : N3 => [-> //||] /and3P [_ /eqP ? /eqP ?]; by subst;contrab.
 Qed.
 
 Lemma neighbor_del_edge1 (G : sgraph) (s1 s2 : G) (A B : {set G}) :
