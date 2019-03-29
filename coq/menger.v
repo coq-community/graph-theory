@@ -740,6 +740,32 @@ Proof.
   by rewrite xy in xNy.
 Qed.
 
+
+(** ** Arc Variant of Menger's Theorem *)
+
+Corollary independent_walks (G : mGraph) (a b : G) n : 
+  a != b -> (forall E, eseparates a b E -> n <= #|E|) -> 
+  exists2 W : 'I_n -> seq (edge G), 
+    forall i, walk a b (W i) & forall i j, i != j -> [disjoint W i & W j].
+Proof.
+  move => aDb min_sep.
+  pose A := [set e : line_graph G | source e == a].
+  pose B := [set e : line_graph G | target e == b].
+  have sep E : separator _ A B E -> n <= #|E|.
+  { move => sep_E. apply: min_sep => w walk_w. 
+    have Nw : ~~ nilp w. { case: w walk_w => //=. by rewrite (negbTE aDb). }
+    case: (line_of_walk walk_w Nw) => e1 [e2] [p] [P1 P2 P3].
+    case: (sep_E _ _ p) => [||e in_E in_p]; rewrite ?inE ?P1 ?P2 //.
+    exists e => //. by rewrite mem_path P3 in in_p. }
+  case: (Menger sep) => X con_X. pose W i := nodes (tagged (X i)). exists W.
+  - move => i. rewrite /W. 
+    case: (X i) (connector_fst con_X i) (connector_lst con_X i) => [[e1 e2] /= p].
+    rewrite /fst/lst/= !inE => /eqP<- /eqP <-. exact: walk_of_line.
+  - move => i j iDj. apply/disjointP => e. rewrite /W -!(@mem_path (line_graph G)).
+    move => in_i in_j. move/(_ i j e in_i in_j) : (connector_eq con_X) => E.
+    by rewrite E eqxx in iDj.
+Qed.
+
 (** ** Hall's Marriage Theorem *)
 
 (** Neighboorhoods and bipartitions are the same for digraphs and simple graphs *)
