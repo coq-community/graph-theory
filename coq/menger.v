@@ -9,11 +9,52 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Menger's Theorem *)
 
+(** In this file we prove Menger's Theorem and some of its most
+well-known and most-used corollaries. The proof follows Göring's
+"Short Proof of Menger's Theorem".  The two most central notions in
+the proof are those of an AB-separator and an AB-connector. *)
+
 (** ** Separators and Connectors *)
 
-Section Connector.
+Section SeparatorConnector.
 Variables (G : diGraph).
 Implicit Types (x y : G) (A B S : {set G}).
+
+Definition separator (A B S : {set G}) :=
+  forall (a b : G) (p : Path a b), a \in A -> b \in B -> exists2 s, s \in S & s \in p.
+
+Lemma separatorI A B S : 
+  (forall (a b : G) (p : Path a b), irred p -> a \in A -> b \in B -> exists2 s, s \in S & s \in p)
+  -> separator A B S.
+Proof. 
+  move => H a b p aA bB. case: (uncycle p) => p' sub_p Ip. case: (H _ _ p') => //.
+  move => s sS /sub_p sp. by exists s.
+Qed.
+
+Definition separatorb (A B S : {set G}) := 
+  [forall a in A, forall b in B, forall p : IPath a b, exists s in S, s \in p].
+
+Lemma separatorP (A B S : {set G}) : reflect (separator A B S) (separatorb A B S).
+Proof.
+  rewrite /separatorb. apply: (iffP forall_inP) => [H|H a aA].
+  - apply: separatorI => a b p Ip aA bB. 
+    move/(_ _ aA) : H => /forall_inP /(_ _ bB) /forallP /(_ (Sub p Ip)) /exists_inP [s sS in_p]. 
+    by exists s.
+  - apply/forall_inP => b bB. apply/forallP => [[p ?]]. apply/exists_inP. 
+    case: (H a b p) => // s S1 S2. by exists s.
+Qed.
+
+Lemma separator_cap A B S : separator A B S -> A :&: B \subset S.
+Proof.
+  move => sepS. apply/subsetP => x /setIP [xA xB]. 
+  case: (sepS _ _ (idp x)) => // s in_S. by rewrite mem_idp => /eqP <-.
+Qed.
+
+Lemma separator_min A B S : separator A B S -> #|A :&: B| <= #|S|.
+Proof. move/separator_cap. exact: subset_leq_card. Qed.
+
+(** In order to define the notion of [AB]-connector, we need to
+abstract from the incices in [Path x y] *)
 
 Definition pathS := { x : G * G & Path x.1 x.2 }.
 Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1 x.2) (x,y) p.
@@ -27,6 +68,10 @@ Definition fst (p : pathS) := (tag p).1.
 Definition lst (p : pathS) := (tag p).2.
 Arguments fst _ /.
 Arguments lst _ /.
+
+Lemma pathS_eta (p : pathS) : 
+  p = @PathS (fst p) (lst p) (tagged p).
+Proof. by case: p => [[x y] ri]. Qed.
 
 Lemma fst_mem (p : pathS) : fst p \in p.
 Proof. case: p => [[x y] p] /=. exact: path_begin. Qed.
@@ -94,59 +139,24 @@ Proof.
   by rewrite E lst_mem.
 Qed.
 
-End ConnectorTheory.
-
-Definition separator (A B S : {set G}) :=
-  forall (a b : G) (p : Path a b), a \in A -> b \in B -> exists2 s, s \in S & s \in p.
-
-Lemma separatorI A B S : 
-  (forall (a b : G) (p : Path a b), irred p -> a \in A -> b \in B -> exists2 s, s \in S & s \in p)
-  -> separator A B S.
+Lemma fst_inj : injective (fst \o p).
 Proof. 
-  move => H a b p aA bB. case: (uncycle p) => p' sub_p Ip. case: (H _ _ p') => //.
-  move => s sS /sub_p sp. by exists s.
-Qed.
-
-Definition separatorb (A B S : {set G}) := 
-  [forall a in A, forall b in B, forall p : IPath a b, exists s in S, s \in p].
-
-Lemma separatorP (A B S : {set G}) : reflect (separator A B S) (separatorb A B S).
-Proof.
-  rewrite /separatorb. apply: (iffP forall_inP) => [H|H a aA].
-  - apply: separatorI => a b p Ip aA bB. 
-    move/(_ _ aA) : H => /forall_inP /(_ _ bB) /forallP /(_ (Sub p Ip)) /exists_inP [s sS in_p]. 
-    by exists s.
-  - apply/forall_inP => b bB. apply/forallP => [[p ?]]. apply/exists_inP. 
-    case: (H a b p) => // s S1 S2. by exists s.
-Qed.
-
-Lemma separator_cap A B S : 
-  separator A B S -> A :&: B \subset S.
-Proof.
-  move => sepS. apply/subsetP => x /setIP [xA xB]. 
-  case: (sepS _ _ (idp x)) => // s in_S. by rewrite mem_idp => /eqP <-.
-Qed.
-
-Lemma separator_min A B S : 
-  separator A B S -> #|A :&: B| <= #|S|.
-Proof. move/separator_cap. exact: subset_leq_card. Qed.
-
-Lemma fst_inj A B n (p : 'I_n -> pathS) : 
-  connector A B p -> injective (fst \o p).
-Proof. 
-  move => conn_p. apply/injectiveP. 
+  apply/injectiveP. 
   apply: wlog_neg => /injectivePn [i] [j] /(conn_disjoint conn_p)/setP S /= H.
   move/(_ (fst (p i))) : S. by rewrite !inE /fst H fst_mem.
 Qed.
 
-Lemma lst_inj A B n (p : 'I_n -> pathS) : 
-  connector A B p -> injective (lst \o p).
+Lemma lst_inj : injective (lst \o p).
 Proof. 
-  move => conn_p. apply/injectiveP. 
+  apply/injectiveP. 
   apply: wlog_neg => /injectivePn [i] [j] /(conn_disjoint conn_p)/setP S /= H.
   move/(_ (lst (p i))) : S. by rewrite !inE /lst H lst_mem. 
 Qed.
-  
+
+End ConnectorTheory.
+
+(** Concatenation on [pathS] *)
+
 Definition castL (x' x y : G) (E : x = x') (p : Path x y) : Path x' y :=
   match E in (_ = y0) return (Path y0 y) with erefl => p end.
 
@@ -164,8 +174,6 @@ Proof.
   rewrite /castL. by rewrite (eq_irrelevance E erefl).
 Qed.
 
-Lemma pathS_eta n (p : 'I_n -> pathS) i : p i = @PathS (fst (p i)) (lst (p i)) (tagged (p i)).
-Proof. by case: (p i) => [[x y] ri]. Qed.
 
 Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u : 
   reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
@@ -191,11 +199,11 @@ Proof.
   exists q. split.
   - move => j. rewrite /q /=. 
     case: (altP (j =P i)) => [E|D]; last exact: (conn_irred conn_p).
-    subst j. rewrite pathS_eta. subst y. rewrite pcatSE /= irred_edgeL.
+    subst j. rewrite [p i]pathS_eta. subst y. rewrite pcatSE /= irred_edgeL.
     rewrite (conn_irred conn_p) andbT. apply: contraNN Hx => Hx.
     apply/bigcupP. exists i => //. by rewrite inE.
   - move => j. rewrite /q. case: (altP (j =P i)) => [E|D].
-    + subst j. rewrite pathS_eta. subst y. rewrite pcatSE /=.
+    + subst j. rewrite [p i]pathS_eta. subst y. rewrite pcatSE /=.
       apply/setP => u. rewrite [A']lock !inE -lock. apply/andP/idP.
       * rewrite !inE mem_edgep /=. case: (altP (u =P x)) => [-> //|/=].
         rewrite -/(fst (p i)). case: (altP (u =P fst (p i))) => [_ _ [_ ?] //|].
@@ -205,13 +213,13 @@ Proof.
     + rewrite -(conn_begin conn_p). 
       apply/setP => u. rewrite !inE. case e: (u \in _) => //=. by rewrite !(Hj j) /=.
   - move => j.  rewrite /q. case: (altP (j =P i)) => [E|D]; last exact: (conn_end conn_p). 
-    subst j. rewrite pathS_eta. subst y. rewrite pcatSE /= -/(lst _).
+    subst j. rewrite [p i]pathS_eta. subst y. rewrite pcatSE /= -/(lst _).
     apply/setP => u. rewrite -(conn_end conn_p i) !inE -mem_pcat. case uB : (u \in B) => //.
     rewrite !andbT. apply/edgeLP/idP => /=; last by right. case => [?|//]. 
     subst. by rewrite uB in xB. 
   - move => j1 j2. rewrite /q. 
     have jP j : i != j -> [set x0 in pcatS (PathS (edgep xy)) (p i)] :&: [set x0 in p j] = set0.
-    { move => jDi. rewrite pathS_eta. subst y. rewrite pcatSE. 
+    { move => jDi. rewrite [p i]pathS_eta. subst y. rewrite pcatSE. 
       apply: contra_eq (conn_disjoint conn_p jDi). case/set0Pn => u /setIP []. 
       rewrite 2!inE /=. case/edgeLP => /= [-> Hx'|Hu ?]. 
       * apply: contraNN Hx => _. apply/bigcupP; exists j => //. by rewrite inE.
@@ -275,8 +283,8 @@ Proof.
     have jP := svalP (mtch i) : fst (q j) = lst (p i). 
     exists j. exists (fst (p i)). exists (lst (p i)). exists (lst (q j)). 
     exists (tagged (p i)). exists (castL jP (tagged (q j))). split => //.
-    - by rewrite {1}pathS_eta. 
-    - rewrite {1}pathS_eta. move: (jP). rewrite -jP => jP'.
+    - by rewrite {1}[p i]pathS_eta. 
+    - rewrite {1}[q j]pathS_eta. move: (jP). rewrite -jP => jP'.
       by rewrite (eq_irrelevance jP' erefl).
     - rewrite /pq -/j. rewrite -pcatSE -pathS_eta. move: (jP). rewrite -jP => jP'.
       by rewrite (eq_irrelevance jP' erefl) /= -pathS_eta. }
@@ -367,7 +375,7 @@ Proof.
   case: conn_p => C1 C2 C3 C4. split => // i j. exact:(C4 (W i) (W j)).
 Qed.
 
-End Connector.
+End SeparatorConnector.
 
 Lemma nat_size_ind (X : Type) (P : X -> Type) (x : X) (f : X -> nat) :
        (forall x : X, (forall y : X, f y < f x -> P y) -> P x) -> P x.
