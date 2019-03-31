@@ -158,7 +158,7 @@ Ltac eqxx := match goal with
              | [ H : is_true (?x != ?x) |- _ ] => by rewrite eqxx in H
              end.
 
-(** Use theory rules (_plus) before set rules *)
+(** Use theory rules (plus) before set rules *)
 Ltac set_tac_step := first [eqxx
                            |contrab
                            |set_tac_close_plus

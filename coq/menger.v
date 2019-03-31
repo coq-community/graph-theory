@@ -7,7 +7,7 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
 
-(** * Menger's Theorem *)
+(** * Graph Connectivty *)
 
 (** In this file we prove Menger's Theorem and some of its most
 well-known and most-used corollaries. The proof follows Göring's
@@ -420,6 +420,8 @@ Proof.
   case: (p i) => [[x y] pi] /=. by rewrite !nodesE. 
 Qed.
 
+(** ** Menger's Theorem *)
+
 Theorem Menger (G : diGraph) (A B : {set G}) s : 
   (forall S, separator G A B S -> s <= #|S|) -> exists (p : 'I_s -> pathS G), connector A B p.
 Proof.
@@ -540,6 +542,9 @@ Proof.
       * apply/setP => u. rewrite /Q setU1K //. by apply card_S.
 Qed.
 
+(** ** Independent Path Corollaries *)
+
+(** *** Vertex version *)
 
 Section Separators.
 Variable (G : diGraph).
@@ -645,7 +650,7 @@ Proof.
     subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
 Qed.
 
-(** In addition to the independent paths, we also get a function proving a
+(** In addition to the independent paths, we also get a function providing a
 default vertex on each path *)
 Fact theta_vertices (G : diGraph) (x y : G) s (p : 'I_s -> IPath x y) :
   x != y -> ~~ x -- y ->
@@ -659,8 +664,7 @@ Proof.
   by rewrite xy in xNy.
 Qed.
 
-
-(** ** Arc Variant of Menger's Theorem *)
+(** ** Edge Version of Menger's Theorem *)
 
 Corollary independent_walks (G : mGraph) (a b : G) n : 
   a != b -> (forall E, eseparates a b E -> n <= #|E|) -> 

@@ -15,22 +15,24 @@ packaged together with a relation. *)
 [eqType]. However, this would required a more complicated setup in order to
 ensure that the coercions to [countType] and [finType] (for finite graphs) are
 not just convertible but indeed equal. Otherwise, some automation using [auto]
-fails. So far, we only deal with with finite graphs, so "telescopes suffice" *)
+fails. So far, we only deal with with finite graphs, so "telescopes" suffice *)
 
 Record relType := RelType { rel_car :> finType; edge_rel : rel rel_car }.
 Notation "x -- y" := (edge_rel x y) (at level 30).
 Prenex Implicits edge_rel.
 
 (** maintain the notation [x -- y] under simplification *)
+
 Arguments edge_rel : simpl never.
 
-(** For [G : relType] and [x, y : G] we define two auxiliary notions:
+(** For [G : relType] and [x, y : G] we define two auxiliary notions: *) 
 
-[pathp x y p] == the list (x::p) is an xy-path in G.
+(** [pathp x y p] == the list (x::p) is an xy-path in G. *)
+  
+(** [upath x y p] == the list (x::p) is an irredundant xy-path in G. *)
 
-[upath x y p] == the list (x::p) is an irredundant xy-path in G.
 
-Due to the asymmetry in the definitions of of [path],[pathp], and [upath], these
+(** Due to the asymmetry in the definitions of of [path],[pathp], and [upath], these
 are ill-suited for the symmetry reasoning prevalent in graph theory. We remedy
 this by providing a type family of packaged paths [Path x y] which abstracts
 away this asymmetry. We then lift many of the lemmas from the path library to
