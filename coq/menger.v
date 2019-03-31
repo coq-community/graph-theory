@@ -840,7 +840,7 @@ Proof.
     case/(vcoverP cover_V) : xy => xV; 
     [move/(_ x)|move/(_ y)]; by rewrite E !inE xV eqxx ?orbT. }
   exists f => // e1 e2 eM1 eM2. 
-  move: (eM1) (eM2) => /fP [/setIP [V1 E1]] /fP [/setIP [V2 E2]] E.
+  move: (eM1) (eM2) => /fP /setIP [V1 E1] /fP /setIP [V2 E2] E.
   apply M2 with (f e1) => //. by rewrite E.
 Qed.
 
@@ -878,6 +878,7 @@ Qed.
 
 End vcover.
 Prenex Implicits vcover.
+Prenex Implicits matching.
 
 Lemma bip_separation_vcover (G : sgraph) (A S : {set G}) : 
   bipartition A -> separator G A (~: A) S -> vcover S.
@@ -890,12 +891,11 @@ Proof.
   rewrite mem_edgep => /orP [/eqP<-|/eqP<-]; by tauto.
 Qed.
 
-(* TODO: use [smallest] / [largest] *)
 Lemma min_vcover_matching (G : sgraph) (A V : {set G}) : 
-  bipartition A -> vcover V -> (forall V' : {set G}, vcover V' -> #|V| <= #|V'|) ->
+  bipartition A -> smallest vcover V ->
   exists2 M, @matching G M & #|V| = #|M|.
 Proof.
-  move => bip_A cover_V min_V. 
+  move => bip_A [cover_V min_V]. 
   have sep_A S : separator G A (~:A) S -> #|V| <= #|S|.
   { move/bip_separation_vcover => /(_ bip_A). exact: min_V. }
   case: (Menger sep_A) => p conn_p. 
@@ -905,13 +905,10 @@ Proof.
 Qed.
 
 Theorem Konig (G : sgraph) (A V : {set G}) (M : {set {set G}}) : 
-  bipartition A -> 
-  vcover V -> (forall V' : {set G}, vcover V' -> #|V| <= #|V'|) ->
-  matching M -> (forall M' : {set {set G}}, matching M -> #|M'| <= #|M|) ->
-  #|V| = #|M|.
+  bipartition A -> smallest vcover V -> largest matching M -> #|V| = #|M|.
 Proof.
-  move => bip_A cov_V min_V match_M max_M. apply/eqP.
+  move => bip_A [cov_V min_V] [match_M max_M]. apply/eqP.
   rewrite eqn_leq cover_matching // andbT.
-  case: (min_vcover_matching bip_A cov_V min_V) => M' H ->. exact: max_M.
+  case: (min_vcover_matching (V := V) bip_A _) => // M' H ->. exact: max_M.
 Qed.
 

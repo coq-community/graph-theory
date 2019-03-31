@@ -41,13 +41,16 @@ Qed.
 
 Definition separator U := exists x y, separates x y U.
 
+Lemma separatorNE U x y : ~ separator U -> ~ separates x y U.
+Proof. move => nsepU sepU. by apply nsepU; exists x; exists y. Qed.
+
 Lemma sseparator_connected S : 
   smallest separator S -> 0 < #|S| -> connected [set: G].
 Proof.
-  case => SS H cSgt0 x y _ _.
+  move => SS gt0 x y _ _.
   have: (connect (restrict [predC set0] sedge) x y).
-  { apply (@separatesNE x y set0); rewrite ?inE => //.
-    intro. apply (H set0). rewrite cards0 //. exists x. exists y. done. }
+  { apply (@separatesNE x y set0); rewrite ?inE => //. rewrite -(@cards0 G) in gt0. 
+    move: (below_smallest SS gt0). exact: separatorNE. }
   rewrite !restrictE //; intro; rewrite !inE //.
 Qed.
 
@@ -138,8 +141,7 @@ Proof.
   move/proper_separator/separatorP : (separate_nonadjacent xDy xNy) => sep.
   case (ex_smallest (fun S => #|S|) sep) => U /separatorP sepU HU {sep xDy xNy}.
   move: (separator_separation sepU) => [V1 [V2 [ps UV]]].
-  exists V1; exists V2. repeat split => //; rewrite -UV // => V. 
-  apply: contraTnot => /separatorP H. by rewrite -leqNgt HU.
+  exists V1; exists V2. repeat split => //; rewrite -UV // => V /separatorP. exact: HU.
 Qed.
 
 Lemma separation_sym V1 V2 : separation V1 V2 <-> separation V2 V1.
@@ -167,11 +169,11 @@ Proof.
         * move => y [z [? ? ? ?]]. exists z; exists y. split; done.
       + move => /forall_inPn [x2 x2V sx2].
         exists x1; exists x2. split => //; by apply negbNE. }
-  rewrite /smallest.
-  move => /forall_inP Hwlog [sepV [x1] [x2] [x1V12  x2V21]] [sepS smallS] sS.
-  pose S' := V1 :&: V2:\ s. suff: separator S'.
-  - move => sS'. exfalso. move: sS'. apply smallS.
-    rewrite /S'. rewrite (cardsD1 s (V1 :&: V2)) sS //=.
+  move => /forall_inP Hwlog [sepV [x1] [x2] [x1V12  x2V21]] smallS sS.
+  pose S' := V1 :&: V2:\ s. 
+  suff: separator S'.
+  - move => sS'. case: (below_smallest (V := S') smallS) => //. 
+    by rewrite /S' (cardsD1 s (V1 :&: V2)) sS. 
   - (* cant use [separator S], because the two vertices could be both in V2 *)
     exists x1; exists x2. split; try by rewrite /S' notinD.
     + move => p.
@@ -188,9 +190,6 @@ Proof.
       * apply: contraTN (z0z) => /eqP->. by rewrite sgP Hwlog.
       * apply: contraTT (z0z) => ?. by rewrite sepV.
 Qed.
-
-Lemma separatorNE U x y : ~ separator U -> ~ separates x y U.
-Proof. move => nsepU sepU. by apply nsepU; exists x; exists y. Qed.
 
 (** Note: This generalizes the corresponding lemma on checkpoints *)
 Lemma avoid_nonseperator U x y : ~ separator U -> x \notin U -> y \notin U -> 
@@ -545,7 +544,7 @@ Proof.
   - case/exists_inP => /= S sizeS sepS. 
     case (@ex_smallest _ (@separatorb G) (fun a => #|a|) S sepS) => U /separatorP sepU HU.
     exists U. repeat split => //. 
-    + move => V. apply: contraTnot => /separatorP H. by rewrite -leqNgt HU.
+    + move => V /separatorP. exact: HU.
     + move: (HU S sepS) => ?. exact: leq_trans sizeS.
   - move/exists_inPn => H. exfalso. apply HM. apply K4_of_separators => //.
     move => S. move: (H S). rewrite unfold_in (rwP (separatorP _)) => H'.
@@ -689,7 +688,7 @@ Proof.
     (* path from z to s2 avoiding s1 *)
     have [p irp dis] : exists2 p : Path z s2, irred p & [disjoint p & [set s1]].
     { apply: (@avoid_nonseperator G [set s1] z s2).
-      - apply ssepS.2. by rewrite S12 cards1 cards2 s1Ns2. 
+      - apply: below_smallest ssepS _. by rewrite S12 cards1 cards2 s1Ns2. 
       - by rewrite inE eq_sym ?(sg_edgeNeq s1z). 
       - by rewrite inE eq_sym. }
     rewrite disjoint_sym disjoints1 in dis.

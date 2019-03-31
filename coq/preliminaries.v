@@ -281,7 +281,17 @@ Lemma nat_size_ind (X:Type) (P : X -> Type) (f : X -> nat) :
    (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
 Proof. move => H. apply: well_founded_induction_type; last exact H. exact: wf_leq. Qed.
 
-Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, #|V| < #|U| -> ~ P V.
+Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, P V -> #|U| <= #|V|.
+
+Lemma below_smallest (T : finType) P (U V : {set T}) : 
+  smallest P U -> #|V| < #|U| -> ~ P V.
+Proof. move => [_ small_U] V_leq_U P_V. by rewrite leqNgt ltnS small_U in V_leq_U. Qed.
+
+Definition largest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, P V -> #|V| <= #|U|.
+
+Lemma above_largest (T : finType) P (U V : {set T}) : 
+  largest P U -> #|V| > #|U| -> ~ P V.
+Proof. move => [_ large_U] U_leq_V P_V. by rewrite leqNgt ltnS large_U in U_leq_V. Qed.
 
 (** TOTHINK: It would suffice if { y | m y <= m x} were enumerable for every [x] *) 
 Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
