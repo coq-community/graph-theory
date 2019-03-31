@@ -1,7 +1,7 @@
 Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries path sgraph.
+Require Import edone finite_quotient preliminaries digraph sgraph.
 Require Import set_tac.
 
 Set Implicit Arguments.

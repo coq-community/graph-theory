@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries path sgraph.
+Require Import edone finite_quotient preliminaries digraph sgraph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

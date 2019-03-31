@@ -3,7 +3,7 @@ Require Import RelationClasses Morphisms Setoid Omega.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries.
-Require Import path sgraph minor checkpoint cp_minor. 
+Require Import digraph sgraph minor checkpoint cp_minor. 
 Require Import multigraph subalgebra skeleton bounded.
 
 Set Implicit Arguments.

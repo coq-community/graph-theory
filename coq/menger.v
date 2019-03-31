@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries path sgraph set_tac.
+Require Import edone preliminaries digraph sgraph set_tac.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -679,7 +679,7 @@ Corollary theta (G : diGraph) (x y : G) s :
   exists p : 'I_s -> IPath x y, forall i j : 'I_s, i != j -> independent (p i) (p j).
 Proof.
   move => xNy xDy min_s. 
-  pose G' := path.induced (~: [set x;y]).
+  pose G' := digraph.induced (~: [set x;y]).
   pose A := [set z : G' | x -- val z].
   pose B := [set z : G' | val z -- y].
   (** Every AB-separator also separates x and y *)
@@ -695,7 +695,7 @@ Proof.
         case/and3P : Ip => I1 I2 _ u. rewrite inE. 
         apply: contraTN. case/setU1P => [->//|]. by move/set1P->. }
       have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
-      case: (@path.Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
+      case: (@digraph.Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
       case: (sepS _ _ q'); rewrite ?inE // => s0 in_S in_q'.
       exists (val s0); last exact: mem_imset. subst. 
       by rewrite !inE [_ \in q]mem_path -Eq map_f. }
@@ -711,7 +711,7 @@ Proof.
   { move: (connector_lst conn_p i). by rewrite inE. } 
   have X (i : 'I_s) : { pi : @IPath G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
   { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
-    case: (path.Path_from_induced pi) => pi' P1 P2. 
+    case: (digraph.Path_from_induced pi) => pi' P1 P2. 
     have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
     subst. 
     set q := (pcat (edgep (xA i)) (pcat pi' (edgep (By i)))).

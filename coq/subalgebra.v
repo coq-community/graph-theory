@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries path sgraph minor multigraph skeleton.
+Require Import edone finite_quotient preliminaries digraph sgraph minor multigraph skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

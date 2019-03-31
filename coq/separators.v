@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 (* Note: ssrbool is empty and shadows Coq.ssr.ssrbool, use Coq.ssrbool for "Find" *)
 
 Require Import edone finite_quotient preliminaries set_tac.
-Require Import path sgraph minor menger.
+Require Import digraph sgraph minor menger.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

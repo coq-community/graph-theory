@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries path.
+Require Import edone preliminaries digraph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

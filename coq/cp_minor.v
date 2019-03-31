@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 
-Require Import edone finite_quotient preliminaries path sgraph minor checkpoint.
+Require Import edone finite_quotient preliminaries digraph sgraph minor checkpoint.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

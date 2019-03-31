@@ -4,7 +4,7 @@ set_tac.v
 finite_quotient.v
 bounded.v
 preliminaries.v
-path.v
+digraph.v
 sgraph.v
 minor.v
 menger.v
