@@ -58,6 +58,11 @@ Proof.
   - move => x /predU1P [-> //|]. exact: B.
 Qed.
 
+Lemma subrelP (T : finType) (e1 e2 : rel T) : 
+  reflect (subrel e1 e2) ([pred x | e1 x.1 x.2] \subset [pred x | e2 x.1 x.2]).
+Proof. apply: (iffP subsetP) => [S x y /(S (x,y)) //|S [x y]]. exact: S. Qed.
+
+
 (** Note: [u : sig_subType P] provides for the decidable equality *)
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).

@@ -174,7 +174,6 @@ Proof.
   rewrite /castL. by rewrite (eq_irrelevance E erefl).
 Qed.
 
-
 Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u : 
   reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
 Proof. 
@@ -261,7 +260,7 @@ Lemma connector_cat (P A B : {set G}) n (p q : 'I_n -> pathS) :
   exists (r : 'I_n -> pathS), connector A B r.
 Proof.
   move => card_P. subst n. move => sep_P con_p con_q. 
-  (** For every [i], we can obtain some [j] such that [p i] and [q j] compose. *)
+  (* For every [i], we can obtain some [j] such that [p i] and [q j] compose. *)
   have mtch i : { j | fst (q j) = lst (p i) }.
   { pose x := lst (p i).
     have Hx : x \in codom (fst \o q). 
@@ -274,9 +273,9 @@ Proof.
   have mtch_inj : injective (fun i => sval (mtch i)).
   { move => i i' E. move: (svalP (mtch i')). rewrite -E (svalP (mtch i)).
     exact : (lst_inj con_p). }
-  (** Compose matching paths *)
+  (* Compose matching paths *)
   pose pq i := pcatS (p i) (q (sval (mtch i))).
-  (** Elimination lemma for pq to encapsulate dependent types reasoning *)
+  (* Elimination lemma for pq to encapsulate dependent types reasoning *)
   have pqE i : exists j x y z (pi : Path x y) (qi : Path y z), 
       [/\ p i = PathS pi, j = sval (mtch i), q j = PathS qi & pq i = PathS (pcat pi qi) ].
   { pose j := sval (mtch i). 
@@ -377,109 +376,21 @@ Qed.
 
 End SeparatorConnector.
 
-Lemma nat_size_ind (X : Type) (P : X -> Type) (x : X) (f : X -> nat) :
-       (forall x : X, (forall y : X, f y < f x -> P y) -> P x) -> P x.
-Proof. move => H. apply: nat_size_ind. exact: H. Qed.
-
-Lemma subrel_pathp (T : finType) (e1 e2 : rel T) (x y : T) (p : seq T) :
-  subrel e1 e2 -> @pathp (DiGraph e1) x y p -> @pathp (DiGraph e2) x y p.
-Proof. 
-  move => sub12. elim: p x => //= z p IHp x. rewrite !pathp_cons => /andP [A B].
-  apply/andP;split; [exact: sub12 | exact: IHp].
-Qed.
-
-Arguments nat_size_ind [X] [P] [x] f.
-Arguments separator : clear implicits.
-Arguments separatorb : clear implicits.
-
-Definition num_edges (G : diGraph) := #|[pred x : G * G | x.1 -- x.2]|.
-
-Lemma subrelP (T : finType) (e1 e2 : rel T) : 
-  reflect (subrel e1 e2) ([pred x | e1 x.1 x.2] \subset [pred x | e2 x.1 x.2]).
-Proof. apply: (iffP subsetP) => [S x y /(S (x,y)) //|S [x y]]. exact: S. Qed.
-
-
-Section DelEdge.
-
-Variable (G : diGraph) (a b : G).
-
-Definition del_rel a b := [rel x y : G | x -- y && ((x != a) || (y != b))].
-
-Definition del_edge := DiGraph (del_rel a b).
-
-Definition subrel_del_edge : subrel (del_rel a b) (@edge_rel G).
-Proof. by move => x y /andP []. Qed.
-
-Hypothesis ab : a -- b.
-
-Lemma card_del_edge : num_edges del_edge < num_edges G.
-Proof.
-  apply: proper_card. apply/properP; split.
-  - apply/subrelP. exact: subrel_del_edge. 
-  - exists (a,b); by rewrite !inE //= /edge_rel /= !eqxx. 
-Qed.
-
-(** This is the fundamental case analysis for irredundant paths in [G] in
-terms of paths in [del_edge a b] *)
-
-(** TOTHINK: The proof below is a slighty messy induction on
-[p]. Informally, one would simply check wether [nodes p] contains and
-[a] followed by a [b] *)
-Lemma del_edge_path_case (x y : G) (p : Path x y) (Ip : irred p) :
-    (exists (p1 : @IPath del_edge x a) (p2 : @IPath del_edge b y), 
-        [/\ nodes p = nodes p1 ++ nodes p2, a \notin p2 & b \notin p1])
-  \/ (exists p1 : @IPath del_edge x y, nodes p = nodes p1).
-Proof.
-  pattern x, y, p. apply irred_ind => //.
-  - move => {p Ip}.  
-    have Ip : irred (@idp del_edge y) by apply: irred_idp. by right;exists (Sub _ Ip).
-  - move => {x p Ip} x z p xz Ip xp [[p1] [p2] [A B C]|[p1] E].
-    + left. 
-      have xyD : (x:del_edge) -- z. 
-      { rewrite /edge_rel/= xz (_ : x != a) //. apply: contraNneq xp => -> .
-        by rewrite mem_path A mem_cat -(@mem_path del_edge) path_end. }
-      have Iq : irred (pcat (edgep xyD) p1). 
-      { rewrite irred_edgeL (valP p1) andbT. 
-        rewrite mem_path A mem_cat -(@mem_path del_edge) negb_or in xp.
-        by case/andP : xp. }
-      exists (Sub _ Iq). exists p2. split => //. 
-      * by rewrite /= !nodes_pcat A [nodes p1](nodesE) /= -catA. 
-      * change (b \notin pcat (edgep xyD) p1). 
-        rewrite (@mem_pcat del_edge) (negbTE C) orbF mem_edgep negb_or.
-        rewrite irred_edgeL in Iq. apply/andP; split.
-        -- apply: contraNneq xp => <-. 
-           by rewrite mem_path A mem_cat -!(@mem_path del_edge) path_begin.
-        -- apply: contraTneq Ip => ?. subst z. 
-           rewrite irredE A cat_uniq [has _ _](_ : _ = true) //. 
-           apply/hasP. by exists b => /=; rewrite -!(@mem_path del_edge) path_begin.
-    + case: (boolP ((x : del_edge) -- z)) => [xzD|xzND].
-      * right. 
-        have Iq : irred (pcat (edgep xzD) p1). 
-        { by rewrite irred_edgeL (valP p1) mem_path -E -(@mem_path G) xp. }
-        exists (Sub _ Iq). by rewrite !nodes_pcat E. 
-      * left. rewrite /edge_rel/= xz /= negb_or !negbK in xzND. 
-        case/andP : xzND => /eqP ? /eqP ?. subst x. subst z. 
-        have Iq : irred (@idp del_edge a) by apply: irred_idp.
-        exists (Sub _ Iq). exists p1. split => //=. 
-        -- by rewrite nodes_pcat E [nodes p1]nodesE /= -cat1s catA !nodesE. 
-        -- by rewrite (@mem_path del_edge) -E -(@mem_path G).
-        -- rewrite (@mem_path del_edge) nodesE /= inE. 
-           apply: contraNneq xp => <-. 
-           by rewrite mem_path E -(@mem_path del_edge) path_begin.
-Qed.
-
-End DelEdge.
-
-Lemma del_edge_lift_proof (G : diGraph) (a b x y : G) p : 
-  @pathp (del_edge a b) x y p -> @pathp G x y p.
-Proof. case: G a b x y p => T e a b x y p. apply: subrel_pathp. exact: subrel_del_edge. Qed.
-
 Definition del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b)) :=
   let: existT (x,y) p' := p in PathS (Build_Path (del_edge_lift_proof (valP p'))).
 
 Lemma mem_del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b))  x : 
   (x \in del_edge_liftS p) = (x \in p).
 Proof. by case: p => [[u v] p]. Qed.
+
+Lemma nat_size_ind (X : Type) (P : X -> Type) (x : X) (f : X -> nat) :
+       (forall x : X, (forall y : X, f y < f x -> P y) -> P x) -> P x.
+Proof. move => H. apply: nat_size_ind. exact: H. Qed.
+
+Arguments nat_size_ind [X] [P] [x] f.
+Arguments separator : clear implicits.
+Arguments separatorb : clear implicits.
+
 
 Lemma connector_nodes (T : finType) (e1 e2 : rel T) (A B : {set T}) : 
   forall s (p : 'I_s -> pathS (DiGraph e1)) (q : 'I_s -> pathS (DiGraph e2)), 
@@ -682,7 +593,7 @@ Proof.
   pose G' := digraph.induced (~: [set x;y]).
   pose A := [set z : G' | x -- val z].
   pose B := [set z : G' | val z -- y].
-  (** Every AB-separator also separates x and y *)
+  (* Every AB-separator also separates x and y *)
   have sepAB S : separator G' A B S -> separates x y [set val x | x in S].
   { move => sepS. apply: separatesI; split.
     - apply/negP. case/imsetP => x' _ E. move: (valP x'). by rewrite !inE -E eqxx.

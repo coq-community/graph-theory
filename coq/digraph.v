@@ -120,7 +120,14 @@ Proof. case: p => //= a p /and3P[/= A B C]. by rewrite -(eqP C) mem_last in A. Q
 
 End PathP.
 
-(** Lifting Lemmas *)
+(** Lifting Lemmas for unpackaged paths *)
+
+Lemma subrel_pathp (T : finType) (e1 e2 : rel T) (x y : T) (p : seq T) :
+  subrel e1 e2 -> @pathp (RelType e1) x y p -> @pathp (RelType e2) x y p.
+Proof. 
+  move => sub12. elim: p x => //= z p IHp x. rewrite !pathp_cons => /andP [A B].
+  apply/andP;split; [exact: sub12 | exact: IHp].
+Qed.
 
 Lemma lift_pathp_on (G H : relType) (f : G -> H) a b p' : 
   (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> f x -- f y -> x -- y) -> injective f -> 
@@ -142,6 +149,7 @@ Proof.
   move => A B /andP [C D] E. case: (lift_pathp_on A B D E) => p [p1 p2].
   exists p. split => //. apply/andP. split => //. by rewrite -(map_inj_uniq B) /= p2.
 Qed.
+
 Lemma lift_upath (G H : relType) (f : G -> H) a b p' : 
   (forall x y, f x -- f y -> x -- y) -> injective f -> 
   upath (f a) (f b) p' -> {subset p' <= codom f} -> exists p, upath a b p /\ map f p = p'.
@@ -692,7 +700,9 @@ Notation "x -- y :> G" := (@edge_rel G x y) (at level 30, y at next level) : imp
 Notation "'PATH' G x y" := (@Path G x y) (at level 4) : implicit_scope.
 Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.
 
-(** * Basic Constructions on digraphs *)
+(** ** Basic Constructions on digraphs *)
+
+(** *** Induced Subgraphs *)
 
 Section InducedSubgraph.
   Variables (G : diGraph) (S : {set G}).
@@ -740,8 +750,89 @@ Proof.
   move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
 Qed.
 
+(** *** Edge Deletion *)
 
-(** Multigraphs as instance of digraphs *)
+Definition num_edges (G : diGraph) := #|[pred x : G * G | x.1 -- x.2]|.
+
+Section DelEdge.
+
+Variable (G : diGraph) (a b : G).
+
+Definition del_rel a b := [rel x y : G | x -- y && ((x != a) || (y != b))].
+
+Definition del_edge := DiGraph (del_rel a b).
+
+Definition subrel_del_edge : subrel (del_rel a b) (@edge_rel G).
+Proof. by move => x y /andP []. Qed.
+
+Hypothesis ab : a -- b.
+
+Lemma card_del_edge : num_edges del_edge < num_edges G.
+Proof.
+  apply: proper_card. apply/properP; split.
+  - apply/subrelP. exact: subrel_del_edge. 
+  - exists (a,b); by rewrite !inE //= /edge_rel /= !eqxx. 
+Qed.
+
+(** This is the fundamental case analysis for irredundant paths in [G] in
+terms of paths in [del_edge a b] *)
+
+(** TOTHINK: The proof below is a slighty messy induction on
+[p]. Informally, one would simply check wether [nodes p] contains and
+[a] followed by a [b] *)
+Lemma del_edge_path_case (x y : G) (p : Path x y) (Ip : irred p) :
+    (exists (p1 : @IPath del_edge x a) (p2 : @IPath del_edge b y), 
+        [/\ nodes p = nodes p1 ++ nodes p2, a \notin p2 & b \notin p1])
+  \/ (exists p1 : @IPath del_edge x y, nodes p = nodes p1).
+Proof.
+  pattern x, y, p. apply irred_ind => //.
+  - move => {p Ip}.  
+    have Ip : irred (@idp del_edge y) by apply: irred_idp. by right;exists (Sub _ Ip).
+  - move => {x p Ip} x z p xz Ip xp [[p1] [p2] [A B C]|[p1] E].
+    + left. 
+      have xyD : (x:del_edge) -- z. 
+      { rewrite /edge_rel/= xz (_ : x != a) //. apply: contraNneq xp => -> .
+        by rewrite mem_path A mem_cat -(@mem_path del_edge) path_end. }
+      have Iq : irred (pcat (edgep xyD) p1). 
+      { rewrite irred_edgeL (valP p1) andbT. 
+        rewrite mem_path A mem_cat -(@mem_path del_edge) negb_or in xp.
+        by case/andP : xp. }
+      exists (Sub _ Iq). exists p2. split => //. 
+      * by rewrite /= !nodes_pcat A [nodes p1](nodesE) /= -catA. 
+      * change (b \notin pcat (edgep xyD) p1). 
+        rewrite (@mem_pcat del_edge) (negbTE C) orbF mem_edgep negb_or.
+        rewrite irred_edgeL in Iq. apply/andP; split.
+        -- apply: contraNneq xp => <-. 
+           by rewrite mem_path A mem_cat -!(@mem_path del_edge) path_begin.
+        -- apply: contraTneq Ip => ?. subst z. 
+           rewrite irredE A cat_uniq [has _ _](_ : _ = true) //. 
+           apply/hasP. by exists b => /=; rewrite -!(@mem_path del_edge) path_begin.
+    + case: (boolP ((x : del_edge) -- z)) => [xzD|xzND].
+      * right. 
+        have Iq : irred (pcat (edgep xzD) p1). 
+        { by rewrite irred_edgeL (valP p1) mem_path -E -(@mem_path G) xp. }
+        exists (Sub _ Iq). by rewrite !nodes_pcat E. 
+      * left. rewrite /edge_rel/= xz /= negb_or !negbK in xzND. 
+        case/andP : xzND => /eqP ? /eqP ?. subst x. subst z. 
+        have Iq : irred (@idp del_edge a) by apply: irred_idp.
+        exists (Sub _ Iq). exists p1. split => //=. 
+        -- by rewrite nodes_pcat E [nodes p1]nodesE /= -cat1s catA !nodesE. 
+        -- by rewrite (@mem_path del_edge) -E -(@mem_path G).
+        -- rewrite (@mem_path del_edge) nodesE /= inE. 
+           apply: contraNneq xp => <-. 
+           by rewrite mem_path E -(@mem_path del_edge) path_begin.
+Qed.
+
+End DelEdge.
+
+Lemma del_edge_lift_proof (G : diGraph) (a b x y : G) p : 
+  @pathp (del_edge a b) x y p -> @pathp G x y p.
+Proof. case: G a b x y p => T e a b x y p. apply: subrel_pathp. exact: subrel_del_edge. Qed.
+
+
+
+
+(** ** Directed Multigraphs *)
 
 Record mGraph := MGraph { vertex : finType;
                           edge: finType;
