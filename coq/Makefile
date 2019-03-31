@@ -35,6 +35,6 @@ clean: Makefile.coq
 	rm -f Makefile.coq .*.aux depend-graph.*
 
 Makefile.coq: _CoqProject
-	$(COQBIN)coq_makefile -f _CoqProject -arg -w -arg -notation-overridden >Makefile.coq
+	$(COQBIN)coq_makefile -f _CoqProject -arg -w -arg -notation-overridden -o Makefile.coq
 
 .PHONY: all html clean
