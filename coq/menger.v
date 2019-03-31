@@ -383,14 +383,8 @@ Lemma mem_del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b))  x :
   (x \in del_edge_liftS p) = (x \in p).
 Proof. by case: p => [[u v] p]. Qed.
 
-Lemma nat_size_ind (X : Type) (P : X -> Type) (x : X) (f : X -> nat) :
-       (forall x : X, (forall y : X, f y < f x -> P y) -> P x) -> P x.
-Proof. move => H. apply: nat_size_ind. exact: H. Qed.
-
-Arguments nat_size_ind [X] [P] [x] f.
 Arguments separator : clear implicits.
 Arguments separatorb : clear implicits.
-
 
 Lemma connector_nodes (T : finType) (e1 e2 : rel T) (A B : {set T}) : 
   forall s (p : 'I_s -> pathS (DiGraph e1)) (q : 'I_s -> pathS (DiGraph e2)), 
@@ -425,17 +419,14 @@ Qed.
 Theorem Menger (G : diGraph) (A B : {set G}) s : 
   (forall S, separator G A B S -> s <= #|S|) -> exists (p : 'I_s -> pathS G), connector A B p.
 Proof.
-  move: s A B. pattern G. apply: (nat_size_ind num_edges) => {G}.
-  move => G IH s A B min_s. 
+  move: G s A B. apply: (nat_size_ind (f := num_edges)) => G IH s A B min_s. 
   case: (boolP [exists x : G, exists y : G, x -- y]) => [E|E0]; last first.
   - suff Hs : s <= #|A :&: B|. 
     { case: (trivial_connector A B) => p. exact: sub_connector. }
-    apply: min_s => a b p aA bB. 
-    (* If a != b then p must have an edge, contradition - Lemma? *) 
-    revert aA bB. pattern a,b,p. apply Path_ind. 
-    + move => bA bB. exists b; by rewrite !inE ?bA.
-    + move => x y ? xy. case: notF. apply: contraNT E0 => _. 
-      apply/existsP;exists x. by apply/existsP; exists y. 
+    apply: min_s. apply: separatorI => a b p aA bB. case: (altP (a =P b)) => [?|aDb].
+    + subst b. exists a => //. by set_tac.
+    + move/existsPn : E0 => /(_ a). case: (splitL p aDb) => x [ax] _.
+      move/existsPn => /(_ x). by rewrite ax. 
   - case/existsP : E => x /existsP [y xy].
     pose G' := del_edge x y.
     have HG' : num_edges G' < num_edges G by exact: card_del_edge. 

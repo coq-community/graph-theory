@@ -901,7 +901,7 @@ Qed.
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  pattern G. apply (@nat_size_ind _ _ _ (fun G => #|G|)) => {G} G Hind K4free. 
+  move: G. apply: (nat_size_ind (f := fun G => #|G|)) => G Hind K4free. 
   (* Either G is small, or it has a smallest separator of size at most two *)
   case (no_K4_smallest_separator K4free) =>[|[S [ssepS Ssmall2]]].
   { move => Gsmall. exists tunit. exists (fun _ => [set: G]). split.
