@@ -616,7 +616,7 @@ Proof.
   { move: (connector_fst conn_p i). by rewrite inE. } 
   have By (i : 'I_s) : val (lst (p i)) -- y.
   { move: (connector_lst conn_p i). by rewrite inE. } 
-  have X (i : 'I_s) : { pi : @IPath G x y | [set x in pi] :\: [set x;y] = [set val x | x in p i] }.
+  have X (i : 'I_s) : { pi : @IPath G x y | interior pi = [set val x | x in p i] }.
   { case def_pi : (p i) => [[a b] /= pi]. rewrite -/(PathS pi) in def_pi *.
     case: (digraph.Path_from_induced pi) => pi' P1 P2. 
     have [? ?] : a = fst (p i) /\ b = lst (p i) by rewrite def_pi.
@@ -635,7 +635,7 @@ Proof.
     - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
       rewrite mem_path P2 mem_map //. exact: val_inj. }
   exists (fun i => sval (X i)). 
-  + move => i j iDj. apply/disjointP => u. rewrite /interior (svalP (X i)) (svalP (X j)).
+  + move => i j iDj. apply/disjointP => u. rewrite (svalP (X i)) (svalP (X j)).
     case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
     have ? : u1 = u2 by apply: val_inj; congruence.
     subst u2. by rewrite [i](connector_eq conn_p UP1 UP2) eqxx in iDj.
@@ -655,7 +655,7 @@ Proof.
   by rewrite xy in xNy.
 Qed.
 
-(** ** Edge Version of Menger's Theorem *)
+(** *** Edge Version *)
 
 Corollary independent_walks (G : mGraph) (a b : G) n : 
   a != b -> (forall E, eseparates a b E -> n <= #|E|) -> 
