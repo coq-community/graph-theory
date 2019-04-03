@@ -236,7 +236,6 @@ Qed.
 End Separators.
 
 
-
 Prenex Implicits separator.
 Implicit Types G H : sgraph.
 
@@ -437,41 +436,36 @@ Proof.
   apply: H. by rewrite !inE H1 H2.
 Qed.
 
-Lemma K4_of_separators (G : sgraph) : 
-  3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
+Lemma connected_interiorR (G : sgraph) (x y : G) (p : Path x y) : 
+  irred p -> connected (y |: interior p).
 Proof.
-  move => G4elt minsep3.
-  case: (boolP (cliqueb [set: G])) => [|/cliquePn [x] [y] [_ _ xNy xNEy]].
-  { move/cliqueP. apply: minor_of_clique. by rewrite cardsT. }
-  have minsep_xy S : separates x y S -> 3 <= #|S|.
-  { move => A. apply: minsep3. by exists x; exists y. }
-  case: (theta xNEy xNy minsep_xy) => p ind_p.
-  case: (theta_vertices p xNy xNEy) => s Hs.
-  (** name [p1] and [p2] (plus assumptions) because we will need to generalize over them *)
-  pose p1 := p ord1. pose p2 := p ord2.
-  pose s1 := s ord1. pose s2 := s ord2.
-  have ind12 : independent p1 p2 by apply: ind_p.
-  have ind01 : independent (p ord0) p1 by apply: ind_p.
-  have ind02 : independent (p ord0) p2 by apply: ind_p.
-  have sp1 : s1 \in interior p1 by rewrite Hs.
-  have sp2 : s2 \in interior p2 by rewrite Hs.
-  case (@avoid_nonseperator G [set x; y] (s ord0) (s1)) => //; try (apply: interiorN; eauto).
-  { move/minsep3. by rewrite cards2 xNy. }
-  move => q Iq av_xy. 
-  case: (@split_at_first G [predU interior p1 & interior p2] (s ord0) s1 q s1) => //.  
-  { by rewrite inE /= sp1. }
-  move => s1' [q1 [q2 [catp s1'p12 s1'firstp12]]].
-  subst q. case/irred_catE : Iq => Iq _ _.
-  have {av_xy} av_xy : [disjoint q1 & [set x; y]] by apply/disjointP => z; set_tac. 
-  wlog in_p1: p1 p2 s1 s2 ind01 ind02 ind12 sp1 sp2 {q2 s1'p12} s1'firstp12 / s1' \in interior p1.
-  { move => W. case/orP: (s1'p12) => /= [s1'p1|s1'p2].
-    - by apply W with p1 p2 s1 s2.
-    - apply W with p2 p1 s2 s1 => //. by apply: independent_sym.
-      move => z' H1 H2. apply s1'firstp12 => //. move: H1. by rewrite !inE orbC. }
-  
+  move => Ip. case: (set_0Vmem (interior p)) => [->|[z Hz]]. 
+  - rewrite setU0. exact: connected1.
+  - apply: neighbor_connected; [exact: connected1|exact: connected_interior|].
+    apply: path_neighborR => //; by set_tac. 
+Qed.
+
+Lemma neighbor_interiorL (G : sgraph) (x y : G) (p : Path x y) :
+  x != y -> irred p -> neighbor [set x] (y |: interior p).
+Proof.
+  move => xDy Ip. case: (set_0Vmem (interior p)) => [E|[z Hz]]. 
+  - apply: neighborUl. apply/neighborP; exists x; exists y. 
+    case: (interior0E xDy Ip E) => xy _. split => //; by rewrite inE eqxx.
+  - apply: neighborUr. apply: path_neighborL => //; by set_tac. 
+Qed.
+
+Lemma K4_of_paths (G : sgraph) x y s0 s1' (p0 p1 p2 : IPath x y) (q1 : Path s0 s1') : 
+  x!=y -> independent p0 p1 -> independent p0 p2 -> independent p1 p2 ->
+  s0 \in interior p0 -> s1' \in interior p1 -> irred q1 -> 
+  [disjoint q1 & [set x; y]] -> 
+  (forall z' : G, z' \in [predU interior p1 & interior p2] -> z' \in q1 -> z' = s1') -> 
+  minor G K4.
+Proof.
+  move => xDy ind01 ind02 ind12 sp0 in_p1 Iq av_xy s1'firstp12.
+
   pose phi (i : K4) := match i with
                   | Ordinal 0 _ => [set x]
-                  | Ordinal 1 _ => interior (p ord0) :|: interior q1
+                  | Ordinal 1 _ => interior p0 :|: interior q1
                   | Ordinal 2 _ => interior p1
                   | Ordinal 3 _ => y |: interior p2
                   | Ordinal p n => set0
@@ -480,8 +474,8 @@ Proof.
   split.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=; apply /set0Pn.
     + exists x. by set_tac.
-    + exists (s ord0). by rewrite inE Hs.
-    + by exists s1.
+    + exists (s0). by rewrite inE sp0.
+    + by exists s1'.
     + exists y. by set_tac.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=.
     + exact: connected1.
@@ -490,8 +484,7 @@ Proof.
       * apply: neighbor_connected; try apply: connected_interior => //. exact: valP.
         exact: path_neighborL.
     + apply: connected_interior. exact: valP.
-    + apply: neighbor_connected; [exact: connected1|apply: connected_interior; exact: valP |].
-      apply: path_neighborR => //. exact: valP. all: by set_tac.
+    + apply: connected_interiorR. exact: valP.
   - move => i j iNj. wlog iltj: i j {iNj} / i < j.
     { move => H. rewrite /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite disjoint_sym]; exact: H. }
@@ -521,19 +514,54 @@ Proof.
       move: iNj => /orP [iltj|jlti]; [|rewrite neighborC]; exact: H. }
     destruct i as [m i]. destruct j as [n j].
     (** Hints for automation *)
-    have [[[? ?] ?] ?] := (valP (p ord0),(Hs ord0),valP p1, valP p2).
+    have [[? ?] ?] := (valP (p0),valP p1, valP p2).
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
     + apply: neighborUl. apply: path_neighborL => //; by set_tac.
     + apply: path_neighborL => //; by set_tac.
-    + apply: neighborUr. apply: path_neighborL => //; by set_tac.
+    + exact: neighbor_interiorL. 
     + case: (altP (interior q1 =P set0)) => [E|H]. 
-      * rewrite E setU0. apply/neighborP; exists (s ord0); exists s1'. split => //.
+      * rewrite E setU0. apply/neighborP; exists (s0); exists s1'. split => //.
         case/interior0E : E => //. apply: contraTneq ind01. 
         rewrite /independent; set_tac. 
       * rewrite neighborC. apply: neighborUr. exact: path_neighborR.
     + apply: neighborUl. rewrite neighborC. apply: neighborUl.
       apply: path_neighborR => //; by set_tac.
     + apply: neighborUl. rewrite neighborC. apply: path_neighborR => //; by set_tac.
+Qed.
+
+
+Lemma K4_of_separators (G : sgraph) : 
+  3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
+Proof.
+  move => G4elt minsep3.
+  case: (boolP (cliqueb [set: G])) => [|/cliquePn [x] [y] [_ _ xNy xNEy]].
+  { move/cliqueP. apply: minor_of_clique. by rewrite cardsT. }
+  have minsep_xy S : separates x y S -> 3 <= #|S|.
+  { move => A. apply: minsep3. by exists x; exists y. }
+  case: (theta xNEy xNy minsep_xy) => p ind_p.
+  case: (theta_vertices p xNy xNEy) => s Hs.
+  (** name [p1] and [p2] (plus assumptions) because we will need to generalize over them *)
+  pose p1 := p ord1. pose p2 := p ord2.
+  pose s1 := s ord1. pose s2 := s ord2.
+  have ind12 : independent p1 p2 by apply: ind_p.
+  have ind01 : independent (p ord0) p1 by apply: ind_p.
+  have ind02 : independent (p ord0) p2 by apply: ind_p.
+  have sp1 : s1 \in interior p1 by rewrite Hs.
+  have sp2 : s2 \in interior p2 by rewrite Hs.
+  case (@avoid_nonseperator G [set x; y] (s ord0) (s1)) => //; try (apply: interiorN; eauto).
+  { move/minsep3. by rewrite cards2 xNy. }
+  move => q Iq av_xy. 
+  case: (@split_at_first G [predU interior p1 & interior p2] (s ord0) s1 q s1) => //.  
+  { by rewrite inE /= sp1. }
+  move => s1' [q1 [q2 [catp s1'p12 s1'firstp12]]].
+  subst q. case/irred_catE : Iq => Iq _ _.
+  have {av_xy} av_xy : [disjoint q1 & [set x; y]] by apply/disjointP => z; set_tac. 
+  wlog in_p1: p1 p2 s1 s2 ind01 ind02 ind12 sp1 {sp2} {q2 s1'p12} s1'firstp12 / s1' \in interior p1.
+  { move => W. case/orP: (s1'p12) => /= [s1'p1|s1'p2].
+    - by apply W with p1 p2 s1.
+    - apply W with p2 p1 s2 => //. by apply: independent_sym.
+      move => z' H1 H2. apply s1'firstp12 => //. move: H1. by rewrite !inE orbC. }
+  by apply K4_of_paths with x y (s ord0) s1' (p ord0) p1 p2 q1.
 Qed.
 
 Lemma no_K4_smallest_separator (G : sgraph) :
