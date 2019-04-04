@@ -149,12 +149,9 @@ Proof.
   move => A B C [D E]. 
   apply/equivalence_partition_gt1P.
   - move => x y z _ _ _. exact: (sedge_in_equiv (G := skeleton G)).
-  - set H := sinterval _ _. apply: ssplit_K4_nontrivial (E) _ (D).
+  - set H := sinterval _ _. apply: ssplit_K4_nontrivial (E) (D).
     + by rewrite /edge_rel/= A.
     + by case/and3P : B.
-    + apply/eqP. apply: edgeless_bag => //=. 
-      * apply: (@CP_extensive G); by rewrite !inE eqxx.
-      * by case/and3P : B => ? _ _.
 Qed.
 
 

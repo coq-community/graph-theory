@@ -454,15 +454,15 @@ Proof.
   - apply: neighborUr. apply: path_neighborL => //; by set_tac. 
 Qed.
 
-Lemma K4_of_paths (G : sgraph) x y s0 s1' (p0 p1 p2 : IPath x y) (q1 : Path s0 s1') : 
+Lemma K4_of_paths (G : sgraph) x y s0 s1' (p0 p1 p2 : Path x y) (q1 : Path s0 s1') : 
   x!=y -> independent p0 p1 -> independent p0 p2 -> independent p1 p2 ->
-  s0 \in interior p0 -> s1' \in interior p1 -> irred q1 -> 
+  s0 \in interior p0 -> s1' \in interior p1 -> 
+  irred p0 -> irred p1 -> irred p2 -> irred q1 -> 
   [disjoint q1 & [set x; y]] -> 
   (forall z' : G, z' \in [predU interior p1 & interior p2] -> z' \in q1 -> z' = s1') -> 
   minor G K4.
 Proof.
-  move => xDy ind01 ind02 ind12 sp0 in_p1 Iq av_xy s1'firstp12.
-
+  move => xDy ind01 ind02 ind12 sp0 in_p1 Ip0 Ip1 Ip2 Iq av_xy s1'firstp12.
   pose phi (i : K4) := match i with
                   | Ordinal 0 _ => [set x]
                   | Ordinal 1 _ => interior p0 :|: interior q1
@@ -480,11 +480,11 @@ Proof.
   - move => [m i]. case m as [|[|[|[|m]]]] => //=.
     + exact: connected1.
     + case: (altP (interior q1 =P set0)) => [->|H].
-      * rewrite setU0. apply: connected_interior. exact: valP. 
-      * apply: neighbor_connected; try apply: connected_interior => //. exact: valP.
+      * rewrite setU0. exact: connected_interior. 
+      * apply: neighbor_connected; try exact: connected_interior.
         exact: path_neighborL.
-    + apply: connected_interior. exact: valP.
-    + apply: connected_interiorR. exact: valP.
+    + exact: connected_interior. 
+    + exact: connected_interiorR. 
   - move => i j iNj. wlog iltj: i j {iNj} / i < j.
     { move => H. rewrite /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite disjoint_sym]; exact: H. }
@@ -561,7 +561,7 @@ Proof.
     - by apply W with p1 p2 s1.
     - apply W with p2 p1 s2 => //. by apply: independent_sym.
       move => z' H1 H2. apply s1'firstp12 => //. move: H1. by rewrite !inE orbC. }
-  by apply K4_of_paths with x y (s ord0) s1' (p ord0) p1 p2 q1.
+  apply K4_of_paths with x y (s ord0) s1' (p ord0) p1 p2 q1 => //; exact: valP.
 Qed.
 
 Lemma no_K4_smallest_separator (G : sgraph) :
