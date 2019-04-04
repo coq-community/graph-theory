@@ -1,6 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries digraph sgraph minor checkpoint.
+Require Import menger separators set_tac.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -466,7 +467,7 @@ Proof.
   move=> y y_cpio. exact: cp_tightenR y_cpio i_cpxo.
 Qed.
 
-Require Import menger separators set_tac.
+
 
 Lemma sepatates_cp (G : sgraph) (x y z : G) : separates x y [set z] -> z \in cp x y :\: [set x; y].
 Proof.
@@ -487,32 +488,6 @@ Proof.
   - move/eqP/cards1P : E => [z Hz]. subst. move/sepatates_cp in sep_xy. by set_tac.
 Qed.
 
-Section Transfer.
-  Variables (T : finType) (e1 e2 : rel T).
-  Let D1 := DiGraph e1.
-  Let D2 := DiGraph e2.
-  Variables (x y : T) (p p' : @Path D1 x y) (q q' : @Path D2 x y).
-  Hypothesis Npq : nodes p = nodes q.
-  Hypothesis Npq' : nodes p' = nodes q'.
-
-  Lemma irred_eq_nodes : irred p = irred q.
-  Proof. by rewrite !irredE Npq. Qed.
-
-  Lemma mem_eq_nodes : p =i q.
-  Proof. move => z /=. by rewrite (@mem_path D1) Npq -(@mem_path D2). Qed.
-
-  Lemma interior_eq_nodes : interior p = interior q.
-  Proof. 
-    rewrite /interior (_ : [set x in p] = [set x in q]) //. 
-    apply/setP => z. by rewrite !inE mem_eq_nodes.
-  Qed.
-
-End Transfer.
-
-Lemma independent_nodes (T : finType) (e1 e2 : rel T) x y (p p' : Path (DiGraph e1) x y) 
-  (q q' : Path (DiGraph e2) x y) (Npq : nodes p = nodes q) (Npq' : nodes p' = nodes q') : 
-  independent p p' = independent q q'.
-Proof. by rewrite /independent (interior_eq_nodes Npq) (interior_eq_nodes Npq'). Qed.
 
 Lemma set_pred0 (T : finType) : @set0 T =i pred0. 
 Proof. move => z. by rewrite !inE. Qed.

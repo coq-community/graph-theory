@@ -1317,43 +1317,6 @@ Proof.
   by case/setUP : H => ?; [left|right]; apply/neighborP; exists u; exists v.
 Qed.
 
-(** ** Interor (of irredundant paths) *)
-
-(* TOTHINK: This definition really only makes sense for irredundant paths *)
-Section Interior.
-Variable (G : diGraph) (x y : G).
-Implicit Types (p : Path x y).
-
-Definition interior p := [set x in p] :\: [set x;y].
-
-Lemma interior_edgep (xy : x -- y) : interior (edgep xy) = set0.
-Proof. apply/setP => z. rewrite !inE mem_edgep. by do 2 (case: (_ == _)). Qed.
-
-Lemma interiorN p z : z \in interior p -> z \notin [set x; y].
-Proof. rewrite inE. by case (_ \in _). Qed.
-
-Lemma interiorW p z : z \in interior p -> z \in p.
-Proof. rewrite !inE. case: (_ \in _) => //. by rewrite andbF. Qed.
-
-Lemma interior0E p : x != y -> irred p -> interior p = set0 -> exists xy, p = edgep xy.
-Proof.
-  move => xNy Ip P0. 
-  case: (splitL p xNy) Ip => z [xz] [p'] [E _]. 
-  rewrite E irred_edgeL => /andP [xNp Ip']. 
-  suff zNy : z = y. { subst. exists xz. by rewrite (irredxx Ip') pcat_idR. }
-  apply: contra_eq P0 => C. apply/set0Pn. exists z. 
-  rewrite !inE negb_or C eq_sym E !inE /= !andbT. 
-  apply: contraNneq xNp => ?. by subst z. 
-Qed.
-
-Definition independent (p q : Path x y) := 
-  [disjoint interior p & interior q].
-
-Lemma independent_sym (p q : Path x y):
-  independent p q -> independent q p.
-Proof. by rewrite /independent disjoint_sym. Qed.
-
-End Interior.
 
 Lemma path_neighborL (G : sgraph) (x y : G) (p : Path x y) (A : {set G}) :
   irred p -> interior p != set0 -> x \in A -> neighbor A (interior p).

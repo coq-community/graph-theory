@@ -831,8 +831,70 @@ Lemma del_edge_lift_proof (G : diGraph) (a b x y : G) p :
   @pathp (del_edge a b) x y p -> @pathp G x y p.
 Proof. case: G a b x y p => T e a b x y p. apply: subrel_pathp. exact: subrel_del_edge. Qed.
 
+(** ** Interior of irredundant paths *)
 
+(* TOTHINK: This definition really only makes sense for irredundant paths *)
+Section Interior.
+Variable (G : diGraph) (x y : G).
+Implicit Types (p : Path x y).
 
+Definition interior p := [set x in p] :\: [set x;y].
+
+Lemma interior_edgep (xy : x -- y) : interior (edgep xy) = set0.
+Proof. apply/setP => z. rewrite !inE mem_edgep. by do 2 (case: (_ == _)). Qed.
+
+Lemma interiorN p z : z \in interior p -> z \notin [set x; y].
+Proof. rewrite inE. by case (_ \in _). Qed.
+
+Lemma interiorW p z : z \in interior p -> z \in p.
+Proof. rewrite !inE. case: (_ \in _) => //. by rewrite andbF. Qed.
+
+Lemma interior0E p : x != y -> irred p -> interior p = set0 -> exists xy, p = edgep xy.
+Proof.
+  move => xNy Ip P0. 
+  case: (splitL p xNy) Ip => z [xz] [p'] [E _]. 
+  rewrite E irred_edgeL => /andP [xNp Ip']. 
+  suff zNy : z = y. { subst. exists xz. by rewrite (irredxx Ip') pcat_idR. }
+  apply: contra_eq P0 => C. apply/set0Pn. exists z. 
+  rewrite !inE negb_or C eq_sym E mem_pcat mem_edgep !eqxx //= orbT !andbT. 
+  apply: contraNneq xNp => ?. subst z. exact: path_begin.
+Qed.
+
+Definition independent (p q : Path x y) := 
+  [disjoint interior p & interior q].
+
+Lemma independent_sym (p q : Path x y):
+  independent p q -> independent q p.
+Proof. by rewrite /independent disjoint_sym. Qed.
+
+End Interior.
+
+Section Transfer.
+  Variables (T : finType) (e1 e2 : rel T).
+  Let D1 := DiGraph e1.
+  Let D2 := DiGraph e2.
+  Variables (x y : T) (p p' : @Path D1 x y) (q q' : @Path D2 x y).
+  Hypothesis Npq : nodes p = nodes q.
+  Hypothesis Npq' : nodes p' = nodes q'.
+
+  Lemma irred_eq_nodes : irred p = irred q.
+  Proof. by rewrite !irredE Npq. Qed.
+
+  Lemma mem_eq_nodes : p =i q.
+  Proof. move => z /=. by rewrite (@mem_path D1) Npq -(@mem_path D2). Qed.
+
+  Lemma interior_eq_nodes : interior p = interior q.
+  Proof. 
+    rewrite /interior (_ : [set x in p] = [set x in q]) //. 
+    apply/setP => z. by rewrite !inE mem_eq_nodes.
+  Qed.
+
+End Transfer.
+
+Lemma independent_nodes (T : finType) (e1 e2 : rel T) x y (p p' : @Path (DiGraph e1) x y) 
+  (q q' : @Path (DiGraph e2) x y) (Npq : nodes p = nodes q) (Npq' : nodes p' = nodes q') : 
+  independent p p' = independent q q'.
+Proof. by rewrite /independent (interior_eq_nodes Npq) (interior_eq_nodes Npq'). Qed.
 
 (** ** Directed Multigraphs *)
 
