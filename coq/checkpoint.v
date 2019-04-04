@@ -951,58 +951,6 @@ a clique, so [CP U] is [U]. *)
     by rewrite mem_pcat mem_prev mem_edgep (negbTE zNp) /= ![z == _]eq_sym.
   Qed.
 
-
-  Lemma CP_bags U x y : link_rel x y -> x \in CP U -> y \in CP U -> 
-    exists x' y', [/\ x' \in U, y' \in U, x' \in bag [set x; y] x & y' \in bag [set x;y] y].
-  Proof using G_conn.
-    move => xy xU yU. case: (CP_base xU yU) => x' [y'] [Hx' Hy' CPxy].
-    case/uPathP : (G_conn x' y') => p irr_p. 
-    have [Hx Hy] : x \in p /\ y \in p. 
-    { by split; apply: cpP; apply: (subsetP CPxy); rewrite !inE eqxx. }
-    rewrite subUset !sub1set in CPxy. case/andP: CPxy => CPx CPy.
-    wlog x_before_y : x y Hx Hy xy xU yU CPx CPy / x <[p] y.
-    { move => W. 
-      case: (ltngtP (idx p x) (idx p y)) => A; first exact: W.
-      - case: (W y x) => //; first by rewrite link_sym.
-        move => x0 [y0]. rewrite setUC. move => [? ? ? ?]. by exists y0; exists x0.
-      - move/idx_inj : A. move/(_ Hx) => ?. subst y. by rewrite /link_rel /= eqxx in xy. }
-    case: (three_way_split irr_p Hx Hy x_before_y) => p1 [p2] [p3] [? P1 P3].
-    have H2 : CP [set x;y] = [set x;y]. { apply: CP_clique. exact: clique2. }
-    exists x';exists y'; split => //. 
-    - apply/bagP => ?. rewrite H2. case/set2P=>->; first by rewrite cp_sym mem_cpl.
-      apply: contraTT CPx => C. 
-      apply: cpN_trans C _. exact: (cpNI (p := p3)).
-    - apply/bagP => ?. rewrite H2. case/set2P=>->; last by rewrite cp_sym mem_cpl.
-      apply: contraTT CPy => C. rewrite cp_sym in C. 
-      apply: cpN_trans C. exact: (cpNI (p := p1)).
-  Qed.
-
-  Lemma CP_triangle_bags U (x y z : link_graph) : 
-    x \in CP U -> y \in CP U -> z \in CP U ->
-    x -- y -> y -- z -> z -- x -> 
-    let U3 : {set G} := [set x; y; z] in
-    exists x' y' z' : G, 
-      [/\ x' \in U, y' \in U & z' \in U] /\ 
-      [/\ x' \in bag U3 x, y' \in bag U3 y & z' \in bag U3 z].
-  Proof with try (apply: CP_extensive; rewrite ?inE ?eqxx //).
-    move => x_cp y_cp z_cp xy yz zx.
-    gen have T,_ : x y z x_cp y_cp z_cp xy yz zx / z \notin cp x y.
-    { case/andP : xy => _ /subsetP S. apply/negP => /S. 
-      case/set2P=> ?; subst; by rewrite sg_irrefl in zx yz. }
-    move => U3.
-    case: (CP_bags xy x_cp y_cp) => x' [y'] [xU yU Px Py].
-    case: (CP_bags yz y_cp z_cp) => _ [z'] [_ zU _ Pz].
-    have zPx : z \notin bag [set x; y] x.
-    { apply/bagPn. exists y...  apply T => //; by rewrite sg_sym. }
-    have zPy : z \notin bag [set x; y] y.
-    { apply/bagPn. exists x... apply T => //; by rewrite sg_sym. }
-    have xPz : x \notin bag [set y; z] z.
-    { apply/bagPn. exists y... exact: T. }
-    exists x';exists y';exists z'. split => //. split.
-    - rewrite /U3 setUC -bag_extension //... 
-    - rewrite /U3 setUC -bag_extension //... 
-    - rewrite /U3 -setUA -bag_extension //...
-  Qed.
  
 End CheckPoints.
 
@@ -1114,50 +1062,4 @@ Section CheckpointOrder.
 
 End CheckpointOrder.
 
-Arguments ncp0 [G] G_conn [U] x p : rename.
 
-Lemma CP_treeI (G : sgraph) (U : {set G}) : connected [set: G] ->
-  {in CP U & &, forall x y z, x -- y -> y -- z -> z -- x -> False} ->
-  is_tree (CP U).
-Proof.
-  move=> G_conn noCPtri. split; last exact: CP_connected.
-  move=> x y p1 p2 [Ip1 p1_cp] [Ip2 p2_cp].
-  case: (altP (p1 =P p2)) => // pN12. exfalso.
-  (* W.l.o.g. p1 and p2 differ already at their second vertex. *)
-  wlog : x p1 p2 Ip1 Ip2 p1_cp p2_cp pN12 /
-        exists z1 z2 (xz1 : x -- z1) (xz2 : x -- z2) q1 q2,
-        [/\ z1 != z2, p1 = pcat (edgep xz1) q1 & p2 = pcat (edgep xz2) q2].
-  { move=> Hyp. move: p1_cp p2 Ip2 p2_cp pN12. pattern x, y, p1.
-    revert x p1 Ip1. apply irred_ind; first by move=> _ p2 /irredxx->.
-    move=> x z1 q1 xz1 Iq1 xNq1 IH p1_cp p2 Ip2 p2_cp pN12.
-    case: (altP (x =P y)) xNq1 => [->|xNy xNq1]; first by rewrite path_end.
-    case: (splitL p2 xNy) Ip2 p2_cp pN12 => [z2] [xz2] [q2] [-> _].
-    case: (altP (z1 =P z2)) xz2 q2 => [<-|zN12] xz2 q2 Ip2 p2_cp pN12.
-    - apply: (IH _ q2).
-      + by apply/subsetP=> u u_q1; apply: (subsetP p1_cp); rewrite mem_pcat u_q1.
-      + by move: Ip2; rewrite irred_cat; case/and3P.
-      + by apply/subsetP=> u u_q2; apply: (subsetP p2_cp); rewrite mem_pcat u_q2.
-      + apply: contraNneq pN12 =>->.
-        by have -> : xz1 = xz2 by exact: bool_irrelevance.
-    - apply: (Hyp x (pcat (edgep xz1) q1) (pcat (edgep xz2) q2)) => //.
-      + rewrite irred_cat irred_edge Iq1. apply/eqP/setP=> u.
-        rewrite inE in_set1 mem_edgep.
-        apply/andP/eqP=> [|->]; last by rewrite eqxx path_begin.
-        case; case/orP=> /eqP-> //. by rewrite (negbTE xNq1).
-      + by repeat eexists. }
-  move=> [z1] [z2] [xz1] [xz2] [q1] [q2] [zN12 eq_p1 eq_p2].
-  have x_cp : x \in CP U by apply: (subsetP p1_cp); rewrite path_begin.
-  have [z1_cp z2_cp] : z1 \in CP U /\ z2 \in CP U.
-  { split; [move: eq_p1 p1_cp | move: eq_p2 p2_cp]=> -> /subsetP; apply;
-    by rewrite mem_pcat path_begin. }
-  (* The vertices of the triangle are z1, z2 and x. Two of the edges are obvious... *)
-  apply: (noCPtri x z1 z2) => //; last by rewrite sg_sym.
-  (* ... and for the third edge we construct an irredundant cycle *)
-  have [p Ip xNp] : exists2 p : Path z1 z2, irred p & x \notin p.
-  { case: (uncycle (pcat q1 (prev q2))) => p p_sub Ip. exists p => //.
-    apply/negP=> /p_sub. rewrite mem_pcat mem_prev.
-    move: Ip1 Ip2. rewrite eq_p1 eq_p2 !irred_edgeL.
-    by do 2 case/andP=> /negbTE-> _. }
-  have /cycle_clique : irred (pcat (edgep xz1) p) by rewrite irred_edgeL xNp Ip.
-  by apply=> //; rewrite inE mem_pcat ?path_begin ?path_end.
-Qed.
