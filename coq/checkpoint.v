@@ -171,12 +171,6 @@ Section CheckPoints.
 
   Local Notation "x ⋄ y" := (@sedge link_graph x y) (at level 30).
 
-  Lemma link_cpN (x y z : G) : 
-    (x : link_graph) -- y -> z != x -> z != y -> z \notin cp x y.
-  Proof using.
-    move => /= /andP [_ /subsetP A] B C. apply/negP => /A. 
-    by rewrite !inE (negbTE B) (negbTE C).
-  Qed.
 
   Lemma link_avoid (x y z : G) : 
     z \notin [set x; y] -> link_rel x y -> exists2 p, pathp x y p & z \notin (x::p).
@@ -202,36 +196,6 @@ Section CheckPoints.
   Qed.
 
 
-  (* Lemma 10 *)
-  Lemma link_cycle (p : seq link_graph) : ucycle sedge p -> clique [set x in p].
-  Proof using. 
-    move => cycle_p x y. rewrite !inE /= => xp yp xy. rewrite /edge_rel/= xy /=.
-    case/andP : cycle_p => C1 C2. 
-    case: (rot_to_arc C2 xp yp xy) => i p1 p2 _ _ I. 
-    have {C1} C1 : cycle sedge (x :: p1 ++ y :: p2) by rewrite -I rot_cycle. 
-    have {C2} C2 : uniq (x :: p1 ++ y :: p2) by rewrite -I rot_uniq.
-    rewrite /cycle -cat_rcons rcons_cat cat_path last_rcons !rcons_pathp in C1. 
-    case/andP : C1 => P1 /pathp_rev P2. 
-    move/link_seq_cp in P1. move/link_seq_cp in P2.
-    have D: [disjoint p1 & p2].
-    { move: C2 => /= /andP [_]. rewrite cat_uniq -disjoint_has disjoint_cons disjoint_sym.
-      by case/and3P => _ /andP [_ ?] _. }
-    apply: contraTT D. case/subsetPn => z. rewrite !inE negb_or => A /andP [B C].
-    move: (subsetP P1 _ A) (subsetP P2 _ A).
-    rewrite /srev belast_rcons !(inE,mem_rev,mem_rcons) (negbTE B) (negbTE C) /=.
-    exact: disjointNI.
-  Qed.
-
-  Lemma cycle_clique (x y : link_graph) (p : Path x y) : 
-    irred p -> x -- y -> clique [set x in p].
-  Proof using. 
-    have -> : [set x in p] = [set x in nodes p].
-    { apply/setP => u. by rewrite inE. }
-    case: p => p pth_p Ip xy. rewrite irredE nodesE /= in Ip *.
-    apply: link_cycle. rewrite /ucycle /= Ip andbT.
-    case/andP : pth_p => pth_p /eqP last_p. 
-    by rewrite rcons_path pth_p last_p link_sym.
-  Qed.
 
   (** ** CP Closure Operator *)
 
@@ -255,6 +219,7 @@ Section CheckPoints.
     move => x inU. apply/bigcupP; exists (x,x); by rewrite ?inE /= ?inU // cpxx inE.
   Qed.
 
+  (** was only used in the CP_tree lemma, but we keep it here *)
   Lemma CP_mono (U U' : {set G}) : U \subset U' -> CP U \subset CP U'.
   Proof using. 
     move/subsetP => A. apply/bigcupsP => [[x y] /setXP [/A Hx /A Hy] /=].
@@ -329,15 +294,6 @@ Section CheckPoints.
     - apply: contraTT cp_y. apply: cpN_trans. by rewrite cp_sym.
   Qed.
 
-  Lemma CP_clique U : @clique link_graph U -> CP U = U.
-  Proof using.
-    move => clique_U. apply/setP => x. apply/bigcupP/idP. 
-    - case => [[x1 x2]]. rewrite !inE /= => /andP [U1 U2]. 
-      move: (clique_U x1 x2 U1 U2). case: (boolP (x1 == x2)) => A B.
-      + rewrite (eqP A) cpxx inE. by move/eqP->.
-      + case/andP: (B erefl) => _ /subsetP => S /S. by case/setUP => /set1P->.
-    - move => inU. by exists (x,x); rewrite ?inE /= ?inU // cpxx inE. 
-  Qed.
 
   (** *** Checkpoint graph *)
 
@@ -398,12 +354,6 @@ Section CheckPoints.
         by [ rewrite path_begin | rewrite path_end ].
   Qed.
 
-  Lemma CP_connected (U : {set G}) : connected (CP U).
-  Proof using G_conn.
-    move=> x y x_cp y_cp.
-    have /uPathP[p /(CP_path x_cp y_cp)[q] [? q_cp _]] := G_conn x y.
-    move/subsetP: q_cp. exact: connectRI.
-  Qed.
 
   (**: If [CP_ U] is a tree, the uniqe irredundant path bewteen any
   two nodes contains exactly the checkpoints bewteen these nodes *)
@@ -617,6 +567,7 @@ Section CheckPoints.
   Proof. rewrite /bag -lock inE. exact: (iffP forall_inP). Qed.
   Arguments bagP [U x z].
 
+  (** was only used in the CP_tree lemma, but we keep it here *)
   Lemma bagPn (U : {set G}) x z : 
     reflect (exists2 y, y \in CP U & x \notin cp z y) (z \notin bag U x).
   Proof using.
@@ -754,40 +705,6 @@ Section CheckPoints.
     move: vNbag. by rewrite -Exv bag_id.
   Qed.
 
-  Lemma bag_in_out (U : {set G}) x u v (p : Path u v) :
-    x \in CP U -> u \in x |: ~: bag U x -> v \in x |: ~: bag U x -> irred p -> 
-                                           p \subset x |: ~: bag U x.
-  Proof using G_conn.
-    move => Ux Pu Pv. apply: contraTT => /subsetPn [w]. 
-    rewrite !inE negb_or negbK => in_p /andP [W1 W2]. 
-    case/psplitP def_p : _ / in_p => [p1 p2]. subst. 
-    rewrite irred_cat !negb_and (_ : _ != _ = true) //.
-    apply: contraNN W1 => /eqP/setP/(_ x). rewrite !inE eq_sym => <-.
-    gen have H,-> : u p1 Pu / x \in p1. apply/cpP. rewrite cp_sym. exact: bag_exit' Pu.
-    by rewrite -mem_prev H. 
-  Qed.
-
-  (** This is a bit bespoke, as it only only mentions bags rooted at
-elements of [U] rather than [CP U]. At the point where we use it, U is
-a clique, so [CP U] is [U]. *)
-  Lemma bags_in_out (U : {set G}) u v (p : Path u v) :
-    let T' := U :|: (~: \bigcup_(z in U) bag U z) in 
-    u \in T' -> v \in T' -> irred p -> {subset p <= T'}.
-  Proof using G_conn. 
-    move => T' uT vT irr_p. apply/subsetP/negPn/negP.  
-    case/subsetPn => z zp. rewrite !inE negb_or negbK => /andP [zU].
-    case/bigcupP => x xU zPx. 
-    suff HT': {subset T' <= x |: ~: bag U x}. 
-    { move/HT' in uT. move/HT' in vT. 
-      move/subsetP : (bag_in_out (CP_extensive xU) uT vT irr_p) => sub.
-      move/sub : zp. rewrite !inE zPx /= orbF => /eqP ?. by subst z;contrab. }
-    move => w. case/setUP => [wU|H].
-    + case: (altP (x =P w)) => [->|E]; rewrite !inE ?eqxx // 1?eq_sym.
-      rewrite (negbTE E) /=. apply/bagPn; exists w; first exact: CP_extensive.
-        by rewrite cpxx inE. 
-    + apply/setUP;right. rewrite !inE in H *. apply: contraNN H => wP. 
-      apply/bigcupP. by exists x.
-  Qed.
 
   Lemma connected_bag x (U : {set G}) : x \in CP U -> connected (bag U x).
   Proof using G_conn.
@@ -804,27 +721,6 @@ a clique, so [CP U] is [U]. *)
     apply/cpP. exact: bag_exit N.
   Qed.
 
-  Lemma bag_extension (U : {set G}) x y : 
-    x \in CP U -> y \notin bag U x -> bag U x = bag (y |: U) x.
-  Proof using G_conn.
-    move => CPx Hy. apply/setP => u. apply/idP/bagP.
-    - move => A z. 
-      have cp_x : x \in cp u y by apply: bag_exit Hy.
-      case: (boolP (x == z)) => [/eqP ? _|zx]; first by subst z; apply: (bagP A).
-      case/bigcupP => [[v0 v1]] /setXP /= []. 
-      have E v : v \in U -> z \in cp y v -> x \in cp u z.
-      { move => Hv Hz. case: (cp_mid zx Hz) => p1 [p2] [/cpNI|/cpNI] C.
-        * apply: contraTT cp_x => ?. exact: cpN_trans C.
-        * apply: contraTT A => ?. apply/bagPn. 
-          exists v; [exact: CP_extensive|exact: cpN_trans C]. }
-      do 2 (case/setU1P => [->|?]). 
-      + by rewrite cpxx inE => /eqP->. 
-      + exact: E. 
-      + rewrite cp_sym. exact: E.
-      + move => Hz. apply: (bagP A). apply/bigcupP; exists (v0,v1) => //. exact/setXP.
-    - move => A. apply/bagP => z Hz. apply: A. move: z Hz. apply/subsetP. 
-      apply: CP_mono. exact: subsetUr.
-  Qed.
 
 
   (** ** Partitioning with intervals, bags and checkpoints *)
