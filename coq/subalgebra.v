@@ -161,20 +161,34 @@ Section Quotients.
     | _,_ => false
     end.
 
+  Lemma set2_in_sym (T : finType) (x y a b : T) (e : rel T) :  
+    x != y -> symmetric e -> e a b -> [set x;y] == [set a;b] -> e x y.
+  Proof.
+    move => xDy sym_e e_ab E. move: E xDy. rewrite eqEsubset !subUset !sub1set -andbA.
+    case/and3P => /set2P[->|->] /set2P[->|->] _; by rewrite ?eqxx // sym_e.
+  Qed.
+
+  Lemma equiv_of_sub (T : finType) (e1 e2 : rel T) :
+    subrel e1 e2 -> reflexive e2 -> symmetric e2 -> transitive e2 -> subrel (equiv_of e1) e2.
+  Proof. 
+    move => sub2 refl2 sym2 trans2 x y. case/connectP => p. 
+    elim: p x => [x _ -> //|a p IHp x] /= /andP [/orP H] pth lst.
+    apply: trans2 _ (IHp _ pth lst). case: H; last rewrite sym2; exact: sub2.
+  Qed.
+
+  Hint Resolve equiv_of_sym.
+  Ltac sub := apply: sub_equiv_of => /=; by rewrite !eqxx.
+
   Lemma par2_equiv_of : par2_eqv =2 equiv_of par2_eq.
   Proof using.
     move=> x y. apply/idP/idP.
-    - rewrite /par2_eqv. case/altP: (x =P y) => [<- _|xNy]/=; first exact: connect0.
+    - rewrite /par2_eqv. case/altP: (x =P y) => [<- _|xNy]/=; first exact: equiv_of_refl.
       case: ifP => [_|/negbT].
-      + rewrite !inE 2!eqEcard 2!subUset 4!sub1set !inE => H.
-        case/orP: H xNy => /andP[]/andP[]/orP[]/eqP->/orP[]/eqP-> _.
-        all: rewrite ?eqxx // ?[equiv_of _ (inr _) _]equiv_of_sym => _.
-        all: apply: sub_equiv_of; by rewrite /par2_eq 2!eqxx.
+      + rewrite !inE. case/orP; apply: set2_in_sym => //; sub.
       + rewrite negb_and 2!negbK. case/orP=> [/eqP Eio1|/eqP Eio2].
         * rewrite -Eio1 setUid => Exy.
-          have Rio2 : equiv_of par2_eq (inr g_out) (inr g_in).
-          { apply: (@equiv_of_trans _ _ (inl g_in)); first rewrite equiv_of_sym Eio1;
-            by apply: sub_equiv_of; rewrite /par2_eq !eqxx. }
+          have Rio2 : equiv_of par2_eq (inr g_out) (inr g_in). 
+          { apply: (@equiv_of_trans _ _ (inl g_in)); first rewrite equiv_of_sym Eio1; sub. }
           move: Exy xNy; rewrite subUset 2!sub1set !inE -2!orbA.
           case/andP=> /or3P[]/eqP-> /or3P[]/eqP->.
           all: rewrite ?eqxx // ?[equiv_of _ _ (inl _)]equiv_of_sym => _.
@@ -191,12 +205,9 @@ Section Quotients.
           all: try solve [apply: (@sub_equiv_of _ _ (inl _));
                           by rewrite /par2_eq -?Eio2 !eqxx].
           by rewrite equiv_of_sym.
-    - case/connectP=> p. elim: p x; first by [move=> x _ ->; exact: par2_eqv_refl].
-      move=> /= a p IH x /andP[x_a p_path p_last].
-      have {p_path p_last} : par2_eqv a y by exact: IH. apply: par2_eqv_trans.
-      move: x a x_a => [x|x] [a|a] //=; first rewrite orbF.
-      all: case/orP=> /andP[/eqP-> /eqP->].
-      all: by rewrite ?par2_eqv_io // par2_eqv_sym par2_eqv_io.
+    - apply: equiv_of_sub; auto using par2_eqv_refl,par2_eqv_sym,par2_eqv_trans.
+      move => {x y} [x|x] [y|y] => //=. 
+      by case/orP; case/andP => /eqP-> /eqP->; rewrite par2_eqv_io.
   Qed.
 
   Lemma par2_eqv_ii x y : 
@@ -276,22 +287,16 @@ Section Quotients.
   Lemma seq2_eqv_io : seq2_eqv (inl g_out) (inr g_in).
   Proof. by rewrite /seq2_eqv/=. Qed.
 
-  Definition seq2_eq : rel (union G1 G2) :=
+  Definition seq2_eq : simpl_rel (union G1 G2) :=
     [rel a b | (a == inl g_out) && (b == inr g_in)].
 
   Lemma seq2_equiv_of : seq2_eqv =2 equiv_of seq2_eq.
   Proof using.
     move=> x y. apply/idP/idP.
-    - case/altP: (x =P y) => [<- _|xNy]; first exact: connect0.
-      rewrite /seq2_eqv (negbTE xNy) /= eqEcard subUset !sub1set !inE => /andP[H _].
-      case/andP: H xNy => /orP[]/eqP-> /orP[]/eqP->; rewrite ?eqxx // => _.
-      + apply: sub_equiv_of. by rewrite /seq2_eq/= !eqxx.
-      + rewrite equiv_of_sym. apply: sub_equiv_of. by rewrite /seq2_eq/= !eqxx.
-    - case/connectP=> p. elim: p x; first by [move=> x _ ->; exact: seq2_eqv_refl].
-      move=> /= a p IH x /andP[x_a p_path p_last].
-      have {p_path p_last} : seq2_eqv a y by exact: IH. apply: seq2_eqv_trans.
-      case/orP: x_a => /andP[/eqP-> /eqP->];
-      last rewrite seq2_eqv_sym; exact: seq2_eqv_io.
+    - rewrite/seq2_eqv. case/altP: (x =P y) => [<- _|xNy]; first exact: equiv_of_refl.
+      apply: set2_in_sym => //. sub.
+    - apply: equiv_of_sub; auto using seq2_eqv_refl,seq2_eqv_sym,seq2_eqv_trans.
+      move => {x y} [x|x] [y|y] //=; case/andP => /eqP -> /eqP ->; by rewrite seq2_eqv_io.
   Qed.
 
   Definition seq2 :=
