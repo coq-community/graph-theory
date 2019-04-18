@@ -328,6 +328,8 @@ Proof. intros H -> ->. by apply iso_iso2. Qed.
 (** Specific isomorphisms about union and merge *)
 
 Definition sumC {A B} (x: A + B): B + A := match x with inl x => inr x | inr x => inl x end.
+Lemma bij_sumC A B: bijective (@sumC A B).
+Proof. by exists sumC; intros [|]. Qed.
 
 Definition h_union_C (G H: graph): h_ty (union G H) (union H G) := (sumC,sumC).
 
@@ -335,7 +337,7 @@ Lemma hom_union_C G H: hom_g (h_union_C G H).
 Proof. by split; first split; intros [e|e]. Qed.
 
 Lemma bij_union_C G H: bijective2 (h_union_C G H).
-Proof. by split; exists sumC; intros [|]. Qed.
+Proof. by split; apply bij_sumC. Qed.
 
 Lemma iso_union_C G H: iso_g (h_union_C G H).
 Proof. split. apply hom_union_C. apply bij_union_C. Qed.
@@ -353,6 +355,10 @@ Definition sumA {A B C} (x: A + (B + C)): (A + B) + C :=
   match x with inl x => inl (inl x) | inr (inl x) => inl (inr x) | inr (inr x) => inr x end.
 Definition sumA' {A B C} (x: (A + B) + C): A + (B + C) :=
   match x with inr x => inr (inr x) | inl (inr x) => inr (inl x) | inl (inl x) => inl x end.
+Lemma bij_sumA A B C: bijective (@sumA A B C).
+Proof. by exists sumA'; [intros [|[|]] | intros [[|]|]]. Qed.
+Lemma bij_sumA' A B C: bijective (@sumA' A B C).
+Proof. by exists sumA; [intros [[|]|] | intros [|[|]]]. Qed.
 
 Definition h_union_A (F G H: graph): h_ty (union F (union G H)) (union (union F G) H) := (sumA,sumA).
 
@@ -360,7 +366,7 @@ Lemma hom_union_A F G H: hom_g (h_union_A F G H).
 Proof. by split; first split; intros [|[|]]. Qed.
 
 Lemma bij_union_A F G H: bijective2 (h_union_A F G H).
-Proof. by split; (exists sumA'; [intros [|[|]] | intros [[|]|]]). Qed.
+Proof. by split; apply bij_sumA. Qed.
 
 Lemma iso_union_A F G H: iso_g (h_union_A F G H).
 Proof. split. apply hom_union_A. apply bij_union_A. Qed.
@@ -379,7 +385,7 @@ Lemma hom_union_A' F G H: hom_g (h_union_A' F G H).
 Proof. by split; first split; intros [[|]|]. Qed.
 
 Lemma bij_union_A' F G H: bijective2 (h_union_A' F G H).
-Proof. by split; (exists sumA; [intros [[|]|] | intros [|[|]]]). Qed.
+Proof. by split; apply bij_sumA'. Qed.
 
 Lemma iso_union_A' F G H: iso_g (h_union_A' F G H).
 Proof. split. apply hom_union_A'. apply bij_union_A'. Qed.

@@ -1,3 +1,4 @@
+Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries digraph sgraph minor multigraph skeleton.
 
@@ -434,3 +435,204 @@ Proof.
   apply: minor_K4_free (@sskel_K4_free u).
   exact: sub_minor (skel_sub _).
 Qed.
+
+
+(* laws of 2p algebra *)
+
+
+(* to move to multigraph *)
+
+
+Lemma eqv_clot_eq (T: choiceType) (h k: pairs T):
+  List.Forall (fun p => eqv_clot k p.1 p.2) h ->
+  List.Forall (fun p => eqv_clot h p.1 p.2) k ->
+  eqv_clot h =2 eqv_clot k.
+Admitted.
+
+Lemma eqv_clot_trans (T: choiceType) (z x y: T) (l: pairs T): eqv_clot l x z -> eqv_clot l z y -> eqv_clot l x y.
+Admitted.
+
+Instance eqv_clot_Equivalence (T: choiceType) (l: pairs T): Equivalence (equiv (eqv_clot l)).
+Admitted.
+  
+Lemma eqv_clot_hd (T: choiceType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) x y.
+Admitted.
+Lemma eqv_clot_hd' (T: choiceType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) y x.
+Proof. symmetry. apply eqv_clot_hd. Qed.
+Lemma eqv_clot_tl (T: choiceType) (x y: T) z (l: pairs T):
+  eqv_clot l x y ->
+  eqv_clot (z::l) x y.
+Admitted.
+
+Ltac eqv := solve [reflexivity|apply: eqv_clot_hd|apply: eqv_clot_hd'|apply: eqv_clot_tl; eqv].
+Ltac leqv := solve [apply List.Forall_cons;[eqv|leqv] | apply List.Forall_nil].
+
+
+Lemma merge_iso (F G : graph) (h: h_ty F G): iso_g h ->
+  forall l (i o: F),
+  point (merge_seq F l) (\pi i) (\pi o) ≈
+  point (merge_seq G (map_pairs h.1 l)) (\pi (h.1 i)) (\pi (h.1 o)).
+Admitted.
+
+Lemma merge_same (F : graph) (h k: pairs F) (i i' o o': F):
+  (eqv_clot h =2 eqv_clot k) ->
+  eqv_clot h i i' ->
+  eqv_clot h o o' ->
+  point (merge_seq F h) (\pi i) (\pi o) ≈ point (merge_seq F k) (\pi i') (\pi o').
+Admitted.
+
+Lemma merge_same' (F : graph) (h k: pairs F) (i o: F):
+  (eqv_clot h =2 eqv_clot k) ->
+  point (merge_seq F h) (\pi i) (\pi o) ≈ point (merge_seq F k) (\pi i) (\pi o).
+Proof.
+  intros. by apply merge_same. 
+Qed.
+
+Lemma merge_nothing (F: graph) (h: pairs F) (i o: F):
+  List.Forall (fun p => p.1 = p.2) h ->
+  point (merge_seq F h) (\pi i) (\pi o) ≈ point F i o.
+Admitted.
+
+Definition par2' (F G: graph2) :=
+  point (merge_seq (union F G) [::(inl g_in,inr g_in); (inl g_out,inr g_out)])
+        (\pi (inl g_in)) (\pi (inl g_out)).
+
+Definition seq2' (F G: graph2) :=
+  point (merge_seq (union F G) [::(inl g_out,inr g_in)])
+        (\pi (inl g_in)) (\pi (inr g_out)).
+
+Definition cnv2' (F: graph2) :=
+  point F g_out g_in.
+
+Definition dom2' (F: graph2) :=
+  point F g_in g_in.
+
+Lemma par2C (F G: graph2): par2' F G ≈ par2' G F.
+Proof.
+  rewrite /par2'.
+  rewrite (merge_iso (iso_union_C _ _)) /=.
+  apply merge_same.
+  apply eqv_clot_eq. leqv. leqv. 
+  simpl. eqv. 
+  simpl. eqv. 
+Qed.
+
+Lemma par2top (F: graph2): par2' F top2 ≈ F.
+Proof.
+  rewrite /par2' (merge_union_K2_ll (F:=_) (K:=top2) _ _ (h:=_)
+                                    (k:=fun b => if b then g_out else g_in)).
+  apply merge_nothing.
+  repeat (constructor =>//=).
+  by [].
+  intros [|]; apply /eqquotP; eqv. 
+Qed.
+
+Opaque merge_def union.
+
+Lemma par2A (F G H: graph2): par2' F (par2' G H) ≈ par2' (par2' F G) H.
+Proof.
+  rewrite /par2'.               (* loooong *)
+  simpl.
+  rewrite (merge_iso (iso_union_merge_r _ _)) /=.
+  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite 2!h_union_merge_rEl 2!h_union_merge_lEl.
+  rewrite 2!h_union_merge_rEr 2!h_union_merge_lEr.
+  rewrite (merge_merge_seq2 (G:=union F (union G H))
+                            (k:=[::(inl g_in,inr (inl g_in)); (inl g_out,inr (inl g_out))])) =>//.
+  rewrite (merge_merge_seq2 (G:=union (union F G) H)
+                            (k:=[::(inl (inl g_in),inr g_in); (inl (inl g_out),inr g_out)])) =>//.
+  rewrite (merge_iso (iso_union_A _ _ _)) /=.
+  apply merge_same'.
+  apply eqv_clot_eq; simpl.
+   constructor. simpl. apply eqv_clot_trans with (inl (inl (g_in))); eqv. 
+   constructor. simpl. apply eqv_clot_trans with (inl (inl (g_out))); eqv.
+   leqv.
+
+   constructor. simpl. eqv. 
+   constructor. simpl. eqv. 
+   constructor. simpl. apply eqv_clot_trans with (inl (inr g_in)); eqv. 
+   constructor. simpl. apply eqv_clot_trans with (inl (inr g_out)); eqv. 
+   constructor.
+Qed.
+
+
+Lemma seq2one (F: graph2): seq2' F one2 ≈ F.
+Proof.
+  rewrite /seq2' (merge_union_K2_lr (F:=_) (K:=_) _ _ (h:=_)
+                                    (k:=fun _ => g_out)).
+  destruct F. apply merge_nothing.
+  repeat (constructor =>//=).
+  by [].
+  intros []; apply /eqquotP; eqv.
+Qed.
+
+Lemma seq2A (F G H: graph2): seq2' F (seq2' G H) ≈ seq2' (seq2' F G) H.
+Proof.
+  rewrite /seq2'/=.               (* loooong *)
+  rewrite (merge_iso (iso_union_merge_r _ _)) /=.
+  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite 2!h_union_merge_rEl 2!h_union_merge_lEl.
+  rewrite 2!h_union_merge_rEr 2!h_union_merge_lEr.
+  rewrite (merge_merge_seq2 (G:=union F (union G H))
+                            (k:=[::(inl g_out,inr (inl g_in))])) =>//.
+  rewrite (merge_merge_seq2 (G:=union (union F G) H)
+                            (k:=[::(inl (inr g_out),inr g_in)])) =>//. 
+  rewrite (merge_iso (iso_union_A _ _ _)) /=.
+  apply merge_same'.
+  apply eqv_clot_eq; leqv.
+Qed.
+
+Lemma cnv2I (F: graph2): cnv2' (cnv2' F) ≈ F.
+Proof. by destruct F. Qed.
+
+Lemma cnv2par (F G: graph2): cnv2' (par2' F G) ≈ par2' (cnv2' F) (cnv2' G).
+Proof.
+  rewrite /cnv2'/par2'. simpl.
+  apply merge_same'.
+  apply eqv_clot_eq; simpl; leqv.
+Qed.
+
+Lemma cnv2seq (F G: graph2): cnv2' (seq2' F G) ≈ seq2' (cnv2' G) (cnv2' F).
+Proof.
+  rewrite /cnv2'/seq2'. simpl.
+  rewrite (merge_iso (iso_union_C _ _)) /=.
+  apply merge_same'.
+  apply eqv_clot_eq; simpl; leqv.
+Qed.
+
+Lemma par2oneone: par2' one2 one2 ≈ one2.
+Proof.
+  rewrite /par2'.  
+  rewrite (merge_union_K2_ll (F:=_) (K:=one2) _ _ (h:=_)
+                             (k:=fun _ => g_in)).
+  simpl. apply merge_nothing.
+  repeat (constructor =>//=).
+  by [].
+  intros []; apply /eqquotP; eqv.
+Qed.
+
+Lemma dom2'E (F: graph2): dom2' F ≈ par2' (seq2' F top2) one2.
+Proof.
+  rewrite /dom2'/par2'/seq2'/=.
+  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite 2!h_union_merge_lEl 1!h_union_merge_lEr.
+  rewrite (merge_merge_seq2 (G:=union (union F two_graph) unit_graph)
+                            (k:=[::(inl (inl g_in),inr tt); (inl (inr true),inr tt)])) =>//.
+  rewrite (merge_iso (iso_union_A' _ _ _)) /=.
+  rewrite (merge_union_K2_lr (F:=_) (K:=union two_graph unit_graph) _ _ (h:=_)
+                             (k:=fun x => match x with inl false => g_out | _ => g_in end)).
+  symmetry. apply merge_nothing. 
+  repeat (constructor =>//=).
+  by intros [|].
+  intros [[|]|[]]; apply /eqquotP; try eqv.
+  apply eqv_clot_trans with (inr (inr tt)); eqv. 
+Qed.
+
+Lemma A10 (F G: graph2): par2' (seq2' F G) one2 ≈ dom2' (par2' F (cnv2' G)).
+Admitted.
+
+Lemma A11 (F: graph2): seq2' F top2 ≈ seq2' (dom2' F) top2.
+Admitted.
+
+Lemma A12 (F G: graph2): seq2' (par2' F one2) G ≈ par2' (dom2' F) G.
+Admitted.
