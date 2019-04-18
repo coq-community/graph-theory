@@ -467,6 +467,8 @@ Admitted.
 Ltac eqv := solve [reflexivity|apply: eqv_clot_hd|apply: eqv_clot_hd'|apply: eqv_clot_tl; eqv].
 Ltac leqv := solve [apply List.Forall_cons;[eqv|leqv] | apply List.Forall_nil].
 
+(* Definition pi (G: graph) (h: pairs G) (x: G): merge_seq G h := \pi x. *)
+(* Notation "\pi x"  := (pi _ x).  *)
 
 Lemma merge_iso (F G : graph) (h: h_ty F G): iso_g h ->
   forall l (i o: F),
@@ -519,8 +521,7 @@ Qed.
 
 Lemma par2top (F: graph2): par2' F top2 ≈ F.
 Proof.
-  rewrite /par2' (merge_union_K2_ll (F:=_) (K:=top2) _ _ (h:=_)
-                                    (k:=fun b => if b then g_out else g_in)).
+  rewrite /par2' (merge_union_K2_ll (K:=top2) _ _ (k:=fun b => if b then g_out else g_in)).
   apply merge_nothing.
   repeat (constructor =>//=).
   by [].
@@ -602,9 +603,8 @@ Qed.
 
 Lemma par2oneone: par2' one2 one2 ≈ one2.
 Proof.
-  rewrite /par2'.  
-  rewrite (merge_union_K2_ll (F:=_) (K:=one2) _ _ (h:=_)
-                             (k:=fun _ => g_in)).
+  rewrite /par2'.
+  rewrite (merge_union_K2_ll (K:=one2) _ _ (k:=fun _ => g_in)).
   simpl. apply merge_nothing.
   repeat (constructor =>//=).
   by [].
@@ -619,7 +619,7 @@ Proof.
   rewrite (merge_merge_seq2 (G:=union (union F two_graph) unit_graph)
                             (k:=[::(inl (inl g_in),inr tt); (inl (inr true),inr tt)])) =>//.
   rewrite (merge_iso (iso_union_A' _ _ _)) /=.
-  rewrite (merge_union_K2_lr (F:=_) (K:=union two_graph unit_graph) _ _ (h:=_)
+  rewrite (merge_union_K2_lr (K:=union two_graph unit_graph) _ _ 
                              (k:=fun x => match x with inl false => g_out | _ => g_in end)).
   symmetry. apply merge_nothing. 
   repeat (constructor =>//=).
@@ -629,10 +629,72 @@ Proof.
 Qed.
 
 Lemma A10 (F G: graph2): par2' (seq2' F G) one2 ≈ dom2' (par2' F (cnv2' G)).
+Proof.
+  rewrite /par2'/seq2'/dom2'/cnv2'.
+  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite 2!h_union_merge_lEl 1!h_union_merge_lEr.
+  rewrite (merge_merge_seq2 (G:=union (union F G) unit_graph)
+                            (k:=[::(inl (inl g_in),inr tt); (inl (inr g_out),inr tt)])) =>//.
+  rewrite (merge_union_K2_ll (F:=union F G) _ _ 
+                             (k:=fun x => inl g_in)).
+  2: by []. 2: intros []; apply /eqquotP; eqv.
+  apply merge_same.
+  apply eqv_clot_eq; leqv.
+  eqv.
+  eqv.
+Qed.
+
+Lemma iso_id {G: graph}: @iso_g G G (id,id).
 Admitted.
+
+Definition sumf {A B C D} (f: A -> B) (g: C -> D) (x: A+C): B+D :=
+  match x with inl a => inl (f a) | inr c => inr (g c) end. 
+                                                                 
+Lemma union_iso_g F F' G G' f g: @iso_g F F' f -> @iso_g G G' g -> @iso_g (union F G) (union F' G') (sumf f.1 g.1, sumf f.2 g.2).
+Admitted.
+
+Lemma A12' (F G: graph2): @g_in F = @g_out F -> seq2' F G ≈ par2' (seq2' F top2) G.
+Proof.
+  intro H. 
+  rewrite /par2'/seq2'/=.
+  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite 2!h_union_merge_lEl 2!h_union_merge_lEr.
+  rewrite (merge_merge_seq2 (G:=union (union F two_graph) G)
+                            (k:=[::(inl (inl g_in),inr g_in);(inl (inr true),inr g_out)])) =>//.
+  rewrite (merge_iso (iso_union_C (union _ _) _)) /=.
+  rewrite (merge_iso (iso_union_A _ _ _)) /=.
+  rewrite (merge_union_K2_lr (F:=union G F) (K:=two_graph) _ _ 
+                             (k:=fun x => if x then inl g_out else inr g_in)).
+  2: intros []. 2: intros []; apply /eqquotP; rewrite H; eqv.
+  rewrite (merge_iso (iso_union_C _ _)) /=.
+  apply merge_same'. rewrite H. apply eqv_clot_eq; leqv.
+Qed.
+
+Lemma A12 (F G: graph2): seq2' (par2' F one2) G ≈ par2' (seq2' (par2' F one2) top2) G.
+Proof.
+  apply A12'.
+  apply /eqquotP. apply eqv_clot_trans with (inr tt); eqv.
+Qed.
+
+Lemma iso_two_graph: @iso_g two_graph (union unit_graph unit_graph)
+                                 ((fun x: bool => if x then inl tt else inr tt),
+                                  (fun x: void => match x with end)).
+Proof.
+  split. split. split; intros []. intros []. 
+  split.
+    by exists (fun x => match x with inl _ => true | _ => false end); [intros [|] | intros [[]|[]]].
+    by exists (fun x => match x with inl x | inr x => x end); [intros [] | intros [|]].
+Qed.
+
+Lemma A11' (F: graph2): seq2' F top2 ≈ point (union F unit_graph) (inl g_in) (inr tt).
+Proof.
+  rewrite /seq2'/=.
+  rewrite (merge_iso (union_iso_g iso_id iso_two_graph))/=. 
+  rewrite (merge_iso (iso_union_A _ _ _))/=. 
+  rewrite (merge_union_K2_ll (F:=union F _) _ _ (k:=fun x => inl g_out))/=.
+  apply merge_nothing. leqv. by []. 
+  intros []. apply /eqquotP. eqv. 
+Qed.
 
 Lemma A11 (F: graph2): seq2' F top2 ≈ seq2' (dom2' F) top2.
-Admitted.
-
-Lemma A12 (F G: graph2): seq2' (par2' F one2) G ≈ par2' (dom2' F) G.
-Admitted.
+Proof. by rewrite 2!A11'. Qed.
