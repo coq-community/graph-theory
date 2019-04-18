@@ -443,23 +443,23 @@ Qed.
 (* to move to multigraph *)
 
 
-Lemma eqv_clot_eq (T: choiceType) (h k: pairs T):
+Lemma eqv_clot_eq (T: finType) (h k: pairs T):
   List.Forall (fun p => eqv_clot k p.1 p.2) h ->
   List.Forall (fun p => eqv_clot h p.1 p.2) k ->
   eqv_clot h =2 eqv_clot k.
 Admitted.
 
-Lemma eqv_clot_trans (T: choiceType) (z x y: T) (l: pairs T): eqv_clot l x z -> eqv_clot l z y -> eqv_clot l x y.
+Lemma eqv_clot_trans (T: finType) (z x y: T) (l: pairs T): eqv_clot l x z -> eqv_clot l z y -> eqv_clot l x y.
 Admitted.
 
-Instance eqv_clot_Equivalence (T: choiceType) (l: pairs T): Equivalence (equiv (eqv_clot l)).
+Instance eqv_clot_Equivalence (T: finType) (l: pairs T): Equivalence (equiv (eqv_clot l)).
 Admitted.
   
-Lemma eqv_clot_hd (T: choiceType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) x y.
+Lemma eqv_clot_hd (T: finType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) x y.
 Admitted.
-Lemma eqv_clot_hd' (T: choiceType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) y x.
+Lemma eqv_clot_hd' (T: finType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) y x.
 Proof. symmetry. apply eqv_clot_hd. Qed.
-Lemma eqv_clot_tl (T: choiceType) (x y: T) z (l: pairs T):
+Lemma eqv_clot_tl (T: finType) (x y: T) z (l: pairs T):
   eqv_clot l x y ->
   eqv_clot (z::l) x y.
 Admitted.

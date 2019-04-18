@@ -394,17 +394,22 @@ Lemma union_A2' (F G H: graph) (i o: (F+G)+H):
   point (union (union F G) H) i o ≈ point (union F (union G H)) (sumA' i) (sumA' o).
 Proof. by eapply iso_iso2'; first apply iso_union_A'. Qed.
 
-
+Lemma eq_piK (T : choiceType) (e : equiv_rel T) z : e z (repr (\pi_({eq_quot e}) z)).
+Proof. by case: piP => /= y /eqquotP. Qed.
 
 Section equiv_comp.
   Variables (T: choiceType) (e: equiv_rel T) (e': equiv_rel {eq_quot e}).
-  Definition equiv_comp: rel T := fun x y => e' (\pi x) (\pi y).
+  Definition equiv_comp: simpl_rel T := [rel x y | e' (\pi x) (\pi y)].
   Lemma equiv_comp_class: equiv_class_of equiv_comp.
-  Admitted.
+  Proof. split => [x|x y|x y z]. apply: equiv_refl. apply: equiv_sym. apply: equiv_trans. Qed.
   Canonical Structure equiv_comp_rel := EquivRelPack equiv_comp_class.
   Lemma equiv_comp_pi (x: T):
     x = repr (repr (\pi_{eq_quot e'} (\pi_{eq_quot e} x)))
-             %[mod_eq equiv_comp_rel].
+             %[mod_eq equiv_comp_rel]. 
+  Proof. apply/eqquotP. rewrite /equiv_comp_rel/= reprK. exact: eq_piK. Qed.
+
+  Lemma equiv_comp_shuffle (x : {eq_quot e'}) :
+    \pi_{eq_quot e'} (\pi_{eq_quot e} (repr (repr x))) = x.
   Admitted.
 End equiv_comp.
 
@@ -416,11 +421,22 @@ Section merge_merge.
     \pi (repr (repr x)).
   Definition h_merge_merge: h_ty _ _ := (h_merge_merge1,id).
   Lemma hom_merge_merge: hom_g h_merge_merge.
-  Admitted.
+  Proof.
+    repeat split. (* TODO: intro lemma abstracting over source/target *)
+    - move => a. rewrite /=/h_merge_merge1. by rewrite -equiv_comp_pi.
+    - move => a. rewrite /=/h_merge_merge1. by rewrite -equiv_comp_pi.
+  Qed.
+
   Lemma bij_merge_merge: bijective2 h_merge_merge.
   Proof.
     split; last apply id_bij. 
-  Admitted.
+    pose h (x : merge_def F (equiv_comp_rel e')) : merge_def (merge_def F e) e' :=
+      \pi (\pi (repr x)).
+    exists h => x. 
+    + rewrite /=/h_merge_merge1/h. case: piP  => /= y /eqquotP /= Hy. 
+      rewrite -[x]reprK /=. apply/eqquotP. by rewrite reprK equiv_sym in Hy. (* Lemma *)
+    + rewrite /=/h_merge_merge1/h. by rewrite -equiv_comp_pi reprK.
+  Qed.
   Lemma iso_merge_merge: iso_g h_merge_merge.
   Proof. split. apply hom_merge_merge. apply bij_merge_merge. Qed.
   Lemma merge_merge: iso (merge_def (merge_def F e) e') (merge_def F (equiv_comp_rel e')).
@@ -429,9 +445,21 @@ End merge_merge.
 
 Definition pairs A := seq (A*A).
 Definition map_pairs A B (f: A -> B): pairs A -> pairs B := map (fun x => (f x.1,f x.2)). 
-Parameter eqv_clot: forall T, pairs T -> equiv_rel T.
+
+Lemma equiv_of_class (T : finType) (e : rel T) : equiv_class_of (equiv_of e).
+Proof. constructor; auto using equiv_of_refl, equiv_of_sym, equiv_of_trans. Qed.
+
+Canonical equiv_of_equivalence (T : finType) (e : rel T) := EquivRelPack (equiv_of_class e).
+
+Definition rel_of_pairs (A : eqType) (l : pairs A) : rel A := [rel x y | (x,y) \in l].
+Definition eqv_clot (T : finType) (l : pairs T) : equiv_rel T := 
+  locked [equiv_rel of equiv_of (rel_of_pairs l)].
 Definition merge_seq (G: graph) l := merge_def G (eqv_clot l).
 Arguments merge_seq G l: clear implicits. 
+
+Lemma mod_exchange (T : choiceType) (e1 e2 : equiv_rel T) x y : 
+  e1 =2 e2 -> x = y %[mod_eq e2] -> x = y %[mod_eq e1].
+Proof. move => E M1. apply/eqquotP. rewrite E. apply/eqquotP. exact: M1. Qed.
 
 Section merge_merge_seq.
   Variables (F: graph) (h k: pairs F) (k': pairs (merge_seq F h)).
@@ -439,18 +467,42 @@ Section merge_merge_seq.
     \pi (repr (repr x)).
   Definition h_merge_merge_seq: h_ty _ _ := (h_merge_merge_seq1,id).
   (* ideally: derive properties from [merge_merge] *)
-  Hypothesis kk': k' = map_pairs [eta \pi_{eq_quot _}] k.
-  Lemma eqv_clot_cat: forall x y, eqv_clot (h++k) x y = equiv_comp (eqv_clot k') x y.
+  Hypothesis kk': k' = map_pairs [eta \pi_{eq_quot (eqv_clot h)}] k.
+  Lemma eqv_clot_cat: eqv_clot (h++k) =2 equiv_comp_rel (eqv_clot k').
+  Proof.
+    move => x y. rewrite /=. apply/idP/idP. 
+    (* lemma to strip [equiv_of] from assumption *)
   Admitted.
+  
   Lemma h_merge_merge_seqE (x: F): h_merge_merge_seq1 (\pi (\pi x)) = \pi x.
-    (* should be derivable from [eqv_clot_cat], [equiv_comp_pi] and lemmas from the quotient lib *)
-  Admitted.
+  Proof. 
+    rewrite /h_merge_merge_seq1/=. apply: mod_exchange eqv_clot_cat _.
+    apply/esym. exact: equiv_comp_pi.
+  Qed.
+
   Lemma hom_merge_merge_seq: hom_g h_merge_merge_seq.
-  Admitted.
+  Proof.
+    repeat split. 
+    - move => e. rewrite /=/h_merge_merge_seq1. apply: mod_exchange eqv_clot_cat _.
+      by rewrite -equiv_comp_pi.
+    - move => e. rewrite /=/h_merge_merge_seq1. apply: mod_exchange eqv_clot_cat _.
+      by rewrite -equiv_comp_pi.
+  Qed.
+
   Lemma bij_merge_merge_seq: bijective2 h_merge_merge_seq.
   Proof.
     split; last apply id_bij. 
-  Admitted.
+    pose f (x : merge_seq F (h++k)) : merge_seq (merge_seq F h) k' :=
+      \pi (\pi (repr x)).
+    exists f => x.
+    + rewrite /=/h_merge_merge_seq1/f. case: piP  => /= y /eqquotP /= Hy. 
+      rewrite eqv_clot_cat /= reprK in Hy. 
+      rewrite -[x]reprK /=. apply/eqquotP. by rewrite equiv_sym.
+    + rewrite /=/h_merge_merge_seq1/f. 
+      rewrite -{2}[x]reprK /=. apply: mod_exchange eqv_clot_cat _.
+      by rewrite -equiv_comp_pi.
+  Qed.
+
   Lemma iso_merge_merge_seq: iso_g h_merge_merge_seq.
   Proof. split. apply hom_merge_merge_seq. apply bij_merge_merge_seq. Qed.
   Lemma merge_merge_seq: iso (merge_seq (merge_seq F h) k') (merge_seq F (h++k)).
@@ -465,6 +517,13 @@ Proof.
   intro K. eapply iso_iso2'; first apply iso_merge_merge_seq=>//; by rewrite /=h_merge_merge_seqE. 
 Qed.
 
+Lemma eqv_clot_map (H G : graph) (x y : G) (l : pairs G) (f : G -> H) : 
+  eqv_clot l x y -> eqv_clot (map_pairs f l) (f y) (f x).
+Proof.
+  (* another lemma for rel_of_pairs *)
+Admitted.
+  
+
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
@@ -472,14 +531,33 @@ Section union_merge_l.
     \pi (match x with inl x => inl (repr x) | inr x => inr x end).
   Definition h_union_merge_l: h_ty _ _ := (h_union_merge_l1,id).
   Lemma h_union_merge_lEl (x: F): h_union_merge_l1 (inl (\pi x)) = \pi (inl x).
-  Admitted.
+  Proof. 
+    rewrite /h_union_merge_l1/=. apply/eqmodP. 
+    apply: (@eqv_clot_map (union F G)). exact:  eq_piK.
+  Qed.
+
   Lemma h_union_merge_lEr (x: G): h_union_merge_l1 (inr x) = \pi (inr x).
-  Admitted.
+  Proof. by []. Qed.
+
   Lemma hom_union_merge_l: hom_g h_union_merge_l.
-  Admitted.
+  Proof.
+    repeat split. 
+    - move => [e|e]. 
+      + by rewrite /= h_union_merge_lEl.
+      + by rewrite /= h_union_merge_lEr.
+    - move => [e|e]. 
+      + by rewrite /= h_union_merge_lEl.
+      + by rewrite /= h_union_merge_lEr.
+  Qed.
+
   Lemma bij_union_merge_l: bijective2 h_union_merge_l.
   Proof.
     split; last apply id_bij. 
+    pose h (x : merge_seq (union F G) (map_pairs inl l)) : union (merge_seq F l) G :=
+      match repr x with inl x => inl (\pi x) | inr x => inr x end.
+    exists h => [x|x].
+    - rewrite /=/h/h_union_merge_l1. case E : (repr _) => [x'|x']. 
+      + (* there is something wrong/missing here *) 
   Admitted.
   Lemma iso_union_merge_l: iso_g h_union_merge_l.
   Proof. split. apply hom_union_merge_l. apply bij_union_merge_l. Qed.
