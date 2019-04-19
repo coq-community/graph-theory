@@ -12,6 +12,7 @@ separators.v
 checkpoint.v
 cp_minor.v
 multigraph.v
+multigraph_new.v
 skeleton.v
 ptt_algebra.v
 ptt_graph.v

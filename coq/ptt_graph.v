@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import finite_quotient preliminaries ptt_algebra multigraph.
+Require Import finite_quotient preliminaries ptt_algebra multigraph_new.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -57,15 +57,28 @@ Canonical Structure graph2_ops: ptt_ops :=
      one := one2;
      top := top2 |}.
 
+Definition graph_of_term (u: term sym): graph2 := eval sym2 u. 
+
 Local Instance iso2_Equivalence: Equivalence iso2.
 Proof.
   constructor.
-  - intro G. exists (id,id); split=>//; split=>//. apply iso_id.
-  - intros F G H. 
-Admitted.
+  - intro G. exists (id,id). split=>//; split=>//. apply iso_id.
+  - intros F G [h [[[H [[g1 H1 G1] [g2 H2 G2]]] Hi] Ho]].
+    exists (g1,g2). (repeat split)=> /= [e|e|e||||].
+    by rewrite -{1}(G2 e) -H H1.
+    by rewrite -{1}(G2 e) -H H1.
+    by rewrite -H G2.
+    by eexists. 
+    by eexists. 
+    by rewrite -(H1 g_in) Hi.
+    by rewrite -(H1 g_out) Ho.
+  - intros F G H [f [[Hf Fi] Fo]] [g [[Hg Gi] Go]].
+    eexists. split. split. apply (iso_comp Hf Hg).
+    simpl. congruence. 
+    simpl. congruence. 
+Qed.
 
-
-
+Opaque merge_seq union.
 
 (** * from isomorphisms on graphs to isomorphisms on 2p-graphs *)
 
@@ -77,18 +90,41 @@ Lemma iso_iso2' (F G: graph) (i o: F) (i' o': G) (h: h_ty F G):
   iso_g h -> i' = h.1 i -> o' = h.1 o -> point F i o ≈ point G i' o'.
 Proof. intros H -> ->. by apply iso_iso2. Qed.
 
-Lemma merge_iso (F G : graph) (h: h_ty F G): iso_g h ->
+Lemma union_C2 (F G: graph) (i o: F+G):
+  point (union F G) i o ≈ point (union G F) (sumC i) (sumC o).
+Proof. by eapply iso_iso2'; first apply iso_union_C. Qed.
+
+Lemma union_A2 (F G H: graph) (i o: F+(G+H)):
+  point (union F (union G H)) i o ≈ point (union (union F G) H) (sumA i) (sumA o).
+Proof. by eapply iso_iso2'; first apply iso_union_A. Qed.
+
+Lemma union_A2' (F G H: graph) (i o: (F+G)+H):
+  point (union (union F G) H) i o ≈ point (union F (union G H)) (sumA' i) (sumA' o).
+Proof. by eapply iso_iso2'; first apply iso_union_A'. Qed.
+
+Lemma merge_iso2 (F G : graph) (h: h_ty F G): iso_g h ->
   forall l (i o: F),
   point (merge_seq F l) (\pis i) (\pis o) ≈
   point (merge_seq G (map_pairs h.1 l)) (\pis (h.1 i)) (\pis (h.1 o)).
-Admitted.
+Proof.
+  intros. eapply iso_iso2'. apply merge_iso, H.
+  by rewrite h_mergeE. 
+  by rewrite h_mergeE. 
+Qed.
 
 Lemma merge_same (F : graph) (h k: pairs F) (i i' o o': F):
   (eqv_clot h =2 eqv_clot k) ->
   eqv_clot h i i' ->
   eqv_clot h o o' ->
   point (merge_seq F h) (\pis i) (\pis o) ≈ point (merge_seq F k) (\pis i') (\pis o').
-Admitted.
+Proof.
+  intros H Hi Ho.
+  eapply iso_iso2'. by apply merge_same_iso.
+  rewrite h_merge_sameE =>//.
+  symmetry. apply /eqquotP. by rewrite <- H. 
+  rewrite h_merge_sameE =>//.
+  symmetry. apply /eqquotP. by rewrite <- H. 
+Qed.
 
 Lemma merge_same' (F : graph) (h k: pairs F) (i o: F):
   (eqv_clot h =2 eqv_clot k) ->
@@ -100,9 +136,12 @@ Qed.
 Lemma merge_nothing (F: graph) (h: pairs F) (i o: F):
   List.Forall (fun p => p.1 = p.2) h ->
   point (merge_seq F h) (\pis i) (\pis o) ≈ point F i o.
-Admitted.
-
-Opaque merge_seq union.
+Proof.
+  intros H. 
+  eapply iso_iso2'. by apply merge_nothing_iso.
+  by rewrite h_merge_nothingE.
+  by rewrite h_merge_nothingE.
+Qed.
 
 
 (** ** merge_merge  *)
@@ -221,7 +260,7 @@ Qed.
 Lemma par2C (F G: graph2): F ∥ G ≡ G ∥ F.
 Proof.
   rewrite /=/par2.
-  rewrite (merge_iso (iso_union_C _ _)) /=.
+  rewrite (merge_iso2 (iso_union_C _ _)) /=.
   apply merge_same.
   apply eqv_clot_eq. leqv. leqv. 
   eqv. eqv. 
@@ -239,15 +278,15 @@ Qed.
 Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≡ (F ∥ G) ∥ H.
 Proof.
   rewrite /=/par2/=.
-  rewrite (merge_iso (iso_union_merge_r _ _)) /=.
-  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_r _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_rEl 2!h_union_merge_lEl.
   rewrite 2!h_union_merge_rEr 2!h_union_merge_lEr.
   rewrite (merge_merge (G:=union F (union G H))
                        (k:=[::(unl g_in,unr (unl g_in)); (unl g_out,unr (unl g_out))])) =>//.
   rewrite (merge_merge (G:=union (union F G) H)
                        (k:=[::(unl (unl g_in),unr g_in); (unl (unl g_out),unr g_out)])) =>//.
-  rewrite (merge_iso (iso_union_A _ _ _)) /=.
+  rewrite (merge_iso2 (iso_union_A _ _ _)) /=.
   apply merge_same'.
   apply eqv_clot_eq.
    constructor. apply eqv_clot_trans with (unl (unl (g_in))); eqv. 
@@ -273,15 +312,15 @@ Qed.
 Lemma seq2A (F G H: graph2): F · (G · H) ≡ (F · G) · H.
 Proof.
   rewrite /=/seq2/=.
-  rewrite (merge_iso (iso_union_merge_r _ _)) /=.
-  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_r _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_rEl 2!h_union_merge_lEl.
   rewrite 2!h_union_merge_rEr 2!h_union_merge_lEr.
   rewrite (merge_merge (G:=union F (union G H))
                        (k:=[::(unl g_out,unr (unl g_in))])) =>//.
   rewrite (merge_merge (G:=union (union F G) H)
                        (k:=[::(unl (unr g_out),unr g_in)])) =>//. 
-  rewrite (merge_iso (iso_union_A _ _ _)) /=.
+  rewrite (merge_iso2 (iso_union_A _ _ _)) /=.
   apply merge_same'.
   apply eqv_clot_eq; leqv.
 Qed.
@@ -299,7 +338,7 @@ Qed.
 Lemma cnv2seq (F G: graph2): (F · G)° ≡ G° · F°.
 Proof.
   rewrite /=/cnv2/seq2/=. 
-  rewrite (merge_iso (iso_union_C _ _)) /=.
+  rewrite (merge_iso2 (iso_union_C _ _)) /=.
   apply merge_same'.
   apply eqv_clot_eq; simpl; leqv.
 Qed.
@@ -317,11 +356,11 @@ Qed.
 Lemma dom2E (F: graph2): dom F ≡ 1 ∥ (F · top).
 Proof.
   rewrite par2C/=/dom2/par2/seq2/=.
-  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_lEl 1!h_union_merge_lEr.
   rewrite (merge_merge (G:=union (union F two_graph) unit_graph)
                        (k:=[::(unl (unl g_in),unr (tt: unit_graph)); (unl (unr (true: two_graph)),unr (tt: unit_graph))])) =>//.
-  rewrite (merge_iso (iso_union_A' _ _ _)) /=.
+  rewrite (merge_iso2 (iso_union_A' _ _ _)) /=.
   rewrite (merge_union_K_lr (K:=union two_graph unit_graph) _ _ 
                              (k:=fun x => match x with inl false => g_out | _ => g_in end)).
   symmetry. apply merge_nothing. 
@@ -334,7 +373,7 @@ Qed.
 Lemma A10 (F G: graph2): 1 ∥ F·G ≡ dom (F ∥ G°).
 Proof.
   rewrite par2C/=/par2/seq2/dom2/cnv2.
-  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_lEl 1!h_union_merge_lEr.
   rewrite (merge_merge (G:=union (union F G) unit_graph)
                        (k:=[::(unl (unl g_in),unr (tt: unit_graph)); (unl (unr g_out),unr (tt: unit_graph))])) =>//.
@@ -349,8 +388,8 @@ Qed.
 Lemma A11' (F: graph2): F·top ≡ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
 Proof.
   rewrite /=/seq2/=.
-  rewrite (merge_iso (union_iso_g iso_id iso_two_graph))/=. 
-  rewrite (merge_iso (iso_union_A _ _ _))/=. 
+  rewrite (merge_iso2 (iso_union iso_id iso_two_graph))/=. 
+  rewrite (merge_iso2 (iso_union_A _ _ _))/=. 
   rewrite (merge_union_K_ll (F:=union F _) _ _ (k:=fun x => unl g_out))//=.
   apply merge_nothing. by constructor. 
   intros []. apply /eqquotP. eqv. 
@@ -362,16 +401,16 @@ Proof. now rewrite 2!A11'. Qed.
 Lemma A12' (F G: graph2): @g_in F = @g_out F -> F·G ≡ F·top ∥ G.
 Proof.
   intro H. rewrite /=/par2/seq2/=.
-  rewrite (merge_iso (iso_union_merge_l _ _)) /=.
+  rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_lEl 2!h_union_merge_lEr.
   rewrite (merge_merge (G:=union (union F two_graph) G)
                        (k:=[::(unl (unl g_in),unr g_in);(unl (unr (true: two_graph)),unr g_out)])) =>//.
-  rewrite (merge_iso (iso_union_C (union _ _) _)) /=.
-  rewrite (merge_iso (iso_union_A _ _ _)) /=.
+  rewrite (merge_iso2 (iso_union_C (union _ _) _)) /=.
+  rewrite (merge_iso2 (iso_union_A _ _ _)) /=.
   rewrite (merge_union_K_lr (F:=union G F) (K:=two_graph) _ _ 
                             (k:=fun x => if x then unl g_out else unr g_in)).
   2: intros []. 2: intros []; apply /eqquotP; rewrite H; eqv.
-  rewrite (merge_iso (iso_union_C _ _)) /=.
+  rewrite (merge_iso2 (iso_union_C _ _)) /=.
   apply merge_same'. rewrite H. apply eqv_clot_eq; leqv.
 Qed.
 
@@ -384,14 +423,14 @@ Qed.
 Lemma seq2_iso2: Proper (iso2 ==> iso2 ==> iso2) seq2.
 Proof.
   intros F F' (f&[Hf fi]&fo) G G' (g&[Hg gi]&go). rewrite /seq2.
-  rewrite (merge_iso (union_iso_g Hf Hg))/=.
+  rewrite (merge_iso2 (iso_union Hf Hg))/=.
   apply merge_same; simpl; rewrite ?fi ?fo ?gi ?go //. 
 Qed.  
 
 Lemma par2_iso2: Proper (iso2 ==> iso2 ==> iso2) par2.
 Proof.
   intros F F' (f&[Hf fi]&fo) G G' (g&[Hg gi]&go). rewrite /par2.
-  rewrite (merge_iso (union_iso_g Hf Hg))/=.
+  rewrite (merge_iso2 (iso_union Hf Hg))/=.
   apply merge_same; simpl; rewrite ?fi ?fo ?gi ?go //. 
 Qed.
 
@@ -418,3 +457,4 @@ Proof.
   apply A11.
   apply A12.
 Qed.
+
