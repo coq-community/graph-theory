@@ -24,6 +24,11 @@ Record graph := Graph { vertex :> finType;
                         target : edge -> vertex;
                         label : edge -> sym }.
 
+Notation vfun := (fun x : void => match x with end).  
+Definition unit_graph := @Graph [finType of unit] _ vfun vfun vfun.
+Definition two_graph := @Graph [finType of bool] _ vfun vfun vfun.
+Definition edge_graph (a : sym) := Graph (fun _ : unit => false) (fun _ => true) (fun _ => a).                           
+
 Record graph2 := Graph2 { graph_of :> graph;
                           g_in : graph_of;
                           g_out : graph_of }.
@@ -69,6 +74,15 @@ Definition hom_g G1 G2 (h : h_ty G1 G2) : Prop :=
  ((forall e : edge G1, h.1 (source e) = source (h.2 e))
  *(forall e : edge G1, h.1 (target e) = target (h.2 e))
  *(forall e : edge G1, label (h.2 e) = label e))%type.
+
+Lemma hom_id {G: graph}: @hom_g G G (id,id).
+Proof. by []. Qed.
+
+Lemma hom_comp (F G H: graph) f g:
+  @hom_g F G f -> @hom_g G H g -> @hom_g F H (g.1 \o f.1,g.2 \o f.2).
+Proof.
+  intros Hf Hg. (repeat split; intro); last rewrite /=Hg Hf//; rewrite /=Hf Hg//.
+Qed.
 
 Definition hom_g2 (G1 G2:graph2) (h : h_ty G1 G2) : Prop :=
    (hom_g h * (h.1 g_in = g_in) * (h.1 g_out = g_out))%type.
@@ -176,6 +190,17 @@ Definition bijective2 (G1 G2 : graph) (h : h_ty G1 G2) :=
 
 Definition iso_g (G1 G2 : graph) (h : h_ty G1 G2) := hom_g h /\ bijective2 h.
 
+Lemma iso_id {G: graph}: @iso_g G G (id,id).
+Proof. split. apply hom_id. split; apply id_bij. Qed.
+
+Lemma iso_comp (F G H: graph) f g:
+  @iso_g F G f -> @iso_g G H g -> @iso_g F H (g.1 \o f.1,g.2 \o f.2).
+Proof.
+  intros Hf Hg. split.
+  apply hom_comp; [apply Hf | apply Hg].
+  split; (apply bij_comp; [apply Hg | apply Hf]). 
+Qed.
+
 (* TODO: use iso_g *)
 Definition iso (G1 G2 : graph) := 
   exists2 h : h_ty G1 G2, hom_g h & bijective2 h.
@@ -237,6 +262,17 @@ Lemma iso2_inv_out (G1 G2 : graph2) (h : h_ty G1 G2) x :
 Proof.
   move => H1 [[g H2 H3] H4]. rewrite -[g_out]H1 inj_eq //. 
   exact: can_inj H2.  
+Qed.
+
+Lemma iso_two_graph:
+  @iso_g two_graph (union unit_graph unit_graph)
+         ((fun x: bool => if x then unl (tt: unit_graph) else unr (tt: unit_graph)),
+          (fun x: void => match x with end)).
+Proof.
+  split. split. split; intros []. intros []. 
+  split.
+    by exists (fun x => match x with inl _ => true | _ => false end); [intros [|] | intros [[]|[]]].
+    by exists (fun x => match x with inl x | inr x => x end); [intros [] | intros [|]].
 Qed.
 
 Lemma iso2_point (G1 G2 : graph) (i1 o1 :G1) (i2 o2 : G2) :
@@ -397,10 +433,6 @@ Lemma union_A2' (F G H: graph) (i o: (F+G)+H):
   point (union (union F G) H) i o ≈ point (union F (union G H)) (sumA' i) (sumA' o).
 Proof. by eapply iso_iso2'; first apply iso_union_A'. Qed.
 
-
-Lemma iso_id {G: graph}: @iso_g G G (id,id).
-Admitted.
-
 Definition sumf {A B C D} (f: A -> B) (g: C -> D) (x: A+C): B+D :=
   match x with inl a => inl (f a) | inr c => inr (g c) end. 
                                                                  
@@ -551,31 +583,6 @@ Lemma mod_exchange (T : choiceType) (e1 e2 : equiv_rel T) x y :
   e1 =2 e2 -> x = y %[mod_eq e2] -> x = y %[mod_eq e1].
 Proof. move => E M1. apply/eqquotP. rewrite E. apply/eqquotP. exact: M1. Qed.
 
-Lemma merge_iso (F G : graph) (h: h_ty F G): iso_g h ->
-  forall l (i o: F),
-  point (merge_seq F l) (\pis i) (\pis o) ≈
-  point (merge_seq G (map_pairs h.1 l)) (\pis (h.1 i)) (\pis (h.1 o)).
-Admitted.
-
-Lemma merge_same (F : graph) (h k: pairs F) (i i' o o': F):
-  (eqv_clot h =2 eqv_clot k) ->
-  eqv_clot h i i' ->
-  eqv_clot h o o' ->
-  point (merge_seq F h) (\pis i) (\pis o) ≈ point (merge_seq F k) (\pis i') (\pis o').
-Admitted.
-
-Lemma merge_same' (F : graph) (h k: pairs F) (i o: F):
-  (eqv_clot h =2 eqv_clot k) ->
-  point (merge_seq F h) (\pis i) (\pis o) ≈ point (merge_seq F k) (\pis i) (\pis o).
-Proof.
-  intros. by apply merge_same. 
-Qed.
-
-Lemma merge_nothing (F: graph) (h: pairs F) (i o: F):
-  List.Forall (fun p => p.1 = p.2) h ->
-  point (merge_seq F h) (\pis i) (\pis o) ≈ point F i o.
-Admitted.
-
 
 
 Section merge_merge_seq.
@@ -625,15 +632,6 @@ Section merge_merge_seq.
   Lemma merge_merge_seq: iso (merge_seq (merge_seq F h) k') (merge_seq F (h++k)).
   Proof. eexists. apply hom_merge_merge_seq. apply bij_merge_merge_seq. Qed.
 End merge_merge_seq.
-
-Lemma merge_merge_seq2 (G: graph) (h k: pairs G) (k': pairs (merge_seq G h)) (i o: G):
-  k' = map_pairs (pi h) k ->
-  point (merge_seq (merge_seq G h) k') (\pis (\pis i)) (\pis (\pis o))
-≈ point (merge_seq G (h++k)) (\pis i) (\pis o).
-Proof.
-  intro K. eapply iso_iso2'; first apply iso_merge_merge_seq=>//; by rewrite /=h_merge_merge_seqE. 
-Qed.
-  
 
 Lemma reprsK (G : graph) (h : pairs G) : cancel (@repr _ h) (@pi _ h).
 Proof. exact: reprK. Qed.
@@ -697,35 +695,6 @@ Section union_merge_l.
   Proof. eexists. apply hom_union_merge_l. apply bij_union_merge_l. Qed.
 End union_merge_l.  
 
-Lemma union_merge_l2_ll (F G: graph) (i o: F) (h: pairs F):
-  point (union (merge_seq F h) G) (unl (\pis i)) (unl (\pis o))
-≈ point (merge_seq (union F G) (map_pairs unl h)) (\pis (unl i)) (\pis (unl o)).
-Proof. eapply iso_iso2'; first apply iso_union_merge_l; by rewrite /=h_union_merge_lEl. Qed.
-
-Lemma union_merge_l2_lr (F G: graph) (i: F) (o: G) (h: pairs F):
-  point (union (merge_seq F h) G) (unl (\pis i)) (unr o)
-≈ point (merge_seq (union F G) (map_pairs unl h)) (\pis (unl i)) (\pis (unr o)).
-Proof.
-  eapply iso_iso2'; first apply iso_union_merge_l.
-    by rewrite /=h_union_merge_lEl.
-    by rewrite /=h_union_merge_lEr.
-Qed.
-
-Lemma union_merge_l2_rl (F G: graph) (i: G) (o: F) (h: pairs F):
-  point (union (merge_seq F h) G) (unr i) (unl (\pis o))
-≈ point (merge_seq (union F G) (map_pairs unl h)) (\pis (unr i)) (\pis (unl o)).
-Proof.
-  eapply iso_iso2'; first apply iso_union_merge_l.
-    by rewrite /=h_union_merge_lEr.
-    by rewrite /=h_union_merge_lEl.
-Qed.
-
-Lemma union_merge_l2_rr (F G: graph) (i o: G) (h: pairs F):
-  point (union (merge_seq F h) G) (unr i) (unr o)
-≈ point (merge_seq (union F G) (map_pairs unl h)) (\pis (unr i)) (\pis (unr o)).
-Proof. eapply iso_iso2'; first apply iso_union_merge_l; by rewrite /=h_union_merge_lEr. Qed.
-
-
 Section union_merge_r.
   Variables (F G: graph) (l: pairs G).
   Definition h_union_merge_r1 (x: union F (merge_seq G l)): merge_seq (union F G) (map_pairs unr l) :=
@@ -747,35 +716,6 @@ Section union_merge_r.
   Lemma union_merge_r: iso (union F (merge_seq G l)) (merge_seq (union F G) (map_pairs unr l)).
   Proof. eexists. apply hom_union_merge_r. apply bij_union_merge_r. Qed.
 End union_merge_r.  
-
-Lemma union_merge_r2_ll (F G: graph) (i o: F) (h: pairs G):
-  point (union F (merge_seq G h)) (unl i) (unl o)
-≈ point (merge_seq (union F G) (map_pairs unr h)) (\pis (unl i)) (\pis (unl o)).
-Proof. eapply iso_iso2'; first apply iso_union_merge_r; by rewrite /=h_union_merge_rEl. Qed.
-
-Lemma union_merge_r2_lr (F G: graph) (i: F) (o: G) (h: pairs G):
-  point (union F (merge_seq G h)) (unl i) (unr (\pis o))
-≈ point (merge_seq (union F G) (map_pairs unr h)) (\pis (unl i)) (\pis (unr o)).
-Proof.
-  eapply iso_iso2'; first apply iso_union_merge_r.
-    by rewrite /=h_union_merge_rEl.
-    by rewrite /=h_union_merge_rEr.
-Qed.
-
-Lemma union_merge_r2_rl (F G: graph) (i: G) (o: F) (h: pairs G):
-  point (union F (merge_seq G h)) (unr (\pis i)) (unl o)
-≈ point (merge_seq (union F G) (map_pairs unr h)) (\pis (unr i)) (\pis (unl o)).
-Proof.
-  eapply iso_iso2'; first apply iso_union_merge_r.
-    by rewrite /=h_union_merge_rEr.
-    by rewrite /=h_union_merge_rEl.
-Qed.
-
-Lemma union_merge_r2_rr (F G: graph) (i o: G) (h: pairs G):
-  point (union F (merge_seq G h)) (unr (\pis i)) (unr (\pis o))
-≈ point (merge_seq (union F G) (map_pairs unr h)) (\pis (unr i)) (\pis (unr o)).
-Proof. eapply iso_iso2'; first apply iso_union_merge_r; by rewrite /=h_union_merge_rEr. Qed.
-
 
 Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
@@ -803,43 +743,3 @@ Section merge_union_K.
   Lemma merge_union_K: iso (merge_seq (union F K) h) (merge_seq F union_K_pairs).
   Proof. eexists. apply hom_merge_union_K. apply bij_merge_union_K. Qed.
 End merge_union_K.
-
-Lemma merge_union_K2_ll (F K: graph) (i o: F) (h: pairs (F+K)) (k: K -> F)
-      (ke: edge K -> False)
-      (kh: forall x: K, unr x = unl (k x) %[mod_eq (eqv_clot h)]):
-  point (merge_seq (union F K) h) (\pis (unl i)) (\pis (unl o))
-≈ point (merge_seq F (union_K_pairs h k)) (\pis i) (\pis o).
-Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)); by rewrite /=h_merge_union_KEl.
-Qed.
-
-Lemma merge_union_K2_lr (F K: graph) (i: F) (o: K) (h: pairs (F+K)) (k: K -> F)
-      (ke: edge K -> False)
-      (kh: forall x: K, unr x = unl (k x) %[mod_eq (eqv_clot h)]):
-  point (merge_seq (union F K) h) (\pis (unl i)) (\pis (unr o))
-≈ point (merge_seq F (union_K_pairs h k)) (\pis i) (\pis (k o)).
-Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)).
-   by rewrite /=h_merge_union_KEl.
-   by rewrite /=h_merge_union_KEr.
-Qed.
-
-Lemma merge_union_K2_rl (F K: graph) (i: K) (o: F) (h: pairs (F+K)) (k: K -> F)
-      (ke: edge K -> False)
-      (kh: forall x: K, unr x = unl (k x) %[mod_eq (eqv_clot h)]):
-  point (merge_seq (union F K) h) (\pis (unr i)) (\pis (unl o))
-≈ point (merge_seq F (union_K_pairs h k)) (\pis (k i)) (\pis o).
-Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)).
-   by rewrite /=h_merge_union_KEr.
-   by rewrite /=h_merge_union_KEl.
-Qed.
-
-Lemma merge_union_K2_rr (F K: graph) (i o: K) (h: pairs (F+K)) (k: K -> F)
-      (ke: edge K -> False)
-      (kh: forall x: K, unr x = unl (k x) %[mod_eq (eqv_clot h)]):
-  point (merge_seq (union F K) h) (\pis (unr i)) (\pis (unr o))
-≈ point (merge_seq F (union_K_pairs h k)) (\pis (k i)) (\pis (k o)).
-Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)); by rewrite /=h_merge_union_KEr.
-Qed.

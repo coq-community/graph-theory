@@ -8,22 +8,6 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
-(* move to multigraph *)
-Notation vfun := (fun x : void => match x with end).  
-Definition unit_graph := @Graph [finType of unit] _ vfun vfun vfun.
-Definition two_graph := @Graph [finType of bool] _ vfun vfun vfun.
-Definition edge_graph (a : sym) := Graph (fun _ : unit => false) (fun _ => true) (fun _ => a).                           
-Lemma iso_two_graph: @iso_g two_graph (union unit_graph unit_graph)
-                                 ((fun x: bool => if x then unl (tt: unit_graph) else unr (tt: unit_graph)),
-                                  (fun x: void => match x with end)).
-Proof.
-  split. split. split; intros []. intros []. 
-  split.
-    by exists (fun x => match x with inl _ => true | _ => false end); [intros [|] | intros [[]|[]]].
-    by exists (fun x => match x with inl x | inr x => x end); [intros [] | intros [|]].
-Qed.
-
-
 Record graph2 :=
   Graph2 { graph_of :> graph;
            g_in : graph_of;
@@ -36,19 +20,10 @@ Notation point G := (@Graph2 G).
 Lemma point_io (G : graph2) : G = point G g_in g_out.
 Proof. by case: G. Qed.
 
-Definition hom_g2 (F G: graph2) (h: h_ty F G) : Prop :=
-   (hom_g h * (h.1 g_in = g_in) * (h.1 g_out = g_out))%type.
-
-Definition iso_g2 (F G: graph2) (h: h_ty F G) : Prop :=
-   (hom_g2 h * bijective2 h)%type.
-
 Definition iso2 (F G: graph2) : Prop := 
-  exists h: h_ty F G, iso_g2 h.
+  (exists h: h_ty F G, iso_g h * (h.1 g_in = g_in) * (h.1 g_out = g_out))%type.
 
 Notation "G ≈ H" := (iso2 G H) (at level 45).
-
-Lemma iso2' F G: F ≈ G -> exists h, (@iso_g F G h * (h.1 g_in = g_in) * (h.1 g_out = g_out))%type.
-Proof. intros (f&([H ?]&?)&H'). now exists f. Qed.
 
 Definition par2 (F G: graph2) :=
   point (merge_seq (union F G) [::(unl g_in,unr g_in); (unl g_out,unr g_out)])
@@ -83,6 +58,10 @@ Canonical Structure graph2_ops: ptt_ops :=
      top := top2 |}.
 
 Local Instance iso2_Equivalence: Equivalence iso2.
+Proof.
+  constructor.
+  - intro G. exists (id,id); split=>//; split=>//. apply iso_id.
+  - intros F G H. 
 Admitted.
 
 
@@ -92,7 +71,7 @@ Admitted.
 
 Lemma iso_iso2 (F G: graph) (i o: F) (h: h_ty F G):
   iso_g h -> point F i o ≈ point G (h.1 i) (h.1 o).
-Proof. intro H. exists h. split. split. split. apply H. by []. by []. apply H. Qed.
+Proof. intro H. now exists h. Qed.
 
 Lemma iso_iso2' (F G: graph) (i o: F) (i' o': G) (h: h_ty F G):
   iso_g h -> i' = h.1 i -> o' = h.1 o -> point F i o ≈ point G i' o'.
@@ -404,18 +383,14 @@ Qed.
 
 Lemma seq2_iso2: Proper (iso2 ==> iso2 ==> iso2) seq2.
 Proof.
-  intros F F' FF G G' GG. rewrite /seq2.
-  apply iso2' in FF as (f&[Hf fi]&fo).
-  apply iso2' in GG as (g&[Hg gi]&go).
+  intros F F' (f&[Hf fi]&fo) G G' (g&[Hg gi]&go). rewrite /seq2.
   rewrite (merge_iso (union_iso_g Hf Hg))/=.
   apply merge_same; simpl; rewrite ?fi ?fo ?gi ?go //. 
 Qed.  
 
 Lemma par2_iso2: Proper (iso2 ==> iso2 ==> iso2) par2.
 Proof.
-  intros F F' FF G G' GG. rewrite /par2.
-  apply iso2' in FF as (f&[Hf fi]&fo).
-  apply iso2' in GG as (g&[Hg gi]&go).
+  intros F F' (f&[Hf fi]&fo) G G' (g&[Hg gi]&go). rewrite /par2.
   rewrite (merge_iso (union_iso_g Hf Hg))/=.
   apply merge_same; simpl; rewrite ?fi ?fo ?gi ?go //. 
 Qed.
