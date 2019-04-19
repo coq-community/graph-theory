@@ -536,23 +536,76 @@ Lemma equiv_of_sub' (T : finType) (e1 : rel T) (e2 : equiv_rel T) :
   subrel e1 e2 -> subrel (equiv_of e1) e2.
 Proof. move => sub. apply: equiv_of_sub => //; auto using equiv_sym, equiv_trans. Qed.
 
+
+(* TODO: move to preliminaries *)
+Section eqv_inj.
+  Variables (T1 T2 : finType) (e1 : rel T1) (e2 : rel T2) (f : T1 -> T2).
+  Hypothesis eq_e : forall u v, e1 u v = e2 (f u) (f v).
+  Hypothesis eq2E : forall u' v', e2 u' v' -> exists u v, u' = f u /\ v' = f v.
+  Hypothesis f_inj : injective f. 
+
+  Lemma equiv_of_ff x y : equiv_of e2 (f x) (f y) = equiv_of e1 x y.
+  Proof.
+    rewrite /equiv_of. apply/idP/idP.
+    - case/connectP => p. elim: p x => /= [|u' p IH] x. 
+      + by move => _ /f_inj ->. 
+      + case/andP => A B C. case/orP : A => A.
+        * move/eq2E : (A) => [?] [v] [_ ?]. subst. 
+          apply: connect_trans (connect1 _) (IH _ B C). by rewrite /= !eq_e A.
+        * move/eq2E : (A) => [v] [?] [? _]. subst. 
+          apply: connect_trans (connect1 _) (IH _ B C). by rewrite /= !eq_e A orbT.
+    - case/connectP => p. elim: p x => //= [x _ -> //|z p IH x] /andP [A B] C. 
+      apply: connect_trans (connect1 _) (IH _ B C). by rewrite /= -!eq_e.
+  Qed.
+
+  Lemma equiv_of_fn x y : y \notin codom f -> equiv_of e2 (f x) y = false.
+  Admitted.
+
+  Lemma equiv_of_nn x y : x \notin codom f -> y \notin codom f -> equiv_of e2 x y -> x = y.
+  Admitted.
+
+End eqv_inj.
+
+Lemma rel_of_pairs_map_eq (H G : graph) (l : pairs G) (f : G -> H) :
+  injective f ->
+  forall u v, rel_of_pairs l u v = rel_of_pairs (map_pairs f l) (f u) (f v).
+Proof.
+  move => f_inj u v. rewrite /rel_of_pairs/= /map_pairs.
+  apply/idP/mapP => [uv_l|[[u' v'] uv_l]]; first by exists (u,v).
+  case. by do 2 move/f_inj ->.
+Qed.
+
+Lemma rel_of_pairs_mapE (H G : graph) (l : pairs G) (f : G -> H) (u' v' : H) :
+    rel_of_pairs (map_pairs f l) u' v' -> exists u v : G, u' = f u /\ v' = f v.
+Proof.
+  rewrite /rel_of_pairs/= /map_pairs. case/mapP => [[u v]] /= ? [? ?]. by exists u; exists v.
+Qed.
+
 Lemma eqv_clot_map (H G : graph) (x y : G) (l : pairs G) (f : G -> H) : 
   injective f ->
-  eqv_clot (map_pairs f l) (f y) (f x) = eqv_clot l x y.
+  eqv_clot (map_pairs f l) (f x) (f y) = eqv_clot l x y.
 Proof.
-  move => inj_f. apply/idP/idP. 
-  - rewrite /eqv_clot -!lock/=. (* what's the right lemma here? *) 
-Admitted.
-
+  move => inj_f. rewrite /eqv_clot -!lock /=. apply: equiv_of_ff => //.
+  exact: rel_of_pairs_map_eq.
+  exact: rel_of_pairs_mapE.
+Qed.
+  
 Lemma eqv_clot_mapF (H G : graph) (x : G) (y : H) (l : pairs G) (f : G -> H) : 
   injective f -> y \notin codom f ->
   eqv_clot (map_pairs f l) (f x) y = false.
 Proof.
-Admitted.
+  move => inj_f. rewrite /eqv_clot -!lock /=. apply: equiv_of_fn => //.
+  exact: rel_of_pairs_mapE.
+Qed.
 
 Lemma eqv_clot_map_eq (H G : graph) (x y : H) (l : pairs G) (f : G -> H) : 
   x \notin codom f -> y \notin codom f ->  
   eqv_clot (map_pairs f l) x y = (x == y).
+Proof.
+  move => cd_x cd_y. apply/idP/eqP; last by move => ->.
+  rewrite /eqv_clot -!lock /=. apply: equiv_of_nn cd_x cd_y => //.
+  exact: rel_of_pairs_mapE.
+  admit. (* equiv_of_nn should not depend on injectivity *)
 Admitted.
 
 Lemma eqv_clot_map_lr (F G : graph) (l : pairs F) x y : 
@@ -645,7 +698,7 @@ Section union_merge_l.
   Lemma h_union_merge_lEl (x: F): h_union_merge_l1 (unl (\pis x)) = \pis (unl x).
   Proof. 
     rewrite /h_union_merge_l1/=. apply/eqmodP. 
-    rewrite (@eqv_clot_map (union F G)). exact:  eq_piK. exact: inl_inj. 
+    rewrite (@eqv_clot_map (union F G)) 1?equiv_sym. exact: eq_piK. exact: inl_inj. 
   Qed.
 
   Lemma h_union_merge_lEr (x: G): h_union_merge_l1 (unr x) = \pis (unr x).
@@ -677,7 +730,7 @@ Section union_merge_l.
         rewrite /g/=. case E : (repr _) => [z|z].
         * exists z => //. move/(congr1 (@pi (union F G) (map_pairs inl l))) : E.
           rewrite reprsK. move/eqquotP. rewrite eqv_clot_map => [E|]; last exact: inl_inj.
-          rewrite -[x']reprsK. exact/eqquotP.
+          rewrite -[x']reprsK. apply:esym. exact/eqquotP.
         * move/(congr1 (@pi (union F G) (map_pairs inl l))) : E.
           rewrite reprsK. move/eqquotP. by rewrite eqv_clot_map_lr.
       + rewrite h_union_merge_lEr /h /repr. case: piP => /= [[y|y]].
@@ -686,7 +739,7 @@ Section union_merge_l.
           by move/eqP=>[->].
     - rewrite /=/h/g. case E: (repr x) => [y|y] /=. 
       + rewrite -[x]reprK -/(repr _)/= {}E. apply/eqquotP. 
-        rewrite (@eqv_clot_map (union F G)). exact: eq_piK. exact: inl_inj.
+        rewrite (@eqv_clot_map (union F G)) 1?equiv_sym. exact: eq_piK. exact: inl_inj.
       + by rewrite /unr -E reprsK.
   Qed.
   Lemma iso_union_merge_l: iso_g h_union_merge_l.
@@ -722,22 +775,56 @@ Section merge_union_K.
   Definition union_K_pairs := map_pairs (fun x => match x with inl x => x | inr x => k x end) h.
   Definition h_merge_union_K1 (x: merge_seq (union F K) h): merge_seq F union_K_pairs :=
     \pis (match repr x with inl x => x | inr x => k x end).
+
+  Local Notation f := h_merge_union_K1.
+
+  Hypothesis kh: forall x: K, unr x = unl (k x) %[mod_eq (eqv_clot h)].
+
+  Lemma equiv_clot_Kl (x y : F) :
+    (eqv_clot h) (unl x) (inl y) = (eqv_clot union_K_pairs) x y.
+  Admitted.
+
+
   Lemma h_merge_union_KEl (x: F): h_merge_union_K1 (\pis (unl x)) = \pis x.
-  Admitted.
+  Proof. 
+    rewrite /f. case E : (repr _) => [y|y].
+    - move/(congr1 (@pi (union F K) h)) : E. rewrite reprsK => /eqquotP E.
+      apply/eqquotP. by rewrite equiv_sym -equiv_clot_Kl.
+    - move/(congr1 (@pi (union F K) h)) : E. rewrite reprsK -/(unr _).
+      rewrite /pi kh /=. move/eqmodP. rewrite equiv_clot_Kl equiv_sym => H.
+      exact/eqquotP.
+  Qed.
+
   Lemma h_merge_union_KEr (x: K): h_merge_union_K1 (\pis (unr x)) = \pis (k x).
-  Admitted.
+  Proof. 
+    rewrite /f. case E : (repr _) => [y|y].
+    - move/(congr1 (@pi (union F K) h)) : E. rewrite reprsK /pi kh. 
+      move/eqquotP. rewrite equiv_clot_Kl equiv_sym => ?. exact/eqquotP.
+    - move/(congr1 (@pi (union F K) h)) : E. rewrite reprsK /pi !kh.
+      move/eqquotP. rewrite equiv_clot_Kl equiv_sym => ?. exact/eqquotP.
+  Qed.
+
   Hypothesis ke: edge K -> False.
   Definition h_merge_union_K2 (e: edge (merge_seq (union F K) h)): edge (merge_seq F union_K_pairs) :=
     match e with inl e => e | inr e => match ke e with end end.
   Definition h_merge_union_K: h_ty _ _ := (h_merge_union_K1,h_merge_union_K2).
-  Hypothesis kh: forall x: K, unr x = unl (k x) %[mod_eq (eqv_clot h)].
   Lemma hom_merge_union_K: hom_g h_merge_union_K.
-  Admitted.
+  Proof.
+    repeat split; move => [e//=|//]; by rewrite h_merge_union_KEl. 
+  Qed.
+
   Lemma bij_merge_union_K: bijective2 h_merge_union_K.
   Proof.
-    split. admit.
-    exists inl =>//. move =>[|]//=. 
-  Admitted.
+    split; last by exists inl =>//; move =>[|]//=. 
+    pose g (x : merge_seq F union_K_pairs) : merge_seq (union F K) h :=
+      \pis (unl (repr x)).
+    exists g => x.
+    - rewrite /g/=. rewrite -[x]reprsK. case E : (repr x) => [y|y].
+      + rewrite h_merge_union_KEl. apply/eqquotP. rewrite equiv_clot_Kl equiv_sym. exact: eq_piK.
+      + rewrite h_merge_union_KEr. rewrite /pi kh. symmetry. 
+        apply/eqquotP. rewrite equiv_clot_Kl. exact: eq_piK.
+    - rewrite /g/=. by rewrite h_merge_union_KEl reprsK.
+  Qed.
   Lemma iso_merge_union_K: iso_g h_merge_union_K.
   Proof. split. apply hom_merge_union_K. apply bij_merge_union_K. Qed.
   Lemma merge_union_K: iso (merge_seq (union F K) h) (merge_seq F union_K_pairs).

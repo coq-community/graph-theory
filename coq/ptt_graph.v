@@ -179,7 +179,7 @@ Lemma merge_union_K_ll (F K: graph) (i o: F) (h: pairs (F+K)) (k: K -> F)
   point (merge_seq (union F K) h) (\pis (unl i)) (\pis (unl o))
 ≈ point (merge_seq F (union_K_pairs h k)) (\pis i) (\pis o).
 Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)); by rewrite /=h_merge_union_KEl.
+  eapply iso_iso2'; first (by apply (iso_merge_union_K kh ke)); by rewrite /=h_merge_union_KEl.
 Qed.
 
 Lemma merge_union_K_lr (F K: graph) (i: F) (o: K) (h: pairs (F+K)) (k: K -> F)
@@ -188,7 +188,7 @@ Lemma merge_union_K_lr (F K: graph) (i: F) (o: K) (h: pairs (F+K)) (k: K -> F)
   point (merge_seq (union F K) h) (\pis (unl i)) (\pis (unr o))
 ≈ point (merge_seq F (union_K_pairs h k)) (\pis i) (\pis (k o)).
 Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)).
+  eapply iso_iso2'; first (by apply (iso_merge_union_K kh ke)).
    by rewrite /=h_merge_union_KEl.
    by rewrite /=h_merge_union_KEr.
 Qed.
@@ -199,7 +199,7 @@ Lemma merge_union_K_rl (F K: graph) (i: K) (o: F) (h: pairs (F+K)) (k: K -> F)
   point (merge_seq (union F K) h) (\pis (unr i)) (\pis (unl o))
 ≈ point (merge_seq F (union_K_pairs h k)) (\pis (k i)) (\pis o).
 Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)).
+  eapply iso_iso2'; first (by apply (iso_merge_union_K kh ke)).
    by rewrite /=h_merge_union_KEr.
    by rewrite /=h_merge_union_KEl.
 Qed.
@@ -210,7 +210,7 @@ Lemma merge_union_KD2_rr (F K: graph) (i o: K) (h: pairs (F+K)) (k: K -> F)
   point (merge_seq (union F K) h) (\pis (unr i)) (\pis (unr o))
 ≈ point (merge_seq F (union_K_pairs h k)) (\pis (k i)) (\pis (k o)).
 Proof.
-  eapply iso_iso2'; first (by apply (iso_merge_union_K ke)); by rewrite /=h_merge_union_KEr.
+  eapply iso_iso2'; first (by apply (iso_merge_union_K kh ke)); by rewrite /=h_merge_union_KEr.
 Qed.
 
 
