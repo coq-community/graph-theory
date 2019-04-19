@@ -13,6 +13,8 @@ checkpoint.v
 cp_minor.v
 multigraph.v
 skeleton.v
+ptt_algebra.v
+ptt_graph.v
 subalgebra.v
 tm_iso.v
 extraction_def.v
