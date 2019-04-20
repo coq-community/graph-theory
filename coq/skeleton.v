@@ -2,7 +2,8 @@ Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries digraph sgraph minor checkpoint.
-Require Import multigraph.
+Require Import multigraph ptt_graph.
+Require Import multigraph_temp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -135,14 +136,14 @@ Qed.
 
 Lemma iso2_sskel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso (sskeleton G1) (sskeleton G2).
 Proof.
-  case => h hom_h [bij1 bij2].
+  case => h [[[hom_h [bij1 bij2]] gin] gout].
   case: (bij1) => g can_g1 can_g2.
   case: (bij2) => f can_f1 can_f2. 
-  have hom_gf : hom_g2 (g,f) by apply: iso2_inv hom_h.
-  apply: SgIso . apply can_g2. apply can_g1. 
-  - apply: hom2_sskel hom_gf _. exact: Bijective.
-  - exact: hom2_sskel hom_h _. 
-Qed.
+  (* have hom_gf : hom_g2 (g,f) by apply: iso2_inv hom_h. *)
+  (* apply: SgIso . apply can_g2. apply can_g1.  *)
+  (* - apply: hom2_sskel hom_gf _. exact: Bijective. *)
+  (* - exact: hom2_sskel hom_h _.  *)
+Admitted.
 
 Lemma iso2_decomp (G1 G2 : graph2) (T : forest) B1 : 
   @sdecomp T (sskeleton G1) B1 -> G1 ≈ G2 -> 

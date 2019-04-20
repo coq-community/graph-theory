@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import finite_quotient preliminaries ptt_algebra multigraph_new.
+Require Import finite_quotient preliminaries equiv ptt_algebra multigraph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -29,7 +29,7 @@ Definition par2 (F G: graph2) :=
   point (merge_seq (union F G) [::(unl g_in,unr g_in); (unl g_out,unr g_out)])
         (\pis (unl g_in)) (\pis (unl g_out)).
 
-Definition seq2 (F G: graph2) :=
+Definition dot2 (F G: graph2) :=
   point (merge_seq (union F G) [::(unl g_out,unr g_in)])
         (\pis (unl g_in)) (\pis (unr g_out)).
 
@@ -50,7 +50,7 @@ Definition sym2 a :=
 
 Canonical Structure graph2_ops: ptt_ops :=
   {| weq := iso2;
-     seq := seq2;
+     dot := dot2;
      par := par2;
      cnv := cnv2;
      dom := dom2;
@@ -300,18 +300,18 @@ Proof.
    leqv.
 Qed.
 
-Lemma seq2one (F: graph2): F · 1 ≡ F.
+Lemma dot2one (F: graph2): F · 1 ≡ F.
 Proof.
-  rewrite /=/seq2 (merge_union_K_lr _ _ (k:=fun _ => g_out)).
+  rewrite /=/dot2 (merge_union_K_lr _ _ (k:=fun _ => g_out)).
   destruct F. apply merge_nothing.
   repeat (constructor =>//=).
   by [].
   intros []; apply /eqquotP; eqv.
 Qed.
 
-Lemma seq2A (F G H: graph2): F · (G · H) ≡ (F · G) · H.
+Lemma dot2A (F G H: graph2): F · (G · H) ≡ (F · G) · H.
 Proof.
-  rewrite /=/seq2/=.
+  rewrite /=/dot2/=.
   rewrite (merge_iso2 (iso_union_merge_r _ _)) /=.
   rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_rEl 2!h_union_merge_lEl.
@@ -335,9 +335,9 @@ Proof.
   apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma cnv2seq (F G: graph2): (F · G)° ≡ G° · F°.
+Lemma cnv2dot (F G: graph2): (F · G)° ≡ G° · F°.
 Proof.
-  rewrite /=/cnv2/seq2/=. 
+  rewrite /=/cnv2/dot2/=. 
   rewrite (merge_iso2 (iso_union_C _ _)) /=.
   apply merge_same'.
   apply eqv_clot_eq; simpl; leqv.
@@ -355,7 +355,7 @@ Qed.
 
 Lemma dom2E (F: graph2): dom F ≡ 1 ∥ (F · top).
 Proof.
-  rewrite par2C/=/dom2/par2/seq2/=.
+  rewrite par2C/=/dom2/par2/dot2/=.
   rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_lEl 1!h_union_merge_lEr.
   rewrite (merge_merge (G:=union (union F two_graph) unit_graph)
@@ -372,7 +372,7 @@ Qed.
 
 Lemma A10 (F G: graph2): 1 ∥ F·G ≡ dom (F ∥ G°).
 Proof.
-  rewrite par2C/=/par2/seq2/dom2/cnv2.
+  rewrite par2C/=/par2/dot2/dom2/cnv2.
   rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_lEl 1!h_union_merge_lEr.
   rewrite (merge_merge (G:=union (union F G) unit_graph)
@@ -387,7 +387,7 @@ Qed.
 
 Lemma A11' (F: graph2): F·top ≡ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
 Proof.
-  rewrite /=/seq2/=.
+  rewrite /=/dot2/=.
   rewrite (merge_iso2 (iso_union iso_id iso_two_graph))/=. 
   rewrite (merge_iso2 (iso_union_A _ _ _))/=. 
   rewrite (merge_union_K_ll (F:=union F _) _ _ (k:=fun x => unl g_out))//=.
@@ -400,7 +400,7 @@ Proof. now rewrite 2!A11'. Qed.
 
 Lemma A12' (F G: graph2): @g_in F = @g_out F -> F·G ≡ F·top ∥ G.
 Proof.
-  intro H. rewrite /=/par2/seq2/=.
+  intro H. rewrite /=/par2/dot2/=.
   rewrite (merge_iso2 (iso_union_merge_l _ _)) /=.
   rewrite 2!h_union_merge_lEl 2!h_union_merge_lEr.
   rewrite (merge_merge (G:=union (union F two_graph) G)
@@ -420,9 +420,9 @@ Proof.
   apply /eqquotP. apply eqv_clot_trans with (unr (tt: unit_graph)); eqv.
 Qed.
 
-Lemma seq2_iso2: Proper (iso2 ==> iso2 ==> iso2) seq2.
+Lemma dot2_iso2: Proper (iso2 ==> iso2 ==> iso2) dot2.
 Proof.
-  intros F F' (f&[Hf fi]&fo) G G' (g&[Hg gi]&go). rewrite /seq2.
+  intros F F' (f&[Hf fi]&fo) G G' (g&[Hg gi]&go). rewrite /dot2.
   rewrite (merge_iso2 (iso_union Hf Hg))/=.
   apply merge_same; simpl; rewrite ?fi ?fo ?gi ?go //. 
 Qed.  
@@ -441,17 +441,17 @@ Global Instance graph2_laws: ptt_laws graph2_ops.
 Proof.
   constructor.
   apply iso2_Equivalence.
-  apply seq2_iso2. 
+  apply dot2_iso2. 
   apply par2_iso2. 
   apply cnv2_iso2.
   apply dom2E. 
   apply par2A. 
   apply par2C. 
-  apply seq2A. 
-  apply seq2one.
+  apply dot2A. 
+  apply dot2one.
   apply cnv2I.
   apply cnv2par.
-  apply cnv2seq.
+  apply cnv2dot.
   apply par2oneone.
   apply A10.
   apply A11.

@@ -3,7 +3,8 @@ Require Import RelationClasses Morphisms Setoid Omega.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries.
-Require Import multigraph subalgebra.
+Require Import multigraph ptt_graph.
+Require Import multigraph_temp subalgebra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

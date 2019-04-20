@@ -11,12 +11,13 @@ menger.v
 separators.v
 checkpoint.v
 cp_minor.v
+equiv.v
 multigraph.v
-multigraph_new.v
+multigraph_temp.v
 skeleton.v
 ptt_algebra.v
 ptt_graph.v
 subalgebra.v
-tm_iso.v
 extraction_def.v
+tm_iso.v
 extraction_iso.v

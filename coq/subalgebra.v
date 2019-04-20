@@ -1,6 +1,7 @@
 Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries digraph sgraph minor multigraph skeleton.
+Require Import edone finite_quotient preliminaries digraph sgraph minor equiv multigraph ptt_graph skeleton.
+Require Import multigraph_temp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
