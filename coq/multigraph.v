@@ -445,8 +445,8 @@ Section merge_merge_seq.
         rewrite /= -eqv_clotE equiv_sym. exact: (eqv_clot_subset h) (eq_piK _ _). }
       apply: equiv_of_transfer => {u v} u v /mapP [[u0 v0] H0] [-> ->].
       apply: equiv_trans (equiv_trans _ _). 
-      2:{. rewrite /= -eqv_clotE. apply: (eqv_clot_subset k) _. done. 
-           rewrite eqv_clotE. apply: sub_equiv_of. exact: H0. }
+      2:{ rewrite /= -eqv_clotE. apply: (eqv_clot_subset k) _. done. 
+          rewrite eqv_clotE. apply: sub_equiv_of. exact: H0. }
       rewrite equiv_sym. all: rewrite /= -eqv_clotE; exact: (eqv_clot_subset h) (eq_piK _ _).
   Qed.
   
