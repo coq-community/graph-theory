@@ -312,19 +312,65 @@ Definition pi (G: graph) (h: pairs G) (x: G): merge_seq G h := \pie x.
 Definition repr (G: graph) (h: pairs G) (x: merge_seq G h): G := repr x.
 Notation "\pis x"  := (pi _ x) (at level 36).
 
+Lemma reprsK (G : graph) (h : pairs G) : cancel (@repr _ h) (@pi _ h).
+Proof. exact: reprK. Qed.
 
+Lemma eqv_clot_subset (T : finType) (l1 l2 : pairs T) : 
+  {subset l1 <= l2} -> subrel (eqv_clot l1) (eqv_clot l2).
+Proof. 
+  move => H x y. rewrite !eqv_clotE. apply: equiv_of_transfer => u v.
+  move => R. apply: sub_equiv_of. exact: rel_of_pairs_mono R.
+Qed.       
+Arguments eqv_clot_subset [T] l1 [l2].
+
+Lemma subset_catL (T : eqType) (h k : seq T) : {subset h <= h ++ k}.
+Proof. move => x H. by rewrite mem_cat H. Qed.
+Lemma subset_catR (T : eqType) (h k : seq T) : {subset k <= h ++ k}.
+Proof. move => x H. by rewrite mem_cat H orbT. Qed.
+Hint Resolve subset_catL subset_catR.
+
+(* this should be eqv_clot_map, the other lemma should use the _inj suffix *)
+Lemma eqv_clot_map' (aT rT : finType) (f : aT -> rT) (l : pairs aT) x y : 
+  eqv_clot l x y -> eqv_clot (map_pairs f l) (f x) (f y).
+Proof.
+  rewrite !eqv_clotE /=. apply: equiv_of_transfer => {x y} x y H.
+  apply: sub_equiv_of. by apply/mapP; exists (x,y).
+Qed.
 
 Section h_merge.
- Variables (F G: graph) (h: h_ty F G) (l: pairs F).
- Definition h_merge: h_ty (merge_seq F l) (merge_seq G (map_pairs h.1 l)) := (fun x => \pis h.1 (repr x), h.2).
- Lemma h_mergeE (x: F): h_merge.1 (\pis x) = \pis h.1 x.
- Admitted.
- Lemma merge_hom: hom_g h -> hom_g h_merge.
- Admitted.
- Lemma merge_iso: iso_g h -> iso_g h_merge.
- Proof.
-   intros H. split. apply merge_hom, H. split. 2: apply H.
- Admitted.
+  Variables (F G: graph) (h: h_ty F G) (l: pairs F).
+  Definition h_merge: h_ty (merge_seq F l) (merge_seq G (map_pairs h.1 l)) := 
+    (fun x => \pis h.1 (repr x), h.2).
+  Lemma h_mergeE (x: F): h_merge.1 (\pis x) = \pis h.1 x.
+  Proof.
+    symmetry. apply/eqquotP. exact: eqv_clot_map' (eq_piK _ _).
+  Qed.
+  
+  Lemma merge_hom: hom_g h -> hom_g h_merge.
+  Proof.
+    move => hom_h. repeat split.
+    - move => e. symmetry. rewrite /= -hom_h. apply/eqquotP. 
+      exact: eqv_clot_map' (eq_piK _ _). 
+    - move => e. symmetry. rewrite /= -hom_h. apply/eqquotP. 
+      exact: eqv_clot_map' (eq_piK _ _). 
+    - move => e. by rewrite /= -hom_h.
+  Qed.
+
+  Lemma merge_iso: iso_g h -> iso_g h_merge.
+  Proof.
+    case => hom_h [[g1 C1 C2] bij_h2].
+    split => //; first exact: merge_hom. split => //.
+    have L : l = map_pairs g1 (map_pairs h.1 l).
+    { rewrite /map_pairs -map_comp map_id_in // => x /= _. 
+      by rewrite !C1 -surjective_pairing. }
+    pose g (x : (merge_seq G (map_pairs h.1 l))) : (merge_seq F l) := 
+      \pis g1 (repr x).
+    exists g => x. 
+    - rewrite /g/=. rewrite -{2}[x]reprsK. apply/eqquotP. set y := repr x. 
+      rewrite -[y]C1 {1}L. apply: eqv_clot_map'. rewrite C1 equiv_sym. exact: eq_piK.
+    - rewrite /g/=. rewrite -{2}[x]reprsK. apply/eqquotP. set y := repr x. 
+      rewrite -[y]C2. apply: eqv_clot_map'. rewrite C2 equiv_sym. exact: eq_piK.
+  Qed.
 End h_merge.
 
 Section h_merge_same.
@@ -332,27 +378,48 @@ Section h_merge_same.
  Hypothesis H: eqv_clot h =2 eqv_clot k. 
  Definition h_merge_same: h_ty (merge_seq F h) (merge_seq F k) := (fun x => \pis (repr x), id).
  Lemma h_merge_sameE (x: F): h_merge_same.1 (\pis x) = \pis x.
- Admitted.
+ Proof. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. Qed.
+
  Lemma merge_same_hom: hom_g h_merge_same.
- Admitted.
+ Proof.
+   repeat split.
+   - move => e. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
+   - move => e. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
+ Qed.
+
  Lemma merge_same_iso: iso_g h_merge_same.
  Proof.
    split. apply merge_same_hom. split. 2: apply id_bij.
-   exists (fun x => \pis (repr x)); intro; simpl. 
- Admitted.
+   exists (fun x => \pis (repr x)) => x /=.
+   - rewrite -{2}[x]reprsK. apply/eqquotP. rewrite H equiv_sym. exact: eq_piK. 
+   - rewrite -{2}[x]reprsK. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
+ Qed.
+
 End h_merge_same.
+
+Lemma eqv_clot_noting (T : finType) (h : pairs T) :
+  List.Forall (fun p => p.1 = p.2) h -> eqv_clot h =2 eq_op.
+Proof.
+  move => H x y. rewrite eqv_clotE /=.
+Admitted.
 
 Section h_merge_nothing.
  Variables (F: graph) (h: pairs F).
  Hypothesis H: List.Forall (fun p => p.1 = p.2) h.
  Definition h_merge_nothing: h_ty (merge_seq F h) F := (fun x => repr x, id).
  Lemma h_merge_nothingE (x: F): h_merge_nothing.1 (\pis x) = x.
- Admitted.
+ Proof. 
+   rewrite /=/repr. case: piP => y /= /eqquotP. 
+   by rewrite eqv_clot_noting // => /eqP->.
+ Qed.
+
  Lemma merge_nothing_hom: hom_g h_merge_nothing.
  Proof. apply merge_nothing'_hom. apply h_merge_nothingE. Qed. 
  Lemma merge_nothing_iso: iso_g h_merge_nothing.
  Proof. apply merge_nothing'_iso. apply h_merge_nothingE. Qed. 
 End h_merge_nothing.
+
+
 
 
 Section merge_merge_seq.
@@ -373,9 +440,15 @@ Section merge_merge_seq.
     - suff S (u v : {eq_quot (eqv_clot h)}):
         equiv_of e2 u v -> equiv_of e1 (repr u) (repr v).
       { move/S => H.  
-        apply: equiv_trans (equiv_trans _ _). 2: exact: H. admit. admit. }
-      admit.
-  Admitted.
+        apply: equiv_trans (equiv_trans _ _). 2: exact: H.
+        rewrite /= -eqv_clotE. exact: (eqv_clot_subset h) (eq_piK _ _). 
+        rewrite /= -eqv_clotE equiv_sym. exact: (eqv_clot_subset h) (eq_piK _ _). }
+      apply: equiv_of_transfer => {u v} u v /mapP [[u0 v0] H0] [-> ->].
+      apply: equiv_trans (equiv_trans _ _). 
+      2:{. rewrite /= -eqv_clotE. apply: (eqv_clot_subset k) _. done. 
+           rewrite eqv_clotE. apply: sub_equiv_of. exact: H0. }
+      rewrite equiv_sym. all: rewrite /= -eqv_clotE; exact: (eqv_clot_subset h) (eq_piK _ _).
+  Qed.
   
   Lemma h_merge_merge_seqE (x: F): h_merge_merge_seq1 (\pis (\pis x)) = \pis x.
   Proof. 
@@ -411,9 +484,6 @@ Section merge_merge_seq.
   Lemma merge_merge_seq: iso (merge_seq (merge_seq F h) k') (merge_seq F (h++k)).
   Proof. eexists. apply iso_merge_merge_seq. Qed.
 End merge_merge_seq.
-
-Lemma reprsK (G : graph) (h : pairs G) : cancel (@repr _ h) (@pi _ h).
-Proof. exact: reprK. Qed.
 
 Lemma eqv_clot_map_lr (F G : graph) (l : pairs F) x y : 
   eqv_clot (map_pairs inl l) (unl x : union F G) (unr y) = false.
