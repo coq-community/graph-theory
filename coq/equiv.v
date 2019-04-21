@@ -14,6 +14,24 @@ Set Bullet Behavior "Strict Subproofs".
 Lemma eq_piK (T : choiceType) (e : equiv_rel T) z : e z (repr (\pi_({eq_quot e}) z)).
 Proof. by case: piP => /= y /eqquotP. Qed.
 
+Lemma equiv_of_class (T : finType) (e : rel T) : equiv_class_of (equiv_of e).
+Proof. constructor; auto using equiv_of_refl, equiv_of_sym, equiv_of_trans. Qed.
+
+Canonical equiv_of_equivalence (T : finType) (e : rel T) := EquivRelPack (equiv_of_class e).
+
+Lemma equiv_ofE (T1 T2 : finType) (e1 : rel T1) (e2 : equiv_rel T2) (f : T1 -> T2) x y :
+  (forall u v : T1, e1 u v -> e2 (f u) (f v)) -> equiv_of e1 x y -> e2 (f x) (f y).
+Proof.
+  move => H. case/connectP => p. elim: p x => /= [x _ -> //|z p IH x /andP [xz] pth_p lst_p].
+  apply: equiv_trans (IH _ pth_p lst_p). 
+  case/orP : xz; [exact: H|rewrite equiv_sym; exact: H].
+Qed.
+
+Lemma equiv_of_transfer (T1 T2 : finType) (e1 : rel T1) (e2 : rel T2) (f : T1 -> T2) x y :
+  (forall u v : T1, e1 u v -> equiv_of e2 (f u) (f v)) ->
+  equiv_of e1 x y -> equiv_of e2 (f x) (f y).
+Proof. exact: equiv_ofE. Qed.
+
 Section equiv_comp.
   Variables (T: choiceType) (e: equiv_rel T) (e': equiv_rel {eq_quot e}).
   Definition equiv_comp: simpl_rel T := [rel x y | e' (\pi x) (\pi y)].
@@ -33,10 +51,6 @@ Notation "\pie x" := (\pi_{eq_quot _} x) (at level 30).
 Definition pairs A := seq (A*A).
 Definition map_pairs A B (f: A -> B): pairs A -> pairs B := map (fun x => (f x.1,f x.2)). 
 
-Lemma equiv_of_class (T : finType) (e : rel T) : equiv_class_of (equiv_of e).
-Proof. constructor; auto using equiv_of_refl, equiv_of_sym, equiv_of_trans. Qed.
-
-Canonical equiv_of_equivalence (T : finType) (e : rel T) := EquivRelPack (equiv_of_class e).
 
 Definition rel_of_pairs (A : eqType) (l : pairs A) : rel A := [rel x y | (x,y) \in l].
 Definition eqv_clot (T : finType) (l : pairs T) : equiv_rel T :=
@@ -94,12 +108,23 @@ Proof.
   exact: sub_trans (rel_of_pairs_mono _) (@sub_equiv_of _ _).
 Qed.
 
+Lemma ForallE (T : eqType) (P : T -> Prop) (s : list T) : 
+  List.Forall P s <-> (forall x, x \in s -> P x).
+Proof. 
+  split. 
+  - elim => //= {s} x s Px _ H. exact/all_cons.
+  - elim: s => // x s IH /all_cons [Px Ps]. by constructor; auto.
+Qed.
+
 (* Better formulation ? *)
 Lemma eqv_clot_eq (T: finType) (h k: pairs T):
   List.Forall (fun p => eqv_clot k p.1 p.2) h ->
   List.Forall (fun p => eqv_clot h p.1 p.2) k ->
   eqv_clot h =2 eqv_clot k.
-Admitted.
+Proof.
+  rewrite !ForallE /= => A B x y. apply/idP/idP; rewrite eqv_clotE. 
+  all: apply: equiv_of_sub' => u v; solve [exact: (A (u,v))|exact:(B (u,v))].
+Qed.
 
 
 (* TODO: move to preliminaries *)
@@ -111,7 +136,7 @@ Section eqv_inj.
 
   Lemma equiv_of_ff x y : equiv_of e2 (f x) (f y) = equiv_of e1 x y.
   Proof.
-    rewrite /equiv_of. apply/idP/idP.
+    apply/idP/idP. 
     - case/connectP => p. elim: p x => /= [|u' p IH] x. 
       + by move => _ /f_inj ->. 
       + case/andP => A B C. case/orP : A => A.
@@ -119,16 +144,21 @@ Section eqv_inj.
           apply: connect_trans (connect1 _) (IH _ B C). by rewrite /= !eq_e A.
         * move/eq2E : (A) => [v] [?] [? _]. subst. 
           apply: connect_trans (connect1 _) (IH _ B C). by rewrite /= !eq_e A orbT.
-    - case/connectP => p. elim: p x => //= [x _ -> //|z p IH x] /andP [A B] C. 
-      apply: connect_trans (connect1 _) (IH _ B C). by rewrite /= -!eq_e.
+    - apply: equiv_of_transfer => {x y} u v H. apply: sub_equiv_of. by rewrite -eq_e.
+  Qed.
+  
+  Lemma equiv_of_nn x y : x \notin codom f -> equiv_of e2 x y -> x = y.
+  Proof.
+    move => xf. case/connectP => p. elim: p x xf => /=; auto.
+    move => z p _ x xf /andP[E _] _. apply: contraNeq xf => _.
+    case/orP : E => /eq2E [?] [?] [? ?]; subst; exact: codom_f.
   Qed.
 
   Lemma equiv_of_fn x y : y \notin codom f -> equiv_of e2 (f x) y = false.
-  Admitted.
-
-  Lemma equiv_of_nn x y : x \notin codom f -> y \notin codom f -> equiv_of e2 x y -> x = y.
-  Admitted.
-
+  Proof.
+    move => yf. apply: contraNF (yf). rewrite equiv_sym/=. 
+    move/equiv_of_nn -> => //. exact: codom_f.
+  Qed.
 End eqv_inj.
 
 Lemma rel_of_pairs_map_eq (H G : eqType) (l : pairs G) (f : G -> H) :
@@ -164,14 +194,13 @@ Proof.
 Qed.
 
 Lemma eqv_clot_map_eq (H G : finType) (x y : H) (l : pairs G) (f : G -> H) : 
-  x \notin codom f -> y \notin codom f ->  
+  x \notin codom f ->  
   eqv_clot (map_pairs f l) x y = (x == y).
 Proof.
-  move => cd_x cd_y. apply/idP/eqP; last by move => ->.
-  rewrite /eqv_clot -!lock /=. apply: equiv_of_nn cd_x cd_y => //.
+  move => cd_x. apply/idP/eqP; last by move => ->.
+  rewrite /eqv_clot -!lock /=. apply: equiv_of_nn cd_x => //.
   exact: rel_of_pairs_mapE.
-  admit. (* equiv_of_nn should not depend on injectivity *)
-Admitted.
+Qed.
 
 
 (* Ltac eqv := solve [reflexivity|apply: eqv_clot_hd|apply: eqv_clot_hd'|apply: eqv_clot_tl; eqv]. *)
@@ -190,11 +219,4 @@ Lemma mod_exchange (T : choiceType) (e1 e2 : equiv_rel T) x y :
   e1 =2 e2 -> x = y %[mod_eq e2] -> x = y %[mod_eq e1].
 Proof. move => E M1. apply/eqquotP. rewrite E. apply/eqquotP. exact: M1. Qed.
 
-Lemma equiv_of_transfer (T1 T2 : finType) (e1 : rel T1) (e2 : rel T2) (f : T1 -> T2) x y :
-  (forall u v : T1, e1 u v -> equiv_of e2 (f u) (f v)) ->
-  equiv_of e1 x y -> equiv_of e2 (f x) (f y).
-Proof. 
-  move => H. case/connectP => p. elim: p x => /= [x _ -> //|z p IH x /andP [xz] pth_p lst_p].
-  apply: equiv_of_trans (IH _ pth_p lst_p). 
-  case/orP : xz; [exact: H|rewrite equiv_sym; exact: H].
-Qed.
+

@@ -397,11 +397,17 @@ Section h_merge_same.
 
 End h_merge_same.
 
+Lemma eq_equiv_class (T : eqType) : equiv_class_of (@eq_op T). 
+Proof. split => //. exact: eq_op_trans. Qed.
+Canonical eqv_equiv (T : eqType) := EquivRelPack (@eq_equiv_class T).
+
 Lemma eqv_clot_noting (T : finType) (h : pairs T) :
   List.Forall (fun p => p.1 = p.2) h -> eqv_clot h =2 eq_op.
 Proof.
-  move => H x y. rewrite eqv_clotE /=.
-Admitted.
+  move => /ForallE H x y. rewrite eqv_clotE /= in H *. 
+  apply/idP/idP; last by move/eqP->.
+  by apply: equiv_ofE => /= u v /H /= ->.
+Qed.
 
 Section h_merge_nothing.
  Variables (F: graph) (h: pairs F).
