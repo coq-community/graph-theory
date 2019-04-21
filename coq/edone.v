@@ -3,10 +3,13 @@
 
 (** * A slightly more powerful done tactic 
 
-We replace the default implementation of [done] by one that uses [eassumption]
-rather than [assumption] and also applis the right hand side simplifications for
-boolean operations *)
+We replace the default implementation of [done] by one that
+- tries setoid reflexivity
+- uses [eassumption] rather than [assumption]
+- applies the right hand side simplifications for Boolean operations 
+*)
 
+Require Import Setoid Morphisms.
 Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssrbool.
 
@@ -14,7 +17,8 @@ Ltac done := trivial; hnf in |- *; intros;
 (
   solve [
     (do !
-      [ solve [ trivial | apply : sym_equal; trivial ]
+      [ reflexivity
+      | solve [ trivial | apply : sym_equal; trivial ]
       | discriminate
       | contradiction
       | split
