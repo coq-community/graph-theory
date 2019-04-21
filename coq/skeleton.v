@@ -3,7 +3,6 @@ Require Import RelationClasses.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries digraph sgraph minor checkpoint.
 Require Import multigraph ptt_graph.
-Require Import multigraph_temp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -64,8 +63,6 @@ Proof.
   case/orP=> /andP[/eqP<- /eqP<-]; last rewrite eq_sym; move=> /H//. exact: S.
 Qed.
 
-Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
-
 (** Edges of skeletons of quotients *)
 Lemma sk_rel_mergeE (G : graph) (e : equiv_rel G) x y :
   sk_rel (merge_def G e) x y <-> 
@@ -90,6 +87,12 @@ Proof.
     apply/existsP; exists e0. by rewrite !inE /= (eqP E1) (eqP E2) Px Py !eqxx.
 Qed.
 
+
+(* Lemma skel_iso_g (G1 G2 : graph) h : @iso_g G1 G2 h -> sg_iso_g (skeleton G1) (skeleton G2). *)
+
+Lemma skel_iso (G1 G2 : graph) : iso G1 G2 -> sg_iso (skeleton G1) (skeleton G2).
+Abort.
+  
 Lemma pi_hom (G : graph) (e : equiv_rel G) : 
   hom_s (\pi_{eq_quot e} : skeleton G -> skeleton (merge_def G e)).
 Proof.
@@ -97,6 +100,13 @@ Proof.
 Qed.
 Arguments pi_hom [G] e.
 
+
+Coercion skeleton : graph >-> sgraph.
+
+
+(** * Strong skeletons *)
+
+Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
 
 Lemma sskelP (G : graph2) (P : G -> G -> Prop) : 
   Symmetric P -> 
@@ -113,37 +123,40 @@ Qed.
 Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
 Proof. exists id => //= x y H _. exact: subrelUl. Qed.
 
+
+
 (** Isomorphim Lemmas *)
 
-Coercion skeleton : graph >-> sgraph.
-
-(* TODO: Factor out the part shared with [iso2_sskel] *)
-Lemma iso2_skel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso G1 G2.
-Proof. 
-Abort.
-
 Lemma hom2_sskel (G1 G2 : graph2) h :
-  @hom_g2 G1 G2 h -> bijective h.1 ->
+  @hom_g G1 G2 h -> h.1 g_in = g_in -> h.1 g_out = g_out -> bijective h.1 -> 
   forall x y, @edge_rel (sskeleton G1) x y -> @edge_rel (sskeleton G2) (h.1 x) (h.1 y).
 Proof.
-  move => hom_h bij. apply sskelP. 
+  move => hom_h h_in h_out bij. apply sskelP. 
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /edge_rel //=.
     rewrite bij_eq ?He //=. apply/existsP; exists (h.2 e). 
     by rewrite !inE !hom_h !eqxx.
-  - move => H. by rewrite /edge_rel /= bij_eq // H !hom_h !eqxx. 
+  - move => H. by rewrite /edge_rel /= bij_eq // H h_in h_out !eqxx. 
 Qed.
+
+Lemma iso_inv (F G: graph) h:
+  @iso_g F G h ->
+  exists k, @hom_g G F k
+            /\ cancel h.1 k.1 /\ cancel k.1 h.1
+            /\ cancel h.2 k.2 /\ cancel k.2 h.2.
+Proof.
+  case => H [[k1 H1 H1'] [k2 H2 H2']]. exists (k1,k2). split =>//.
+  (repeat split)=>e/=.
+Admitted.
 
 Lemma iso2_sskel (G1 G2 : graph2) : G1 ≈ G2 -> sg_iso (sskeleton G1) (sskeleton G2).
 Proof.
-  case => h [[[hom_h [bij1 bij2]] gin] gout].
-  case: (bij1) => g can_g1 can_g2.
-  case: (bij2) => f can_f1 can_f2. 
-  (* have hom_gf : hom_g2 (g,f) by apply: iso2_inv hom_h. *)
-  (* apply: SgIso . apply can_g2. apply can_g1.  *)
-  (* - apply: hom2_sskel hom_gf _. exact: Bijective. *)
-  (* - exact: hom2_sskel hom_h _.  *)
-Admitted.
+  case => h [[iso_h hin] hout].
+  destruct (iso_inv iso_h) as (k&hom_k&hk1&kh1&hk2&kh2).
+  apply: SgIso. apply kh1. apply hk1.
+  - apply: (hom2_sskel hom_k). by rewrite -(hk1 g_in) hin. by rewrite -(hk1 g_out) hout. exact: Bijective.
+  - apply: (hom2_sskel iso_h.1) =>//. exact: Bijective.
+Qed.
 
 Lemma iso2_decomp (G1 G2 : graph2) (T : forest) B1 : 
   @sdecomp T (sskeleton G1) B1 -> G1 ≈ G2 -> 

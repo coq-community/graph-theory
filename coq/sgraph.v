@@ -130,6 +130,15 @@ CoInductive sg_iso (G H : sgraph) : Prop :=
   SgIso (g : H -> G) (h : G -> H) : cancel g h -> cancel h g ->
     {homo g : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
 
+Lemma SgIso' (G H: sgraph) (f: G -> H):
+  bijective f -> (forall x y, x--y <-> f x -- f y) -> sg_iso G H.
+Proof.
+  case => g fg gf E.
+  eapply SgIso. apply gf. apply fg.
+  intros x y. rewrite -{1}(gf x) -{1}(gf y). apply E.
+  intros x y. apply E.
+Qed.
+
 Lemma sg_iso_refl (G : sgraph) : sg_iso G G.
 Proof. by exists id id. Qed.
 

@@ -324,13 +324,14 @@ Proof. move => sym_e x y /=. by rewrite sym_e [(x \in A) && _]andbC. Qed.
 
 
 Inductive void : Type :=.
+Notation vfun := (fun x: void => match x with end).  
 
 Lemma void_eqP : @Equality.axiom void [rel _ _ | false].
 Proof. by case. Qed.
 
 Canonical void_eqType := EqType void (EqMixin void_eqP).
 
-Lemma void_pcancel : pcancel (fun x : void => match x with end) (fun x:unit => None).
+Lemma void_pcancel : pcancel vfun (fun x: unit => None).
 Proof. by case. Qed.
 
 Definition void_choiceMixin := PcanChoiceMixin void_pcancel.
