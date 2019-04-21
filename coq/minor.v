@@ -76,6 +76,21 @@ Proof.
     apply: can_inj can_g.
 Qed.
 
+Definition triv_decomp (G : sgraph) :
+  sdecomp tunit G (fun _ => [set: G]).
+Proof. 
+  split => [x|e|x [] [] _ _]; try by exists tt; rewrite !inE.
+  exact: connect0.
+Qed.
+
+Lemma decomp_small (G : sgraph) k : #|G| <= k -> 
+  exists T D, [/\ sdecomp T G D & width D <= k].
+Proof. 
+  exists tunit; exists (fun => setT). split.
+  - exact: triv_decomp.
+  - by rewrite /width (big_pred1 tt _) // cardsT. 
+Qed.
+
 (** ** Renaming *)
 Arguments sdecomp [T G] B.
 
@@ -803,6 +818,12 @@ Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
   suff: 4 <= 3 by []. 
   apply: leq_trans wT. apply: leq_trans B2. exact: K4_width.
+Qed.
+
+Lemma small_K4_free (G : sgraph): #|G| <=3 -> K4_free G.
+Proof.
+  intro H. destruct (decomp_small H) as (T&D&E). 
+  eapply TW2_K4_free; apply E.
 Qed.
 
 (* TODO: theory for [induced [set~ : None : add_node]] *)

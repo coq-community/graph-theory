@@ -56,6 +56,7 @@ Canonical Structure graph2_ops: ptt_ops :=
      dom := dom2;
      one := one2;
      top := top2 |}.
+Bind Scope ptt_ops with graph2.
 
 Definition graph_of_term (u: term sym): graph2 := eval sym2 u. 
 

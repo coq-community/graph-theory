@@ -181,21 +181,6 @@ Proof.
   move: cmp => [t] /andP [H _]. exists t => /=. by rewrite !H. 
 Qed.
 
-Definition triv_decomp (G : sgraph) :
-  sdecomp tunit G (fun _ => [set: G]).
-Proof. 
-  split => [x|e|x [] [] _ _]; try by exists tt; rewrite !inE.
-  exact: connect0.
-Qed.
-
-Lemma decomp_small (G : graph2) : #|G| <= 3 -> 
-  exists T D, [/\ sdecomp T (sskeleton G) D & width D <= 3].
-Proof. 
-  exists tunit; exists (fun => setT). split.
-  - exact: triv_decomp.
-  - by rewrite /width (big_pred1 tt _) // cardsT. 
-Qed.
-
 Theorem eval_TW2 A (f: A -> graph2):
   (forall a, exists T D, [/\ sdecomp T (sskeleton (f a)) D & width D <= 3]) ->
   forall u, exists T D, [/\ sdecomp T (sskeleton (eval f u)) D & width D <= 3].

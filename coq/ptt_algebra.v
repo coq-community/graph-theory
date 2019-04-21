@@ -15,11 +15,11 @@ Structure ptt_ops :=
 Arguments top [_].
 Arguments weq {_} _ _.
 
-Bind Scope ptt_terms with car.
-Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): ptt_terms.
-Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): ptt_terms.
-Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): ptt_terms.
-Notation "1"  := (one _): ptt_terms.
+Bind Scope ptt_ops with car.
+Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): ptt_ops.
+Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): ptt_ops.
+Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): ptt_ops.
+Notation "1"  := (one _): ptt_ops.
 Infix "≡" := weq (at level 79).
 
 Class ptt_laws (X: ptt_ops) :=
@@ -126,3 +126,4 @@ Section terms.
    - intros x y X L f; simpl. apply A12.
  Qed.
 End terms.
+Bind Scope ptt_ops with term.

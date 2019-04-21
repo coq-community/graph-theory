@@ -4,8 +4,8 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries.
 Require Import digraph sgraph minor checkpoint cp_minor. 
-Require Import multigraph ptt_graph subalgebra skeleton bounded.
-Require Import multigraph_temp.
+Require Import multigraph ptt_graph skeleton bounded.
+Require Import ptt_algebra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -77,8 +77,6 @@ Qed.
 (** ** Subroutines *)
 
 Notation IO := ([set g_in; g_out]).
-Notation "u :||: v" := (tmI u v) (at level 35, right associativity).
-Notation "u :o: v" := (tmS u v) (at level 33, right associativity).
 
 Definition lens (G : graph2) := 
   [&& edge_set (@bag G IO g_in)  == set0 ,
@@ -188,13 +186,31 @@ Definition component (G : graph2) (H : {set G}) : graph2 :=
          (Sub g_in (setU11 _ _))
          (Sub g_out (setU1r _ (setU11 _ _))).
 
+Definition induced2 (G : graph2) (V :{set G}) := 
+  match @idP (g_in \in V), @idP (g_out \in V) with 
+  | ReflectT p, ReflectT q => point (induced V) (Sub g_in p) (Sub g_out q)
+  | _,_ => G
+  end.
+
+Lemma induced2_induced (G : graph2) (V :{set G}) (iV : g_in \in V) (oV :g_out \in V) : 
+  induced2 V = point (induced V) (Sub g_in iV) (Sub g_out oV).
+Proof.
+  rewrite /induced2. 
+  case: {-}_ / idP; last by rewrite iV.
+  case: {-}_ / idP; last by rewrite oV.
+  move => p q. by rewrite (bool_irrelevance p oV) (bool_irrelevance q iV).
+Qed.
+
+
+Open Scope ptt_ops.
+
 (** Possibly empty sequence of (trivial) terms corresponding to direct
 i-o edges. Yields nonempty parallel composition when concatenated with
 the terms for the i-o components *)
-Definition tm_ (G : graph2) (e : edge G) := 
-  if e \in edges g_in g_out then tmA (label e) else tmC (tmA (label e)).
+Definition tm_ (G : graph2) (e : edge G): term sym := 
+  if e \in edges g_in g_out then tm_var (label e) else (tm_var (label e))°.
 
-Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
+Definition tmEs (G : graph2) : seq (term sym) := [seq tm_ e | e in @edge_set G IO].
 
 (** ** The Extraction Functional *)
 
@@ -202,23 +218,23 @@ Definition tmEs (G : graph2) : seq term := [seq tm_ e | e in @edge_set G IO].
 such that we can make use of induced subgraphs (rather than the more generic
 [subgraph_for] construction) as much as possible. *)
 
-Definition simple_check_point_term (g : graph2 -> term) (G : graph2) : term := 
+Definition simple_check_point_term (g : graph2 -> term sym) (G : graph2) : term sym := 
   let (i,o) := (g_in : G, g_out : G) in 
   if  (edge_set (@bag G IO i) != set0) || (edge_set (@bag G IO o) != set0)
-  then g (bgraph IO i) :o: g (igraph i o) :o: g (bgraph IO o)
-  else if [pick z in @cp G i o :\: IO] isn't Some z then tm1 (* never happens *)
-       else g (igraph i z) :o: g(bgraph IO z) :o: g(igraph z o).
+  then g (bgraph IO i) · g (igraph i o) · g (bgraph IO o)
+  else if [pick z in @cp G i o :\: IO] isn't Some z then 1 (* never happens *)
+       else g (igraph i z) · g(bgraph IO z) · g(igraph z o).
 
 (** NOTE: we assume the input graph to be connected and K4-free *)
-Definition term_of_rec (term_of : graph2 -> term) (G : graph2) := 
+Definition term_of_rec (term_of : graph2 -> term sym) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
     let E := @edge_set G IO in
     if E == set0 then
       if [pick C in @components G [set~ g_in]] is Some C then
-        tmD (term_of (redirect C)) :||: term_of (induced2 (~: C))
-      else tm1
-    else (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||:
+        dom (term_of (redirect C)) ∥ term_of (induced2 (~: C))
+      else 1
+    else (\big[@par _/top]_(e in @edge_set G IO) tm_ e) ∥
          term_of (point (remove_edges E) g_in g_out)
   else (* distinct input and output *)
     if lens G
@@ -227,16 +243,16 @@ Definition term_of_rec (term_of : graph2 -> term) (G : graph2) :=
       let E := @edge_set G IO in
       if E == set0 
       then 
-        if [pick C in P] isn't Some C then tm1 
-        else term_of (component C) :||: term_of (induced2 (~: C))
+        if [pick C in P] isn't Some C then 1 
+        else term_of (component C) ∥ term_of (induced2 (~: C))
       else if P == set0 
-           then \big[tmI/tmT]_(e in @edge_set G IO) tm_ e
-           else  (\big[tmI/tmT]_(e in @edge_set G IO) tm_ e) :||: 
+           then \big[@par _/top]_(e in @edge_set G IO) tm_ e
+           else  (\big[@par _/top]_(e in @edge_set G IO) tm_ e) ∥ 
                  term_of (point (remove_edges E) g_in g_out) 
     else (* at least one nontrivial bag or checkpoint *)
       @simple_check_point_term term_of G.
 
-Definition term_of := Fix tmT term_of_measure term_of_rec.
+Definition term_of := Fix top term_of_measure term_of_rec.
 
 (** ** Termination Argument *)
 
@@ -369,8 +385,8 @@ Qed.
 
 Lemma CK4F_one : CK4F one2.
 Proof. 
-  split; last exact: (@sskel_K4_free tm1).
-  move => [] [] _ _. exact: connect0.
+  split. move => [] [] _ _. exact: connect0.
+  apply small_K4_free. by rewrite card_unit.
 Qed.
 
 Lemma CK4F_redirect (G : graph2) C : 
@@ -543,7 +559,7 @@ Qed.
 
 End SplitCP.
 
-Definition simple_check_point_wf (f g : graph2 -> term) (G : graph2) : 
+Definition simple_check_point_wf (f g : graph2 -> term sym) (G : graph2) : 
   CK4F G -> 
   g_in != g_out :> G ->
   ~~ lens G -> 
@@ -559,7 +575,7 @@ Proof.
     do 2 f_equal. rewrite Efg //. 
     * apply: CK4F_igraph => //=; last rewrite cp_sym; exact: (@mem_cpl G). 
     * apply: measure_igraph => //; by case: CK4F_G.
-  - case: pickP => [z Hz|//]; repeat congr tmS.
+  - case: pickP => [z Hz|//]; repeat congr tm_dot.
     + rewrite Efg //. exact: CK4F_split_cpL. exact: measure_split_cpL.
     + have {Hz} Hz : z \in @CP G IO by move: Hz; rewrite inE CP_set2 => /andP[_ ->].
       by rewrite Efg //; apply rec_bag => //.
@@ -655,7 +671,7 @@ Proof.
   exact: measure_remove_component.
 Qed.
 
-Lemma term_of_rec_eq (f g : graph2 -> term) (G : graph2) :
+Lemma term_of_rec_eq (f g : graph2 -> term sym) (G : graph2) :
   CK4F G -> (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) ->
   term_of_rec f G = term_of_rec g G.
 Proof.
@@ -668,12 +684,12 @@ Proof.
         exact: measure_remove_component.
       * exact: CK4F_redirect.
       * exact: measure_redirect.
-    + congr tmI. rewrite Efg //.
+    + congr tm_par. rewrite Efg //.
       * exact: CK4F_remove_loops.
       * exact: measure_remove_edges.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
     + case: (boolP (_ == _)) => Es.
-      * case: pickP => [C HC|//]. congr tmI.
+      * case: pickP => [C HC|//]. congr tm_par.
         -- apply: Efg. exact: CK4F_lens. exact: measure_lens.
         -- apply: Efg. exact: CK4F_lens_rest. exact: measure_lens_rest.
       * case: (boolP (_ == _)) => Ps //. 

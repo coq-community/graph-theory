@@ -23,21 +23,6 @@ Lemma hom_gI G1 G2 (h : h_ty G1 G2) :
 Proof. move=> H. (repeat split)=> e; by case: (H e). Qed.
 
 
-Definition induced2 (G : graph2) (V :{set G}) := 
-  match @idP (g_in \in V), @idP (g_out \in V) with 
-  | ReflectT p, ReflectT q => point (induced V) (Sub g_in p) (Sub g_out q)
-  | _,_ => G
-  end.
-
-Lemma induced2_induced (G : graph2) (V :{set G}) (iV : g_in \in V) (oV :g_out \in V) : 
-  induced2 V = point (induced V) (Sub g_in iV) (Sub g_out oV).
-Proof.
-  rewrite /induced2. 
-  case: {-}_ / idP; last by rewrite iV.
-  case: {-}_ / idP; last by rewrite oV.
-  move => p q. by rewrite (bool_irrelevance p oV) (bool_irrelevance q iV).
-Qed.
-
 Lemma iso2_of_iso (G1 G2 : graph2) (h : h_ty G1 G2) :
   hom_g h -> bijective2 h -> h.1 g_in = g_in -> h.1 g_out = g_out -> 
   G1 ≈ G2.
