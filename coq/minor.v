@@ -232,21 +232,21 @@ Implicit Types x y : G.
 Definition add_clique_rel := relU sedge [rel x y in U | x != y].
 
 Lemma add_clique_rel_irred : irreflexive add_clique_rel.
-Admitted.
+Abort.
 
 Lemma add_clique_rel_sym : symmetric add_clique_rel.
-Admitted.
+Abort.
 
 Definition add_clique := SGraph add_clique_rel_sym add_clique_rel_irred.
 
 Lemma add_clique_lift x y (p : @Path G x y) : 
   exists q : @Path add_clique x y, nodes q = nodes p.
-Admitted.
+Abort.
 
 Lemma add_clique_unlift x y (p : @Path add_clique x y) : 
   #|[set x in U | x \in p]| <= 1 ->
   exists q : @Path G x y, nodes q = nodes p.
-Admitted.
+Abort.
 
 End AddClique.
 *)

@@ -571,7 +571,6 @@ Proof.
   set G' := par2' _ _.
   pose S := [seq strip e | e in E].
   pose n := size S.
-  (* have e0 : edge (edges2 [seq strip e | e in E]). admit. *)
   pose f (x : G) : G' := \pi (inr x).
   pose g (x : G') : G := 
     match generic_quotient.repr x with 
