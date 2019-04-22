@@ -56,7 +56,7 @@ Proof.
   exact: connect0.
 Qed.
 
-Lemma iso_decomp (G1 G2 : sgraph) (T : forest) B1 : 
+Lemma decomp_iso (G1 G2 : sgraph) (T : forest) B1 : 
   sdecomp T G1 B1 -> diso G1 G2 -> 
   exists2 B2, sdecomp T G2 B2 & width B2 = width B1.
 Proof.

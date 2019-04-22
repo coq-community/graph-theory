@@ -313,7 +313,7 @@ Proof.
       apply: leq_trans (rename_width _ _) _. exact: join_width.
   - (* clique size 0 *)
     suff iso: diso G' G.
-    + case: (iso_decomp dec12 iso) => B' sdecB' wB'B.
+    + case: (decomp_iso dec12 iso) => B' sdecB' wB'B.
       exists T; exists B'. split => //. by rewrite wB'B join_width.
     + suff HH: V2 = ~:V1.
       { rewrite /G' HH. apply ssplit_disconnected. move => x y xV1 yNV1.

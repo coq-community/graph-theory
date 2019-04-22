@@ -1,4 +1,4 @@
-Require Import RelationClasses.
+Require Import Setoid CMorphisms.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries digraph sgraph minor checkpoint.
@@ -88,8 +88,21 @@ Proof.
 Qed.
 
 
-Lemma skel_iso (G1 G2 : graph) : iso G1 G2 -> diso (skeleton G1) (skeleton G2).
-Abort.
+Lemma hom_skel (G1 G2 : graph) (h: iso G1 G2) :
+  forall x y, @edge_rel (skeleton G1) x y -> @edge_rel (skeleton G2) (h x) (h y).
+Proof.
+  have B: bijective h by exists h^-1; apply (iso_v h). 
+  apply skelP. 
+  - move => x y. by rewrite sgP.
+  - move => e He. rewrite /edge_rel /=. 
+    rewrite bij_eq ?He //=. apply/existsP; exists (h.e e). 
+      by rewrite !inE !source_iso !target_iso !eqxx.
+Qed.
+
+Instance skel_iso: Proper (iso ==> diso) skeleton.
+Proof.
+  intros F G h. exists (iso_v h); split. apply hom_skel. apply (hom_skel (iso_sym h)).
+Defined.
   
 Lemma pi_hom (G : graph) (e : equiv_rel G) : 
   hom_s (\pi_{eq_quot e} : skeleton G -> skeleton (merge_def G e)).
@@ -97,7 +110,6 @@ Proof.
   move => x y xy Dxy. apply/sk_rel_mergeE. split => //. by exists x; exists y.
 Qed.
 Arguments pi_hom [G] e.
-
 
 Coercion skeleton : graph >-> sgraph.
 
@@ -128,25 +140,25 @@ Proof. exists id => //= x y H _. exact: subrelUl. Qed.
 Lemma hom2_sskel (G1 G2 : graph2) (h: iso2 G1 G2) :
   forall x y, @edge_rel (sskeleton G1) x y -> @edge_rel (sskeleton G2) (h x) (h y).
 Proof.
-  have B: bijective h by exists h^-1; apply (iso_v h). 
-  apply sskelP. 
+  have B: bijective h by exists h^-1; apply (iso_v h).
+  apply sskelP.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /edge_rel //=.
-    rewrite bij_eq ?He //=. apply/existsP; exists (h.e e). 
+    rewrite bij_eq ?He //=. apply/existsP; exists (h.e e).
       by rewrite !inE !source_iso !target_iso !eqxx.
-  - move => H. by rewrite /edge_rel /= bij_eq // H iso_in iso_out !eqxx. 
+  - move => H. by rewrite /edge_rel /= bij_eq // H iso_in iso_out !eqxx.
 Qed.
 
-Lemma iso2_sskel (G1 G2 : graph2) : G1 ≈ G2 -> diso (sskeleton G1) (sskeleton G2).
+Instance sskel_iso2: Proper (iso2 ==> diso) sskeleton.
 Proof.
-  intro h. exists (iso_v h); split. apply hom2_sskel. apply (hom2_sskel (iso2_sym h)).
-Qed.
+  intros F G h. exists (iso_v h); split. apply hom2_sskel. apply (hom2_sskel (iso2_sym h)).
+Defined.
 
-Lemma iso2_decomp (G1 G2 : graph2) (T : forest) B1 : 
+Lemma decomp_iso2 (G1 G2 : graph2) (T : forest) B1 : 
   @sdecomp T (sskeleton G1) B1 -> G1 ≈ G2 -> 
   exists2 B2, @sdecomp T (sskeleton G2) B2 & width B2 = width B1.
 Proof.
-  move => dec iso. apply: iso_decomp dec _. exact: iso2_sskel. 
+  move => dec iso. apply: decomp_iso dec _. exact: sskel_iso2. 
 Qed.
 
 

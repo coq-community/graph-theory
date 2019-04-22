@@ -229,6 +229,12 @@ Definition Iso' (F G: graph)
   is_hom fv fe -> iso F G.
 Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2). apply E. Defined.
 
+Lemma hom_gI (G1 G2: graph) (hv: G1 -> G2) (he: edge G1 -> edge G2) :
+  (forall e, [/\ hv (source e) = source (he e),
+              hv (target e) = target (he e) &
+              label (he e) = label e]) -> is_hom hv he.
+Proof. move=>H. split=> e; by case: (H e). Qed.
+
 Lemma iso_two_graph: iso two_graph (union unit_graph unit_graph).
 Proof.
   apply Iso' with

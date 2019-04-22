@@ -68,6 +68,10 @@ Lemma Iso2' (F G: graph2) (h: iso F G) (hi: h g_in = g_in) (ho: h g_out = g_out)
   apply Iso2 with (iso_v h) (iso_e h). abstract (split=>//; apply h).
 Defined.
 
+Definition Iso2'' F G f g h k fg gf hk kh H I O :=  
+  @Iso2 F G (@Bij _ _ f g fg gf) (@Bij _ _ h k hk kh) (@Hom2 _ _ f h (hom_gI H) I O).
+
+
 Definition iso2_id G: G ≈ G := Iso2' (h:=iso_id) erefl erefl. 
 
 Definition iso2_sym F G: F ≈ G -> G ≈ F.

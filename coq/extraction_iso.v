@@ -101,15 +101,6 @@ Proof.
   - split=>//.
 Qed.
 
-(* move to multigraph *)
-Lemma hom_gI (G1 G2: graph) (hv: G1 -> G2) (he: edge G1 -> edge G2) :
-  (forall e, [/\ hv (source e) = source (he e),
-              hv (target e) = target (he e) &
-              label (he e) = label e]) -> is_hom hv he.
-Proof. move=>H. split=> e; by case: (H e). Qed.
-Definition Iso2'' F G f g h k fg gf hk kh H I O :=  
-  @Iso2 F G (@Bij _ _ f g fg gf) (@Bij _ _ h k hk kh) (@Hom2 _ _ f h (hom_gI H) I O).
-
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
   C :&: D \subset IO -> C :|: D = setT -> 
@@ -909,8 +900,8 @@ Corollary minor_exclusion_2p (G : graph2) :
 Proof.
   move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
   - have [T [B] [B1 B2]] := (graph_of_TW2 (term_of G)).
-    have I := term_of_iso (conj conn_G K4F_G). symmetry in I. apply iso2_sskel in I.
-    have [D D1 D2] := iso_decomp B1 I.
+    have I := term_of_iso (conj conn_G K4F_G). symmetry in I. apply sskel_iso2 in I.
+    have [D D1 D2] := decomp_iso B1 I.
     exists T. exists D. by rewrite D2.
   - exact: TW2_K4_free B1 B2 B3. 
 Qed.
@@ -939,7 +930,7 @@ Proof.
     have K4F_G' : K4_free (sskeleton G').
     { exact: iso_K4_free K4F_G. }
     case/M : K4F_G' => T [B] [B1 B2]. 
-    case: (iso_decomp B1 iso_Gs) => D D1 D2. exists T. exists D. by rewrite D2.
+    case: (decomp_iso B1 iso_Gs) => D D1 D2. exists T. exists D. by rewrite D2.
   - case/disconnectedE : conn_G => x [y] [_ _]. 
     rewrite restrictE; last by move => ?;rewrite !inE. move => Hxy.
     pose V := [set z | connect sedge x z].
@@ -962,7 +953,7 @@ Proof.
     exists (tjoin T1 T2). 
     pose B' := (decompU B1 B2).
     have dec' := join_decomp dec1 dec2.
-    have [B dec W] := iso_decomp dec' G_iso.
+    have [B dec W] := decomp_iso dec' G_iso.
     exists B. rewrite W. split => //. 
     apply: leq_trans (join_width _ _) _. by rewrite geq_max W1 W2.
 Qed.
