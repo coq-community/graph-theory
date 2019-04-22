@@ -411,9 +411,9 @@ Proof.
   - apply: connected_induced. by rewrite [z |: C]setU1_mem.
   - have: K4_free (induced (g_in |: C)). 
     { apply: induced_K4_free. by apply CK4F_G. }
-    apply: iso_K4_free. apply: sg_iso_sym. 
-    apply: sg_iso_trans; last apply sskeleton_adjacent.
-      rewrite (setU1_mem Z1). exact: sg_iso_refl.
+    apply: iso_K4_free.
+    setoid_rewrite <-sskeleton_adjacent. 
+    by rewrite (setU1_mem Z1). 
     by rewrite adjacent_induced.
 Qed.
 
@@ -626,11 +626,11 @@ Lemma CK4F_remove_loops (G : graph2) :
   CK4F (point (remove_edges (@edge_set G IO)) g_in g_out).
 Proof.
   move=> [G_conn G_CK4F] /eqP Eio. rewrite -Eio setUid edge_set1. split.
-  - apply: iso_connected G_conn. apply: sg_iso_sym.
+  - apply: iso_connected G_conn. symmetry. 
     apply: remove_loops => e. rewrite inE. by case/andP=> /eqP-> /eqP->.
-  - apply: iso_K4_free G_CK4F. apply: sg_iso_trans (iso_pointxx _) _.
-    case: G {G_conn} Eio => G i o /= <-. apply: sg_iso_sym.
-    apply: sg_iso_trans (iso_pointxx _) _. apply: remove_loops => e.
+  - apply: iso_K4_free G_CK4F. apply: diso_comp (iso_pointxx _) _.
+    case: G {G_conn} Eio => G i o /= <-. symmetry. 
+    apply: diso_comp (iso_pointxx _) _. apply: remove_loops => e.
     rewrite inE. by case/andP=> /eqP-> /eqP->.
 Qed.
 

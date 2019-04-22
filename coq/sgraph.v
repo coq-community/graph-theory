@@ -1,3 +1,4 @@
+Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries digraph.
 
@@ -126,53 +127,23 @@ Definition srestrict (G : sgraph) (A : pred G) :=
 
 (** ** Isomorphism of simple graphs *)
 
-CoInductive sg_iso (G H : sgraph) : Prop :=
-  SgIso (g : H -> G) (h : G -> H) : cancel g h -> cancel h g ->
-    {homo g : x y / x -- y} -> {homo h : x y / x -- y} -> sg_iso G H.
-
-Lemma SgIso' (G H: sgraph) (f: G -> H):
-  bijective f -> (forall x y, x--y <-> f x -- f y) -> sg_iso G H.
-Proof.
-  case => g fg gf E.
-  eapply SgIso. apply gf. apply fg.
-  intros x y. rewrite -{1}(gf x) -{1}(gf y). apply E.
-  intros x y. apply E.
-Qed.
-
-Lemma sg_iso_refl (G : sgraph) : sg_iso G G.
-Proof. by exists id id. Qed.
-
-Lemma sg_iso_sym (G H : sgraph) : sg_iso G H -> sg_iso H G.
-Proof. by case=> g h ? ? ? ?; exists h g. Qed.
-
-Lemma sg_iso_trans (G H K : sgraph) : sg_iso G H -> sg_iso H K -> sg_iso G K.
-Proof.
-  case=> gh1 gh2 ghK1 ghK2 ghH1 ghH2.
-  case=> hk1 hk2 hkK1 hkK2 hkH1 hkH2.
-  exists (gh1 \o hk1) (hk2 \o gh2).
-    + by move=> x /=; rewrite ghK1 hkK1.
-    + by move=> x /=; rewrite hkK2 ghK2.
-    + by move=> x y /hkH1 /ghH1.
-    + by move=> x y /ghH2 /hkH2.
-Qed.
-
-Lemma eq_sg_iso (T : finType) (e1 e2 : rel T) 
+Lemma eq_diso (T : finType) (e1 e2 : rel T) 
   (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
   (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2) :
-e1 =2 e2 -> sg_iso (SGraph e1_sym e1_irrefl) (SGraph e2_sym e2_irrefl).
-Proof. move => E.  exists (@id T) (@id T) => // x y /=; by rewrite /edge_rel /= E. Qed.
-  
+e1 =2 e2 -> diso (SGraph e1_sym e1_irrefl) (SGraph e2_sym e2_irrefl).
+Proof. intro E. exists (@bij_id T); split=> x y /=; by rewrite /edge_rel /= E. Qed.
 
-Lemma iso_subgraph (G H : sgraph) : sg_iso G H -> subgraph G H.
+Lemma iso_subgraph (G H : sgraph) : diso G H -> subgraph G H.
 Proof.
-  case=> g h _ hK _ hH.
-  exists h ; by [exact: can_inj hK | move=> x y /hH->].
+  case => g E _.
+  exists g. apply (can_inj (bijK g)).
+  move=> x y e _. by apply E.
 Qed.
 
 (** Splitting off disconnected parts *)
 Lemma ssplit_disconnected (G:sgraph) (V : {set G}) : 
   (forall x y, x \in V -> y \notin V -> ~~ x -- y) ->
-  sg_iso (sjoin (induced V) (induced (~: V))) G.
+  diso (sjoin (induced V) (induced (~: V))) G.
 Proof.
   move => HV. set H := sjoin _ _.
   have cast x (p : x \notin V) : x \in ~: V. by rewrite inE.
@@ -182,8 +153,8 @@ Proof.
       | AltFalse p => inr (Sub x (cast x p)) 
     end.
   pose h (x : H) : G := match x with inl x => val x | inr x => val x end.
-  exists g h. 
-  - move => x. rewrite /g /h. by case: {-}_ /boolP.
+  pose g' := @Bij _ _ g h.
+  apply Diso'' with h g. 
   - move => [x|x]; rewrite /g /h. 
     + case: {-}_ /boolP => px. 
       * congr inl. symmetry. apply/eqP. by rewrite sub_val_eq.
@@ -191,11 +162,11 @@ Proof.
     + case: {-}_ /boolP => px.
       * case:notF.  apply: contraTT px => _. move: (valP x). by rewrite !inE.
       * congr inr. symmetry. apply/eqP. by rewrite sub_val_eq.
-  - move => x y xy.
-    rewrite /g. case: {-}_/boolP => px;case: {-}_/boolP => py => //.
+  - move => x. rewrite /g /h. by case: {-}_ /boolP.
+  - move => x y. by case: x=>[x|x]; case: y=>[y|y] xy. 
+  - move => x y xy. rewrite /g. case: {-}_/boolP => px;case: {-}_/boolP => py => //.
     + apply: contraTT xy => _. exact: HV.
     + apply: contraTT xy => _. rewrite sg_sym. exact: HV.
-  - by move => [x|x] [y|y] xy.
 Qed.
 
 (** ** Unpackaged Simple Paths
@@ -696,9 +667,10 @@ Proof. move => inA. rewrite -connect_range //. exact: connected_restrict. Qed.
 
 (* NOTE: This could be generalized to sets and their images *)
 Lemma iso_connected (G H : sgraph) :
-  sg_iso G H -> connected [set: H] -> connected [set: G].
+  diso G H -> connected [set: H] -> connected [set: G].
 Proof.
-  case => g h can_g can_h hom_g hom_h con_H x y _ _.
+  (* TODO: update proof to abstract against concrete implem of [diso] *)
+  move=> [[h g can_h can_g] [hom_h] [hom_g]] con_H x y _ _.
   rewrite restrictE; last by move => z; rewrite !inE.
   have := con_H (h x) (h y). rewrite !inE => /(_ isT isT).
   rewrite restrictE; last by move => z; rewrite !inE.
@@ -1073,17 +1045,17 @@ Definition K4 := 'K_4.
 Definition add_edge_rel (G:sgraph) (i o : G) := 
   relU (@edge_rel G) (sc [rel x y | [&& x != y, x == i & y == o]]).
 
-Lemma add_edge_sym (G:sgraph) (i o : G) : symmetric (add_edge_rel i o).
+Lemma add_edge_sym_ (G:sgraph) (i o : G) : symmetric (add_edge_rel i o).
 Proof. apply: relU_sym'. exact: sg_sym. exact: sc_sym. Qed.
 
-Lemma add_edge_irrefl (G:sgraph) (i o : G) : irreflexive (add_edge_rel i o).
+Lemma add_edge_irrefl_ (G:sgraph) (i o : G) : irreflexive (add_edge_rel i o).
 Proof. move => x /=. by rewrite sg_irrefl eqxx. Qed.
 
 Definition add_edge (G:sgraph) (i o : G) :=
   {| svertex := G;
      sedge := add_edge_rel i o;
-     sg_sym' := add_edge_sym i o;
-     sg_irrefl' := add_edge_irrefl i o |}.
+     sg_sym' := add_edge_sym_ i o;
+     sg_irrefl' := add_edge_irrefl_ i o |}.
 
 Lemma add_edge_Path (G : sgraph) (i o x y : G) (p : @Path G x y) :
   exists q : @Path (add_edge i o) x y, nodes q = nodes p.
@@ -1113,9 +1085,9 @@ Proof.
 Qed.
 Arguments add_edgeC [G].
 
-Lemma add_edge_sym_iso (G : sgraph) (s1 s2 : G):
-  sg_iso (@add_edge G s1 s2) (@add_edge G s2 s1).
-Proof. apply: eq_sg_iso. exact: add_edgeC. Qed.
+Lemma add_edge_sym (G : sgraph) (s1 s2 : G):
+  diso (@add_edge G s1 s2) (@add_edge G s2 s1).
+Proof. apply: eq_diso. exact: add_edgeC. Defined.
 
 Lemma add_edge_connected_sym (G : sgraph) s1 s2 A:
   @connected (@add_edge G s1 s2) A <-> @connected (@add_edge G s2 s1) A.
@@ -1220,16 +1192,16 @@ Section AddNode.
 End AddNode.
 Arguments add_node : clear implicits.
 
-Lemma add_node_complete n : sg_iso 'K_n.+1 (add_node 'K_n setT).
+Lemma add_node_complete n : diso 'K_n.+1 (add_node 'K_n setT).
 Proof.
   pose g : add_node 'K_n setT -> 'K_n.+1 := oapp (lift ord_max) ord_max.
   pose h : 'K_n.+1 -> add_node 'K_n setT := unlift ord_max.
-  exists g h; rewrite /g/h/=.
-  + move=> [x|] /=; [by rewrite liftK | by rewrite unlift_none].
+  apply Diso'' with h g; rewrite /g/h/=.
   + by move=> x; case: unliftP.
-  + move=> [x|] [y|]; rewrite /edge_rel//= ?[_ == ord_max]eq_sym ?neq_lift //.
-    by rewrite (inj_eq (@lift_inj _ ord_max)).
+  + move=> [x|] /=; [by rewrite liftK | by rewrite unlift_none].
   + move=> x y /=; do 2 case: unliftP => /= [?|]-> //; rewrite /edge_rel //= ?eqxx //.
+    by rewrite (inj_eq (@lift_inj _ ord_max)).
+  + move=> [x|] [y|]; rewrite /edge_rel//= ?[_ == ord_max]eq_sym ?neq_lift //.
     by rewrite (inj_eq (@lift_inj _ ord_max)).
 Qed.
 

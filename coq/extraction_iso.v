@@ -48,7 +48,8 @@ Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
 Proof.
   move => eq_V eq_E eq_i eq_o. subst.
   move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
-  exists (id,id). ((repeat split); try exact: id_bij)=> /= e. 
+  apply (@Iso2 (point (subgraph_for C1) i2 o2) (point (subgraph_for C2) i2 o2) bij_id bij_id).
+  split=>//. split=>//=e.
     * by rewrite (bool_irrelevance (source_proof C1 e) (source_proof C2 e)).
     * by rewrite (bool_irrelevance (target_proof C1 e) (target_proof C2 e)).
 Qed.
@@ -67,15 +68,16 @@ Proof.
     match (B e) with end.
   pose g' (e : edge top2) : edge G := 
     match e with end.
-  exists (f,g); repeat split => //=. 
-  - apply: (Bijective (g := f')) => x; rewrite /f /f'. 
-    + case: (boolP (x == g_in)) => [/eqP <-|/=]; first by rewrite eqxx.
-      move: (A x). case/setUP => /set1P => -> //. by rewrite eqxx.
-    + case: (boolP (x == g_in)) => [/eqP <-|/=]; first by rewrite eqxx.
-      case: x => // _. by rewrite eq_sym (negbTE Dio).
-  - by apply: (Bijective (g := g')).
-  - by rewrite /f eqxx.
-  - by rewrite /f eq_sym (negbTE Dio).
+  unshelve refine (@Iso2 _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) _)=>/=.
+  - rewrite /f/f'/= => x.
+    case: (boolP (x == g_in)) => [/eqP <-|/=]; first by rewrite eqxx.
+    move: (A x). case/setUP => /set1P => -> //. by rewrite eqxx.
+  - rewrite /f/f'/= => x.
+    case: (boolP (x == false)) => [/eqP <-|/=]; first by rewrite eqxx.
+    case: x => // _. by rewrite eq_sym (negbTE Dio).
+  - by [].
+  - by [].
+  - split=>//. by rewrite /f eqxx. by rewrite /f eq_sym (negbTE Dio).
 Qed.
 
 Lemma iso_one (G : graph2) :
@@ -90,19 +92,21 @@ Proof.
     match (B e) with end.
   pose g' (e : edge one2) : edge G := 
     match e with end.
-  exists (f,g); repeat split => //=. 
-  - apply: (Bijective (g := f')) => x; rewrite /f /f'.  
+  unshelve refine (@Iso2 _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) _)=>/=.
+  - rewrite /f/f'/= => x.
     move: (A x). rewrite !inE -(eqP Dio) => /orP. by case => /eqP->.
-    by case: x.
-  - by apply: (Bijective (g := g')).
+  - by move => [].
+  - by [].
+  - by [].
+  - split=>//.
 Qed.
 
 (* move to multigraph *)
-Lemma hom_gI G1 G2 (h : h_ty G1 G2) :
-  (forall e : edge G1, [/\ h.1 (source e) = source (h.2 e),
-                           h.1 (target e) = target (h.2 e) &
-                           label (h.2 e) = label e]) -> hom_g h.
-Proof. move=> H. (repeat split)=> e; by case: (H e). Qed.
+(* Lemma hom_gI G1 G2 (h : h_ty G1 G2) : *)
+(*   (forall e : edge G1, [/\ h.1 (source e) = source (h.2 e), *)
+(*                            h.1 (target e) = target (h.2 e) & *)
+(*                            label (h.2 e) = label e]) -> hom_g h. *)
+(* Proof. move=> H. (repeat split)=> e; by case: (H e). Qed. *)
 
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
@@ -111,7 +115,7 @@ Lemma iso_split_par2 (G : graph2) (C D : {set G})
   G ≈ (par2 (point (induced C) (Sub g_in Ci) (Sub g_out Co)) 
             (point (induced D) (Sub g_in Di) (Sub g_out Do))).
 Proof.
-  move => subIO fullCD disjE fullE. symmetry. rewrite par2_alt.
+  move => subIO fullCD disjE fullE. symmetry. setoid_rewrite par2_alt.
   set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
 
   have injL (x y : G1) : inl x = inl y %[mod_eq @par2_eqv G1 G2] -> x = y.
@@ -135,23 +139,25 @@ Proof.
 
   pose f (x : G') : G := match generic_quotient.repr x with inl x => val x | inr x => val x end.
   pose h (e : edge G') : edge G := match e with inl e => val e | inr e => val e end.
-  exists (f, h). split. split. split. 2: split. apply: hom_gI => e.
-  all: rewrite -?[(f, h).1]/f -?[(f, h).2]/h.
-
-  - case: e => [e|e]; rewrite /f/h; split=> //; case: piP => -[]e'.
-    all: first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
-    all: by repeat move=> /valE/=->.
-
-  - have decV (v : G) : ((v \in C) + (v \in D))%type.
-    { have : v \in [set: G] by []. rewrite -fullCD in_setU.
-      case: (boolP (v \in C)) => HC /= HD; by [left|right]. }
-    pose g (x : G) : G' :=
-      match decV x with
-      | inl p => \pi_(_) (inl (Sub x p))
-      | inr p => \pi_(_) (inr (Sub x p))
-      end.
-    exists g => x; rewrite /f/g.
-    + case Ex: (generic_quotient.repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
+  have decV (v : G) : ((v \in C) + (v \in D))%type.
+  { have : v \in [set: G] by []. rewrite -fullCD in_setU.
+    case: (boolP (v \in C)) => HC /= HD; by [left|right]. }
+  pose g (x : G) : G' :=
+    match decV x with
+    | inl p => \pi_(_) (inl (Sub x p))
+    | inr p => \pi_(_) (inr (Sub x p))
+    end.
+  have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
+  { have : e \in [set: edge G] by []. rewrite -fullE in_setU.
+    case: (boolP (e \in edge_set C)) => HC /= HD; by [left|right]. }
+  pose k (e : edge G) : edge G' :=
+    match decE e with
+    | inl p => inl (Sub e p)
+    | inr p => inr (Sub e p)
+    end.
+  unshelve refine (@Iso2 _ _ (@Bij _ _ f g _ _) (@Bij _ _ h k _ _) _)=>/=.
+  - rewrite /f/g=>x.
+    case Ex: (generic_quotient.repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
       * rewrite -[x]reprK Ex. congr \pi (inl _). exact: val_inj.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
         rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
@@ -170,21 +176,12 @@ Proof.
         rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
         by rewrite /= !orbF !andbT !andbb.
       * rewrite -[x]reprK Ex. congr \pi (inr _). exact: val_inj.
-    + case: (decV x) => Hx; case: piP => -[]y.
+  - rewrite /f/g=>x. case: (decV x) => Hx; case: piP => -[]y.
       * by move=> /injL<-.
       * by case/inLR=> -[]/valE/=->->.
       * by case/inRL=> -[->]/valE/=->.
       * by move=> /injR<-.
-
-  - have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
-    { have : e \in [set: edge G] by []. rewrite -fullE in_setU.
-      case: (boolP (e \in edge_set C)) => HC /= HD; by [left|right]. }
-    pose k (e : edge G) : edge G' :=
-      match decE e with
-      | inl p => inl (Sub e p)
-      | inr p => inr (Sub e p)
-      end.
-    exists k => e; rewrite /h/k; last by case: (decE e). case: e => e.
+  - rewrite /h/k=>e. case:e=> [e|e].
     + have He : val e \in edge_set C := valP e.
       case: (decE _) => H; first by congr inl; exact: val_inj.
       suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
@@ -193,9 +190,25 @@ Proof.
       case: (decE _) => H; last by congr inr; exact: val_inj.
       suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
       by rewrite in_setI He H.
-
-  - rewrite /f. by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].    
-  - rewrite /f. by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+  - rewrite /h/k=>e. by case: (decE e).
+  - rewrite /f/h; split=>//. split=>//; case=>[e|e]//.
+      (* TODO: rework... *)
+      by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+      case: piP => -[]e'.
+      first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
+      by repeat move=> /valE/=->.
+      by repeat move=> /valE/=->.
+      first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
+      by repeat move=> /valE/=->.
+      by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+      case: piP => -[]e'.
+      first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
+      by repeat move=> /valE/=->.
+      by repeat move=> /valE/=->.
+      first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
+      by repeat move=> /valE/=->.
+      by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
+      by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
 Qed.
 
 

@@ -1,3 +1,4 @@
+Require Import Setoid CMorphisms.
 Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 Require Import edone.
@@ -25,6 +26,53 @@ Ltac contrab :=
 
 
 Hint Extern 0 (injective Some) => exact: @Some_inj.
+
+(** *** bijections between types  *)
+
+Record bij (A B: Type): Type := Bij
+  { bij_fwd:> A -> B;
+    bij_bwd: B -> A;
+    bijK: cancel bij_fwd bij_bwd;
+    bijK': cancel bij_bwd bij_fwd }.
+Notation "h '^-1'" := (bij_bwd h). 
+
+Definition bij_id {A}: bij A A := @Bij A A id id (@erefl A) (@erefl A).
+
+Definition bij_sym {A B}: bij A B -> bij B A.
+Proof. move=>f. econstructor; apply f. Defined.
+
+Definition bij_comp {A B C}: bij A B -> bij B C -> bij A C.
+Proof.
+  move=> f g.
+  econstructor; apply can_comp. apply g. apply f. apply f. apply g. 
+Defined.
+
+Instance bij_Equivalence: Equivalence bij.
+constructor. exact @bij_id. exact @bij_sym. exact @bij_comp. Defined.
+
+Definition sumf {A B C D} (f: A -> B) (g: C -> D) (x: A+C): B+D :=
+  match x with inl a => inl (f a) | inr c => inr (g c) end. 
+
+Instance sum_bij: Proper (bij ==> bij ==> bij) sum.
+  intros A A' f B B' g.
+  exists (sumf f g) (sumf f^-1 g^-1); abstract (by move=>[a|b] /=; rewrite ?bijK ?bijK').
+Defined.
+
+Definition sumC {A B} (x: A + B): B + A := match x with inl x => inr x | inr x => inl x end.
+Lemma bij_sumC {A B}: bij (A+B) (B+A).
+  exists sumC sumC; abstract (by move=>[|]). 
+Defined.
+
+Definition sumA {A B C} (x: A + (B + C)): (A + B) + C :=
+  match x with inl x => inl (inl x) | inr (inl x) => inl (inr x) | inr (inr x) => inr x end.
+Definition sumA' {A B C} (x: (A + B) + C): A + (B + C) :=
+  match x with inr x => inr (inr x) | inl (inr x) => inr (inl x) | inl (inl x) => inl x end.
+Lemma bij_sumA {A B C}: bij (A+(B+C)) ((A+B)+C).
+  exists sumA sumA'.
+  abstract (by move=>[|[|]]). 
+  abstract (by move=>[[|]|]). 
+Defined.
+
 
 (** *** Generic Trivialities *)
 

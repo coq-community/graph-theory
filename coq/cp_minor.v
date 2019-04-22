@@ -91,28 +91,19 @@ Arguments igraph : clear implicits.
 Arguments istart {G x y}.
 Arguments iend {G x y}.
 
-Lemma add_edge_swap (G : sgraph) (i o : G) :
-  sg_iso (add_edge G i o) (add_edge G o i).
-Proof.
-  exists (id : add_edge G o i -> add_edge G i o) id => //.
-  all: rewrite /edge_rel/=.
-  all: move=>//= x y /orP[->//|]/orP[]/andP[xNy]/andP[->->]/=;
-       by rewrite [in _ && true]eq_sym xNy.
-Qed.
-
 (* TOTHINK: This lemma can have a more general statement.
  * add_edge preserves sg_iso when the nodes are applied to the actual iso. *)
 Lemma add_edge_induced_iso (G : sgraph) (S T : {set G})
       (u v : induced S) (x y : induced T) :
   S = T -> val u = val x -> val v = val y ->
-  sg_iso (add_edge (induced S) u v) (add_edge (induced T) x y).
+  diso (add_edge (induced S) u v) (add_edge (induced T) x y).
 Proof.
   move=> eq_ST eq_ux eq_vy.
   have SofT z : z \in T -> z \in S by rewrite eq_ST.
   have TofS z : z \in S -> z \in T by rewrite eq_ST.
   set g : induced T -> induced S := fun z => Sub (val z) (SofT (val z) (valP z)).
   set f : induced S -> induced T := fun z => Sub (val z) (TofS (val z) (valP z)).
-  exists (g : add_edge _ x y -> add_edge _ u v) f; rewrite {}/f {}/g.
+  apply (@Diso'' (add_edge (induced S) _ _) (add_edge (induced T) _ _) f g); rewrite {}/f {}/g.
   - move => ?. exact: val_inj.
   - move => ?. exact: val_inj.
   - move => a b; rewrite /edge_rel /= /edge_rel /=.
@@ -142,8 +133,7 @@ Proof.
     move=> ?; suff : minor (add_edge (igraph G y x) istart iend) I.
     { by apply: minor_trans; apply: Hyp; rewrite // 1?sg_sym 1?eq_sym. }
     apply: strict_is_minor; apply: iso_strict_minor.
-    apply: (@sg_iso_trans I (add_edge (igraph G x y) iend istart)).
-      exact: add_edge_swap.
+    setoid_rewrite add_edge_sym. 
     by apply: add_edge_induced_iso; first exact: interval_sym. }
 
   pose U2 := [set x; y].

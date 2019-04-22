@@ -1,5 +1,4 @@
-Require Import RelationClasses Setoid Morphisms.
-
+Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import finite_quotient preliminaries equiv.
 
@@ -61,6 +60,35 @@ Definition unr {G H: graph} (x: H): union G H := inr x.
 
 (** ** Homomorphisms *)
 
+
+Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G): Prop := Hom
+  { source_hom: forall e, source (he e) = hv (source e);
+    target_hom: forall e, target (he e) = hv (target e);
+    label_hom: forall e, label (he e) = label e }.
+
+Lemma hom_id G: @is_hom G G id id.
+Proof. by split. Qed.
+
+Lemma hom_comp F G H hv he kv ke:
+  @is_hom F G hv he -> @is_hom G H kv ke -> is_hom (kv \o hv) (ke \o he).
+Proof.
+  intros E E'. split; intro e=>/=.
+  by rewrite 2!source_hom. 
+  by rewrite 2!target_hom. 
+  by rewrite 2!label_hom. 
+Qed.
+
+Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)):
+  is_hom hv he -> 
+  is_hom hv^-1 he^-1.
+Proof.
+  intro H. split=>e/=.
+  by rewrite -{2}(bijK' he e) source_hom bijK. 
+  by rewrite -{2}(bijK' he e) target_hom bijK. 
+  by rewrite -{2}(bijK' he e) label_hom. 
+Qed.
+
+(*
 Definition h_ty (G1 G2 : graph) := ((vertex G1 -> vertex G2)*(edge G1 -> edge G2))%type.
 
 Definition hom_g G1 G2 (h : h_ty G1 G2) : Prop :=
@@ -80,7 +108,8 @@ Lemma hom_comp (F G H: graph) f g:
 Proof.
   intros Hf Hg. (repeat split; intro); last rewrite /=Hg Hf//; rewrite /=Hf Hg//.
 Qed.
-
+*)
+  
 (** ** Quotient Graphs *)
 
 Definition merge_def (G : graph) (r : equiv_rel G) :=
@@ -94,17 +123,19 @@ Arguments merge_def : clear implicits.
 
 Notation merge G r := (merge_def G [equiv_rel of r]).
 
+(*
 Definition hom_of (G : graph) (e : equiv_rel G) : h_ty G (merge G e) := 
   (fun x : G => \pi x, id).
 
 Lemma hom_of_surj (G : graph) (e : equiv_rel G) : 
   surjective2 (hom_of e).
 Proof. split; [exact: emb_surj|exact: id_surj]. Qed.
-
+*)
+                                                  
 (** ** Subgraphs and Induced Subgraphs *)
 
 Definition subgraph (H G : graph) := 
-  exists2 h : h_ty H G, hom_g h & injective2 h.
+  exists hv he, @is_hom H G hv he /\ injective hv /\ injective he.
 
 Section Subgraphs.
   Variables (G : graph) (V : {set G}) (E : {set edge G}).
@@ -128,7 +159,7 @@ Section Subgraphs.
        label e := label (val e) |}.
 
   Lemma subgraph_sub : subgraph subgraph_for G.
-  Proof. exists (val,val); split => //=; exact: val_inj. Qed.
+  Proof. exists val, val. split => //=. split; exact: val_inj. Qed.
 End Subgraphs.
 
 Definition induced_proof (G: graph) (S : {set G}) : consistent S (edge_set S).
@@ -143,166 +174,118 @@ Proof. exact: subgraph_sub. Qed.
 
 (** ** Isomorphim Properties *)
 
-
 Local Open Scope quotient_scope.
 
-Definition iso_g (F G : graph) (h : h_ty F G) := hom_g h /\ bijective2 h.
+Record iso (F G: graph): Type := Iso
+  { iso_v:> bij F G;
+    iso_e: bij (edge F) (edge G);
+    iso_hom: is_hom iso_v iso_e }.
 
-Lemma iso_id {G: graph}: @iso_g G G (id,id).
-Proof. split. apply hom_id. split; apply id_bij. Qed.
+Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
+Existing Instance iso_hom.
 
-Lemma iso_comp (F G H: graph) f g:
-  @iso_g F G f -> @iso_g G H g -> @iso_g F H (g.1 \o f.1,g.2 \o f.2).
+Lemma source_iso F G (h: iso F G) e: source (h.e e) = h (source e).
+Proof. by rewrite source_hom. Qed.
+
+Lemma target_iso F G (h: iso F G) e: target (h.e e) = h (target e).
+Proof. by rewrite target_hom. Qed.
+
+Lemma label_iso F G (h: iso F G) e: label (h.e e) = label e.
+Proof. by rewrite label_hom. Qed.
+
+Definition iso_id {G}: iso G G := @Iso _ _ bij_id bij_id (hom_id G). 
+
+Definition iso_sym F G: iso F G -> iso G F.
 Proof.
-  intros Hf Hg. split.
-  apply hom_comp; [apply Hf | apply Hg].
-  split; (apply bij_comp; [apply Hg | apply Hf]). 
-Qed.
+  move => f. 
+  apply Iso with (bij_sym f) (bij_sym (iso_e f)) =>/=.
+  apply hom_sym, f. 
+Defined.
 
-Definition iso (F G: graph) := exists h: h_ty F G, iso_g h. 
+Definition iso_comp F G H: iso F G -> iso G H -> iso F H.
+Proof.
+  move => f g. 
+  apply Iso with (bij_comp f g) (bij_comp (iso_e f) (iso_e g)) =>/=.
+  apply hom_comp. apply f. apply g.
+Defined.
 
 Instance iso_Equivalence: Equivalence iso.
-Proof.
-  constructor.
-  - intro G. exists (id,id). apply iso_id. 
-  - intros F G [h [H [[g1 H1 G1] [g2 H2 G2]]]].
-    exists (g1,g2). (repeat split)=> /= [e|e|e||].
-    by rewrite -{1}(G2 e) -H H1.
-    by rewrite -{1}(G2 e) -H H1.
-    by rewrite -H G2.
-    by eexists. 
-    by eexists. 
-  - intros F G H [f Hf] [g Hg].
-    eexists. apply (iso_comp Hf Hg).
-Qed.
+constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
-Lemma iso_two_graph:
-  @iso_g two_graph (union unit_graph unit_graph)
-         ((fun x: bool => if x then unl (tt: unit_graph) else unr (tt: unit_graph)),
-          (fun x: void => match x with end)).
+Lemma source_iso' F G (h: iso F G) e: source (h.e^-1 e) = h^-1 (source e).
+Proof. apply (source_iso (iso_sym h)). Qed.
+
+Lemma target_iso' F G (h: iso F G) e: target (h.e^-1 e) = h^-1 (target e).
+Proof. apply (target_iso (iso_sym h)). Qed.
+
+Lemma label_iso' F G (h: iso F G) e: label (h.e^-1 e) = label e.
+Proof. apply (label_iso (iso_sym h)). Qed.
+
+Definition Iso' (F G: graph)
+           (fv: F -> G) (fv': G -> F)
+           (fe: edge F -> edge G) (fe': edge G -> edge F):
+  cancel fv fv' -> cancel fv' fv ->
+  cancel fe fe' -> cancel fe' fe ->
+  is_hom fv fe -> iso F G.
+Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2). apply E. Defined.
+
+Lemma iso_two_graph: iso two_graph (union unit_graph unit_graph).
 Proof.
-  split. split. split; intros []. intros []. 
-  split.
-    by exists (fun x => match x with inl _ => true | _ => false end); [intros [|] | intros [[]|[]]].
-    by exists (fun x => match x with inl x | inr x => x end); [intros [] | intros [|]].
-Qed.
+  apply Iso' with
+      (fun x: bool => if x then unl (tt: unit_graph) else unr (tt: unit_graph))
+      (fun x => match x with inl _ => true | _ => false end)
+      (vfun)
+      (fun x => match x with inl x | inr x => x end).
+  abstract by intros [|].
+  abstract by intros [[]|[]].
+  abstract by intros [].
+  abstract by intros [[]|[]].
+  abstract by split; intros []. 
+Defined.
 
 (** ** Specific isomorphisms about union and merge *)
 
-Lemma bij_funU {A B C D} (f: A -> B) (g: C -> D):
-  bijective f -> bijective g -> bijective (funU f g).
-Proof. intros [f' F F'] [g' G G']. by exists (funU f' g'); intros [?|?]; simpl; f_equal. Qed.
-
-Section h_union.
- Variables (F F': graph) (f: h_ty F F') (G G': graph) (g: h_ty G G').
- Definition h_union: h_ty (union F G) (union F' G') := (funU f.1 g.1,funU f.2 g.2).
- Lemma hom_union: hom_g f -> hom_g g -> hom_g h_union.
- Proof. intros Hf Hg. (repeat split); intros [?|?]; rewrite /= ?Hf ?Hg //. Qed.
- Lemma iso_union: iso_g f -> iso_g g -> iso_g h_union.
- Proof.
-   intros H H'. split. apply hom_union. apply H. apply H'.
-   split; (apply bij_funU; [apply H|apply H']).
- Qed.
-End h_union.
-Instance union_iso: Proper (iso ==> iso ==> iso) union.
-Proof. intros F F' [f Hf] G G' [g Hg]. eexists. apply iso_union; eassumption. Qed.
-
-
-Definition sumC {A B} (x: A + B): B + A := match x with inl x => inr x | inr x => inl x end.
-Lemma bij_sumC A B: bijective (@sumC A B).
-Proof. by exists sumC; intros [|]. Qed.
-
-Definition h_union_C (G H: graph): h_ty (union G H) (union H G) := (sumC,sumC).
-
-Lemma hom_union_C G H: hom_g (h_union_C G H).
-Proof. by split; first split; intros [e|e]. Qed.
-
-Lemma bij_union_C G H: bijective2 (h_union_C G H).
-Proof. by split; apply bij_sumC. Qed.
-
-Lemma iso_union_C G H: iso_g (h_union_C G H).
-Proof. split. apply hom_union_C. apply bij_union_C. Qed.
+Global Instance union_iso: Proper (iso ==> iso ==> iso) union.
+Proof.
+  intros F F' f G G' g.
+  exists (sum_bij f g) (sum_bij f.e g.e).
+  abstract by split; case=>e/=; rewrite ?source_iso ?target_iso ?label_iso.
+Defined.
 
 Lemma union_C G H: iso (union G H) (union H G).
-Proof. exists (h_union_C G H). apply iso_union_C. Qed.
-
-
-
-Definition sumA {A B C} (x: A + (B + C)): (A + B) + C :=
-  match x with inl x => inl (inl x) | inr (inl x) => inl (inr x) | inr (inr x) => inr x end.
-Definition sumA' {A B C} (x: (A + B) + C): A + (B + C) :=
-  match x with inr x => inr (inr x) | inl (inr x) => inr (inl x) | inl (inl x) => inl x end.
-Lemma bij_sumA A B C: bijective (@sumA A B C).
-Proof. by exists sumA'; [intros [|[|]] | intros [[|]|]]. Qed.
-Lemma bij_sumA' A B C: bijective (@sumA' A B C).
-Proof. by exists sumA; [intros [[|]|] | intros [|[|]]]. Qed.
-
-Definition h_union_A (F G H: graph): h_ty (union F (union G H)) (union (union F G) H) := (sumA,sumA).
-
-Lemma hom_union_A F G H: hom_g (h_union_A F G H).
-Proof. by split; first split; intros [|[|]]. Qed.
-
-Lemma bij_union_A F G H: bijective2 (h_union_A F G H).
-Proof. by split; apply bij_sumA. Qed.
-
-Lemma iso_union_A F G H: iso_g (h_union_A F G H).
-Proof. split. apply hom_union_A. apply bij_union_A. Qed.
+Proof. exists bij_sumC bij_sumC. abstract by split; case. Defined.
 
 Lemma union_A F G H: iso (union F (union G H)) (union (union F G) H).
-Proof. exists (h_union_A F G H). apply iso_union_A. Qed.
-
-
-Definition h_union_A' (F G H: graph): h_ty (union (union F G) H) (union F (union G H)) := (sumA',sumA').
-
-Lemma hom_union_A' F G H: hom_g (h_union_A' F G H).
-Proof. by split; first split; intros [[|]|]. Qed.
-
-Lemma bij_union_A' F G H: bijective2 (h_union_A' F G H).
-Proof. by split; apply bij_sumA'. Qed.
-
-Lemma iso_union_A' F G H: iso_g (h_union_A' F G H).
-Proof. split. apply hom_union_A'. apply bij_union_A'. Qed.
-
+Proof. exists bij_sumA bij_sumA. abstract by split; case=>[|[|]]. Defined.
 
 Section h_merge_nothing'.
  Variables (F: graph) (r: equiv_rel F).
  Hypothesis H: forall x: F, generic_quotient.repr (\pi_{eq_quot r} x) = x.
- Definition h_merge_nothing': h_ty (merge_def F r) F := (fun x => generic_quotient.repr x, id).
- Lemma merge_nothing'_hom: hom_g h_merge_nothing'.
- Proof. by repeat split; intro e; simpl; rewrite H. Qed.
- Lemma merge_nothing'_iso: iso_g h_merge_nothing'.
+ Definition h_merge_nothing': bij (merge_def F r) F.
+   exists (fun x => generic_quotient.repr x) (fun x => \pi_{eq_quot r} x).
+   apply reprK. apply: H.
+ Defined.
+ Lemma merge_nothing': iso (merge_def F r) F.
  Proof.
-   split. apply merge_nothing'_hom. split. 2: apply id_bij.
-   exists (fun x => \pi_{eq_quot r} x); intro; simpl. apply reprK. apply H. 
- Qed.
+   exists h_merge_nothing' bij_id.
+   abstract by split=>e; rewrite /=?H.
+ Defined.
 End h_merge_nothing'.
 
 
 Section merge_merge.
   Variables (F: graph) (e: equiv_rel F) (e': equiv_rel (merge_def F e)).
-  Definition h_merge_merge1 (x: merge_def (merge_def F e) e'): merge_def F (equiv_comp_rel e') :=
-    \pie (repr (repr x)).
-  Definition h_merge_merge: h_ty _ _ := (h_merge_merge1,id).
-  Lemma hom_merge_merge: hom_g h_merge_merge.
-  Proof.
-    repeat split. (* TODO: intro lemma abstracting over source/target *)
-    - move => a. rewrite /=/h_merge_merge1. by rewrite -equiv_comp_pi.
-    - move => a. rewrite /=/h_merge_merge1. by rewrite -equiv_comp_pi.
-  Qed.
-  Lemma bij_merge_merge: bijective2 h_merge_merge.
-  Proof.
-    split; last apply id_bij. 
-    pose h (x : merge_def F (equiv_comp_rel e')) : merge_def (merge_def F e) e' :=
-      \pie (\pie (repr x)).
-    exists h => x. 
-    + rewrite /=/h_merge_merge1/h. case: piP  => /= y /eqquotP /= Hy. 
+  Definition h_merge_merge: bij (merge_def (merge_def F e) e') (merge_def F (equiv_comp_rel e')).
+    exists (fun x => \pie (repr (repr x))) (fun x => \pie (\pie (repr x))) => x.
+    (* TODO: abstract the two proofs below *)
+    + rewrite /=. case: piP  => /= y /eqquotP /= Hy. 
       rewrite -[x]reprK /=. apply/eqquotP. by rewrite reprK equiv_sym in Hy. (* Lemma *)
-    + rewrite /=/h_merge_merge1/h. by rewrite -equiv_comp_pi reprK.
-  Qed.
-  Lemma iso_merge_merge: iso_g h_merge_merge.
-  Proof. split. apply hom_merge_merge. apply bij_merge_merge. Qed.
+    + rewrite /=. by rewrite -equiv_comp_pi reprK.
+  Defined.
+  Lemma hom_merge_merge: is_hom h_merge_merge id.
+  Proof. split=> a//; by rewrite /=-equiv_comp_pi. Qed.
   Lemma merge_merge: iso (merge_def (merge_def F e) e') (merge_def F (equiv_comp_rel e')).
-  Proof. eexists. apply iso_merge_merge. Qed.
+  Proof. exists h_merge_merge bij_id. apply hom_merge_merge. Defined.
 End merge_merge.
 
 Definition merge_seq (G: graph) l := merge_def G (eqv_clot l).
@@ -338,70 +321,62 @@ Proof.
 Qed.
 
 Section h_merge.
-  Variables (F G: graph) (h: h_ty F G) (l: pairs F).
-  Definition h_merge: h_ty (merge_seq F l) (merge_seq G (map_pairs h.1 l)) := 
-    (fun x => \pis h.1 (repr x), h.2).
-  Lemma h_mergeE (x: F): h_merge.1 (\pis x) = \pis h.1 x.
+  Variables (F G: graph) (h: iso F G) (l: pairs F).
+  Definition h_merge: bij (merge_seq F l) (merge_seq G (map_pairs h l)).
+    exists (fun x => \pis h (repr x)) (fun x => \pis h^-1 (repr x))=> x.
+    (* TODO: abstract proofs *)
+    - have L : l = map_pairs h^-1 (map_pairs h l).
+      { rewrite /map_pairs -map_comp map_id_in // => y /= _. 
+          by rewrite !bijK -surjective_pairing. }
+      rewrite /=. rewrite -{2}[x]reprsK. apply/eqquotP. set y := repr x. 
+      rewrite -(bijK h y) {1}L. apply: eqv_clot_map'. rewrite bijK equiv_sym. exact: eq_piK.
+    - rewrite /=. rewrite -{2}[x]reprsK. apply/eqquotP. set y := repr x. 
+      rewrite -(bijK' h y). apply: eqv_clot_map'. rewrite bijK' equiv_sym. exact: eq_piK.
+  Defined.
+  Lemma h_mergeE (x: F): h_merge (\pis x) = \pis h x.
+  Proof. symmetry. apply/eqquotP. apply eqv_clot_map', eq_piK. Qed.
+  Lemma merge_hom: is_hom h_merge h.e.
   Proof.
-    symmetry. apply/eqquotP. exact: eqv_clot_map' (eq_piK _ _).
+    split=>e. 
+    - rewrite /= source_iso. symmetry. apply h_mergeE. 
+    - rewrite /= target_iso. symmetry. apply h_mergeE. 
+    - by rewrite /= label_iso.
   Qed.
-  
-  Lemma merge_hom: hom_g h -> hom_g h_merge.
-  Proof.
-    move => hom_h. repeat split.
-    - move => e. symmetry. rewrite /= -hom_h. apply/eqquotP. 
-      exact: eqv_clot_map' (eq_piK _ _). 
-    - move => e. symmetry. rewrite /= -hom_h. apply/eqquotP. 
-      exact: eqv_clot_map' (eq_piK _ _). 
-    - move => e. by rewrite /= -hom_h.
-  Qed.
-
-  Lemma merge_iso: iso_g h -> iso_g h_merge.
-  Proof.
-    case => hom_h [[g1 C1 C2] bij_h2].
-    split => //; first exact: merge_hom. split => //.
-    have L : l = map_pairs g1 (map_pairs h.1 l).
-    { rewrite /map_pairs -map_comp map_id_in // => x /= _. 
-      by rewrite !C1 -surjective_pairing. }
-    pose g (x : (merge_seq G (map_pairs h.1 l))) : (merge_seq F l) := 
-      \pis g1 (repr x).
-    exists g => x. 
-    - rewrite /g/=. rewrite -{2}[x]reprsK. apply/eqquotP. set y := repr x. 
-      rewrite -[y]C1 {1}L. apply: eqv_clot_map'. rewrite C1 equiv_sym. exact: eq_piK.
-    - rewrite /g/=. rewrite -{2}[x]reprsK. apply/eqquotP. set y := repr x. 
-      rewrite -[y]C2. apply: eqv_clot_map'. rewrite C2 equiv_sym. exact: eq_piK.
-  Qed.
+  Definition merge_iso: iso (merge_seq F l) (merge_seq G (map_pairs h l)) := Iso merge_hom.
 End h_merge.
+Global Opaque h_merge.
+
+Section h_merge_same'.
+ Variables (F: graph) (h k: equiv_rel F).
+ Hypothesis H: h =2 k. 
+ Definition h_merge_same': bij (merge_def F h) (merge_def F k).
+   exists (fun x => \pie (generic_quotient.repr x)) (fun x => \pie (generic_quotient.repr x)) => x.
+    (* TODO: abstract proofs *)
+   - rewrite -{2}[x]reprK. apply/eqquotP. rewrite H equiv_sym. exact: eq_piK. 
+   - rewrite -{2}[x]reprK. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
+ Defined.   
+ Lemma h_merge_same'E (x: F): h_merge_same' (\pie x) = \pie x.
+ Proof. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. Qed.
+ Lemma merge_same'_hom: is_hom h_merge_same' bij_id.
+ Proof. split=>e//; rewrite /=; apply/eqquotP; rewrite -H; apply: eq_piK. Qed.
+ Definition merge_same': iso (merge_def F h) (merge_def F k) := Iso merge_same'_hom. 
+End h_merge_same'.
+Global Opaque h_merge_same'.
 
 Section h_merge_same.
  Variables (F: graph) (h k: pairs F).
- Hypothesis H: eqv_clot h =2 eqv_clot k. 
- Definition h_merge_same: h_ty (merge_seq F h) (merge_seq F k) := (fun x => \pis (repr x), id).
- Lemma h_merge_sameE (x: F): h_merge_same.1 (\pis x) = \pis x.
- Proof. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. Qed.
-
- Lemma merge_same_hom: hom_g h_merge_same.
- Proof.
-   repeat split.
-   - move => e. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
-   - move => e. rewrite /=. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
- Qed.
-
- Lemma merge_same_iso: iso_g h_merge_same.
- Proof.
-   split. apply merge_same_hom. split. 2: apply id_bij.
-   exists (fun x => \pis (repr x)) => x /=.
-   - rewrite -{2}[x]reprsK. apply/eqquotP. rewrite H equiv_sym. exact: eq_piK. 
-   - rewrite -{2}[x]reprsK. apply/eqquotP. rewrite -H equiv_sym. exact: eq_piK. 
- Qed.
-
+ Hypothesis H: eqv_clot h =2 eqv_clot k.
+ Definition h_merge_same: bij (merge_seq F h) (merge_seq F k) := h_merge_same' H.
+ Definition merge_same: iso (merge_seq F h) (merge_seq F k) := merge_same' H. 
+ Definition h_merge_sameE (x: F): h_merge_same (\pis x) = \pis x := h_merge_same'E H x. 
 End h_merge_same.
+Global Opaque merge_same.
 
 Lemma eq_equiv_class (T : eqType) : equiv_class_of (@eq_op T). 
 Proof. split => //. exact: eq_op_trans. Qed.
 Canonical eqv_equiv (T : eqType) := EquivRelPack (@eq_equiv_class T).
 
-Lemma eqv_clot_noting (T : finType) (h : pairs T) :
+Lemma eqv_clot_nothing (T : finType) (h : pairs T) :
   List.Forall (fun p => p.1 = p.2) h -> eqv_clot h =2 eq_op.
 Proof.
   move => /ForallE H x y. rewrite eqv_clotE /= in H *. 
@@ -412,29 +387,28 @@ Qed.
 Section h_merge_nothing.
  Variables (F: graph) (h: pairs F).
  Hypothesis H: List.Forall (fun p => p.1 = p.2) h.
- Definition h_merge_nothing: h_ty (merge_seq F h) F := (fun x => repr x, id).
- Lemma h_merge_nothingE (x: F): h_merge_nothing.1 (\pis x) = x.
- Proof. 
+ Lemma h_merge_nothingE_ (x: F): repr (pi h x) = x.
+ Proof.
    rewrite /=/repr. case: piP => y /= /eqquotP. 
-   by rewrite eqv_clot_noting // => /eqP->.
+   by rewrite eqv_clot_nothing // => /eqP->.
  Qed.
-
- Lemma merge_nothing_hom: hom_g h_merge_nothing.
- Proof. apply merge_nothing'_hom. apply h_merge_nothingE. Qed. 
- Lemma merge_nothing_iso: iso_g h_merge_nothing.
- Proof. apply merge_nothing'_iso. apply h_merge_nothingE. Qed. 
+ Definition h_merge_nothing:= h_merge_nothing' h_merge_nothingE_.
+ Lemma h_merge_nothingE (x: F): h_merge_nothing (\pis x) = x.
+ Proof. apply h_merge_nothingE_. Qed.
+ Lemma merge_nothing: iso (merge_seq F h) F.
+ Proof. apply merge_nothing', h_merge_nothingE_. Defined. 
 End h_merge_nothing.
-
-
-
+Global Opaque h_merge_nothing.
 
 Section merge_merge_seq.
+  (* ideally: derive properties from [merge_merge] *)
   Variables (F: graph) (h k: pairs F) (k': pairs (merge_seq F h)).
+  Hypothesis kk': k' = map_pairs (pi h) k.
   Definition h_merge_merge_seq1 (x: merge_seq (merge_seq F h) k'): merge_seq F (h++k) :=
     \pis (repr (repr x)).
-  Definition h_merge_merge_seq: h_ty _ _ := (h_merge_merge_seq1,id).
-  (* ideally: derive properties from [merge_merge] *)
-  Hypothesis kk': k' = map_pairs (pi h) k.
+  Definition h_merge_merge_seq1' (x: merge_seq F (h++k)): merge_seq (merge_seq F h) k' :=
+    \pis (\pis (repr x)).
+    
   Lemma eqv_clot_cat: eqv_clot (h++k) =2 equiv_comp_rel (eqv_clot k').
   Proof.
     move => x y. rewrite /equiv_comp_rel/equiv_comp/= {}kk' !eqv_clotE /=. 
@@ -455,6 +429,16 @@ Section merge_merge_seq.
           rewrite eqv_clotE. apply: sub_equiv_of. exact: H0. }
       rewrite equiv_sym. all: rewrite /= -eqv_clotE; exact: (eqv_clot_subset h) (eq_piK _ _).
   Qed.
+
+  Definition h_merge_merge_seq: bij (merge_seq (merge_seq F h) k') (merge_seq F (h++k)).
+    exists h_merge_merge_seq1 h_merge_merge_seq1' => x.
+    + rewrite /=/h_merge_merge_seq1/h_merge_merge_seq1'/pi/repr. case: piP  => /= y /eqquotP /= Hy. 
+      rewrite eqv_clot_cat /= reprK in Hy. 
+      rewrite -[x]reprK /=. apply/eqquotP. by rewrite equiv_sym.
+    + rewrite /=/h_merge_merge_seq1/h_merge_merge_seq1'. 
+      rewrite -{2}[x]reprK /=. apply: mod_exchange eqv_clot_cat _.
+      by rewrite -equiv_comp_pi.
+  Defined.
   
   Lemma h_merge_merge_seqE (x: F): h_merge_merge_seq1 (\pis (\pis x)) = \pis x.
   Proof. 
@@ -462,34 +446,18 @@ Section merge_merge_seq.
     apply/esym. exact: equiv_comp_pi.
   Qed.
 
-  Lemma hom_merge_merge_seq: hom_g h_merge_merge_seq.
+  Lemma hom_merge_merge_seq: is_hom h_merge_merge_seq bij_id.
   Proof.
-    repeat split. 
-    - move => e. rewrite /=/h_merge_merge_seq1. apply: mod_exchange eqv_clot_cat _.
+    split=>e//. 
+    - rewrite /=/h_merge_merge_seq1. apply: mod_exchange eqv_clot_cat _.
       by rewrite -equiv_comp_pi.
-    - move => e. rewrite /=/h_merge_merge_seq1. apply: mod_exchange eqv_clot_cat _.
+    - rewrite /=/h_merge_merge_seq1. apply: mod_exchange eqv_clot_cat _.
       by rewrite -equiv_comp_pi.
   Qed.
-
-  Lemma bij_merge_merge_seq: bijective2 h_merge_merge_seq.
-  Proof.
-    split; last apply id_bij. 
-    pose f (x : merge_seq F (h++k)) : merge_seq (merge_seq F h) k' :=
-      \pis (\pis (repr x)).
-    exists f => x.
-    + rewrite /=/h_merge_merge_seq1/f/pi/repr. case: piP  => /= y /eqquotP /= Hy. 
-      rewrite eqv_clot_cat /= reprK in Hy. 
-      rewrite -[x]reprK /=. apply/eqquotP. by rewrite equiv_sym.
-    + rewrite /=/h_merge_merge_seq1/f. 
-      rewrite -{2}[x]reprK /=. apply: mod_exchange eqv_clot_cat _.
-      by rewrite -equiv_comp_pi.
-  Qed.
-
-  Lemma iso_merge_merge_seq: iso_g h_merge_merge_seq.
-  Proof. split. apply hom_merge_merge_seq. apply bij_merge_merge_seq. Qed.
-  Lemma merge_merge_seq: iso (merge_seq (merge_seq F h) k') (merge_seq F (h++k)).
-  Proof. eexists. apply iso_merge_merge_seq. Qed.
+  Definition merge_merge_seq: iso (merge_seq (merge_seq F h) k') (merge_seq F (h++k)) :=
+    Iso hom_merge_merge_seq. 
 End merge_merge_seq.
+Global Opaque h_merge_merge_seq1.
 
 Lemma eqv_clot_map_lr (F G : graph) (l : pairs F) x y : 
   eqv_clot (map_pairs inl l) (unl x : union F G) (unr y) = false.
@@ -499,7 +467,9 @@ Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
   Definition h_union_merge_l1 (x: union (merge_seq F l) G): merge_seq (union F G) (map_pairs unl l) :=
     \pis (match x with inl x => unl (repr x) | inr x => unr x end).
-  Definition h_union_merge_l: h_ty _ _ := (h_union_merge_l1,id).
+  Definition h_union_merge_l1' (x: merge_seq (union F G) (map_pairs unl l)): union (merge_seq F l) G :=
+    match repr x with inl x => unl (\pis x) | inr x => unr x end.
+
   Lemma h_union_merge_lEl (x: F): h_union_merge_l1 (unl (\pis x)) = \pis (unl x).
   Proof. 
     rewrite /h_union_merge_l1/=. apply/eqmodP. 
@@ -509,77 +479,68 @@ Section union_merge_l.
   Lemma h_union_merge_lEr (x: G): h_union_merge_l1 (unr x) = \pis (unr x).
   Proof. by []. Qed.
 
-  Lemma hom_union_merge_l: hom_g h_union_merge_l.
-  Proof.
-    repeat split. 
-    - move => [e|e]. 
-      + by rewrite /= h_union_merge_lEl.
-      + by rewrite /= h_union_merge_lEr.
-    - move => [e|e]. 
-      + by rewrite /= h_union_merge_lEl.
-      + by rewrite /= h_union_merge_lEr.
-  Qed.
-
-  Local Notation g := h_union_merge_l1.
-
-  Lemma bij_union_merge_l: bijective2 h_union_merge_l.
-  Proof.
-    split; last apply id_bij. 
-    pose h (x : merge_seq (union F G) (map_pairs unl l)) : union (merge_seq F l) G :=
-      match repr x with inl x => unl (\pis x) | inr x => unr x end.
-    exists h => [x|x].
-    - rewrite /=. 
-      case: x => [x'|x']. rewrite /h.
-      + suff [z Z1 Z2] : exists2 z : F, repr (g (unl x')) = inl z & \pis z = x'.
-        { by rewrite Z1 Z2. }
-        rewrite /g/=. case E : (repr _) => [z|z].
+  Definition h_union_merge_l: bij (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs unl l)).
+    exists h_union_merge_l1 h_union_merge_l1'=>x.
+    (* TODO: abstract proofs *)
+    - case: x => [x'|x']. 
+      + suff [z Z1 Z2] : exists2 z : F, repr (h_union_merge_l1 (unl x')) = inl z & \pis z = x'.
+        { by rewrite /h_union_merge_l1' Z1 Z2. }
+        rewrite /h_union_merge_l1/=. case E : (repr _) => [z|z].
         * exists z => //. move/(congr1 (@pi (union F G) (map_pairs inl l))) : E.
           rewrite reprsK. move/eqquotP. rewrite eqv_clot_map => [E|]; last exact: inl_inj.
           rewrite -[x']reprsK. apply:esym. exact/eqquotP.
         * move/(congr1 (@pi (union F G) (map_pairs inl l))) : E.
           rewrite reprsK. move/eqquotP. by rewrite eqv_clot_map_lr.
-      + rewrite h_union_merge_lEr /h /repr. case: piP => /= [[y|y]].
+      + rewrite h_union_merge_lEr /h_union_merge_l1' /repr. case: piP => /= [[y|y]].
         * move/eqquotP. by rewrite equiv_sym eqv_clot_map_lr.
         * move/eqquotP. rewrite (@eqv_clot_map_eq (union F G)) ?inr_codom_inl //.
           by move/eqP=>[->].
-    - rewrite /=/h/g. case E: (repr x) => [y|y] /=. 
+    - rewrite /=/h_union_merge_l1/h_union_merge_l1'. case E: (repr x) => [y|y] /=. 
       + rewrite -[x]reprK -/(repr _)/= {}E. apply/eqquotP. 
         rewrite (@eqv_clot_map (union F G)) 1?equiv_sym. exact: eq_piK. exact: inl_inj.
       + by rewrite /unr -E reprsK.
-  Qed.
-  Lemma iso_union_merge_l: iso_g h_union_merge_l.
-  Proof. split. apply hom_union_merge_l. apply bij_union_merge_l. Qed.
-  Lemma union_merge_l: iso (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs inl l)).
-  Proof. eexists. apply iso_union_merge_l. Qed.
+  Defined.
+  Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id.
+  Proof. by split; move=>[e|e]//=; rewrite h_union_merge_lEl. Qed.
+  Definition union_merge_l: iso (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs inl l)) :=
+    Iso hom_union_merge_l. 
 End union_merge_l.  
+Global Opaque h_union_merge_l1.
+
+Lemma map_map_pairs {A B C} (f: A -> B) (g: B -> C) l: map_pairs g (map_pairs f l) = map_pairs (g \o f) l.
+Proof. by rewrite /map_pairs -map_comp. Qed.
 
 Section union_merge_r.
   Variables (F G: graph) (l: pairs G).
-  Definition h_union_merge_r1 (x: union F (merge_seq G l)): merge_seq (union F G) (map_pairs unr l) :=
-    \pis (match x with inl x => unl x | inr x => unr (repr x) end).
-  Definition h_union_merge_r: h_ty _ _ := (h_union_merge_r1,id).
-  (* ideally: derive properties from [union_merge_l] and [union_C] *)
-  Lemma h_union_merge_rEl (x: F): h_union_merge_r1 (unl x) = \pis (unl x).
-  Admitted.
-  Lemma h_union_merge_rEr (x: G): h_union_merge_r1 (unr (\pis x)) = \pis (unr x).
-  Admitted.
-  Lemma hom_union_merge_r: hom_g h_union_merge_r.
-  Admitted.
-  Lemma bij_union_merge_r: bijective2 h_union_merge_r.
-  Proof.
-    split; last apply id_bij. 
-  Admitted.
-  Lemma iso_union_merge_r: iso_g h_union_merge_r.
-  Proof. split. apply hom_union_merge_r. apply bij_union_merge_r. Qed.
   Lemma union_merge_r: iso (union F (merge_seq G l)) (merge_seq (union F G) (map_pairs unr l)).
-  Proof. eexists. apply iso_union_merge_r. Qed.
+  Proof.
+    eapply iso_comp. apply union_C.
+    eapply iso_comp. apply union_merge_l.
+    eapply iso_comp. apply (merge_iso (union_C _ _)).
+    apply merge_same. by rewrite map_map_pairs. 
+  Defined.
+  Lemma h_union_merge_rEl (x: F): union_merge_r (unl x) = \pis (unl x).
+  Proof.
+    rewrite /= h_union_merge_lEr.
+    rewrite (h_mergeE _ _ (unr x)).
+    by rewrite h_merge_sameE. 
+  Qed.
+  Lemma h_union_merge_rEr (x: G): union_merge_r (unr (\pis x)) = \pis (unr x).
+  Proof.
+    rewrite /= h_union_merge_lEl.
+    rewrite (h_mergeE _ _ (unl x)).
+    by rewrite h_merge_sameE. 
+  Qed.
 End union_merge_r.  
+Global Opaque union_merge_r.
 
 Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
   Definition union_K_pairs := map_pairs (fun x => match x with inl x => x | inr x => k x end) h.
   Definition h_merge_union_K1 (x: merge_seq (union F K) h): merge_seq F union_K_pairs :=
     \pis (match repr x with inl x => x | inr x => k x end).
+  Definition h_merge_union_K1' (x: merge_seq F union_K_pairs): merge_seq (union F K) h :=
+    \pis (unl (repr x)).
 
   Local Notation f := h_merge_union_K1.
 
@@ -638,31 +599,29 @@ Section merge_union_K.
     - move/(congr1 (@pi (union F K) h)) : E. rewrite reprsK /pi !kh.
       move/eqquotP. rewrite equiv_clot_Kl equiv_sym => ?. exact/eqquotP.
   Qed.
-
-  Hypothesis ke: edge K -> False.
-  Definition h_merge_union_K2 (e: edge (merge_seq (union F K) h)): edge (merge_seq F union_K_pairs) :=
-    match e with inl e => e | inr e => match ke e with end end.
-  Definition h_merge_union_K: h_ty _ _ := (h_merge_union_K1,h_merge_union_K2).
-  Lemma hom_merge_union_K: hom_g h_merge_union_K.
-  Proof.
-    repeat split; move => [e//=|//]; by rewrite h_merge_union_KEl. 
-  Qed.
-
-  Lemma bij_merge_union_K: bijective2 h_merge_union_K.
-  Proof.
-    split; last by exists inl =>//; move =>[|]//=. 
-    pose g (x : merge_seq F union_K_pairs) : merge_seq (union F K) h :=
-      \pis (unl (repr x)).
-    exists g => x.
-    - rewrite /g/=. rewrite -[x]reprsK. case E : (repr x) => [y|y].
+  
+  Definition h_merge_union_K: bij (merge_seq (union F K) h) (merge_seq F union_K_pairs).
+    exists h_merge_union_K1 h_merge_union_K1'=> x. 
+    - rewrite /h_merge_union_K1'/=. rewrite -[x]reprsK. case E : (repr x) => [y|y].
       + rewrite h_merge_union_KEl. apply/eqquotP. rewrite equiv_clot_Kl equiv_sym. exact: eq_piK.
       + rewrite h_merge_union_KEr. rewrite /pi kh. symmetry. 
         apply/eqquotP. rewrite equiv_clot_Kl. exact: eq_piK.
-    - rewrite /g/=. by rewrite h_merge_union_KEl reprsK.
-  Qed.
-  Lemma iso_merge_union_K: iso_g h_merge_union_K.
-  Proof. split. apply hom_merge_union_K. apply bij_merge_union_K. Qed.
-  Lemma merge_union_K: iso (merge_seq (union F K) h) (merge_seq F union_K_pairs).
-  Proof. eexists. apply iso_merge_union_K. Qed.
-End merge_union_K.
+    - rewrite /h_merge_union_K1'/=. by rewrite h_merge_union_KEl reprsK.
+  Defined.
 
+  Hypothesis ke: edge K -> False.
+
+  Definition h_merge_union_Ke1 (e: edge (merge_seq (union F K) h)): edge (merge_seq F union_K_pairs) :=
+    match e with inl e => e | inr e => match ke e with end end.
+
+  Definition h_merge_union_Ke: bij (edge (merge_seq (union F K) h)) (edge (merge_seq F union_K_pairs)).
+    exists h_merge_union_Ke1 inl=>x//. by case x.
+  Defined.
+
+  Lemma hom_merge_union_K: is_hom h_merge_union_K h_merge_union_Ke.
+  Proof. split; move => [e//=|//]; by rewrite h_merge_union_KEl. Qed.
+
+  Definition merge_union_K: iso (merge_seq (union F K) h) (merge_seq F union_K_pairs) :=
+    Iso hom_merge_union_K. 
+End merge_union_K.
+Global Opaque h_merge_union_K1.

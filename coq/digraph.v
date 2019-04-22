@@ -1,3 +1,5 @@
+Require Import Setoid CMorphisms.
+Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries.
 
@@ -895,6 +897,67 @@ Lemma independent_nodes (T : finType) (e1 e2 : rel T) x y (p p' : @Path (DiGraph
   (q q' : @Path (DiGraph e2) x y) (Npq : nodes p = nodes q) (Npq' : nodes p' = nodes q') : 
   independent p p' = independent q q'.
 Proof. by rewrite /independent (interior_eq_nodes Npq) (interior_eq_nodes Npq'). Qed.
+
+(** ** Isomorphisms *)
+
+Class is_dhom (F G: diGraph) (h: F -> G): Prop := Dhom
+  { edge_hom: forall x y, x -- y -> h x -- h y }.
+
+Lemma dhom_id G: @is_dhom G G id.
+Proof. by split. Qed.
+
+Lemma dhom_comp F G H h k:
+  @is_dhom F G h -> @is_dhom G H k -> is_dhom (k \o h).
+Proof. intros E E'. split=> x y O. apply E', E, O. Qed.
+
+Record diso (F G: diGraph): Type := Diso
+  { diso_v:> bij F G;
+    diso_hom: is_dhom diso_v;
+    diso_hom': is_dhom diso_v^-1 }.
+Existing Instances diso_hom diso_hom'.
+
+Lemma eqb_iff (a b: bool): a<->b -> a=b.
+Proof. case a; case b=>//. intros [H _]. by discriminate H. intros [_ H]. by discriminate H. Qed.
+Lemma edge_diso F G (h: diso F G) x y: h x -- h y = x -- y.
+Proof.
+  apply eqb_iff. split. 2: apply diso_hom.
+  intro E. apply (diso_hom' h) in E. by rewrite 2!bijK in E. 
+Qed.
+
+Definition diso_id {A}: diso A A := @Diso A A bij_id (@dhom_id A) (@dhom_id A). 
+
+Definition diso_sym {A B}: diso A B -> diso B A.
+Proof. move=>f. apply Diso with (bij_sym f); apply f. Defined.
+
+Definition diso_comp {A B C}: diso A B -> diso B C -> diso A C.
+Proof.
+  move=> f g.
+  apply Diso with (bij_comp f g); apply dhom_comp. apply f. apply g. apply g. apply f. 
+Defined.
+
+Instance diso_Equivalence: Equivalence diso.
+constructor. exact @diso_id. exact @diso_sym. exact @diso_comp. Defined.
+
+Lemma edge_diso' F G (h: diso F G) x y: h^-1 x -- h^-1 y = x -- y.
+Proof. apply (edge_diso (diso_sym h)). Qed.
+
+Lemma Diso' (F G: diGraph) (f: F -> G) (g: G -> F):
+  cancel f g -> cancel g f -> (forall x y, x--y <-> f x -- f y) -> diso F G.
+Proof.
+  move=>fg gf H. 
+  exists (Bij fg gf).
+  abstract (split; apply H).
+  abstract (split=>x y/=; by rewrite H 2!gf).
+Defined.
+
+Lemma Diso'' (F G: diGraph) (f: F -> G) (g: G -> F):
+  cancel f g -> cancel g f ->
+  (forall x y, x--y -> f x -- f y) -> (forall x y, x--y -> g x -- g y) -> diso F G.
+Proof.
+  move=>fg gf H H'. eapply Diso'. apply fg. apply gf.
+  move=>x y. split. apply H.
+  abstract by move=> /H' E; rewrite 2!fg in E. 
+Defined.
 
 (** ** Directed Multigraphs *)
 

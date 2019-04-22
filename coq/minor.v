@@ -56,11 +56,12 @@ Proof.
   exact: connect0.
 Qed.
 
-Lemma sg_iso_decomp (G1 G2 : sgraph) (T : forest) B1 : 
-  sdecomp T G1 B1 -> sg_iso G1 G2 -> 
+Lemma iso_decomp (G1 G2 : sgraph) (T : forest) B1 : 
+  sdecomp T G1 B1 -> diso G1 G2 -> 
   exists2 B2, sdecomp T G2 B2 & width B2 = width B1.
 Proof.
-  case => D1 D2 D3 [f g can_f can_g hom_f hom_g]. 
+  (* TODO: update proof to abstract against concrete implem of [diso] *)
+  case => D1 D2 D3 [[g f can_g can_f] [hom_g] [hom_f]]. 
   exists (fun t => [set g x | x in B1 t]). 
   - split.
     + move => x. case: (D1 (f x)) => t Ht. exists t. 
@@ -719,9 +720,10 @@ Proof.
     + apply: contraTneq A => /inj_h ->. by rewrite sgP.
 Qed.
 
-Lemma iso_strict_minor (G H : sgraph) : sg_iso G H -> strict_minor H G.
+Lemma iso_strict_minor (G H : sgraph) : diso G H -> strict_minor H G.
 Proof.
-  case=> g h ghK hgK gH hH.
+  (* TODO: update proof to abstract against concrete implem of [diso] *)
+  move=> [[h g hgK ghK] [hH] [gH]].
   have in_preim_g x y : (y \in g @^-1 x) = (y == h x).
     rewrite -mem_preim; exact: can2_eq.
   exists g; split.
@@ -809,7 +811,7 @@ Lemma subgraph_K4_free (G H : sgraph) :
 Proof. move/sub_minor. exact: minor_K4_free. Qed.
 
 Lemma iso_K4_free (G H : sgraph) : 
-  sg_iso G H -> K4_free H -> K4_free G.
+  diso G H -> K4_free H -> K4_free G.
 Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
 
 Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) : 
