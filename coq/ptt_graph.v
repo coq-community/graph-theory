@@ -695,10 +695,18 @@ Section alt.
       g_out := \pi_{eq_quot par2_eqv} (inl g_out) |}.
 
  Lemma par2_eqE: rel_of_pairs [::(unl g_in,unr g_in);(unl g_out,unr g_out)] =2 par2_eq.
- Admitted.
+ Proof. 
+   move => [x|x] [y|y]; rewrite /rel_of_pairs /par2_eq/= !inE /unl /unr //.
+  by rewrite !xpair_eqE.
+ Qed.
+
+ Hint Resolve id_bij.
 
  Lemma par2_eqvE: eqv_clot [::(unl g_in,unr g_in);(unl g_out,unr g_out)] =2 par2_eqv.
- Admitted.
+ Proof. 
+   move => x y. rewrite eqv_clotE par2_equiv_of.
+   apply: (lift_equiv (h := id)) => //. exact: par2_eqE.
+ Qed.
 
  Transparent merge_seq.
  Lemma par2_alt: par2 F G ≈ par2'.
@@ -730,7 +738,7 @@ Section alt.
    EquivRel dot2_eqv dot2_eqv_refl dot2_eqv_sym dot2_eqv_trans.
 
  Lemma dot2_eqv_io : dot2_eqv (inl g_out) (inr g_in).
- Proof. rewrite /dot2_eqv/=. Admitted.
+ Proof. by rewrite /dot2_eqv/= eqxx. Qed.
 
  Definition dot2_eq : simpl_rel (union F G) :=
    [rel a b | (a == inl g_out) && (b == inr g_in)].
@@ -774,14 +782,16 @@ Section alt.
       g_out := \pi_{eq_quot dot2_eqv} (inr g_out) |}.
 
  Lemma dot2_eqE: rel_of_pairs [::(unl g_out,unr g_in)] =2 dot2_eq.
- Admitted.
+ Proof. move => x y. by rewrite /rel_of_pairs /dot2_eq /= inE xpair_eqE. Qed.
 
  Lemma dot2_eqvE: eqv_clot [::(unl g_out,unr g_in)] =2 dot2_eqv.
- Admitted.
+ Proof.
+   move => x y. rewrite eqv_clotE dot2_equiv_of.
+   apply: (lift_equiv (h := id)) => //. exact: dot2_eqE.
+ Qed.
  
  Transparent merge_seq.
  Lemma dot2_alt: dot2 F G ≈ dot2'.
  Proof. apply merge_same=>//. apply dot2_eqvE. Qed.
  Opaque merge_seq.
 End alt.
-

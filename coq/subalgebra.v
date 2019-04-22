@@ -1,6 +1,6 @@
 Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries digraph sgraph minor equiv multigraph ptt_algebra ptt_graph skeleton.
+Require Import edone set_tac finite_quotient preliminaries digraph sgraph minor equiv multigraph ptt_algebra ptt_graph skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -70,8 +70,16 @@ Section Quotients.
     forall x y, eqv x y -> x = y \/ [set x;y] \subset P.
 
   Lemma admissible_eqv_clot (l: pairs (union G1 G2)):
-    (forall p, p\in l -> p.1 \in P /\ p.2 \in P) -> admissible (eqv_clot l).
-  Admitted.
+    (forall p, p \in l -> p.1 \in P /\ p.2 \in P) -> admissible (eqv_clot l).
+  Proof.
+    move => H x y. rewrite eqv_clotE. case/connectP => p.
+    have relE u v : rel_of_pairs l u v -> ((u \in P) * (v \in P)) %type. 
+    { by move /H => /= [-> ->]. }
+    elim: p x => /= [x _ -> //|z p IH x /andP [E pth_p] lst_p]; first by left.
+    right. rewrite subUset !sub1set. case: (IH _ pth_p lst_p) => [Z|S]; subst. 
+    - rewrite -Z. case/orP : E => E; by rewrite !(relE _ _ E).
+    - case/orP: E => E; rewrite (relE _ _ E) /=; by abstract (set_tac).
+  Qed.
  
   Lemma decomp_quot (T1 T2 : forest) D1 D2 (e : equiv_rel (union G1 G2)): 
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
@@ -127,7 +135,8 @@ Section Quotients.
     move => dec1 dec2 W1 W2.
     case: (decomp_quot (e:=eqv_clot [:: (unl g_in, unr g_in); (unl g_out, unr g_out)])
                        dec1 dec2 W1 W2 _ _).
-    - apply admissible_eqv_clot. admit. 
+    - apply admissible_eqv_clot. case => u v. 
+      rewrite !inE /= !xpair_eqE => /orP [] /andP [/eqP -> /eqP->]; by rewrite !eqxx.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out].
       apply: (@leq_trans #|P'|); last by rewrite cards2; by case (_ != _).
       apply: (@leq_trans #|[set (\pi x : par2 G1 G2) | x in P']|); last exact: leq_imset_card.
@@ -141,7 +150,7 @@ Section Quotients.
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
       exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
-  Admitted.
+  Qed.
 
   Lemma decomp_dot2 (T1 T2 : forest) D1 D2 : 
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
@@ -150,7 +159,8 @@ Section Quotients.
   Proof using.
     move => dec1 dec2 W1 W2.
     case: (decomp_quot (e:=eqv_clot [:: (unl g_out, unr g_in)]) dec1 dec2 W1 W2 _ _).
-    - apply admissible_eqv_clot. admit. 
+    - apply admissible_eqv_clot. case => u v.
+      rewrite !inE /= !xpair_eqE => /andP [/eqP -> /eqP->]; by rewrite !eqxx.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out; inr g_out].
       apply: (@leq_trans #|P'|); last apply cards3.
       apply: (@leq_trans #|[set (\pi x : dot2 G1 G2) | x in P']|); last exact: leq_imset_card.
@@ -163,7 +173,7 @@ Section Quotients.
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
       exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
-  Admitted.
+  Qed.
 
 End Quotients.
 

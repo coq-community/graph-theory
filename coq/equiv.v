@@ -80,9 +80,8 @@ Proof. by move->. Qed.
 Lemma eqv_clot_trans (T: finType) (z x y: T) (l: pairs T): eqv_clot l x z -> eqv_clot l z y -> eqv_clot l x y.
 Proof. exact: equiv_trans. Qed.
 
-(* what's the purpose of the explicit [equiv] cast? *)
-Instance eqv_clot_Equivalence (T: finType) (l: pairs T): Equivalence [eta eqv_clot l].
-Admitted.
+Instance equiv_rel_Equivalence T (e : equiv_rel T) : Equivalence [eta e].
+Proof. split => // [x y|x y z]; by [rewrite equiv_sym | apply: equiv_trans]. Qed.
   
 Lemma eqv_clot_hd (T: finType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) x y.
 Proof. 

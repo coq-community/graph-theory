@@ -136,7 +136,8 @@ Proof.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  pose valE := f_equal val. pose inLR := par2_LR.
+  pose valE := f_equal val. 
+  pose inLR := par2_LR.
   pose inRL := fun e => par2_LR (esym e).
 
   pose f (x : G') : G := match generic_quotient.repr x with inl x => val x | inr x => val x end.
@@ -193,21 +194,26 @@ Proof.
       suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
       by rewrite in_setI He H.
   - rewrite /h/k=>e. by case: (decE e).
-  - admit.
-    (* was done before with the following ingredients *)
-    (*
-      rewrite /f/h; case=>[e|e]; repeat split=>/=.
-      case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
-      first [move/injL | move/injR | case/inLR=>-[] | case/inRL=> -[]].
-      case: piP => -[]e'/=.
-      by case: piP => -[y /injL<-|y /inLR[][/valE? ->]].
-     *)
-  - rewrite /f/=.
-      case: piP => -[]e'.
-        by move/injL=>[<-].
-        admit.                  (* idem *)
-  - admit. 
-Admitted.
+  - case => [e|e]; split => //.
+    + rewrite /f/h. case: piP => [[y|y]] /=. 
+      * by move/injL <-. 
+      * by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
+    + rewrite /f/h. case: piP => [[y|y]] /=. 
+      * by move/injL <-. 
+      * by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
+    + rewrite /f/h. case: piP => [[y|y]] /=. 
+      * by move/esym/(@par2_LR G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
+      * by move/injR <-. 
+    + rewrite /f/h. case: piP => [[y|y]] /=. 
+      * by move/esym/(@par2_LR G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
+      * by move/injR <-. 
+  - rewrite /f. case: piP => [[y|y]] /=. 
+    + by move/injL<-.
+    + by move/(@par2_LR G1 G2) => [[_ ->]|[/valE/= -> ->]]. 
+  - rewrite /f. case: piP => [[y|y]] /=. 
+    + by move/injL<-.
+    + by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[_ ->]].
+Qed.
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] -> g_in == g_out :> G ->
