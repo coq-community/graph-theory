@@ -5,8 +5,6 @@ Require Import edone set_tac finite_quotient preliminaries digraph sgraph minor 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
-Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
 Implicit Types (G H : graph) (U : sgraph) (T : forest).
@@ -84,10 +82,10 @@ Section Quotients.
   Lemma decomp_quot (T1 T2 : forest) D1 D2 (e : equiv_rel (union G1 G2)): 
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
-    admissible e -> #|[set \pi_{eq_quot e} x | x in P]| <= 3 ->
-    exists T D, [/\ sdecomp T (skeleton (merge_def _ e)) D, 
+    admissible e -> #|[set pi e x | x in P]| <= 3 ->
+    exists T D, [/\ sdecomp T (skeleton (merge _ e)) D, 
               width D <= 3 & exists t, 
-              D t = [set \pi_{eq_quot e} x | x in P]].
+              D t = [set \pi x | x in P]].
   Proof using. 
     move => /sdecomp_sskel [dec1 comp1] /sdecomp_sskel [dec2 comp2] W1 W2 adm_e collapse_P.
     move: comp1 comp2 => [t1 /andP[t1_in t1_out]] [t2 /andP[t2_in t2_out]].
@@ -107,7 +105,7 @@ Section Quotients.
       all: apply/bigcupP; solve 
         [ by exists (inl t1) => //; rewrite ?inE ?mem_imset ?eqxx 
         | by exists (inr t2) => //; rewrite ?inE ?mem_imset ?eqxx]. }
-    pose h := \pi_{eq_quot e} : skeleton (union G1 G2) -> skeleton (merge_def _ e).
+    pose h := pi e : skeleton (union G1 G2) -> skeleton (merge _ e).
     exists T'. exists (rename D' h); split; last by exists None.
     - apply: rename_decomp => //. 
       + apply: hom_eqL (pi_hom e). exact: skel_union_join.
@@ -133,7 +131,7 @@ Section Quotients.
     exists T D, [/\ sdecomp T (sskeleton (par2 G1 G2)) D & width D <= 3].
   Proof using.
     move => dec1 dec2 W1 W2.
-    case: (decomp_quot (e:=eqv_clot [:: (unl g_in, unr g_in); (unl g_out, unr g_out)])
+    case: (decomp_quot (e:=eqv_clot [:: (inl g_in, inr g_in); (inl g_out, inr g_out)])
                        dec1 dec2 W1 W2 _ _).
     - apply admissible_eqv_clot. case => u v. 
       rewrite !inE /= !xpair_eqE => /orP [] /andP [/eqP -> /eqP->]; by rewrite !eqxx.
@@ -158,7 +156,7 @@ Section Quotients.
     exists T D, [/\ sdecomp T (sskeleton (dot2 G1 G2)) D & width D <= 3].
   Proof using.
     move => dec1 dec2 W1 W2.
-    case: (decomp_quot (e:=eqv_clot [:: (unl g_out, unr g_in)]) dec1 dec2 W1 W2 _ _).
+    case: (decomp_quot (e:=eqv_clot [:: (inl g_out, inr g_in)]) dec1 dec2 W1 W2 _ _).
     - apply admissible_eqv_clot. case => u v.
       rewrite !inE /= !xpair_eqE => /andP [/eqP -> /eqP->]; by rewrite !eqxx.
     - pose P' : {set union G1 G2} := [set inl g_in; inl g_out; inr g_out].

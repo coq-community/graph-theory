@@ -10,7 +10,6 @@ Require Import ptt_algebra.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
 Set Bullet Behavior "Strict Subproofs". 
 
 

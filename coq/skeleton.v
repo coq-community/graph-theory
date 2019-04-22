@@ -65,7 +65,7 @@ Qed.
 
 (** Edges of skeletons of quotients *)
 Lemma sk_rel_mergeE (G : graph) (e : equiv_rel G) x y :
-  sk_rel (merge_def G e) x y <-> 
+  sk_rel (merge G e) x y <-> 
   x != y /\ exists x0 y0 : skeleton G, [/\ \pi x0 = x, \pi y0 = y & x0 -- y0].
 Proof.
   rewrite /= /sk_rel. 
@@ -105,7 +105,7 @@ Proof.
 Defined.
   
 Lemma pi_hom (G : graph) (e : equiv_rel G) : 
-  hom_s (\pi_{eq_quot e} : skeleton G -> skeleton (merge_def G e)).
+  hom_s (\pi_{eq_quot e} : skeleton G -> skeleton (merge G e)).
 Proof.
   move => x y xy Dxy. apply/sk_rel_mergeE. split => //. by exists x; exists y.
 Qed.

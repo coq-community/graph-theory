@@ -1,18 +1,14 @@
 Require Import RelationClasses Setoid Morphisms.
-
 From mathcomp Require Import all_ssreflect.
-Require Import finite_quotient preliminaries.
+Require Import preliminaries.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
 
-Lemma eq_piK (T : choiceType) (e : equiv_rel T) z : e z (repr (\pi_({eq_quot e}) z)).
-Proof. by case: piP => /= y /eqquotP. Qed.
 
 Lemma equiv_of_class (T : finType) (e : rel T) : equiv_class_of (equiv_of e).
 Proof. constructor; auto using equiv_of_refl, equiv_of_sym, equiv_of_trans. Qed.
@@ -31,21 +27,6 @@ Lemma equiv_of_transfer (T1 T2 : finType) (e1 : rel T1) (e2 : rel T2) (f : T1 ->
   (forall u v : T1, e1 u v -> equiv_of e2 (f u) (f v)) ->
   equiv_of e1 x y -> equiv_of e2 (f x) (f y).
 Proof. exact: equiv_ofE. Qed.
-
-Section equiv_comp.
-  Variables (T: choiceType) (e: equiv_rel T) (e': equiv_rel {eq_quot e}).
-  Definition equiv_comp: simpl_rel T := [rel x y | e' (\pi x) (\pi y)].
-  Lemma equiv_comp_class: equiv_class_of equiv_comp.
-  Proof. split => [x|x y|x y z]. apply: equiv_refl. apply: equiv_sym. apply: equiv_trans. Qed.
-  Canonical Structure equiv_comp_rel := EquivRelPack equiv_comp_class.
-  Lemma equiv_comp_pi (x: T):
-    x = repr (repr (\pi_{eq_quot e'} (\pi_{eq_quot e} x)))
-             %[mod_eq equiv_comp_rel]. 
-  Proof. apply/eqquotP. rewrite /equiv_comp_rel/= reprK. exact: eq_piK. Qed.
-End equiv_comp.
-
-
-Notation "\pie x" := (\pi_{eq_quot _} x) (at level 30). 
 
 
 Definition pairs A := seq (A*A).
@@ -212,10 +193,6 @@ Ltac eqv := lazymatch goal with
             end.
 Ltac leqv := solve [apply List.Forall_cons;[eqv|leqv] | apply List.Forall_nil].
 
-Opaque eqv_clot.
-
-Lemma mod_exchange (T : choiceType) (e1 e2 : equiv_rel T) x y : 
-  e1 =2 e2 -> x = y %[mod_eq e2] -> x = y %[mod_eq e1].
-Proof. move => E M1. apply/eqquotP. rewrite E. apply/eqquotP. exact: M1. Qed.
+Global Opaque eqv_clot.
 
 
