@@ -50,8 +50,8 @@ Definition union (G1 G2 : graph) : graph :=
      target := sumf (@target G1) (@target G2);
      label e := match e with inl e => label e | inr e => label e end |}.
 
-(* Definition unl {G H: graph} (x: G): union G H := inl x.  *)
-(* Definition unr {G H: graph} (x: H): union G H := inr x. *)
+Definition unl {G H: graph} (x: G): union G H := inl x.
+Definition unr {G H: graph} (x: H): union G H := inr x.
 
 (** ** Homomorphisms *)
 
@@ -394,36 +394,36 @@ Proof.
     exists h_union_merge_l1 h_union_merge_l1'=>x.
     (* TODO: abstract proofs *)
     - case: x => [x'|x']. 
-      + suff [z Z1 Z2] : exists2 z : F, repr (h_union_merge_l1 (unl x')) = inl z & \pis z = x'.
+      + suff [z Z1 Z2] : exists2 z : F, repr (h_union_merge_l1 (unl x')) = unl z & \pis z = x'.
         { by rewrite /h_union_merge_l1' Z1 Z2. }
         rewrite /h_union_merge_l1/=. case E : (repr _) => [z|z].
-        * exists z => //. move/(congr1 (@pi (union F G) (map_pairs inl l))) : E.
-          rewrite reprsK. move/eqquotP. rewrite eqv_clot_map => [E|]; last exact: inl_inj.
+        * exists z => //. move/(congr1 (@pi (union F G) (map_pairs unl l))) : E.
+          rewrite reprsK. move/eqquotP. rewrite eqv_clot_map => [E|]; last exact: unl_inj.
           rewrite -[x']reprsK. apply:esym. exact/eqquotP.
-        * move/(congr1 (@pi (union F G) (map_pairs inl l))) : E.
+        * move/(congr1 (@pi (union F G) (map_pairs unl l))) : E.
           rewrite reprsK. move/eqquotP. by rewrite eqv_clot_map_lr.
       + rewrite h_union_merge_lEr /h_union_merge_l1' /repr. case: piP => /= [[y|y]].
         * move/eqquotP. by rewrite equiv_sym eqv_clot_map_lr.
-        * move/eqquotP. rewrite (@eqv_clot_map_eq (union F G)) ?inr_codom_inl //.
+        * move/eqquotP. rewrite (@eqv_clot_map_eq (union F G)) ?unr_codom_unl //.
           by move/eqP=>[->].
     - rewrite /=/h_union_merge_l1/h_union_merge_l1'. case E: (repr x) => [y|y] /=. 
       + rewrite -[x]reprK -/(repr _)/= {}E. apply/eqquotP. 
-        rewrite (@eqv_clot_map (union F G)) 1?equiv_sym. exact: eq_piK. exact: inl_inj.
+        rewrite (@eqv_clot_map (union F G)) 1?equiv_sym. exact: eq_piK. exact: unl_inj.
       + by rewrite /unr -E reprsK.
 *)  
 Admitted.
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
-  Definition h_union_merge_l: bij (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs inl l)).
+  Definition h_union_merge_l: bij (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs unl l)).
   Proof. eapply bij_comp. apply union_quot_l. apply quot_same. apply union_equiv_l_eqv_clot. Defined.
   Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id.
   Proof. by split; move=>[e|e]//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE. Qed.
-  Definition union_merge_l: iso (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs inl l)) :=
+  Definition union_merge_l: iso (union (merge_seq F l) G) (merge_seq (union F G) (map_pairs unl l)) :=
     Iso hom_union_merge_l.
-  Lemma union_merge_lEl (x: F): union_merge_l (inl (\pi x)) = \pi inl x.
+  Lemma union_merge_lEl (x: F): union_merge_l (inl (\pi x)) = \pi unl x.
   Proof. by rewrite /=union_quot_lEl quot_sameE. Qed.
-  Lemma union_merge_lEr (x: G): union_merge_l (inr x) = \pi inr x.
+  Lemma union_merge_lEr (x: G): union_merge_l (unr x) = \pi unr x.
   Proof. by rewrite /=union_quot_lEr quot_sameE. Qed.
 End union_merge_l.  
 Global Opaque union_merge_l.
@@ -433,24 +433,24 @@ Proof. by rewrite /map_pairs -map_comp. Qed.
 
 Section union_merge_r.
   Variables (F G: graph) (l: pairs G).
-  Lemma union_merge_r: iso (union F (merge_seq G l)) (merge_seq (union F G) (map_pairs inr l)).
+  Lemma union_merge_r: iso (union F (merge_seq G l)) (merge_seq (union F G) (map_pairs unr l)).
   Proof.
     eapply iso_comp. apply union_C.
     eapply iso_comp. apply union_merge_l.
     eapply iso_comp. apply (merge_iso (union_C _ _)).
     apply merge_same. abstract by rewrite map_map_pairs. 
   Defined.
-  Lemma union_merge_rEr (x: G): union_merge_r (inr (\pi x)) = \pi (inr x).
+  Lemma union_merge_rEr (x: G): union_merge_r (inr (\pi x)) = \pi (unr x).
   Proof.
     (* BUG: the second rewrite hangs if F and x are not given *)
     rewrite /=. rewrite (union_merge_lEl F _ x).
-    rewrite (merge_isoE (union_C G F) _ (inl x)).
+    rewrite (merge_isoE (union_C G F) _ (unl x)).
     by rewrite merge_sameE. 
   Qed.
-  Lemma union_merge_rEl (x: F): union_merge_r (inl x) = \pi (inl x).
+  Lemma union_merge_rEl (x: F): union_merge_r (unl x) = \pi (unl x).
   Proof.
     rewrite /=. rewrite (union_merge_lEr _ x) .
-    rewrite (merge_isoE (union_C G F) _ (inr x)).
+    rewrite (merge_isoE (union_C G F) _ (unr x)).
     by rewrite merge_sameE. 
   Qed.
 End union_merge_r.  
@@ -460,7 +460,7 @@ Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
   Definition union_K_pairs := map_pairs (fun x => match x with inl x => x | inr x => k x end) h.
 
-  Hypothesis kh: forall x: K, inr x = inl (k x) %[mod (eqv_clot h)].
+  Hypothesis kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)].
 
   (* TOTHINK: can this be factorized to use a general lemma about [equiv_of],
   similar to [equiv_of_ff] ?*)
@@ -478,16 +478,16 @@ Section merge_union_K.
         { case/orP : uu' => uu'. 2:rewrite equiv_sym. all: by apply. }
         destruct u as [u|u]; destruct u' as [u'|u']. 
         all: rewrite /j; apply: sub_equiv_of; apply/mapP.
-        * by exists (inl u,inl u').
-        * by exists (inl u,inr u').
-        * by exists (inr u,inl u').
-        * by exists (inr u,inr u').
+        * by exists (unl u,unl u').
+        * by exists (unl u,unr u').
+        * by exists (unr u,unl u').
+        * by exists (unr u,unr u').
     - case/connectP => p. elim: p x => /= [|x' p IH] x.
       + by move => _ ->. 
       + case/andP => xx' pth_p lst_p. apply: equiv_trans (IH _ pth_p lst_p) => /=.
         wlog xx' : x x' {xx' pth_p lst_p} / e2 x x'. 
         { case/orP : xx' => xx'. 2:rewrite equiv_sym. all: by apply. }
-        have kh' z : equiv_of e1 (inr z) (inl (k z)).
+        have kh' z : equiv_of e1 (unr z) (unl (k z)).
         { rewrite -eqv_clotE. apply/eqquotP. exact: kh. }
         case/mapP : xx' => [[[u|u] [v|v]] H] /= [-> ->] {x x'}.
         * exact: sub_equiv_of.
@@ -516,9 +516,9 @@ Section merge_union_K.
 
   Definition merge_union_K: iso (merge_seq (union F K) h) (merge_seq F union_K_pairs) :=
     Iso hom_merge_union_K.
-  Lemma merge_union_KEl (x: F): merge_union_K (\pi (inl x)) = \pi x.
+  Lemma merge_union_KEl (x: F): merge_union_K (\pi (unl x)) = \pi x.
   Proof. by rewrite /=quot_union_KEl quot_sameE. Qed.
-  Lemma merge_union_KEr (x: K): merge_union_K (\pi (inr x)) = \pi k x.
+  Lemma merge_union_KEr (x: K): merge_union_K (\pi (unr x)) = \pi k x.
   Proof. by rewrite /=quot_union_KEr quot_sameE. Qed.
 End merge_union_K.
 Global Opaque merge_union_K.
