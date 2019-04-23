@@ -10,14 +10,10 @@ Require Import bounded extraction_def.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
 Set Bullet Behavior "Strict Subproofs". 
 
 
 (** * Isomorphim Theorem *)
-
-Local Open Scope quotient_scope.
-Local Notation "\pi x" := (\pi_(_) x) (at level 4).
 
 Lemma comp_exit (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] ->
@@ -100,16 +96,7 @@ Proof.
   - by [].
   - split=>//.
 Qed.
-
-(* move to multigraph *)
-Lemma hom_gI (G1 G2: graph) (hv: G1 -> G2) (he: edge G1 -> edge G2) :
-  (forall e, [/\ hv (source e) = source (he e),
-              hv (target e) = target (he e) &
-              label (he e) = label e]) -> is_hom hv he.
-Proof. move=>H. split=> e; by case: (H e). Qed.
-Definition Iso2'' F G f g h k fg gf hk kh H I O :=  
-  @Iso2 F G (@Bij _ _ f g fg gf) (@Bij _ _ h k hk kh) (@Hom2 _ _ f h (hom_gI H) I O).
-
+  
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
   C :&: D \subset IO -> C :|: D = setT -> 
@@ -120,16 +107,16 @@ Proof.
   move => subIO fullCD disjE fullE. symmetry. setoid_rewrite par2_alt.
   set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
 
-  have injL (x y : G1) : inl x = inl y %[mod_eq @par2_eqv G1 G2] -> x = y.
-  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+  have injL (x y : G1) : inl x = inl y %[mod @par2_eqv_equivalence G1 G2] -> x = y.
+  { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
     all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE !orbF.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  have injR (x y : G2) : inr x = inr y %[mod_eq @par2_eqv G1 G2] -> x = y.
-  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+  have injR (x y : G2) : inr x = inr y %[mod @par2_eqv_equivalence G1 G2] -> x = y.
+  { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
     all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE.
@@ -140,15 +127,15 @@ Proof.
   pose inLR := par2_LR.
   pose inRL := fun e => par2_LR (esym e).
 
-  pose f (x : G') : G := match generic_quotient.repr x with inl x => val x | inr x => val x end.
+  pose f (x : G') : G := match repr x with inl x => val x | inr x => val x end.
   pose h (e : edge G') : edge G := match e with inl e => val e | inr e => val e end.
   have decV (v : G) : ((v \in C) + (v \in D))%type.
   { have : v \in [set: G] by []. rewrite -fullCD in_setU.
     case: (boolP (v \in C)) => HC /= HD; by [left|right]. }
   pose g (x : G) : G' :=
     match decV x with
-    | inl p => \pi_(_) (inl (Sub x p))
-    | inr p => \pi_(_) (inr (Sub x p))
+    | inl p => \pi inl (Sub x p)
+    | inr p => \pi inr (Sub x p)
     end.
   have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
   { have : e \in [set: edge G] by []. rewrite -fullE in_setU.
@@ -160,25 +147,25 @@ Proof.
     end.
   apply Iso2'' with f g h k. 
   - rewrite /f/g=>x.
-    case Ex: (generic_quotient.repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
-      * rewrite -[x]reprK Ex. congr \pi (inl _). exact: val_inj.
+    case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
+      * rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
-        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
-        rewrite /equiv/equiv_pack/par2_eqv. case: ifPn => _; last first.
+        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
+        rewrite /=/par2_eqv. case: ifPn => _; last first.
         { rewrite subUset !sub1set !in_setU !in_set1.
           by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
         rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
         rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
         by rewrite /= !orbF !andbT !andbb.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
-        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
-        rewrite /equiv/equiv_pack/par2_eqv. case: ifPn => _; last first.
+        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
+        rewrite /=/par2_eqv. case: ifPn => _; last first.
         { rewrite subUset !sub1set !in_setU !in_set1.
           by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
         rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
         rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
         by rewrite /= !orbF !andbT !andbb.
-      * rewrite -[x]reprK Ex. congr \pi (inr _). exact: val_inj.
+      * rewrite -[x]reprK Ex. congr (\pi (inr _)). exact: val_inj.
   - rewrite /f/g=>x. case: (decV x) => Hx; case: piP => -[]y.
       * by move=> /injL<-.
       * by case/inLR=> -[]/valE/=->->.
@@ -316,9 +303,9 @@ Proof.
     rewrite (eqP pi_e0) (eqP po_e0) set0U setU0.
       by rewrite (interval_cp_edge_cover G_conn u_cpio) !in_setU eNl eNr orbF. }
   pose f (x : G') : G :=
-    match generic_quotient.repr x with
+    match repr x with
     | inl x => val x
-    | inr x => match generic_quotient.repr x with
+    | inr x => match repr x with
                | inl x => val x
                | inr x => val x
                end
@@ -352,21 +339,21 @@ Proof.
   pose inLR := dot2_LR. pose inRL := fun e => dot2_LR (esym e).
   apply Iso2'' with f g h k.
   - rewrite /f/g=>x.
-    case Ex: (generic_quotient.repr x) => [y|y]; last case Ey: (generic_quotient.repr y) => [z|z]. 
+    case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z]. 
     * have yL : val y \in @interval G g_in u := valP y. case: {-}_ / boolP => H1.
-      { rewrite -[x]reprK Ex; congr \pi (inl _); exact: val_inj. }
+      { rewrite -[x]reprK Ex; congr (\pi (inl _)); exact: val_inj. }
       have Ey : val y = u.
       { move: H1 yL. rewrite [_ \in @interval G _ _]inE (lock sinterval) !inE -lock.
         rewrite negb_or => /andP[/negbTE-> /negbTE->]. by rewrite orbF => /eqP. }
       case: {-}_ / boolP => H2.
       { have := H2; rewrite {1}Ey 2!inE (@sinterval_bounds G).
         by move: u_cpio; rewrite 4!inE negb_or => /andP[]/andP[_]/negbTE->. }
-      rewrite -[x]reprK Ex. apply/eqmodP.
-      rewrite /equiv/equiv_pack/dot2_eqv -[_ == inl y]/false.
+      rewrite -[x]reprK Ex. apply/eqquotP.
+      rewrite /=/dot2_eqv -[_ == inl y]/false.
       rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
       rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
       rewrite -(inj_eq val_inj) [_ && (_ || _)]andbC {1}Ey eqxx andbT.
-      apply/eqP. apply/eqmodP. rewrite /equiv/equiv_pack/dot2_eqv sum_eqE.
+      apply/eqP. apply/eqquotP. rewrite /=/dot2_eqv sum_eqE.
       by rewrite -(inj_eq val_inj) SubK {1}Ey eqxx.
     * have z_bag : val z \in @bag G IO u := valP z.
       have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
@@ -379,7 +366,7 @@ Proof.
         - by rewrite (disjointFr (interval_bag_disj u _) z_bag). }
       case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
       case: {-}_ / boolP => H2; first by have := H2; rewrite zNr.
-      rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inl _))).
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inl _)))).
       exact: val_inj.
     * have zR : val z \in @interval G u g_out := valP z.
       have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
@@ -395,15 +382,15 @@ Proof.
           by move: u_cpio; rewrite inE => /andP[_]. }
       case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
       case: {-}_ / boolP => H2.
-      { rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inr _))).
+      { rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inr _)))).
         exact: val_inj. }
       move: zR; rewrite 4!inE. have := H2; rewrite 2!inE negb_or.
       case/andP=> /negbTE-> /negbTE->; rewrite !orbF => /eqP y_u.
-      rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr _). apply/eqmodP.
-      rewrite /equiv/equiv_pack/dot2_eqv -[_ == inr z]/false.
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqquotP.
+      rewrite /=/dot2_eqv -[_ == inr z]/false.
       rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
       rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
-      by rewrite -!(inj_eq val_inj) SubK y_u eqxx.
+      by rewrite -!(inj_eq val_inj) SubK/= y_u eqxx /=.
 
   - rewrite /f/g=>x. case: {-}_ / boolP => H1; last case: {-}_ / boolP => H2.
     * case: piP => -[y /injL/valE//|y /inLR[/valE?{y}->]].
@@ -497,7 +484,7 @@ Proof.
   pose f (x : E1) : E2 := \pi (inr x).
     (* if x == g_in then \pi (inr g_in) else \pi (inr g_out). *) 
   pose g (x : E2) : E1 :=
-    match generic_quotient.repr x with 
+    match repr x with 
     | inl x => if x == g_in then g_in else g_out
     | inr x => x end.
   pose h (x : edge E1) : edge E2 := 
@@ -514,8 +501,8 @@ Proof.
       case => [[-> ->]|[-> ->]]; by destruct b.
     * move/(@par2_injR (sym2b' a b) (edges2 Ar)) : Hy. apply. 
         by destruct b.
-  - rewrite /f/g=>x. case Rx : (generic_quotient.repr x) => [y|y]; last by rewrite -Rx reprK.
-      rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqmodP => /=. 
+  - rewrite /f/g=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
+      rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqquotP => /=. 
       destruct b;destruct y => //=;
       solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
   - rewrite /h/k=>x. case: (ord_0Vp x) => [-> //|[o' Ho']].
@@ -530,21 +517,21 @@ Proof.
     * rewrite [source]lock /= -lock. rewrite /h /=.
       case: (ord_0Vp e) => [E|[o' Ho']].
       + rewrite E /f /=. destruct b eqn: def_b.
-        all: symmetry; apply/eqmodP => //=.
+        all: symmetry; apply/eqquotP => //=.
         exact: par2_eqv_ii.
         exact: par2_eqv_oo.
       + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
     * rewrite [target]lock /= -lock. rewrite /h /=.
       case: (ord_0Vp e) => [E|[o' Ho']].
       + rewrite E /f /=. destruct b eqn: def_b.
-        all: symmetry; apply/eqmodP => //=.
+        all: symmetry; apply/eqquotP => //=.
         exact: par2_eqv_oo.
         exact: par2_eqv_ii.
       + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
     * rewrite /h/=. case: (ord_0Vp e) => [-> //|[o' Ho']].
         by rewrite (tnth_cons Ho'). 
-  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_ii.
-  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_oo.
+  - rewrite /f /=. symmetry. apply/eqquotP => //=. exact: par2_eqv_ii.
+  - rewrite /f /=. symmetry. apply/eqquotP => //=. exact: par2_eqv_oo.
 Qed.
 
 Lemma edges2_big (As : seq (sym * bool)) : 
@@ -571,10 +558,9 @@ Proof.
   set G' := par2' _ _.
   pose S := [seq strip e | e in E].
   pose n := size S.
-  (* have e0 : edge (edges2 [seq strip e | e in E]). admit. *)
   pose f (x : G) : G' := \pi (inr x).
   pose g (x : G') : G := 
-    match generic_quotient.repr x with 
+    match repr x with 
     | inl x => if x then g_out else g_in
     | inr x => x
     end.
@@ -600,8 +586,8 @@ Proof.
         by case => [][-> ->]. 
     * exact: (@par2_injR (edges2 [seq strip e | e in E]) 
                          (point (remove_edges E) g_in g_out)).
-  - rewrite /f/g=>x/=. case def_y : (generic_quotient.repr x) => [y|y].
-    * rewrite -[x]reprK def_y. symmetry. apply/eqmodP => /=. 
+  - rewrite /f/g=>x/=. case def_y : (repr x) => [y|y].
+    * rewrite -[x]reprK def_y. symmetry. apply/eqquotP => /=. 
       destruct y => //=; solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
     * by rewrite -def_y reprK. 
   - rewrite /h/k=>e/=. 
@@ -617,20 +603,20 @@ Proof.
       -- case:notF. by rewrite (negbTE (valP e)) in p.
       -- congr inr. exact: val_inj.
   - move => e /=. rewrite /h. case: {-}_ / boolP => p //. split. 
-    * symmetry. apply/eqmodP => /=. move: (h_proof _ _) => He. 
+    * symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
       rewrite tnth_map_in ?mem_enum //. 
       move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
       + apply: par2_eqv_ii => //. by rewrite (edges_st A). 
       + apply: par2_eqv_oo => //. by rewrite (edges_st B).
-    * symmetry. apply/eqmodP => /=. move: (h_proof _ _) => He. 
+    * symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
       rewrite tnth_map_in ?mem_enum //. 
       move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
       + apply: par2_eqv_oo => //. by rewrite (edges_st A). 
       + apply: par2_eqv_ii => //. by rewrite (edges_st B).
     * rewrite tnth_map_in ?mem_enum // /strip. by case: ifP.
-  - rewrite /= /f. symmetry. apply/eqmodP => /=. 
+  - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_ii.
-  - rewrite /= /f. symmetry. apply/eqmodP => /=. 
+  - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_oo.
 Qed.
 
@@ -642,9 +628,9 @@ Proof.
   setoid_rewrite (dot2_alt (igraph g_in g_out)).
   setoid_rewrite dot2_alt. set G' := dot2' _ _.
   pose f (x : G') : G :=
-    match generic_quotient.repr x with
+    match repr x with
     | inl x => val x
-    | inr x => match generic_quotient.repr x with
+    | inr x => match repr x with
                | inl x => val x
                | inr x => val x
                end
@@ -692,29 +678,29 @@ Proof.
   apply Iso2'' with f g h k. 
 
   - rewrite /f/g => x.
-    case Ex: (generic_quotient.repr x) => [y|y]; last case Ey: (generic_quotient.repr y) => [z|z].
+    case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z].
     * have y_pi : val y \in @bag G IO g_in := valP y.
       rewrite /g. case: {-}_ / boolP => [?|H]; last by have := H; rewrite {1}y_pi.
-      rewrite -[x]reprK Ex. congr \pi (inl _). exact: val_inj.
+      rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
     * have : val z \in @interval G g_in g_out := valP z.
       rewrite 4!inE -orbA => /or3P[/eqP|/eqP|] Hz.
       -- rewrite Hz /g. case: {-}_ / boolP=> H; last first.
            by have := H; rewrite ?{1}(@bag_id G IO g_in).
-         rewrite -[x]reprK Ex. apply/eqmodP.
-         rewrite /equiv/equiv_pack/dot2_eqv -[_ == inr y]/false.
+         rewrite -[x]reprK Ex. apply/eqquotP.
+         rewrite /=/dot2_eqv -[_ == inr y]/false.
          rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
          rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
          rewrite -(inj_eq val_inj) eqxx sum_eqE andbT -[y]reprK Ey.
-         apply/eqP. apply/eqmodP.
-         by rewrite /equiv/equiv_pack/dot2_eqv sum_eqE -(inj_eq val_inj) Hz eqxx.
+         apply/eqP. apply/eqquotP.
+         by rewrite /=/dot2_eqv sum_eqE -(inj_eq val_inj) Hz eqxx.
       -- rewrite Hz /g. have : g_out \in @bag G IO g_out by exact: bag_id.
          move=> /(disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)).
          rewrite 6!inE 2!eqxx orbT => /(_ _ _)/Wrap[]// o_pi.
          case: {-}_ / boolP=> Hi; first by have := Hi; rewrite {1}o_pi.
          case: {-}_ / boolP=> Ho; last first.
            by have := Ho; rewrite ?{1}(@bag_id G IO g_out).
-         rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr _). apply/eqmodP.
-         rewrite /equiv/equiv_pack/dot2_eqv -[_ == inl z]/false.
+         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqquotP.
+         rewrite /=/dot2_eqv -[_ == inl z]/false.
          rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
          rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
          rewrite -(inj_eq val_inj) eqxx sum_eqE andbT orbF.
@@ -728,14 +714,14 @@ Proof.
          { apply: disjointFl Hz. rewrite sinterval_sym. apply: interval_bag_disj.
            apply: CP_extensive. by rewrite !inE eqxx. }
          case: {-}_ / boolP => po; first by have := po; rewrite {1}poF.
-         rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inl _))).
+         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inl _)))).
          exact: val_inj.
     * have y_po : val z \in @bag G IO g_out := valP z.
       have := disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)y_po.
       rewrite !inE !eqxx orbT => /(_ _ _)/Wrap[]// y_pi.
       rewrite /g. case: {-}_ / boolP => H1; first by have := H1; rewrite {1}y_pi.
       case: {-}_ / boolP => H2; last by have := H2; rewrite {1}y_po.
-      rewrite -[x]reprK Ex -[y]reprK Ey. congr \pi (inr (\pi (inr _))).
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inr _)))).
       exact: val_inj.
 
   - rewrite /f/g=>x. case: {-}_ / boolP => H1; last case: {-}_ / boolP => H2.
@@ -900,72 +886,3 @@ Proof.
         -- apply IH=> //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
 
-
-Require Import subalgebra.
-
-Corollary minor_exclusion_2p (G : graph2) :
-  connected [set: skeleton G] -> 
-  K4_free (sskeleton G) <-> 
-  exists (T : forest) (B : T -> {set G}), [/\ sdecomp T (sskeleton G) B & width B <= 3].
-Proof.
-  move => conn_G. split => [K4F_G|[T [B [B1 B2 B3]]]].
-  - have [T [B] [B1 B2]] := (graph_of_TW2 (term_of G)).
-    have I := term_of_iso (conj conn_G K4F_G). symmetry in I. apply iso2_sskel in I.
-    have [D D1 D2] := iso_decomp B1 I.
-    exists T. exists D. by rewrite D2.
-  - exact: TW2_K4_free B1 B2 B3. 
-Qed.
-
-(** ** Graph Minor Theorem for TW2 *)
-
-(** Remark: contrary to the textbook definition, we do not substract 1
-in the definition of treewidth. Consequently, [width <= 3] means
-treewidth two. *) 
-
-Theorem graph_minor_TW2 (G : sgraph) :
-  K4_free G <-> 
-  exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
-Proof.
-  split=> [| [T][B][]]; last exact: TW2_K4_free.
-  move: G. apply: (nat_size_ind (f := fun G : sgraph => #|G|)).
-  move => G IH K4F_G. 
-  case: (boolP (connectedb [set: G])) => /connectedP conn_G.
-  - case: (posnP #|G|) =>[G_empty | /card_gt0P[x _]].
-    { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
-      apply: leq_trans (width_bound _) _. by rewrite G_empty. }
-    have [G' [iso_Gs iso_G]] := flesh_out x.
-    have conn_G' : connected [set: skeleton G'].
-    { exact: iso_connected conn_G. }
-    have M := minor_exclusion_2p conn_G'.  
-    have K4F_G' : K4_free (sskeleton G').
-    { exact: iso_K4_free K4F_G. }
-    case/M : K4F_G' => T [B] [B1 B2]. 
-    case: (iso_decomp B1 iso_Gs) => D D1 D2. exists T. exists D. by rewrite D2.
-  - case/disconnectedE : conn_G => x [y] [_ _]. 
-    rewrite restrictE; last by move => ?;rewrite !inE. move => Hxy.
-    pose V := [set z | connect sedge x z].
-    pose G1 := sgraph.induced V.
-    pose G2 := sgraph.induced (~:V).
-    have G_iso : diso (sjoin G1 G2) G.
-    { apply: ssplit_disconnected => a b. rewrite !inE => H1. apply: contraNN => H2.
-      apply: connect_trans H1 _. exact: connect1. }
-    have [T1 [B1 [dec1 W1]]] : 
-      exists (T : forest) (B : T -> {set G1}), sdecomp T G1 B /\ width B <= 3.
-    { apply: IH. 
-      - rewrite card_sig. apply: (card_ltnT (x := y)) => /=. by rewrite inE.
-      - apply: subgraph_K4_free K4F_G. exact: sgraph.induced_sub. }
-    have [T2 [B2 [dec2 W2]]] : 
-      exists (T : forest) (B : T -> {set G2}), sdecomp T G2 B /\ width B <= 3.
-    { apply: IH. 
-      - rewrite card_sig. apply: (card_ltnT (x := x)) => /=. 
-        by rewrite !inE negbK connect0.
-      - apply: subgraph_K4_free K4F_G. exact: sgraph.induced_sub. }
-    exists (tjoin T1 T2). 
-    pose B' := (decompU B1 B2).
-    have dec' := join_decomp dec1 dec2.
-    have [B dec W] := iso_decomp dec' G_iso.
-    exists B. rewrite W. split => //. 
-    apply: leq_trans (join_width _ _) _. by rewrite geq_max W1 W2.
-Qed.
-
-Print Assumptions graph_minor_TW2.

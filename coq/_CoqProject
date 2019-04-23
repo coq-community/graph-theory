@@ -1,9 +1,9 @@
 -R . graphs
 edone.v
 set_tac.v
-finite_quotient.v
 bounded.v
 preliminaries.v
+finite_quotient.v
 digraph.v
 sgraph.v
 minor.v
@@ -13,9 +13,10 @@ checkpoint.v
 cp_minor.v
 equiv.v
 multigraph.v
-skeleton.v
 ptt_algebra.v
 ptt_graph.v
+skeleton.v
 subalgebra.v
 extraction_def.v
 extraction_iso.v
+corollaries.v

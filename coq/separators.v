@@ -207,12 +207,12 @@ Lemma sseparator_uniq x y S:
   smallest separator S -> separates x y S -> S != set0 ->
   exists2 p : Path x y, irred p & exists! z, z \in p /\ z \in S.
 Proof.
-  (* Since [S != set0], [G] is connected. Assunme every path needs to
+  (* Since [S != set0], [G] is connected. Assume every path needs to
   visit at least two distinct vertices fro [S]. Thus, there exists a
   vertex in [S], say [s], such that every xy-path through [s] must
   vist another node. Then [S :\ s] separates [x] and [y],
   contradiction. *)
-Admitted.
+Abort.
 
 
 Lemma separation_connected_same_component V1 V2:
@@ -313,7 +313,7 @@ Proof.
       apply: leq_trans (rename_width _ _) _. exact: join_width.
   - (* clique size 0 *)
     suff iso: diso G' G.
-    + case: (iso_decomp dec12 iso) => B' sdecB' wB'B.
+    + case: (decomp_iso dec12 iso) => B' sdecB' wB'B.
       exists T; exists B'. split => //. by rewrite wB'B join_width.
     + suff HH: V2 = ~:V1.
       { rewrite /G' HH. apply ssplit_disconnected. move => x y xV1 yNV1.

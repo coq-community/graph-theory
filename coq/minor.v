@@ -56,7 +56,7 @@ Proof.
   exact: connect0.
 Qed.
 
-Lemma iso_decomp (G1 G2 : sgraph) (T : forest) B1 : 
+Lemma decomp_iso (G1 G2 : sgraph) (T : forest) B1 : 
   sdecomp T G1 B1 -> diso G1 G2 -> 
   exists2 B2, sdecomp T G2 B2 & width B2 = width B1.
 Proof.
@@ -232,21 +232,21 @@ Implicit Types x y : G.
 Definition add_clique_rel := relU sedge [rel x y in U | x != y].
 
 Lemma add_clique_rel_irred : irreflexive add_clique_rel.
-Admitted.
+Abort.
 
 Lemma add_clique_rel_sym : symmetric add_clique_rel.
-Admitted.
+Abort.
 
 Definition add_clique := SGraph add_clique_rel_sym add_clique_rel_irred.
 
 Lemma add_clique_lift x y (p : @Path G x y) : 
   exists q : @Path add_clique x y, nodes q = nodes p.
-Admitted.
+Abort.
 
 Lemma add_clique_unlift x y (p : @Path add_clique x y) : 
   #|[set x in U | x \in p]| <= 1 ->
   exists q : @Path G x y, nodes q = nodes p.
-Admitted.
+Abort.
 
 End AddClique.
 *)

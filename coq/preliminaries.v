@@ -7,8 +7,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Local Open Scope quotient_scope.
-
 (** * Preliminaries *)
 
 (** Use capitalized names for Coq.Relation_Definitions *)
@@ -412,9 +410,6 @@ Definition surjective aT (rT:eqType) (f : aT -> rT) := forall y, exists x, f x =
 
 Lemma id_surj (T : eqType) : surjective (@id T).
 Proof. move => y. by exists y. Qed.
-
-Lemma emb_surj (T : finType) (e : equiv_rel T) : surjective (\pi_({eq_quot e})).
-Proof. move => y. exists (repr y). by rewrite reprK. Qed.
 
 Lemma bij_surj A (B : eqType) (f : A -> B) : bijective f -> surjective f.
 Proof. case => g g1 g2 x. exists (g x). by rewrite g2. Qed.

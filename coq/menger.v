@@ -509,7 +509,6 @@ Proof.
     case: (connector_extend (G := G) (i := j) _ _ xy xB conn_Y') => //. 
     + move => {j jP}.
       apply/negP => /bigcupP [j] _. rewrite inE mem_del_edge_liftS => xYj. 
-      (* have [i Hi] : exists i, lst (X i) = x. admit. *)
       case EYj : (Y j) => [[u v] /= p]. rewrite -/(PathS p) in EYj.
       have Ip : irred p. { move: (conn_irred conn_Y j). by rewrite EYj. }
       have xp : x \in p by rewrite EYj in xYj.
