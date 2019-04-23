@@ -29,9 +29,14 @@ End FinEncodingModuloRel.
 
 Local Open Scope quotient_scope.
 
-Lemma piK_ (T : choiceType) (e : equiv_rel T) z : e z (repr (\pi_({eq_quot e}) z)).
-Proof. by case: piP => /= y /eqquotP. Qed.
-
+Module Type QUOT.
+  Parameter quot: forall T: finType, equiv_rel T -> finType.
+  Parameter pi: forall (T: finType) (e: equiv_rel T), T -> quot e.
+  Parameter repr: forall (T: finType) (e: equiv_rel T), quot e -> T.
+  Parameter reprK: forall (T: finType) (e: equiv_rel T), cancel (@repr _ e) (pi e). 
+  Parameter eqquotP: forall (T: finType) (e: equiv_rel T) (x y: T), reflect (pi e x = pi e y) (e x y).
+End QUOT.
+Module Export quot: QUOT.
 Section s.
   Variables (T: finType) (e: equiv_rel T).
   Definition quot: finType := [finType of {eq_quot e}].
@@ -41,14 +46,29 @@ Section s.
   Proof. exact: reprK. Qed.
   Lemma eqquotP (x y : T): reflect (pi x = pi y) (e x y).
   Proof. exact: eqquotP. Qed.
-  Lemma piK (x: T): e (repr (pi x)) x.
-  Proof. rewrite equiv_sym. exact: piK_. Qed.
-  Lemma piK' (x: T): e x (repr (pi x)).
-  Proof. exact: piK_. Qed.
 End s.
-Global Opaque quot pi repr.
+End quot.
 Notation "\pi x" := (pi _ x) (at level 30).
 Notation "x = y %[mod e ]" := (pi e x = pi e y).
+Notation "x == y %[mod e ]" := (pi e x == pi e y).
+
+Lemma piK (T: finType) (e: equiv_rel T) (x: T): e (repr (pi e x)) x.
+Proof. apply /eqquotP. by rewrite reprK. Qed.
+Lemma piK' (T: finType) (e: equiv_rel T) (x: T): e x (repr (pi e x)).
+Proof. rewrite equiv_sym; apply piK. Qed.
+
+(* TODO: only used once in skeleton ; remove? *)
+Lemma eqmodE (T: finType) (e: equiv_rel T) (x y : T): (x == y %[mod e]) = e x y.
+Admitted.
+
+(* TODO: only used in extraction_iso ; remove? *)
+CoInductive pi_spec (T : finType) (e : equiv_rel T) (x : T) : T -> Type :=
+  PiSpec : forall y : T, x = y %[mod e] -> pi_spec e x y.
+Lemma piP (T: finType) (e: equiv_rel T) (x: T): pi_spec e x (repr (pi e x)).
+Proof. constructor. by rewrite reprK. Qed.
+
+Lemma pi_surj (T : finType) (e : equiv_rel T) : surjective (pi e).
+Proof. move => y. exists (repr y). by rewrite reprK. Qed.
 
 Lemma mod_exchange (T : finType) (e1 e2 : equiv_rel T) x y : 
   e1 =2 e2 -> x = y %[mod e2] -> x = y %[mod e1].

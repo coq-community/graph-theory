@@ -96,9 +96,6 @@ Proof.
   - by [].
   - split=>//.
 Qed.
-
-(* TODO: find a replacement? *)
-Definition piP (T: finType) (r: equiv_rel T) (x: T): pi_spec _ x (repr (pi r x)) := piP _ x.
   
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
@@ -111,7 +108,7 @@ Proof.
   set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
 
   have injL (x y : G1) : inl x = inl y %[mod @par2_eqv_equivalence G1 G2] -> x = y.
-  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+  { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
     all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE !orbF.
@@ -119,7 +116,7 @@ Proof.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
   have injR (x y : G2) : inr x = inr y %[mod @par2_eqv_equivalence G1 G2] -> x = y.
-  { move=> /eqmodP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
+  { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
     all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE.
@@ -153,7 +150,7 @@ Proof.
     case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
       * rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
-        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
+        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
         rewrite /=/par2_eqv. case: ifPn => _; last first.
         { rewrite subUset !sub1set !in_setU !in_set1.
           by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
@@ -161,7 +158,7 @@ Proof.
         rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
         by rewrite /= !orbF !andbT !andbb.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
-        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
+        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
         rewrite /=/par2_eqv. case: ifPn => _; last first.
         { rewrite subUset !sub1set !in_setU !in_set1.
           by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
@@ -351,12 +348,12 @@ Proof.
       case: {-}_ / boolP => H2.
       { have := H2; rewrite {1}Ey 2!inE (@sinterval_bounds G).
         by move: u_cpio; rewrite 4!inE negb_or => /andP[]/andP[_]/negbTE->. }
-      rewrite -[x]reprK Ex. apply/eqmodP.
+      rewrite -[x]reprK Ex. apply/eqquotP.
       rewrite /=/dot2_eqv -[_ == inl y]/false.
       rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
       rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
       rewrite -(inj_eq val_inj) [_ && (_ || _)]andbC {1}Ey eqxx andbT.
-      apply/eqP. apply/eqmodP. rewrite /=/dot2_eqv sum_eqE.
+      apply/eqP. apply/eqquotP. rewrite /=/dot2_eqv sum_eqE.
       by rewrite -(inj_eq val_inj) SubK {1}Ey eqxx.
     * have z_bag : val z \in @bag G IO u := valP z.
       have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
@@ -389,7 +386,7 @@ Proof.
         exact: val_inj. }
       move: zR; rewrite 4!inE. have := H2; rewrite 2!inE negb_or.
       case/andP=> /negbTE-> /negbTE->; rewrite !orbF => /eqP y_u.
-      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqmodP.
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqquotP.
       rewrite /=/dot2_eqv -[_ == inr z]/false.
       rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
       rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
@@ -505,7 +502,7 @@ Proof.
     * move/(@par2_injR (sym2b' a b) (edges2 Ar)) : Hy. apply. 
         by destruct b.
   - rewrite /f/g=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
-      rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqmodP => /=. 
+      rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqquotP => /=. 
       destruct b;destruct y => //=;
       solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
   - rewrite /h/k=>x. case: (ord_0Vp x) => [-> //|[o' Ho']].
@@ -520,21 +517,21 @@ Proof.
     * rewrite [source]lock /= -lock. rewrite /h /=.
       case: (ord_0Vp e) => [E|[o' Ho']].
       + rewrite E /f /=. destruct b eqn: def_b.
-        all: symmetry; apply/eqmodP => //=.
+        all: symmetry; apply/eqquotP => //=.
         exact: par2_eqv_ii.
         exact: par2_eqv_oo.
       + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
     * rewrite [target]lock /= -lock. rewrite /h /=.
       case: (ord_0Vp e) => [E|[o' Ho']].
       + rewrite E /f /=. destruct b eqn: def_b.
-        all: symmetry; apply/eqmodP => //=.
+        all: symmetry; apply/eqquotP => //=.
         exact: par2_eqv_oo.
         exact: par2_eqv_ii.
       + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
     * rewrite /h/=. case: (ord_0Vp e) => [-> //|[o' Ho']].
         by rewrite (tnth_cons Ho'). 
-  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_ii.
-  - rewrite /f /=. symmetry. apply/eqmodP => //=. exact: par2_eqv_oo.
+  - rewrite /f /=. symmetry. apply/eqquotP => //=. exact: par2_eqv_ii.
+  - rewrite /f /=. symmetry. apply/eqquotP => //=. exact: par2_eqv_oo.
 Qed.
 
 Lemma edges2_big (As : seq (sym * bool)) : 
@@ -590,7 +587,7 @@ Proof.
     * exact: (@par2_injR (edges2 [seq strip e | e in E]) 
                          (point (remove_edges E) g_in g_out)).
   - rewrite /f/g=>x/=. case def_y : (repr x) => [y|y].
-    * rewrite -[x]reprK def_y. symmetry. apply/eqmodP => /=. 
+    * rewrite -[x]reprK def_y. symmetry. apply/eqquotP => /=. 
       destruct y => //=; solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
     * by rewrite -def_y reprK. 
   - rewrite /h/k=>e/=. 
@@ -606,20 +603,20 @@ Proof.
       -- case:notF. by rewrite (negbTE (valP e)) in p.
       -- congr inr. exact: val_inj.
   - move => e /=. rewrite /h. case: {-}_ / boolP => p //. split. 
-    * symmetry. apply/eqmodP => /=. move: (h_proof _ _) => He. 
+    * symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
       rewrite tnth_map_in ?mem_enum //. 
       move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
       + apply: par2_eqv_ii => //. by rewrite (edges_st A). 
       + apply: par2_eqv_oo => //. by rewrite (edges_st B).
-    * symmetry. apply/eqmodP => /=. move: (h_proof _ _) => He. 
+    * symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
       rewrite tnth_map_in ?mem_enum //. 
       move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
       + apply: par2_eqv_oo => //. by rewrite (edges_st A). 
       + apply: par2_eqv_ii => //. by rewrite (edges_st B).
     * rewrite tnth_map_in ?mem_enum // /strip. by case: ifP.
-  - rewrite /= /f. symmetry. apply/eqmodP => /=. 
+  - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_ii.
-  - rewrite /= /f. symmetry. apply/eqmodP => /=. 
+  - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_oo.
 Qed.
 
@@ -689,12 +686,12 @@ Proof.
       rewrite 4!inE -orbA => /or3P[/eqP|/eqP|] Hz.
       -- rewrite Hz /g. case: {-}_ / boolP=> H; last first.
            by have := H; rewrite ?{1}(@bag_id G IO g_in).
-         rewrite -[x]reprK Ex. apply/eqmodP.
+         rewrite -[x]reprK Ex. apply/eqquotP.
          rewrite /=/dot2_eqv -[_ == inr y]/false.
          rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
          rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
          rewrite -(inj_eq val_inj) eqxx sum_eqE andbT -[y]reprK Ey.
-         apply/eqP. apply/eqmodP.
+         apply/eqP. apply/eqquotP.
          by rewrite /=/dot2_eqv sum_eqE -(inj_eq val_inj) Hz eqxx.
       -- rewrite Hz /g. have : g_out \in @bag G IO g_out by exact: bag_id.
          move=> /(disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)).
@@ -702,7 +699,7 @@ Proof.
          case: {-}_ / boolP=> Hi; first by have := Hi; rewrite {1}o_pi.
          case: {-}_ / boolP=> Ho; last first.
            by have := Ho; rewrite ?{1}(@bag_id G IO g_out).
-         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqmodP.
+         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqquotP.
          rewrite /=/dot2_eqv -[_ == inl z]/false.
          rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
          rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.

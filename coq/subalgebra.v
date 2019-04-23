@@ -109,10 +109,10 @@ Section Quotients.
     exists T'. exists (rename D' h); split; last by exists None.
     - apply: rename_decomp => //. 
       + apply: hom_eqL (pi_hom e). exact: skel_union_join.
-      + exact: emb_surj.
+      + exact: pi_surj.
       + move => x y. move/sk_rel_mergeE => [? [x0] [y0] /= [? ? ?]]. 
         exists x0;exists y0. split => //. by rewrite /edge_rel/= -skel_union_join.
-      + move => x y. move/eqmodP => /=. case/adm_e => [<-|A].
+      + move => x y. move/eqquotP => /=. case/adm_e => [<-|A].
         * case: (sbag_cover dec_D' x) => t Ht. left. exists t. by rewrite Ht.
         * left. exists None. by rewrite /= -!sub1set -subUset. 
     - rewrite /width (bigID (pred1 None)).
@@ -142,9 +142,9 @@ Section Quotients.
       apply/subsetP => ? /imsetP [x H1 ->]. case/setUP : H1 => H1; first case/setUP : H1 => H1.
       * by rewrite mem_imset.
       * move/set1P : H1 => ->. apply/imsetP. exists (inl g_in); first by rewrite !inE eqxx ?orbT.
-        apply/eqmodP. eqv. 
+        apply/eqquotP. eqv. 
       * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
-        apply/eqmodP. eqv. 
+        apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
       exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
@@ -167,7 +167,7 @@ Section Quotients.
       rewrite /P -!setUA [[set _;_]]setUC !setUA. case/setUP => H1.
       * by rewrite mem_imset.
       * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
-        apply/eqmodP. eqv. 
+        apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
       exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.

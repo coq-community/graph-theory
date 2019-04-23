@@ -105,7 +105,7 @@ Proof.
 Defined.
   
 Lemma pi_hom (G : graph) (e : equiv_rel G) : 
-  hom_s (\pi_{eq_quot e} : skeleton G -> skeleton (merge G e)).
+  hom_s (pi e : skeleton G -> skeleton (merge G e)).
 Proof.
   move => x y xy Dxy. apply/sk_rel_mergeE. split => //. by exists x; exists y.
 Qed.

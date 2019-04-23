@@ -655,7 +655,7 @@ Section alt.
    inl x = inr y %[mod par2_eqv_equivalence] ->
    x = g_in /\ y = g_in \/ x = g_out /\ y = g_out.
  Proof.
-   move/eqmodP. rewrite /=/par2_eqv /eq_op/= -!/eq_op. case: ifP => i_o.
+   move/eqquotP. rewrite /=/par2_eqv /eq_op/= -!/eq_op. case: ifP => i_o.
    - rewrite !inE !eqEsubset. case/orP=> /andP[H _]; move: H.
      all: rewrite subUset !sub1set !inE /eq_op/= orbF =>/andP[/eqP-> /eqP->].
      + by left.
@@ -672,7 +672,7 @@ Section alt.
    inl x = inl y %[mod par2_eqv_equivalence] ->
    x = y.
  Proof.
-   move=> iNo2 /eqmodP/=. rewrite /par2_eqv/= iNo2 andbT sum_eqE.
+   move=> iNo2 /eqquotP/=. rewrite /par2_eqv/= iNo2 andbT sum_eqE.
    case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
    - rewrite !inE !eqEsubset ![[set inl x; inl y] \subset _]subUset !sub1set !inE.
      rewrite /eq_op/= !orbF. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
@@ -684,7 +684,7 @@ Section alt.
    inr x = inr y %[mod par2_eqv_equivalence] ->
    x = y.
  Proof.
-   move=> iNo2 /eqmodP/=. rewrite /par2_eqv/= iNo2 /= sum_eqE.
+   move=> iNo2 /eqquotP/=. rewrite /par2_eqv/= iNo2 /= sum_eqE.
    case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
    - rewrite !inE !eqEsubset ![[set inr x; inr y] \subset _]subUset !sub1set !inE.
      rewrite /eq_op/=. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
@@ -755,14 +755,14 @@ Section alt.
  Lemma dot2_injL (x y : F) :
    inl x = inl y %[mod dot2_eqv_equivalence] -> x = y.
  Proof.
-   move=> /eqmodP. rewrite /=/dot2_eqv/= sum_eqE. case/orP=> [/eqP//|].
+   move=> /eqquotP. rewrite /=/dot2_eqv/= sum_eqE. case/orP=> [/eqP//|].
    by rewrite eq_sym eqEcard subUset -andbA andbCA !sub1set !inE.
  Qed.
  
  Lemma dot2_injR (x y : G) :
    inr x = inr y %[mod dot2_eqv_equivalence] -> x = y.
  Proof.
-   move=> /eqmodP. rewrite /=/dot2_eqv/= sum_eqE. case/orP=> [/eqP//|].
+   move=> /eqquotP. rewrite /=/dot2_eqv/= sum_eqE. case/orP=> [/eqP//|].
    by rewrite eq_sym eqEcard subUset !sub1set !inE.
  Qed.
 
@@ -770,7 +770,7 @@ Section alt.
  Lemma dot2_LR (x : F) (y : G) :
    inl x = inr y %[mod dot2_eqv_equivalence] -> x = g_out /\ y = g_in.
  Proof.
-   move=> /eqmodP. rewrite /=/dot2_eqv/=.
+   move=> /eqquotP. rewrite /=/dot2_eqv/=.
    rewrite eq_sym eqEcard subUset !sub1set !inE orbC /= !sum_eqE.
    by case/andP=> /andP[/eqP<- /eqP<-].
  Qed.
