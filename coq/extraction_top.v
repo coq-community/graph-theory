@@ -69,33 +69,98 @@ Proof.
   by apply: term_of_rec_eq'; auto. 
 Qed.
 
-Opaque merge_def merge_seq.
+Opaque merge.
 
 Arguments unl [G H] x : simpl never.
 Arguments unr [G H] x : simpl never.
 
-Instance: RewriteRelation iso2.
+Require Import set_tac.
 
-Lemma iso_disconnected_component (G : graph2) (C : {set G}) (x : G) (iC : g_in \in ~: C) (oC : g_out \in ~: C) : 
+Lemma component_closed (G : sgraph) (C U : {set G}) x y:
+  C \in components U -> x \in C -> y \in U -> x -- y -> y \in C.
+Admitted.
+
+Lemma edge_set_component (G : graph) (U C : {set skeleton G}) (e : edge G) : 
+  C \in components U -> (source e \in C) = (target e \in C).
+Admitted.
+Arguments edge_set_component [G U C e].
+
+(* if C is a component, this becomes an equivalence *)
+Lemma edge_setN (G : graph) (C : {set G}) (e : edge G):
+  e \in edge_set C -> e \notin edge_set (~: C).
+Admitted.
+
+Lemma edge_comp (G : graph) (C : {set G}) (e : edge G):
+  C \in components [set: skeleton G] ->
+  (e \in edge_set C) + (e \in edge_set (~: C))%type.
+Proof. 
+  move => comp_C. case: (boolP (source e \in C)) => p; [left|right].
+  - by rewrite inE -(edge_set_component comp_C) p.
+  - by rewrite !inE -(edge_set_component comp_C) p.
+Qed.
+
+(* TODO: compartmentalize *)
+Lemma iso_component (G : graph) (C : {set G}) : 
+  C \in components [set: skeleton G] ->
+  iso G (union (induced C) (induced (~: C))).
+Proof.
+  move => comp_C.
+  set G1 := induced C.
+  set G2 := induced _.
+  pose hv (x : union G1 G2) := match x with inl x => val x | inr x => val x end.
+  pose he (e : edge (union G1 G2)) := match e with inl e => val e | inr e => val e end.
+  have decC z : (z \in C) + (z \in ~: C)%type. 
+  { case: (boolP (z \in C)) => p; [by left|right]. by rewrite inE p. }
+  pose gv (z : G) : union G1 G2 := 
+    match decC z with inl p => inl (Sub z p) | inr p => inr (Sub z p) end.
+  have decE (e : edge G) :
+    (e \in edge_set C) + (e \in edge_set (~: C))%type by exact: edge_comp.
+  pose ge (e : edge G) : edge (union G1 G2) := 
+    match decE e with inl p => inl (Sub e p) | inr p => inr (Sub e p) end.
+  have can_gv : cancel gv hv by abstract by move => x; rewrite /gv; case: (decC x).
+  have can_gh : cancel hv gv. 
+  { case => a; rewrite /gv/hv; case: (decC _) => p. 
+    - congr inl. exact: val_inj.
+    - exfalso. move: (valP a) => /= X. by rewrite inE X in p.
+    - exfalso. move: (valP a) => /=. by rewrite inE p.
+    - congr inr. exact: val_inj. }
+  have can_ge : cancel ge he.
+  { move => x; rewrite /ge/he; by case (decE _). }
+  have can_he : cancel he ge.
+  { case => e; rewrite /he/ge; case: (decE _) => p.
+    - congr inl. exact: val_inj.
+    - exfalso. move: (valP e) => /= /edge_setN X. by contrab.
+    - exfalso. move: (valP e) => /= X. move/edge_setN in p. by rewrite X in p.
+    - congr inr. exact: val_inj. }
+  have hom : is_hom hv he. { repeat split; by case=>e. } 
+  apply: iso_sym. by apply (@Iso' _ _ hv gv he ge).
+Defined.
+
+
+Lemma iso2_disconnected_component_aux (G : graph2) (C : {set G}) (x : G) (iC : g_in \in ~: C) (oC : g_out \in ~: C) : 
   C \in components [set: skeleton G] -> x \in C ->
   point (union (component1 x) (induced (~: C))) 
         (inr (Sub g_in iC)) (inr (Sub g_out oC)) ≈ G.
 Proof.
-  move => comp_C xC.
-  set G1 := _ x. set G2 := induced _. set GU := point _ _ _.
-  pose hv (x : union G1 G2) := match x with inl x => val x | inr x => val x end.
-  pose he (e : edge (union G1 G2)) := match e with inl e => val e | inr e => val e end.
-  have decC z : (z \in @component_of G x) + (z \in ~: C)%type. 
-  { admit. }
-  pose gv (z : G) : GU := 
-    match decC z with inl p => inl (Sub z p) | inr p => inr (Sub z p) end.
-  have decE (e : edge G) :
-    (e \in edge_set (@component_of G x)) + (e \in edge_set (~: C))%type.
-  { admit. }
-  pose ge (e : edge G) : edge GU := 
-    match decE e with inl p => inl (Sub e p) | inr p => inr (Sub e p) end.
-  apply: (@Iso2'' GU G hv gv he ge).
+  (* should follow with the lemma above *)
 Admitted.  
+
+(** TODO: This is literally half of the proof of dot2A, use the lemma there *)
+Lemma dot2_flatten_r (F G H : graph2) :
+  F·(G·H)
+≈ point (merge_seq (union F (union G H)) [:: (unl g_out,unr (unl g_in)) ; (unr (unl g_out), unr (unr g_in)) ])
+        (\pi (unl g_in)) (\pi (unr (unr g_out))).
+Proof.
+  rewrite /=/dot2/=.
+  rewrite -> (merge_iso2 (union_merge_r _ _)) =>/=.
+  rewrite !union_merge_rEl !union_merge_rEr.
+  rewrite -> (merge_merge (G:=union F (union G H))
+                       (k:=[::(unl g_out,unr (unl g_in))])) =>//.
+  apply merge_seq_same' => /=.
+  apply eqv_clot_eq; leqv.
+Qed.
+
+
 
 Lemma iso2_disconnected_component (G : graph2) (C : {set G}) x : 
   C \in components [set: skeleton G] -> g_in \in ~: C -> g_out \in ~: C -> x \in C ->
@@ -109,15 +174,15 @@ Proof.
   move def_G2 : (point _ _ _) => G2. 
   rewrite /dot2/top2. 
   setoid_rewrite (merge_iso2 (union_merge_r _ _)). 
-  rewrite !h_union_merge_rEl !h_union_merge_rEr.
+  rewrite !union_merge_rEl !union_merge_rEr.
   set TGT := union _ (union G1 _). 
   pose k : pairs TGT := [:: (unl o2, unr (unl g_in))].  
   setoid_rewrite (merge_merge (G := TGT) (k := k)).
-  2:{ by rewrite /= !h_union_merge_rEl h_union_merge_rEr. }
+  2:{ by rewrite /= !union_merge_rEl union_merge_rEr. }
   simpl map_pairs. rewrite /k. simpl cat.
   rewrite /par2. 
   setoid_rewrite (merge_iso2 (union_merge_l _ _)).
-  simpl map_pairs. rewrite /= !h_union_merge_lEl !h_union_merge_lEr.
+  simpl map_pairs. rewrite /= !union_merge_lEl !union_merge_lEr.
   set k1 := [:: _ ; _ ]. 
   set k2 := [:: _ ; _ ]. 
   set TGT2 := union TGT G2. 
