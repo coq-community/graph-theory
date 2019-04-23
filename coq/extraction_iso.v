@@ -151,7 +151,7 @@ Proof.
   apply Iso2'' with f g h k. 
   - rewrite /f/g=>x.
     case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
-      * rewrite -[x]reprK Ex. do 2 f_equal. exact: val_inj.
+      * rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
         rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqmodP.
         rewrite /=/par2_eqv. case: ifPn => _; last first.
@@ -168,7 +168,7 @@ Proof.
         rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
         rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
         by rewrite /= !orbF !andbT !andbb.
-      * rewrite -[x]reprK Ex. do 2 f_equal. exact: val_inj.
+      * rewrite -[x]reprK Ex. congr (\pi (inr _)). exact: val_inj.
   - rewrite /f/g=>x. case: (decV x) => Hx; case: piP => -[]y.
       * by move=> /injL<-.
       * by case/inLR=> -[]/valE/=->->.
@@ -344,7 +344,7 @@ Proof.
   - rewrite /f/g=>x.
     case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z]. 
     * have yL : val y \in @interval G g_in u := valP y. case: {-}_ / boolP => H1.
-      { rewrite -[x]reprK Ex; do 2 f_equal; exact: val_inj. }
+      { rewrite -[x]reprK Ex; congr (\pi (inl _)); exact: val_inj. }
       have Ey : val y = u.
       { move: H1 yL. rewrite [_ \in @interval G _ _]inE (lock sinterval) !inE -lock.
         rewrite negb_or => /andP[/negbTE-> /negbTE->]. by rewrite orbF => /eqP. }
@@ -369,8 +369,8 @@ Proof.
         - by rewrite (disjointFr (interval_bag_disj u _) z_bag). }
       case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
       case: {-}_ / boolP => H2; first by have := H2; rewrite zNr.
-      rewrite -[x]reprK Ex -[y]reprK Ey. 
-      repeat f_equal. exact: val_inj.
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inl _)))).
+      exact: val_inj.
     * have zR : val z \in @interval G u g_out := valP z.
       have /negbTE zNl : val z \notin g_in |: @sinterval G g_in u.
       { rewrite 2!inE negb_or. move: zR. rewrite 4!inE -orbA.
@@ -385,15 +385,15 @@ Proof.
           by move: u_cpio; rewrite inE => /andP[_]. }
       case: {-}_ / boolP => H1; first by have := H1; rewrite zNl.
       case: {-}_ / boolP => H2.
-      { rewrite -[x]reprK Ex -[y]reprK Ey. repeat f_equal. exact: val_inj. }
+      { rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inr _)))).
+        exact: val_inj. }
       move: zR; rewrite 4!inE. have := H2; rewrite 2!inE negb_or.
       case/andP=> /negbTE-> /negbTE->; rewrite !orbF => /eqP y_u.
-      rewrite -[x]reprK Ex -[y]reprK Ey. do 2 f_equal. apply/eqmodP.
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqmodP.
       rewrite /=/dot2_eqv -[_ == inr z]/false.
       rewrite eqEcard subUset !sub1set !inE !sum_eqE !cards2.
       rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
-      (* by *) rewrite -!(inj_eq val_inj) SubK y_u eqxx.
-      admit.                    (* 'by' was working before...  *)
+      by rewrite -!(inj_eq val_inj) SubK/= y_u eqxx /=.
 
   - rewrite /f/g=>x. case: {-}_ / boolP => H1; last case: {-}_ / boolP => H2.
     * case: piP => -[y /injL/valE//|y /inLR[/valE?{y}->]].
@@ -439,7 +439,7 @@ Proof.
     rewrite /= in H. by case: piP => -[y /injL<-|y /inLR[/valE?->]].
   - rewrite /f. case: piP => -[y /inRL[->]/inRL[_]/valE//|y /injR<-{y}].
     by case: piP => -[y /inRL[->]/valE|y /injR<-].
-Admitted.
+Qed.
 
 Definition sym2_ (G : graph2) (e : edge G) :=
   if e \in edges g_in g_out then sym2 (label e) else cnv2 (sym2 (label e)).
@@ -684,7 +684,7 @@ Proof.
     case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z].
     * have y_pi : val y \in @bag G IO g_in := valP y.
       rewrite /g. case: {-}_ / boolP => [?|H]; last by have := H; rewrite {1}y_pi.
-      rewrite -[x]reprK Ex. do 2 f_equal. exact: val_inj.
+      rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
     * have : val z \in @interval G g_in g_out := valP z.
       rewrite 4!inE -orbA => /or3P[/eqP|/eqP|] Hz.
       -- rewrite Hz /g. case: {-}_ / boolP=> H; last first.
@@ -702,7 +702,7 @@ Proof.
          case: {-}_ / boolP=> Hi; first by have := Hi; rewrite {1}o_pi.
          case: {-}_ / boolP=> Ho; last first.
            by have := Ho; rewrite ?{1}(@bag_id G IO g_out).
-         rewrite -[x]reprK Ex -[y]reprK Ey. do 2 f_equal. apply/eqmodP.
+         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqmodP.
          rewrite /=/dot2_eqv -[_ == inl z]/false.
          rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
          rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
@@ -717,14 +717,15 @@ Proof.
          { apply: disjointFl Hz. rewrite sinterval_sym. apply: interval_bag_disj.
            apply: CP_extensive. by rewrite !inE eqxx. }
          case: {-}_ / boolP => po; first by have := po; rewrite {1}poF.
-         rewrite -[x]reprK Ex -[y]reprK Ey. repeat f_equal.
+         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inl _)))).
          exact: val_inj.
     * have y_po : val z \in @bag G IO g_out := valP z.
       have := disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)y_po.
       rewrite !inE !eqxx orbT => /(_ _ _)/Wrap[]// y_pi.
       rewrite /g. case: {-}_ / boolP => H1; first by have := H1; rewrite {1}y_pi.
       case: {-}_ / boolP => H2; last by have := H2; rewrite {1}y_po.
-      rewrite -[x]reprK Ex -[y]reprK Ey. repeat f_equal. exact: val_inj.
+      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inr _)))).
+      exact: val_inj.
 
   - rewrite /f/g=>x. case: {-}_ / boolP => H1; last case: {-}_ / boolP => H2.
     * case: piP => -[y /injL/valE<-//|y /inLR[/valE]].

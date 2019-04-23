@@ -43,14 +43,11 @@ Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
 
 (** ** Disjoint Union *)
 
-Definition funU {A B C D} (f: A -> B) (g: C -> D) (x: A+C): B+D :=
-  match x with inl a => inl (f a) | inr c => inr (g c) end. 
-
 Definition union (G1 G2 : graph) : graph :=
   {| vertex := [finType of G1 + G2];
      edge := [finType of edge G1 + edge G2];
-     source := funU (@source G1) (@source G2);
-     target := funU (@target G1) (@target G2);
+     source := sumf (@source G1) (@source G2);
+     target := sumf (@target G1) (@target G2);
      label e := match e with inl e => label e | inr e => label e end |}.
 
 (* Definition unl {G H: graph} (x: G): union G H := inl x.  *)
@@ -145,8 +142,6 @@ Proof. exact: subgraph_sub. Qed.
 
 
 (** ** Isomorphim Properties *)
-
-Local Open Scope quotient_scope.
 
 Record iso (F G: graph): Type := Iso
   { iso_v:> bij F G;
@@ -357,7 +352,7 @@ Proof.
     rewrite /e1/rel_of_pairs/= mem_cat. case/orP => H.
     + apply: eq_equiv. apply/eqquotP. rewrite eqv_clotE. exact: sub_equiv_of.
     + apply: sub_equiv_of. apply/mapP. by exists (u,v).
-  - suff S (u v : {eq_quot (eqv_clot h)}):
+  - suff S (u v : quot (eqv_clot h)):
       equiv_of e2 u v -> equiv_of e1 (repr u) (repr v).
     { move/S => H.  
       apply: equiv_trans (equiv_trans _ _). 2: exact: H.
@@ -465,7 +460,7 @@ Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
   Definition union_K_pairs := map_pairs (fun x => match x with inl x => x | inr x => k x end) h.
 
-  Hypothesis kh: forall x: K, inr x = inl (k x) %[mod_eq (eqv_clot h)].
+  Hypothesis kh: forall x: K, inr x = inl (k x) %[mod (eqv_clot h)].
 
   (* TOTHINK: can this be factorized to use a general lemma about [equiv_of],
   similar to [equiv_of_ff] ?*)
