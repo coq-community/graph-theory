@@ -268,8 +268,12 @@ Qed.
 
 Lemma eqv_clot_iso (A B: finType) (h: bij A B) (l: pairs A):
   map_equiv h^-1 (eqv_clot l) =2 eqv_clot (map_pairs h l).
-Admitted.
-
+Proof.
+  move => x y. rewrite /map_equiv/map_equiv_rel/=. apply/idP/idP.
+  - move/(eqv_clot_map' h). by rewrite !bijK'.
+  - move/(eqv_clot_map' h^-1). rewrite /map_pairs -map_comp map_id_in //. 
+    move => {x y} x y /=. by rewrite !bijK -surjective_pairing.
+Qed.
 
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
@@ -389,29 +393,12 @@ Proof. rewrite (@eqv_clot_mapF _) ?inr_codom_inl //. exact: inl_inj. Qed.
 Lemma union_equiv_l_eqv_clot (A B: finType) (l: pairs A):
   union_equiv_l B (eqv_clot l) =2 eqv_clot (map_pairs inl l).
 Proof.
-  (* commented proof was mixing two things, but bits can certainly be reused... *)
-  (* 
-    exists h_union_merge_l1 h_union_merge_l1'=>x.
-    (* TODO: abstract proofs *)
-    - case: x => [x'|x']. 
-      + suff [z Z1 Z2] : exists2 z : F, repr (h_union_merge_l1 (unl x')) = unl z & \pis z = x'.
-        { by rewrite /h_union_merge_l1' Z1 Z2. }
-        rewrite /h_union_merge_l1/=. case E : (repr _) => [z|z].
-        * exists z => //. move/(congr1 (@pi (union F G) (map_pairs unl l))) : E.
-          rewrite reprsK. move/eqquotP. rewrite eqv_clot_map => [E|]; last exact: unl_inj.
-          rewrite -[x']reprsK. apply:esym. exact/eqquotP.
-        * move/(congr1 (@pi (union F G) (map_pairs unl l))) : E.
-          rewrite reprsK. move/eqquotP. by rewrite eqv_clot_map_lr.
-      + rewrite h_union_merge_lEr /h_union_merge_l1' /repr. case: piP => /= [[y|y]].
-        * move/eqquotP. by rewrite equiv_sym eqv_clot_map_lr.
-        * move/eqquotP. rewrite (@eqv_clot_map_eq (union F G)) ?unr_codom_unl //.
-          by move/eqP=>[->].
-    - rewrite /=/h_union_merge_l1/h_union_merge_l1'. case E: (repr x) => [y|y] /=. 
-      + rewrite -[x]reprK -/(repr _)/= {}E. apply/eqquotP. 
-        rewrite (@eqv_clot_map (union F G)) 1?equiv_sym. exact: eq_piK. exact: unl_inj.
-      + by rewrite /unr -E reprsK.
-*)  
-Admitted.
+  rewrite /union_equiv_l/=/union_equiv_l_rel. move => [x|x] [y|y].
+  + rewrite (@eqv_clot_map _ _  _ _ _ (@inl A B)) //. exact: inl_inj.
+  + by rewrite eqv_clot_map_lr.
+  + by rewrite equiv_sym eqv_clot_map_lr. 
+  + by rewrite eqv_clot_map_eq ?sum_eqE // inr_codom_inl.
+Qed.
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
