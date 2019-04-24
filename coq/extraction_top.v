@@ -152,94 +152,106 @@ Definition iso_component : iso (union (induced C) (induced (~: C))) G :=
 
 End IsoComponents.
 
-Lemma iso2_disconnected_component_aux (G : graph2) (C : {set G}) (x : G) (iC : g_in \in ~: C) (oC : g_out \in ~: C) : 
-  C \in components [set: skeleton G] -> x \in C ->
-  point (union (component1 x) (induced (~: C))) 
-        (inr (Sub g_in iC)) (inr (Sub g_out oC)) ≈ G.
-Proof.
-  (* should follow with the lemma above -- if needed *)
-Admitted.  
+Definition topR := A11'.
+Lemma topL (F : graph2) : 
+  top·F ≡ (point (union F unit_graph)) (unr (tt:unit_graph)) (unl g_out).
+Admitted.
 
-(** TODO: This is literally half of the proof of dot2A, use the lemma there *)
-Lemma dot2_flatten_r (F G H : graph2) :
-  F·(G·H)
-≈ point (merge_seq (union F (union G H)) [:: (unl g_out,unr (unl g_in)) ; (unr (unl g_out), unr (unr g_in)) ])
-        (\pi (unl g_in)) (\pi (unr (unr g_out))).
-Proof.
-  rewrite /=/dot2/=.
-  rewrite -> (merge_iso2 (union_merge_r _ _)) =>/=.
-  rewrite !union_merge_rEl !union_merge_rEr.
-  rewrite -> (merge_merge (G:=union F (union G H))
-                       (k:=[::(unl g_out,unr (unl g_in))])) =>//.
-  apply merge_seq_same' => /=.
-  apply eqv_clot_eq; leqv.
+Lemma iso_two_swap : iso two_graph two_graph.
+apply (@Iso' two_graph two_graph negb negb (fun e => match e with end) (fun e => match e with end)). 
+all: try abstract by case. 
+abstract (repeat split; case).
+Defined.
+
+Lemma topC : top2 ≡ top°.
+Proof. rewrite /top2. by rewrite -> (iso_iso2 iso_two_swap). Admitted.
+
+Lemma iso2TGT (G : graph2) : top · G · top ≈ point (union G top2) (inr g_in) (inr g_out).
+Proof. 
+  rewrite -> topL, topR => /=. 
+  rewrite -> (iso_iso2 (iso_sym (union_A _ _ _))) => /=.
+  rewrite -> (iso_iso2 (union_iso iso_id (iso_sym (iso_two_graph)))).
+  by rewrite -> (iso_iso2 (union_iso iso_id (iso_two_swap))).
 Qed.
 
+Arguments merge_union_K_ll [F K i o h] k.
 
+Lemma par_component (G : graph) (H : graph2) :
+  par2 (point (union G top2) (inr g_in) (inr g_out)) H ≈ point (union G H) (inr g_in) (inr g_out).
+Proof.
+  rewrite -> parC. 
+  rewrite /=/par2/=.
+  rewrite -> (merge_iso2 (union_A _ _ _)) =>/=.
+  pose k (x : two_graph) : union H G := if ~~ x then (unl g_in) else (unl g_out).
+  apply: iso2_comp. apply: (merge_union_K_ll k). 
+  - by case. 
+  - move => [|]; rewrite /k/=; apply/eqquotP; eqv. 
+  - rewrite /k /=. 
+    apply: iso2_comp. apply: merge_nothing; first by repeat constructor.
+    by rewrite -> (iso_iso2 (union_C _ _)).
+Qed.
+
+Lemma component1E (G : graph) (C : {set G}) x (xC :  x \in C) :
+  C \in components [set: skeleton G] -> 
+  component1 x = point (induced C) (Sub x xC) (Sub x xC).
+Admitted.
 
 Lemma iso2_disconnected_component (G : graph2) (C : {set G}) x : 
   C \in components [set: skeleton G] -> g_in \in ~: C -> g_out \in ~: C -> x \in C ->
   G ≈ par2 (dot2 top2 (dot2 (component1 x) top2)) (component (~: C)).
 Proof. 
-  move => comp_C iC oC xC. symmetry. rewrite (component_induced iC oC).
-  pose i2 : two_graph := false.
-  pose o2 : two_graph := true.
-  
-  move def_G1 : (_ x) => G1.
-  move def_G2 : (point _ _ _) => G2. 
-  rewrite /dot2/top2. 
-  setoid_rewrite (merge_iso2 (union_merge_r _ _)). 
-  rewrite !union_merge_rEl !union_merge_rEr.
-  set TGT := union _ (union G1 _). 
-  pose k : pairs TGT := [:: (unl o2, unr (unl g_in))].  
-  setoid_rewrite (merge_merge (G := TGT) (k := k)).
-  2:{ by rewrite /= !union_merge_rEl union_merge_rEr. }
-  simpl map_pairs. rewrite /k. simpl cat.
-  rewrite /par2. 
-  setoid_rewrite (merge_iso2 (union_merge_l _ _)).
-  simpl map_pairs. rewrite /= !union_merge_lEl !union_merge_lEr.
-  set k1 := [:: _ ; _ ]. 
-  set k2 := [:: _ ; _ ]. 
-  set TGT2 := union TGT G2. 
-  clear k.
-  pose k : pairs TGT2 := [:: (unl (unl i2), unr g_in); (unl (unr (unr o2)), unr g_out)].
-  apply: iso2_comp;[exact:(merge_merge (G := TGT2) (k := k))|]. (* setoid rewrite fails here *)
-  rewrite /k1 /k /TGT2 /TGT /=.
-  apply: iso2_comp. apply: (merge_iso2 (iso_sym (@union_A _ _ _))).
-  rewrite /union_A /=.
-  apply: iso2_comp. apply: (merge_iso2 (iso_sym (@union_C _ _))).
-  rewrite /union_C /=. clear k.
-  pose k (x : two_graph) : union (union G1 two_graph) G2 := 
-    if ~~ x then unr g_in else unl (unl g_in).
-  apply: iso2_comp. apply: merge_union_K_rl => //. instantiate (1 := k).
-  { case; apply/eqquotP; rewrite /i2 /o2 /=; eqv. }
-  apply: iso2_comp. apply: (merge_iso2 (iso_sym (@union_C _ _))).
-  rewrite /union_C /=. clear k.
-  apply: iso2_comp. apply: (merge_iso2 (@union_A _ _ _)).
-  rewrite /union_A /=. 
-  pose k (x : two_graph) : union G2 G1 := 
-    if ~~ x then unr g_out else unl g_out.
-  apply: iso2_comp. apply: merge_union_K_lr => //=. instantiate (1 := k).
-  { case; apply/eqquotP; rewrite /i2 /o2 /=; eqv. }
-  rewrite /k /=. 
-  apply: iso2_comp. apply: (@merge_nothing (union G2 G1) _ (unl g_in) (unl g_out)).
-  - repeat constructor.
-  - setoid_rewrite (iso_iso2 (union_C _ _)) => //=.
-    rewrite -def_G1 -def_G2.
-    exact: iso2_disconnected_component_aux.
+  move => comp_C iC oC xC. symmetry.
+  rewrite (component_induced iC oC).
+  rewrite (component1E xC comp_C).
+  set G1 := point _ _ _. set G2 := point _ _ _.
+  rewrite -> dot2A,iso2TGT. rewrite -> par_component.
+  rewrite /G1 /G2 /=.
+  apply: iso2_comp. apply: (iso_iso2 (iso_component comp_C)).
+  rewrite /=. by rewrite -point_io.
 Qed.
 
+Lemma iso2_GTG (G H : graph2) : 
+  G · top · H ≈ point (union G H) (unl g_in) (unr g_out).
+Proof.
+  rewrite -> topR. 
+  rewrite /=/dot2/=. 
+  rewrite -> (merge_iso2 (iso_sym (union_A _ _ _))) => /=.
+  rewrite -> (merge_iso2 (union_iso iso_id (union_C _ _))) => /=.
+  rewrite -> (merge_iso2 (union_A _ _ _)) => /=.
+  apply: iso2_comp. apply: (merge_union_K_ll (fun _ : unit_graph => unr g_in)). 
+  - done.
+  - case. apply/eqquotP. by eqv.
+  - rewrite /=. apply: merge_nothing. by repeat constructor.
+Qed.
 
 Lemma iso_disconnected_io (G : graph2) : 
   (forall C, C \in components [set: skeleton G] -> (g_in \in C) || (g_out \in C)) ->
   @component_of G g_in != @component_of G g_out ->
   G ≈ dot2 (@component1 G g_in) (dot2 top2 (@component1 G g_out)). 
+Proof.
+  move => no_comp dis_io. symmetry.
+  rewrite -> dot2A. rewrite -> iso2_GTG. 
+  rewrite {1}/component1. rewrite /=.
+  move: (in_component_of _) => I1. move: (in_component_of _) => I2.
+  have E : @component_of (skeleton G) g_out = ~: @component_of (skeleton G) g_in.
+  { admit. }
+  rewrite E in I2 *. 
+  move: (@component_of_components G g_in) => comp_i.
+  rewrite -> (iso_iso2 (iso_component comp_i)) => /=. 
+  by rewrite -point_io.
 Admitted.
 
 Lemma CK4F_component (G : graph2) (x : G) :  
   K4_free (sskeleton G) -> CK4F (component1 x).
 Admitted.
-                                    
+
+Lemma components_nonempty (G : sgraph) (U C : {set G}) :
+  C \in components U -> exists x, x \in C.
+Admitted.
+
+Lemma connected_one_component (G : sgraph) (U C : {set G}) :
+  C \in components U -> U \subset C -> connected U.
+Admitted.
 
 Theorem term_of_iso' (G : graph2) : 
   K4_free (sskeleton G) -> G ≈ graph_of_term (term_of' G).
@@ -249,16 +261,45 @@ Proof.
   - rewrite /=. rewrite <- term_of_iso, <- IH.
    + rewrite /graph2_of_set. 
      case: pickP => [x xC|/=]; first apply: iso2_disconnected_component.
-     all: rewrite ?inE //. 
-     admit. (* partition blocks are nonempty *)
-   + (* partition blocks are nonempty *) admit.
-   + (* this is a subgraph of the input graph *) admit.
-   + (* this is a subgraph of the input graph *) admit.
+     all: rewrite ?inE //.
+     move => H. exfalso. 
+     case: (components_nonempty C1) => x inC. move/(_ x) : H. by rewrite inC.
+   + rewrite /= card_sub. apply: proper_card. apply/properP; split => //. 
+     * exact/subsetP. 
+     * case: (components_nonempty C1) => x inC. exists x => //. rewrite !inE inC orbF.
+       by apply: contraTN inC => /orP[] /eqP ->.
+   + rewrite /induced2. apply: subgraph_K4_free K4F_G. 
+     exact: sskeleton_subgraph_for. 
+   + rewrite /graph2_of_set. case: pickP => [x inC|_].
+     * exact: CK4F_component.
+     * exact: CK4F_one.
   - case: ifP.
     + rewrite /=. rewrite <- !term_of_iso; first apply: iso_disconnected_io.
-      * move => C. admit. (* trivial *)
+      * move => C comp_C. move/(_ C): H. rewrite comp_C. 
+        apply: contraFT. by rewrite negb_or.
       * exact: CK4F_component.
       * exact: CK4F_component.
-    + move/negbFE/eqP => E. apply: term_of_iso.
+    + move/negbFE/eqP => E. apply: term_of_iso. split => //.
+      apply: connected_one_component (@component_of_components G g_in) _.
+      apply/subsetP => x _. apply: wlog_neg => W. exfalso.
+      move/(_ (component_of x)) : H. rewrite component_of_components.
       (* a graph with only one component is connected ... *) admit.
 Admitted.
+
+(*
+(** TODO: This is literally half of the proof of dot2A, use the lemma there *)
+Lemma dot2_flatten_r (F G H : graph2) :
+  F·(G·H)
+≈ point (merge_seq (union F (union G H)) [:: (unl g_out,unr (unl g_in)) ; (unr (unl g_out), unr (unr g_in)) ])
+        (\pi (unl g_in)) (\pi (unr (unr g_out))).
+Admitted. (* works but slow *)
+Proof.
+  rewrite /=/dot2/=.
+  rewrite -> (merge_iso2 (union_merge_r _ _)) =>/=.
+  rewrite !union_merge_rEl !union_merge_rEr.
+  rewrite -> (merge_merge (G:=union F (union G H))
+                       (k:=[::(unl g_out,unr (unl g_in))])) =>//.
+  apply merge_seq_same' => /=.
+  apply eqv_clot_eq; leqv.
+Qed.
+*)
