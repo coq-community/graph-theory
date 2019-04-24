@@ -6,6 +6,7 @@ Require Import edone finite_quotient preliminaries.
 Require Import digraph sgraph minor checkpoint.
 Require Import equiv multigraph ptt_graph ptt_algebra subalgebra skeleton.
 Require Import bounded extraction_def extraction_iso.
+Require Import separators.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -23,6 +24,10 @@ Proof. by rewrite mem_pblock (cover_partition (D := setT)). Qed.
 Lemma component_of_components (G : sgraph) (x : G) : 
   component_of x \in components [set: G].
 Proof. by rewrite pblock_mem // (cover_partition (D := setT)). Qed.
+
+Lemma connected_component_of (G : sgraph) (x : G) : 
+  connected (component_of x). 
+Proof. apply: connected_in_components. exact: component_of_components. Qed.
   
 Definition component1 (G : graph) (x : G) := 
   point (induced (@component_of (skeleton G) x)) 
@@ -155,7 +160,7 @@ End IsoComponents.
 Definition topR := A11'.
 Lemma topL (F : graph2) : 
   top·F ≡ (point (union F unit_graph)) (unr (tt:unit_graph)) (unl g_out).
-Admitted.
+Proof. rewrite <- cnvI, -> cnvdot,cnvtop. by rewrite -> topR. Qed.
 
 Lemma iso_two_swap : iso two_graph two_graph.
 apply (@Iso' two_graph two_graph negb negb (fun e => match e with end) (fun e => match e with end)). 
@@ -163,8 +168,6 @@ all: try abstract by case.
 abstract (repeat split; case).
 Defined.
 
-Lemma topC : top2 ≡ top°.
-Proof. rewrite /top2. by rewrite -> (iso_iso2 iso_two_swap). Admitted.
 
 Lemma iso2TGT (G : graph2) : top · G · top ≈ point (union G top2) (inr g_in) (inr g_out).
 Proof. 
@@ -191,10 +194,19 @@ Proof.
     by rewrite -> (iso_iso2 (union_C _ _)).
 Qed.
 
+Lemma component_ofE (G : sgraph) (x : G) C : 
+  C \in components [set: G] -> x \in C -> component_of x = C.
+Admitted.
+Arguments component_ofE [G x] C.
+
 Lemma component1E (G : graph) (C : {set G}) x (xC :  x \in C) :
   C \in components [set: skeleton G] -> 
   component1 x = point (induced C) (Sub x xC) (Sub x xC).
-Admitted.
+Proof.
+  move => comp_C. rewrite /component1. 
+  move: (in_component_of _). rewrite (@component_ofE G _ C) // => xC'.
+  by rewrite (bool_irrelevance xC' xC).
+Qed.
 
 Lemma iso2_disconnected_component (G : graph2) (C : {set G}) x : 
   C \in components [set: skeleton G] -> g_in \in ~: C -> g_out \in ~: C -> x \in C ->
@@ -243,15 +255,46 @@ Admitted.
 
 Lemma CK4F_component (G : graph2) (x : G) :  
   K4_free (sskeleton G) -> CK4F (component1 x).
-Admitted.
+Proof.
+  move => K4F_G. split => //. 
+  - apply: connected_induced. exact: connected_component_of.
+  - apply: subgraph_K4_free (sub_pointxx _) _. exact: induced_K4_free.
+Qed.
+
+Lemma partition0 (T : finType) (P : {set {set T}}) (D : {set T}) :
+  partition P D -> set0 \in P = false.
+Proof. case/and3P => _ _. by apply: contraNF. Qed.
+Arguments partition0 [T P] D.
 
 Lemma components_nonempty (G : sgraph) (U C : {set G}) :
   C \in components U -> exists x, x \in C.
-Admitted.
+Proof.
+  case: (set_0Vmem C) => [->|[x inC] _]; by [rewrite (partition0 U)| exists x].
+Qed.
+
+Lemma components_subset (G : sgraph) (U C : {set G}) : 
+  C \in components U -> C \subset U.
+Proof.
+  move => comp_C. 
+  case/and3P : (partition_components U) => /eqP <- _ _.  
+  apply/subsetP => x. exact: mem_cover.
+Qed.
 
 Lemma connected_one_component (G : sgraph) (U C : {set G}) :
   C \in components U -> U \subset C -> connected U.
-Admitted.
+Proof.
+  move => comp_C sub_UC. 
+  have ? : connected C by apply: connected_in_components comp_C.
+  suff : U == C by move/eqP->. 
+  by rewrite eqEsubset sub_UC components_subset.
+Qed.
+
+Lemma component_exchange (G : sgraph) (x y : G) : 
+  (y \in component_of x) = (x \in component_of y).
+Proof. 
+  apply/components_pblockP/components_pblockP.
+  all: case => p _; by exists (prev p).
+Qed.
 
 Theorem term_of_iso' (G : graph2) : 
   K4_free (sskeleton G) -> G ≈ graph_of_term (term_of' G).
@@ -281,10 +324,9 @@ Proof.
       * exact: CK4F_component.
     + move/negbFE/eqP => E. apply: term_of_iso. split => //.
       apply: connected_one_component (@component_of_components G g_in) _.
-      apply/subsetP => x _. apply: wlog_neg => W. exfalso.
-      move/(_ (component_of x)) : H. rewrite component_of_components.
-      (* a graph with only one component is connected ... *) admit.
-Admitted.
+      apply/subsetP => x _. move/(_ (component_of x)) : H. rewrite component_of_components /=.
+      apply: contraFT => H. by rewrite !(component_exchange x) -E H.
+Qed.
 
 (*
 (** TODO: This is literally half of the proof of dot2A, use the lemma there *)
