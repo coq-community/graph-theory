@@ -14,7 +14,10 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-Local Hint Resolve partition_components.
+Lemma trivIset_components (G : sgraph) (U : {set G}) : trivIset (components U).
+Proof.  by case/and3P : (partition_components U). Qed.
+
+Local Hint Resolve partition_components trivIset_components.
 
 Definition component_of (G : sgraph) (x : G) := pblock (components [set: G]) x.
 
@@ -28,6 +31,17 @@ Proof. by rewrite pblock_mem // (cover_partition (D := setT)). Qed.
 Lemma connected_component_of (G : sgraph) (x : G) : 
   connected (component_of x). 
 Proof. apply: connected_in_components. exact: component_of_components. Qed.
+
+Lemma same_component (G : sgraph) (x y : G) : 
+  x \in component_of y -> component_of x = component_of y.
+Proof. move => xy. exact: same_pblock. Qed.
+
+Lemma component_exchange (G : sgraph) (x y : G) : 
+  (y \in component_of x) = (x \in component_of y).
+Proof. 
+  apply/components_pblockP/components_pblockP.
+  all: case => p _; by exists (prev p).
+Qed.
   
 Definition component1 (G : graph) (x : G) := 
   point (induced (@component_of (skeleton G) x)) 
@@ -38,40 +52,23 @@ Definition graph2_of_set (G : graph) (C : {set G}) : graph2 :=
   if [pick x in C] is Some x then component1 x else one2.
 
 Lemma edge_component (G : graph) (e : edge G) :
-  @component_of (skeleton G) (source e) = @component_of (skeleton G) (target e).
+  @component_of G (source e) = @component_of G (target e).
 Proof. 
-  apply: same_pblock => //.
-  admit.
-  admit.
-Admitted.
+  case: (altP (source e =P target e)) => [->//|sDt].
+  apply: same_pblock => //. apply/components_pblockP.
+  have st : (source e) -- (target e) :> G. 
+  { by rewrite /edge_rel/= sDt adjacent_edge. }
+  by exists (prev (edgep st)). 
+Qed.
 
 Notation induced2 := component.
 
-Definition term_of_rec' (t : graph2 -> term sym) (G : graph2) := 
-  if [pick C in components [set: skeleton G] | (g_in \notin C) && (g_out \notin C)] is Some C 
-  then top · (term_of (graph2_of_set C) · top) ∥ t (induced2 (~: C))
-  else 
-    if @component_of G g_in != @component_of G g_out 
-    then term_of (@component1 G g_in) · (top · term_of (@component1 G g_out))
-    else term_of G.
-
 Lemma component_induced (G : graph2) (C : {set G}) (iC : g_in \in C) (oC : g_out \in C) : 
   component C = point (induced C) (Sub g_in iC) (Sub g_out oC).
-Admitted.
-
-Definition term_of' := Fix top (fun G : graph2 => #|G|) term_of_rec'.
-
-Lemma term_of_rec_eq' (f g : graph2 -> term sym) (G : graph2) :
-  (forall H : graph2, #|H| < #|G| -> f H = g H) -> term_of_rec' f G = term_of_rec' g G.
 Proof.
-  move => Efg. rewrite /term_of_rec'. case: pickP => [C /and3P [C1 C2 C3]|//].
-  - admit.
-Admitted.
-
-Lemma term_of_eq' G : term_of' G = term_of_rec' term_of' G.
-Proof. 
-  apply Fix_eq with (fun _ => True) => // f g x _ H. 
-  by apply: term_of_rec_eq'; auto. 
+  rewrite /induced2. move: (setU11 _ _) => A. move: (setU1r _ _) => B. move: A B.
+  rewrite (setU1_mem oC) (setU1_mem iC) => A B. 
+  by rewrite (bool_irrelevance A iC) (bool_irrelevance B oC).
 Qed.
 
 Opaque merge.
@@ -81,19 +78,26 @@ Arguments unr [G H] x : simpl never.
 
 Require Import set_tac.
 
-Lemma component_closed (G : sgraph) (C U : {set G}) x y:
-  C \in components U -> x \in C -> y \in U -> x -- y -> y \in C.
-Admitted.
+Lemma mem_component (G : sgraph) (C : {set G}) x : 
+  C \in components [set: G] -> x \in C -> C = component_of x.
+Proof. move => comp_C inC. symmetry. exact: def_pblock. Qed.
 
-Lemma edge_set_component (G : graph) (U C : {set skeleton G}) (e : edge G) : 
-  C \in components U -> (source e \in C) = (target e \in C).
-Admitted.
-Arguments edge_set_component [G U C e].
+Lemma edge_set_component (G : graph) (C : {set skeleton G}) (e : edge G) : 
+  C \in @components G [set: G] -> (source e \in C) = (target e \in C).
+Proof.
+  move => comp_C. apply/idP/idP.
+  - move => inC. rewrite (mem_component comp_C inC). 
+    by rewrite edge_component (@in_component_of G).
+  - move => inC. rewrite (mem_component comp_C inC). 
+    by rewrite -edge_component (@in_component_of G).
+Qed.
+
+Arguments edge_set_component [G C e].
 
 (* if C is a component, this becomes an equivalence *)
 Lemma edge_setN (G : graph) (C : {set G}) (e : edge G):
   e \in edge_set C -> e \notin edge_set (~: C).
-Admitted.
+Proof. rewrite !inE. by case/andP => -> ->. Qed.
 
 Lemma edge_comp (G : graph) (C : {set G}) (e : edge G):
   C \in components [set: skeleton G] ->
@@ -194,30 +198,32 @@ Proof.
     by rewrite -> (iso_iso2 (union_C _ _)).
 Qed.
 
-Lemma component_ofE (G : sgraph) (x : G) C : 
-  C \in components [set: G] -> x \in C -> component_of x = C.
-Admitted.
-Arguments component_ofE [G x] C.
+(* Lemma component_ofE (G : sgraph) (x : G) C :  *)
+(*   C \in components [set: G] -> x \in C -> component_of x = C. *)
+(* Admitted. *)
+(* Arguments component_ofE [G x] C. *)
 
-Lemma component1E (G : graph) (C : {set G}) x (xC :  x \in C) :
-  C \in components [set: skeleton G] -> 
-  component1 x = point (induced C) (Sub x xC) (Sub x xC).
-Proof.
-  move => comp_C. rewrite /component1. 
-  move: (in_component_of _). rewrite (@component_ofE G _ C) // => xC'.
-  by rewrite (bool_irrelevance xC' xC).
-Qed.
+(* Lemma component1E (G : graph) (C : {set G}) x (xC :  x \in C) : *)
+(*   C \in components [set: skeleton G] ->  *)
+(*   component1 x = point (induced C) (Sub x xC) (Sub x xC). *)
+(* Proof. *)
+(*   move => comp_C. rewrite /component1.  *)
+(*   move: (in_component_of _). rewrite (@component_ofE G _ C) // => xC'. *)
+(*   by rewrite (bool_irrelevance xC' xC). *)
+(* Qed. *)
 
-Lemma iso2_disconnected_component (G : graph2) (C : {set G}) x : 
-  C \in components [set: skeleton G] -> g_in \in ~: C -> g_out \in ~: C -> x \in C ->
-  G ≈ par2 (dot2 top2 (dot2 (component1 x) top2)) (component (~: C)).
+Lemma iso2_disconnected_component (G : graph2) x : 
+  g_in \in ~: @component_of G x -> g_out \in ~: @component_of G x -> 
+  G ≈ par2 (dot2 top2 (dot2 (component1 x) top2)) (component (~: @component_of G x)).
 Proof. 
-  move => comp_C iC oC xC. symmetry.
+  move => iC oC. symmetry.
   rewrite (component_induced iC oC).
-  rewrite (component1E xC comp_C).
+  set C := component_of _.
+  rewrite /component1.
   set G1 := point _ _ _. set G2 := point _ _ _.
   rewrite -> dot2A,iso2TGT. rewrite -> par_component.
   rewrite /G1 /G2 /=.
+  have comp_C : C \in @components G [set: G]. apply: component_of_components.
   apply: iso2_comp. apply: (iso_iso2 (iso_component comp_C)).
   rewrite /=. by rewrite -point_io.
 Qed.
@@ -237,21 +243,24 @@ Proof.
 Qed.
 
 Lemma iso_disconnected_io (G : graph2) : 
-  (forall C, C \in components [set: skeleton G] -> (g_in \in C) || (g_out \in C)) ->
-  @component_of G g_in != @component_of G g_out ->
+  (forall x : G, (x \in @component_of G g_in) || (x \in @component_of G g_out)) -> 
+  g_out \notin @component_of G g_in ->
   G ≈ dot2 (@component1 G g_in) (dot2 top2 (@component1 G g_out)). 
 Proof.
   move => no_comp dis_io. symmetry.
   rewrite -> dot2A. rewrite -> iso2_GTG. 
   rewrite {1}/component1. rewrite /=.
   move: (in_component_of _) => I1. move: (in_component_of _) => I2.
-  have E : @component_of (skeleton G) g_out = ~: @component_of (skeleton G) g_in.
-  { admit. }
+  have E : @component_of G g_out = ~: @component_of G g_in.
+  { apply/setP => z. rewrite inE. apply/idP/idP.
+    - move => Z1. apply: contraNN dis_io => Z2.  
+      by rewrite -(same_component Z2) (same_component Z1).
+    - move/(_ z) : no_comp. by case: (z \in _). }
   rewrite E in I2 *. 
   move: (@component_of_components G g_in) => comp_i.
   rewrite -> (iso_iso2 (iso_component comp_i)) => /=. 
   by rewrite -point_io.
-Admitted.
+Qed.
 
 Lemma CK4F_component (G : graph2) (x : G) :  
   K4_free (sskeleton G) -> CK4F (component1 x).
@@ -289,59 +298,62 @@ Proof.
   by rewrite eqEsubset sub_UC components_subset.
 Qed.
 
-Lemma component_exchange (G : sgraph) (x y : G) : 
-  (y \in component_of x) = (x \in component_of y).
+
+
+Definition term_of_rec' (t : graph2 -> term sym) (G : graph2) := 
+  if [pick x | (g_in \notin @component_of G x) && (g_out \notin @component_of G x)] is Some x
+  then top · (term_of (component1 x) · top) ∥ t (induced2 (~: component_of x))
+  else 
+    if g_out \in @component_of G g_in 
+    then term_of G
+    else term_of (@component1 G g_in) · (top · term_of (@component1 G g_out)).
+
+
+Definition term_of' := Fix top (fun G : graph2 => #|G|) term_of_rec'.
+
+Lemma induced2_compN_small (G : graph2) (x : G) :
+  g_in \notin @component_of G x -> g_out \notin @component_of G x -> 
+  #|induced2 (~: @component_of G x)| < #|G|.
+Proof.
+  move => X1 X2. rewrite /= card_sub. apply: proper_card. apply/properP; split => //. 
+  - exact/subsetP. 
+  - exists x => //. rewrite !inE (@in_component_of G) orbF. 
+    apply/negP => /orP[] /eqP ?; subst; by rewrite (@in_component_of G) in X1 X2.
+Qed.
+
+Lemma term_of_rec_eq' (f g : graph2 -> term sym) (G : graph2) :
+  (forall H : graph2, #|H| < #|G| -> f H = g H) -> term_of_rec' f G = term_of_rec' g G.
+Proof.
+  move => Efg. rewrite /term_of_rec'. case: pickP => [x /andP [X1 X2]|//].
+  rewrite Efg //. exact: induced2_compN_small. 
+Qed.
+
+Lemma term_of_eq' G : term_of' G = term_of_rec' term_of' G.
 Proof. 
-  apply/components_pblockP/components_pblockP.
-  all: case => p _; by exists (prev p).
+  apply Fix_eq with (fun _ => True) => // f g x _ H. 
+  by apply: term_of_rec_eq'; auto. 
 Qed.
 
 Theorem term_of_iso' (G : graph2) : 
   K4_free (sskeleton G) -> G ≈ graph_of_term (term_of' G).
 Proof.
   pattern G. apply: (nat_size_ind (f := fun G : graph2 => #|G|)) => {G} G IH K4F_G.
-  rewrite term_of_eq' /term_of_rec'. case: pickP => [C /and3P [C1 C2 C3]|H].
+  rewrite term_of_eq' /term_of_rec'. case: pickP => [x /andP [X1 X2]|H].
   - rewrite /=. rewrite <- term_of_iso, <- IH.
-   + rewrite /graph2_of_set. 
-     case: pickP => [x xC|/=]; first apply: iso2_disconnected_component.
-     all: rewrite ?inE //.
-     move => H. exfalso. 
-     case: (components_nonempty C1) => x inC. move/(_ x) : H. by rewrite inC.
-   + rewrite /= card_sub. apply: proper_card. apply/properP; split => //. 
-     * exact/subsetP. 
-     * case: (components_nonempty C1) => x inC. exists x => //. rewrite !inE inC orbF.
-       by apply: contraTN inC => /orP[] /eqP ->.
-   + rewrite /induced2. apply: subgraph_K4_free K4F_G. 
-     exact: sskeleton_subgraph_for. 
-   + rewrite /graph2_of_set. case: pickP => [x inC|_].
-     * exact: CK4F_component.
-     * exact: CK4F_one.
-  - case: ifP.
-    + rewrite /=. rewrite <- !term_of_iso; first apply: iso_disconnected_io.
-      * move => C comp_C. move/(_ C): H. rewrite comp_C. 
-        apply: contraFT. by rewrite negb_or.
+   + apply: iso2_disconnected_component; by rewrite inE.
+   + exact: induced2_compN_small. 
+   + apply: subgraph_K4_free K4F_G. exact: sskeleton_subgraph_for. 
+   + exact: CK4F_component.
+  - case: ifP; last first.
+    + move/negbT => io.
+      rewrite /=. rewrite <- !term_of_iso; first apply: iso_disconnected_io => //.
+      * move => x. move/(_ x) : H. apply: contraFT. rewrite negb_or.
+        by rewrite !(@component_exchange G x).
       * exact: CK4F_component.
       * exact: CK4F_component.
-    + move/negbFE/eqP => E. apply: term_of_iso. split => //.
+    + move => E. apply: term_of_iso. split => //.
       apply: connected_one_component (@component_of_components G g_in) _.
-      apply/subsetP => x _. move/(_ (component_of x)) : H. rewrite component_of_components /=.
-      apply: contraFT => H. by rewrite !(component_exchange x) -E H.
+      apply/subsetP => x _. move/(_ x) : H. apply: contraFT => H.
+      rewrite !(component_exchange x) H /=. by rewrite (same_component E).
 Qed.
 
-(*
-(** TODO: This is literally half of the proof of dot2A, use the lemma there *)
-Lemma dot2_flatten_r (F G H : graph2) :
-  F·(G·H)
-≈ point (merge_seq (union F (union G H)) [:: (unl g_out,unr (unl g_in)) ; (unr (unl g_out), unr (unr g_in)) ])
-        (\pi (unl g_in)) (\pi (unr (unr g_out))).
-Admitted. (* works but slow *)
-Proof.
-  rewrite /=/dot2/=.
-  rewrite -> (merge_iso2 (union_merge_r _ _)) =>/=.
-  rewrite !union_merge_rEl !union_merge_rEr.
-  rewrite -> (merge_merge (G:=union F (union G H))
-                       (k:=[::(unl g_out,unr (unl g_in))])) =>//.
-  apply merge_seq_same' => /=.
-  apply eqv_clot_eq; leqv.
-Qed.
-*)
