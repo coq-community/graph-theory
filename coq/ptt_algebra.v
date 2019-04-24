@@ -73,6 +73,10 @@ Section derived.
   rewrite <-parxtop. rewrite <-(cnvI top) at 2.
   now rewrite <-cnvpar, partopx, cnvI.
  Qed.
+
+ Lemma cnv_inj (x y: X): x° ≡ y° -> x ≡ y.
+ Proof. intro. rewrite <-(cnvI x), <-(cnvI y). now apply cnv_weq. Qed.
+
 End derived.
 
 Section terms.
