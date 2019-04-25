@@ -7,6 +7,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Two-Pointed Graphs *)
+
 Record graph2 :=
   Graph2 { graph_of :> graph;
            g_in : graph_of;
@@ -106,7 +108,7 @@ Lemma iso_out' F G (h: F ≈ G): h^-1 g_out = g_out.
 Proof. apply (iso_out (iso2_sym h)). Qed.
 
 
-(** * two pointed graph constructions *)
+(** ** 2p-operations on 2p-graphs *)
 
 Definition par2 (F G: graph2) :=
   point (merge_seq (union F G) [::(unl g_in,unr g_in); (unl g_out,unr g_out)])
@@ -145,7 +147,7 @@ Definition graph_of_term (u: term sym): graph2 := eval sym2 u.
 
 Opaque merge union.
 
-(** * from isomorphisms on graphs to isomorphisms on 2p-graphs *)
+(** ** From isomorphisms on graphs to isomorphisms on 2p-graphs *)
 
 Lemma iso_iso2 (F G: graph) (h: iso F G) (i o: F):
   point F i o ≈ point G (h i) (h o).
@@ -206,7 +208,7 @@ Proof.
 Qed.
 
 
-(** ** merge_merge  *)
+(** merge_merge  *)
 Lemma merge_merge (G: graph) (h k: pairs G) (k': pairs (merge_seq G h)) (i o: G):
   k' = map_pairs (pi (eqv_clot h)) k ->
   point (merge_seq (merge_seq G h) k') (\pi (\pi i)) (\pi (\pi o))
@@ -215,7 +217,7 @@ Proof.
   intro K. apply (iso_iso2' (h:=merge_merge_seq K)); by rewrite /=merge_merge_seqE. 
 Qed.
 
-(** ** union_merge_l  *)
+(** union_merge_l  *)
 Lemma union_merge_l_ll (F G: graph) (i o: F) (h: pairs F):
   point (union (merge_seq F h) G) (inl (\pi i)) (inl (\pi o))
 ≈ point (merge_seq (union F G) (map_pairs unl h)) (\pi (unl i)) (\pi (unl o)).
@@ -244,7 +246,7 @@ Lemma union_merge_l_rr (F G: graph) (i o: G) (h: pairs F):
 ≈ point (merge_seq (union F G) (map_pairs unl h)) (\pi (unr i)) (\pi (unr o)).
 Proof. apply (iso_iso2' (h:=union_merge_l _ _)); by rewrite /=union_merge_lEr. Qed.
 
-(** ** union_merge_r  *)
+(** union_merge_r  *)
 Lemma union_merge_r_ll (F G: graph) (i o: F) (h: pairs G):
   point (union F (merge_seq G h)) (unl i) (unl o)
 ≈ point (merge_seq (union F G) (map_pairs unr h)) (\pi (unl i)) (\pi (unl o)).
@@ -273,7 +275,7 @@ Lemma union_merge_r_rr (F G: graph) (i o: G) (h: pairs G):
 ≈ point (merge_seq (union F G) (map_pairs unr h)) (\pi (unr i)) (\pi (unr o)).
 Proof. apply (iso_iso2' (h:=union_merge_r _ _)); by rewrite union_merge_rEr. Qed.
 
-(** ** merge_union_K  *)
+(**  merge_union_K  *)
 Lemma merge_union_K_ll (F K: graph) (i o: F) (h: pairs (F+K)) (k: K -> F)
       (ke: edge K -> False)
       (kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)]):
@@ -316,7 +318,7 @@ Qed.
 
 
 
-(** * 2p-graphs form a 2p-algebra *)
+(** ** 2p-graphs form a 2p-algebra *)
 
 Lemma par2C (F G: graph2): F ∥ G ≡ G ∥ F.
 Proof.

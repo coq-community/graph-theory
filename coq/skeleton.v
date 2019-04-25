@@ -13,8 +13,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Skeletons *)
 
-(** ** Adjacency *)
-
 Definition adjacent (G : graph) (x y : G) :=
   [exists e, e \in edges x y :|: edges y x].
 
@@ -114,7 +112,7 @@ Arguments pi_hom [G] e.
 Coercion skeleton : graph >-> sgraph.
 
 
-(** * Strong skeletons *)
+(** ** Strong skeletons *)
 
 Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
 

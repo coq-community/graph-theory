@@ -9,6 +9,10 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Second Proof of Excluded-Minor Characterization *)
+
+(** TODO: This file should use extraction_top *)
+
 Corollary minor_exclusion_2p (G : graph2) :
   connected [set: skeleton G] -> 
   K4_free (sskeleton G) <-> 
@@ -21,8 +25,6 @@ Proof.
     exists T. exists D. by rewrite D2.
   - exact: TW2_K4_free B1 B2 B3. 
 Qed.
-
-(** ** Graph Minor Theorem for TW2 *)
 
 (** Remark: contrary to the textbook definition, we do not substract 1
 in the definition of treewidth. Consequently, [width <= 3] means

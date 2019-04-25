@@ -13,8 +13,6 @@ Open Scope implicit_scope.
 
 (** * Subalgebra of Tree-Width 2 Graphs *)
 
-(** ** Closure Properties for operations *)
-
 Arguments sdecomp T G B : clear implicits.
 
 Definition compatible (T : forest) (G : graph2) (B : T -> {set G}) := 

@@ -11,7 +11,9 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Separators *)
+(** * Tree Decompositions for K4-free graphs *)
+
+(** * Separators and Separations *)
 
 Ltac notHyp b ::= assert_fails (assert b by assumption).
 
@@ -235,6 +237,8 @@ Qed.
 
 End Separators.
 
+
+(** ** Constructing Tree Decompositions *)
 
 Prenex Implicits separator.
 Implicit Types G H : sgraph.
