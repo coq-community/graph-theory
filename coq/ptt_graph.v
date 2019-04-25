@@ -459,7 +459,7 @@ Proof.
   eqv.
 Qed.
 
-Lemma A11' (F: graph2): F·top ≡ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
+Lemma topR (F: graph2): F·top ≡ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
 Proof.
   rewrite /=/dot2/=.
   irewrite (merge_iso2 (union_iso (@iso_id _) iso_two_graph))=>/=. 
@@ -470,7 +470,7 @@ Proof.
 Qed.
 
 Lemma A11 (F: graph2): F·top ≡ dom F·top.
-Proof. now setoid_rewrite A11'. Qed.
+Proof. now setoid_rewrite topR. Qed.
 
 Lemma A12' (F G: graph2): @g_in F = @g_out F -> F·G ≡ F·top ∥ G.
 Proof.
@@ -532,8 +532,8 @@ Proof.
   apply A12.
 Qed.
 
-Lemma A11'' (F: graph2): top·F ≡ point (union F unit_graph) (unr (tt: unit_graph)) (unl g_out).
-Proof. apply cnv_inj. by rewrite->cnvdot, cnvtop, A11'. Qed.
+Lemma topL (F: graph2): top·F ≡ point (union F unit_graph) (unr (tt: unit_graph)) (unl g_out).
+Proof. apply cnv_inj. by rewrite->cnvdot, cnvtop, topR. Qed.
 
 Lemma graph_of_big_par (T : eqType) (r : seq T) F : 
   graph_of_term (\big[@tm_par _/@tm_top _]_(x <- r) F x) ≈

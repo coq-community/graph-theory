@@ -203,11 +203,14 @@ Proof.
       (fun x => match x with inl _ => true | _ => false end)
       (vfun)
       (fun x => match x with inl x | inr x => x end).
-  abstract by intros [|].
-  abstract by intros [[]|[]].
-  abstract by intros [].
-  abstract by intros [[]|[]].
-  abstract by split; intros []. 
+all: repeat first [case|split].
+Defined.
+
+Lemma iso_two_swap : iso two_graph two_graph.
+apply (@Iso' two_graph two_graph 
+             negb negb 
+             (fun e => match e with end) (fun e => match e with end)). 
+all: abstract by (repeat split; case). 
 Defined.
 
 (** ** Specific isomorphisms about union and merge *)
@@ -509,3 +512,4 @@ Section merge_union_K.
   Proof. by rewrite /=quot_union_KEr quot_sameE. Qed.
 End merge_union_K.
 Global Opaque merge_union_K.
+

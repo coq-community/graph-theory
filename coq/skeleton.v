@@ -657,3 +657,98 @@ Proof.
   - move=> xy. rewrite /edge_rel /= sg_edgeNeq //=.
     apply/existsP; exists (Sub (x, y) xy). by rewrite !inE !eqxx.
 Qed.
+
+
+(** ** Disjoint Union of a connected component and the remainder of the graph *)
+
+Lemma edge_component (G : graph) (e : edge G) :
+  @component_of G (source e) = @component_of G (target e).
+Proof. 
+  case: (altP (source e =P target e)) => [->//|sDt].
+  apply: same_pblock => //. apply/components_pblockP.
+  have st : (source e : skeleton G) -- (target e) . 
+  { by rewrite /edge_rel/= sDt adjacent_edge. }
+  by exists (prev (edgep st)). 
+Qed.
+Opaque merge.
+
+Arguments unl [G H] x : simpl never.
+Arguments unr [G H] x : simpl never.
+
+Lemma edge_set_component (G : graph) (C : {set skeleton G}) (e : edge G) : 
+  C \in @components G [set: G] -> (source e \in C) = (target e \in C).
+Proof.
+  move => comp_C. apply/idP/idP.
+  - move => inC. rewrite (mem_component comp_C inC). 
+    by rewrite edge_component (@in_component_of G).
+  - move => inC. rewrite (mem_component comp_C inC). 
+    by rewrite -edge_component (@in_component_of G).
+Qed.
+Arguments edge_set_component [G C e].
+
+(* if C is a component, this becomes an equivalence *)
+Lemma edge_setN (G : graph) (C : {set G}) (e : edge G):
+  e \in edge_set C -> e \notin edge_set (~: C).
+Proof. rewrite !inE. by case/andP => -> ->. Qed.
+
+Lemma edge_comp (G : graph) (C : {set G}) (e : edge G):
+  C \in components [set: skeleton G] ->
+  (e \in edge_set C) + (e \in edge_set (~: C))%type.
+Proof. 
+  move => comp_C. case: (boolP (source e \in C)) => p; [left|right].
+  - by rewrite inE -(edge_set_component comp_C) p.
+  - by rewrite !inE -(edge_set_component comp_C) p.
+Qed.
+
+Section IsoComponents.
+Variables (G : graph) (C : {set G}).
+(* TODO: suffices that there is no edge between [C] and [~:C] *)
+Hypothesis comp_C : C \in components [set: skeleton G].
+Let G1 := induced C.
+Let G2 := induced (~: C).
+
+Lemma decC z : (z \in C) + (z \in ~: C)%type. 
+Proof. case: (boolP (z \in C)) => p; [by left|right]. by rewrite inE p. Qed.
+
+Lemma decE (e : edge G) : (e \in edge_set C) + (e \in edge_set (~: C)).
+Proof. exact: edge_comp. Qed.
+
+Definition component_v (x : union G1 G2) := match x with inl x => val x | inr x => val x end.
+Definition component_v' (z : G) : union G1 G2 := 
+    match decC z with inl p => inl (Sub z p) | inr p => inr (Sub z p) end.
+
+Definition component_e (e : edge (union G1 G2)) := match e with inl e => val e | inr e => val e end.
+Definition component_e' (e : edge G) : edge (union G1 G2) := 
+    match decE e with inl p => inl (Sub e p) | inr p => inr (Sub e p) end.
+
+Lemma component_can_v : cancel component_v component_v'.
+Proof.
+  case => a; rewrite /component_v/component_v'; case: (decC _) => p. 
+  - congr inl. exact: val_inj.
+  - exfalso. move: (valP a) => /= X. by rewrite inE X in p.
+  - exfalso. move: (valP a) => /=. by rewrite inE p.
+  - congr inr. exact: val_inj.
+Qed.
+
+Lemma component_can_v' : cancel component_v' component_v.
+Proof. by move => x; rewrite /component_v/component_v'; case: (decC x). Qed.
+
+Lemma component_can_e : cancel component_e component_e'.
+Proof. 
+  case => e; rewrite /component_e/component_e'; case: (decE _) => p.
+  - congr inl. exact: val_inj.
+  - exfalso. move: (valP e) => /= /edge_setN X. by contrab.
+  - exfalso. move: (valP e) => /= X. move/edge_setN in p. by rewrite X in p.
+  - congr inr. exact: val_inj. 
+Qed.
+
+Lemma component_can_e' : cancel component_e' component_e.
+Proof. move => x; rewrite /component_e/component_e'; by case (decE _). Qed.
+
+Lemma component_hom : is_hom component_v component_e.
+Proof. repeat split; by case. Qed.
+
+Definition iso_component : iso (union (induced C) (induced (~: C))) G := 
+  Eval hnf in Iso' component_can_v component_can_v' component_can_e component_can_e' component_hom.
+
+End IsoComponents.

@@ -793,6 +793,16 @@ Lemma partition_components (G : sgraph) (H : {set G}) :
   partition (components H) H.
 Proof. apply: equivalence_partitionP. exact: (@sedge_equiv_in G). Qed.
 
+Lemma trivIset_components (G : sgraph) (U : {set G}) : trivIset (components U).
+Proof.  by case/and3P : (partition_components U). Qed.
+
+Lemma partition0 (T : finType) (P : {set {set T}}) (D : {set T}) :
+  partition P D -> set0 \in P = false.
+Proof. case/and3P => _ _. by apply: contraNF. Qed.
+Arguments partition0 [T P] D.
+
+Hint Resolve partition_components trivIset_components.
+
 Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :
   reflect (exists p : Path x y, p \subset H) (y \in pblock (components H) x).
 Proof.
@@ -809,6 +819,19 @@ Proof.
     + apply: p_sub; exact: path_end.
 Qed.
 
+Lemma components_nonempty (G : sgraph) (U C : {set G}) :
+  C \in components U -> exists x, x \in C.
+Proof.
+  case: (set_0Vmem C) => [->|[x inC] _]; by [rewrite (partition0 U)| exists x].
+Qed.
+
+Lemma components_subset (G : sgraph) (U C : {set G}) : 
+  C \in components U -> C \subset U.
+Proof.
+  move => comp_C. 
+  case/and3P : (partition_components U) => /eqP <- _ _.  
+  apply/subsetP => x. exact: mem_cover.
+Qed.
 
 Lemma connected_in_components (G : sgraph) (H C : {set G}) :
   C \in components H -> connected C.
@@ -827,6 +850,14 @@ Proof.
   - apply: contraNF y_notin_H. exact: CH.
 Qed.
 
+Lemma connected_one_component (G : sgraph) (U C : {set G}) :
+  C \in components U -> U \subset C -> connected U.
+Proof.
+  move => comp_C sub_UC. 
+  have ? : connected C by apply: connected_in_components comp_C.
+  suff : U == C by move/eqP->. 
+  by rewrite eqEsubset sub_UC components_subset.
+Qed.
 
 Lemma component_exit (G : sgraph) (V C : {set G}) (x y : G) :
   x -- y -> C \in components V -> x \in C -> y \in ~: V :|: C.
@@ -871,6 +902,40 @@ Proof.
   apply: contraNT x1Nq1 => uNV. rewrite -(x1_first u) ?inE //.
   by rewrite Ep1 mem_pcat u_q1.
 Qed.
+
+
+
+(** Component of a given vertex *)
+
+Definition component_of (G : sgraph) (x : G) := pblock (components [set: G]) x.
+
+Lemma in_component_of (G : sgraph) (x : G) : x \in component_of x.
+Proof. by rewrite mem_pblock (cover_partition (D := setT)). Qed.
+
+Lemma component_of_components (G : sgraph) (x : G) : 
+  component_of x \in components [set: G].
+Proof. by rewrite pblock_mem // (cover_partition (D := setT)). Qed.
+
+Lemma connected_component_of (G : sgraph) (x : G) : 
+  connected (component_of x). 
+Proof. apply: connected_in_components. exact: component_of_components. Qed.
+
+Lemma same_component (G : sgraph) (x y : G) : 
+  x \in component_of y -> component_of x = component_of y.
+Proof. move => xy. exact: same_pblock. Qed.
+
+Lemma component_exchange (G : sgraph) (x y : G) : 
+  (y \in component_of x) = (x \in component_of y).
+Proof. 
+  apply/components_pblockP/components_pblockP.
+  all: case => p _; by exists (prev p).
+Qed.
+
+Lemma mem_component (G : sgraph) (C : {set G}) x : 
+  C \in components [set: G] -> x \in C -> C = component_of x.
+Proof. move => comp_C inC. symmetry. exact: def_pblock. Qed.
+
+
 
 (** *** Cliques *)
 
