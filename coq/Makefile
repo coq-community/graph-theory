@@ -9,7 +9,7 @@ COQDOCFLAGS:= \
   --with-header $(EXTRA_DIR)/header.html --with-footer $(EXTRA_DIR)/footer.html
 export COQDOCFLAGS
 
--include CoqMakefile.conf
+-include Makefile.coq.conf
 
 all: Makefile.coq
 	+make -f Makefile.coq all
