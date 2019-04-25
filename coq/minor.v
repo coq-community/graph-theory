@@ -495,12 +495,10 @@ Section DecompTheory.
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 
     move: S. apply: (nat_size_ind (f := fun S : {set G} => #|S|)) => S IH inh_S clique_S.
-    case: (leqP #|S| 2) => [card_S | card_S {inh_S}]. 
-    - case: (card12 inh_S card_S) => [[x]|[x] [y] [Hxy]] ?; subst S.
-      + case: (sbag_cover decD x) => t A. exists t. by rewrite sub1set.
-      + have xy: x -- y. by apply: clique_S => //; rewrite !inE !eqxx ?orbT.
-        case: (sbag_edge decD xy) => t A. exists t. by rewrite subUset !sub1set.
-    - have [v [v0] [Hv Hv0 X]] := card_gt1P (ltnW card_S).
+    case: (leqP #|S| 1) => [card_S | card_S {inh_S}]. 
+    - have/cards1P [x ->] : #|S| == 1 by rewrite eqn_leq card_S.
+      case: (sbag_cover decD x) => t A. exists t. by rewrite sub1set. 
+    - have [v [v0] [Hv Hv0 X]] := card_gt1P (card_S).
       pose S0 := S :\ v.
       pose T0 := [set t | S0 \subset B t]. 
       wlog /forall_inP HT0 : / [forall t in T0, v \notin B t].
@@ -509,11 +507,10 @@ Section DecompTheory.
       have HT0' t : v \in B t -> ~~ (S0 \subset B t).
       { apply: contraTN => C. apply: HT0. by rewrite inE. }
       have pairs x y : x \in S -> y \in S -> exists t, x \in B t /\ y \in B t.
-      { move => xS yS. case: (IH [set x;y]). 
-        - rewrite cardsU1 cards1 addn1. case (_ \notin _) => //=. exact: ltnW.
-        - by rewrite cards2. 
-        - apply: sub_in11W clique_S. apply/subsetP. by rewrite subUset !sub1set xS. 
-        - move => t. rewrite subUset !sub1set => /andP [? ?]. by exists t. }
+      { move => xS yS. case: (altP (x =P y)) => [?|xDy].
+        - subst y. case: (sbag_cover decD x) => t A. by exists t. 
+        - move/clique_S : xDy. case/(_ _ _)/Wrap => // xy.
+          case: (sbag_edge decD xy) => t A. exists t. exact/andP. }
       (* obtain some node [c] whose bag contains [[set v,v0]] and
       consider its subtree outside of T0 *)
       have [c [Hc1 Hc2]] : exists t, v \in B t /\ v0 \in B t by apply: pairs. 
