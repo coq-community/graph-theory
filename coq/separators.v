@@ -513,7 +513,7 @@ Proof.
     { move => H. rewrite /edge_rel /= neq_ltn in iNj. 
       move: iNj => /orP [iltj|jlti]; [|rewrite neighborC]; exact: H. }
     destruct i as [m i]. destruct j as [n j].
-    (** Hints for automation *)
+    (* Hints for automation *)
     have [[? ?] ?] := (valP (p0),valP p1, valP p2).
     case m as [|[|[|[|m]]]] => //=; case n as [|[|[|[|m']]]] => //=.
     + apply: neighborUl. apply: path_neighborL => //; by set_tac.
@@ -540,7 +540,7 @@ Proof.
   { move => A. apply: minsep3. by exists x; exists y. }
   case: (theta xNEy xNy minsep_xy) => p ind_p.
   case: (theta_vertices p xNy xNEy) => s Hs.
-  (** name [p1] and [p2] (plus assumptions) because we will need to generalize over them *)
+  (* name [p1] and [p2] (plus assumptions) because we will need to generalize over them *)
   pose p1 := p ord1. pose p2 := p ord2.
   pose s1 := s ord1. pose s2 := s ord2.
   have ind12 : independent p1 p2 by apply: ind_p.

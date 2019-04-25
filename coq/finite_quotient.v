@@ -59,7 +59,7 @@ Proof. rewrite equiv_sym; apply piK. Qed.
 
 (* TODO: only used once in skeleton ; remove? *)
 Lemma eqmodE (T: finType) (e: equiv_rel T) (x y : T): (x == y %[mod e]) = e x y.
-Admitted.
+by apply/eqP/idP => /(eqquotP e). Qed.
 
 (* TODO: only used in extraction_iso ; remove? *)
 CoInductive pi_spec (T : finType) (e : equiv_rel T) (x : T) : T -> Type :=
