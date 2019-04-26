@@ -37,4 +37,7 @@ clean: Makefile.coq
 Makefile.coq: _CoqProject
 	$(COQBIN)coq_makefile -f _CoqProject -arg -w -arg -notation-overridden -o Makefile.coq
 
+pack: Makefile.coq
+	tar -cvzf graphs.tar.gz Makefile _CoqProject coqdocjs $(COQMF_VFILES)
+
 .PHONY: all html clean
