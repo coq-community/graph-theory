@@ -513,3 +513,207 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
+Lemma valK' (T : eqType) (P : pred T) (u : sig_subType P) (Px : val u \in P) : 
+  Sub (val u) Px = u.
+Proof. exact: val_inj. Qed.
+
+
+Section QuotFun.
+Variables (T1 T2 : finType) (e1 : equiv_rel T1) (e2 : equiv_rel T2) (h1 : T1 -> T2).
+Definition quot_fun (x : quot e1) : quot e2 := \pi (h1 (repr x)).
+End QuotFun.
+Arguments quot_fun [T1 T2 e1 e2].
+
+Lemma quot_fun_can (T1 T2 : finType) (e1 : equiv_rel T1) (e2 : equiv_rel T2) (h1 : T1 -> T2) (h2 : T2 -> T1) :
+  {homo h2 : x y / x = y %[mod e2] >-> x = y %[mod e1]} ->
+  (forall x, h2 (h1 x) = x %[mod e1]) ->
+  @cancel (quot e2) (quot e1) (quot_fun h1) (quot_fun h2).
+Proof.
+  move => h2_hom h1_can x.
+  rewrite /quot_fun -{2}[x]reprK -[\pi (repr x)]h1_can.
+  apply: h2_hom. by rewrite reprK.
+Qed.
+
+Section BijT.
+Variables (T : finType) (P : pred T).
+Hypothesis inP : forall x, P x.
+Definition subT_bij : bij {x : T | P x} T.
+Proof. exists val (fun x => Sub x (inP x)). 
+       abstract (case => x Px; exact: val_inj).
+       abstract done.
+Defined.
+End BijT.
+
+Definition setT_bij (T : finType) : bij {x : T | x \in setT} T := 
+  Eval hnf in subT_bij (@in_setT T).
+Arguments setT_bij [T].
+
+Lemma consistentT (G : graph) : consistent [set: G] [set: edge G].
+Proof. done. Qed.
+Arguments consistentT : clear implicits.
+
+Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentT G)) G setT_bij setT_bij. 
+Proof. by []. Qed.
+
+Definition iso_subgraph_forT (G : graph) : iso (subgraph_for (consistentT G)) G := 
+  Eval hnf in Iso (setT_bij_hom G).
+
+Section QuotBij.
+  Variables (T1 T2 : finType) (e1 : equiv_rel T1) (e2 : equiv_rel T2).
+  Variables (h : T1 -> T2) (h_inv : T2 -> T1).
+
+  (** All 4 assumptions are necessary *)
+  Hypothesis h_homo : {homo h : x y / x = y %[mod e1] >-> x = y %[mod e2]}.
+  Hypothesis h_inv_homo : {homo h_inv : x y / x = y %[mod e2] >-> x = y %[mod e1]}. 
+
+  Hypothesis h_can : forall x, h_inv (h x) = x %[mod e1].
+  Hypothesis h_inv_can : forall x, h (h_inv x) = x %[mod e2].
+
+  Definition quot_bij : bij (quot e1) (quot e2).
+  Proof. exists (quot_fun h) (quot_fun h_inv); abstract exact: quot_fun_can. Defined.
+
+  Lemma quot_bijE (x: T1): quot_bij (\pi x) = \pi h x.
+  Proof. simpl. apply: h_homo. by rewrite reprK. Qed.
+End QuotBij.
+Global Opaque quot_bij.
+
+Arguments Sub : simpl never.
+
+Section union_bij.
+Variables (T : finType) (U V : {set T}).
+Notation sig S := ({ x : T | x \in S}) (only parsing).
+
+Lemma union_bij_proofL x : x \in U -> x \in U :|: V.
+Proof. apply/subsetP. exact: subsetUl. Qed.
+
+Lemma union_bij_proofR x : x \in V -> x \in U :|: V.
+Proof. apply/subsetP. exact: subsetUr. Qed.
+
+Definition union_bij_fwd (x : sig U + sig V) : sig (U :|: V) :=
+  match x with 
+  | inl x => Sub (val x) (union_bij_proofL (valP x))
+  | inr x => Sub (val x) (union_bij_proofR (valP x))
+  end.
+
+Lemma setU_dec x : x \in U :|: V -> ((x \in U) + (x \in V))%type.
+Admitted.
+
+Definition union_bij_bwd (x : sig (U :|: V)) : sig U + sig V :=
+  match setU_dec (valP x) with 
+  | inl p => inl (Sub (val x) p) 
+  | inr p => inr (Sub (val x) p) 
+  end.
+
+Inductive union_bij_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
+| union_bij_bwdL x (inU : x \in U) (inUV : x \in U :|: V) : 
+    union_bij_bwd_spec (Sub x inUV) (inl (Sub x inU))
+| union_bij_bwdR x (inV : x \in V) (inUV : x \in U :|: V) : 
+    x \notin U -> union_bij_bwd_spec (Sub x inUV) (inr (Sub x inV)).
+
+Lemma union_bij_bwdP x : union_bij_bwd_spec x (union_bij_bwd x).
+Admitted.
+
+Definition union_bij_bwdEl x (p : x \in U :|: V) (inU : x \in U) : 
+  union_bij_bwd (Sub x p) = inl (Sub x inU).
+Admitted.
+Arguments union_bij_bwdEl [x p].
+
+Definition union_bij_bwdEr x (p : x \in U :|: V) (inV : x \in V) : 
+  x \notin U -> 
+  union_bij_bwd (Sub x p) = inr (Sub x inV).
+Admitted.
+Arguments union_bij_bwdEr [x p].
+
+Hint Extern 0 (is_true (sval _ \in _)) => exact: valP.
+Hint Extern 0 (is_true (val _ \in _)) => exact: valP.
+
+Section Dis.
+  Hypothesis disUV : [disjoint U & V].
+
+  Lemma union_bij_fwd_can : cancel union_bij_fwd union_bij_bwd.
+  Proof. 
+    move => [x|x] /=. 
+    - by rewrite union_bij_bwdEl // valK'.
+    - by rewrite union_bij_bwdEr ?valK' // (disjointFl disUV).
+  Qed.
+  
+  Lemma union_bij_bwd_can : cancel union_bij_bwd union_bij_fwd.
+  Proof. move => x. case: union_bij_bwdP => //= {x} x *; exact: val_inj. Qed.
+
+  Definition union_bij := Bij union_bij_fwd_can union_bij_bwd_can.
+End Dis.
+
+Section Quot.
+  Variables (e : equiv_rel (sig U + sig V)).
+  Definition merge_union_rel := map_equiv union_bij_bwd e.
+
+  Hypothesis eqvI : forall x (inU : x \in U) (inV : x \in V), 
+      inl (Sub x inU) = inr (Sub x inV) %[mod e].
+
+  Lemma union_bij_fwd_can' x : union_bij_bwd (union_bij_fwd x) = x %[mod e].
+  Proof.
+    case: x => /= => x. 
+    - by rewrite union_bij_bwdEl valK'.
+    - case: (boolP (val x \in U)) => H. rewrite (union_bij_bwdEl H). 
+      + case: x H => x p H. exact: eqvI.
+      + by rewrite (union_bij_bwdEr _ H) // valK'.
+  Qed.
+
+  Lemma union_bij_bwd_can' x : union_bij_fwd (union_bij_bwd x) = x %[mod merge_union_rel].
+  Proof. case: union_bij_bwdP => {x} *; congr pi; exact: val_inj. Qed.
+
+  Lemma union_bij_fwd_hom : 
+    {homo union_bij_fwd : x y / x = y %[mod e] >-> x = y %[mod merge_union_rel]}.
+  Proof.
+    move => x y H. apply/eqquotP. rewrite map_equivE. apply/eqquotP. 
+    by rewrite !union_bij_fwd_can'.
+  Qed.
+
+  Lemma union_bij_bwd_hom : 
+    {homo union_bij_bwd : x y / x = y %[mod merge_union_rel] >-> x = y %[mod e]}.
+  Proof. move => x y /eqquotP. rewrite map_equivE. by move/eqquotP. Qed.
+
+  Definition merge_union_bij : bij (quot e) (quot merge_union_rel) := 
+    Eval hnf in quot_bij union_bij_fwd_hom union_bij_bwd_hom
+                             union_bij_fwd_can' union_bij_bwd_can'.
+End Quot.
+
+End union_bij.
+
+Section MergeSubgraph.
+  Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
+            (con1 : consistent V1 E1) (con2 : consistent V2 E2)
+            (e : equiv_rel (union (subgraph_for con1) (subgraph_for con2))).
+
+  Lemma consistentU : consistent (V1 :|: V2) (E1 :|: E2).
+  Proof using con1 con2. Admitted.
+
+  Hypothesis eqvI : forall x (inU : x \in V1) (inV : x \in V2), 
+      inl (Sub x inU) = inr (Sub x inV) %[mod e].
+
+  Hypothesis disE : [disjoint E1 & E2].
+
+  Local Notation G1 := (subgraph_for con1).
+  Local Notation G2 := (subgraph_for con2).
+  Local Notation G12 := (subgraph_for consistentU).
+  
+  Definition merge_subgraph_v : bij (merge (union G1 G2) e) (merge G12 (merge_union_rel e)) := 
+    merge_union_bij eqvI.
+
+  Definition merge_subgraph_e : bij (edge G1 + edge G2) (edge G12) := 
+    union_bij disE.
+
+  Lemma merge_subgraph_hom : is_hom merge_subgraph_v merge_subgraph_e.
+  Proof.
+    split. 
+    - move => [x|x]. rewrite /merge_subgraph_e /merge_subgraph_v.
+      (* Should be simple, but simplification is unnatural *)
+  Admitted.
+
+  Definition merge_subgraph_iso : iso (merge (union G1 G2) e) (merge G12 (merge_union_rel e)) := 
+    Iso merge_subgraph_hom.
+
+  (* TODO: show that [merge_union_rel e] is trivial if [e] only merges
+  elements in the intersection of [V1] and [V2] *)
+
+End MergeSubgraph.
