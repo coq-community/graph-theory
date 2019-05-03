@@ -86,10 +86,12 @@ Section t.
     abstract by move=>x; rewrite -{2}(reprK x); apply /eqquotP; rewrite H; apply piK. 
     abstract by move=>x; rewrite -{2}(reprK x); apply /eqquotP; rewrite -H; apply piK. 
   Defined.
-  Lemma quot_sameE (x: S): quot_same (\pi x) = \pi x.
-  Proof. simpl. apply /eqquotP. rewrite -H. apply piK. Qed.
+  Lemma quot_sameE (x: S): 
+    (quot_same (\pi x) = \pi x) * (quot_same^-1 (\pi x) = \pi x).
+  Proof. split; apply/eqquotP;[rewrite -H|rewrite H]; exact: piK. Qed.
 End t.
 Global Opaque quot_same. 
+
 
 Section map_equiv.
   Variables (S T: Type) (h: T -> S) (e: equiv_rel S).
@@ -114,6 +116,9 @@ Section b.
   Defined.
   Lemma quot_bijE (x: S): quot_bij (\pi x) = \pi h x.
   Proof. simpl. apply /eqquotP. rewrite map_equivE 2!bijK. apply piK. Qed.
+  
+  Lemma quot_bijE' (x: T): quot_bij^-1 (\pi x) = \pi h^-1 x.
+  Proof.  apply/eqquotP. rewrite -map_equivE. apply piK. Qed.
 End b.
 Global Opaque quot_bij.
 

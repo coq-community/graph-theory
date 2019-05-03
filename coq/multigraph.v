@@ -574,6 +574,9 @@ Section QuotBij.
 
   Lemma quot_bijE (x: T1): quot_bij (\pi x) = \pi h x.
   Proof. simpl. apply: h_homo. by rewrite reprK. Qed.
+  
+  Lemma quot_bijE' (x: T2): quot_bij^-1 (\pi x) = \pi h_inv x.
+  Proof. simpl. apply: h_inv_homo. by rewrite reprK. Qed.
 End QuotBij.
 Global Opaque quot_bij.
 
@@ -641,6 +644,12 @@ Section Dis.
   Proof. move => x. case: union_bij_bwdP => //= {x} x *; exact: val_inj. Qed.
 
   Definition union_bij := Bij union_bij_fwd_can union_bij_bwd_can.
+
+  Lemma union_bijE :
+    (forall x, union_bij (inl x) = Sub (val x) (union_bij_proofL (valP x)))*
+    (forall x, union_bij (inr x) = Sub (val x) (union_bij_proofR (valP x))).
+  Proof. done. Qed.
+
 End Dis.
 
 Section Quot.
@@ -676,44 +685,83 @@ Section Quot.
   Definition merge_union_bij : bij (quot e) (quot merge_union_rel) := 
     Eval hnf in quot_bij union_bij_fwd_hom union_bij_bwd_hom
                              union_bij_fwd_can' union_bij_bwd_can'.
+
+  Lemma merge_unionEl x : 
+    merge_union_bij (\pi (inl x)) = \pi (Sub (val x) (union_bij_proofL (valP x))).
+  Proof. exact: quot_bijE. Qed.
+  Lemma merge_unionEr x : 
+    merge_union_bij (\pi (inr x)) = \pi (Sub (val x) (union_bij_proofR (valP x))).
+  Proof. exact: quot_bijE. Qed.
+  Definition merge_unionE := (merge_unionEl,merge_unionEr).
 End Quot.
 
 End union_bij.
 
+Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
+  f =1 i -> f_inv =1 i^-1 -> bij A B.
+Proof.
+  move => Hf Hf'.
+  exists f f_inv; abstract (move => x; by rewrite Hf Hf' ?bijK ?bijK').
+Defined.
+Arguments bij_same [A B] f f_inv i _ _.
+
+(* move to equiv.v *)
+Lemma eqv_clot_pair (A : finType) (h : pairs A) x y : (x, y) \in h -> eqv_clot h x y.
+Proof. move => H. rewrite eqv_clotE. exact: sub_equiv_of. Qed.
+
 Section MergeSubgraph.
   Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
             (con1 : consistent V1 E1) (con2 : consistent V2 E2)
-            (e : equiv_rel (union (subgraph_for con1) (subgraph_for con2))).
+            (h : pairs (union (subgraph_for con1) (subgraph_for con2))).
 
   Lemma consistentU : consistent (V1 :|: V2) (E1 :|: E2).
   Proof using con1 con2. Admitted.
 
   Hypothesis eqvI : forall x (inU : x \in V1) (inV : x \in V2), 
-      inl (Sub x inU) = inr (Sub x inV) %[mod e].
+      inl (Sub x inU) = inr (Sub x inV) %[mod eqv_clot h].
 
   Hypothesis disE : [disjoint E1 & E2].
 
   Local Notation G1 := (subgraph_for con1).
   Local Notation G2 := (subgraph_for con2).
   Local Notation G12 := (subgraph_for consistentU).
-  
-  Definition merge_subgraph_v : bij (merge (union G1 G2) e) (merge G12 (merge_union_rel e)) := 
-    merge_union_bij eqvI.
+
+  Definition h' := map_pairs (@union_bij_fwd _ _ _) h.
+  Lemma eqv_clot_union_rel : merge_union_rel (eqv_clot h) =2 eqv_clot h'.
+  Proof.
+    move => x y. rewrite /merge_union_rel /h' map_equivE. apply/idP/idP.
+    - have aux z : union_bij_fwd (union_bij_bwd z) = z %[mod eqv_clot (map_pairs (@union_bij_fwd _ _ _) h)].
+      { apply/eqquotP. case: union_bij_bwdP => *; apply: eq_equiv; by apply: val_inj. }
+      move => H. apply/eqquotP. rewrite -[_ x]aux -[_ y]aux. apply/eqquotP.
+      move: H. apply: eqv_clot_map'.
+    - rewrite eqv_clotE. apply: equiv_ofE => /= {x y} x y. 
+      rewrite /rel_of_pairs/=. case/mapP => /= [[u v]] in_h [-> ->].
+      apply/eqquotP. rewrite 2!(union_bij_fwd_can' eqvI). apply/eqquotP.
+      exact: eqv_clot_pair.
+  Qed.
+
+  Definition merge_subgraph_v : bij (merge_seq (union G1 G2) h) (merge_seq G12 h') :=
+    Eval hnf in (bij_comp (merge_union_bij eqvI) (quot_same eqv_clot_union_rel)).
 
   Definition merge_subgraph_e : bij (edge G1 + edge G2) (edge G12) := 
     union_bij disE.
 
   Lemma merge_subgraph_hom : is_hom merge_subgraph_v merge_subgraph_e.
   Proof.
-    split. 
-    - move => [x|x]. rewrite /merge_subgraph_e /merge_subgraph_v.
-      (* Should be simple, but simplification is unnatural *)
-  Admitted.
+    rewrite /merge_subgraph_e /merge_subgraph_v. 
+    split; case => x //=.
+    all: rewrite merge_unionE quot_sameE. 
+    all: congr pi; try exact: val_inj.
+  Qed.
 
-  Definition merge_subgraph_iso : iso (merge (union G1 G2) e) (merge G12 (merge_union_rel e)) := 
+  Definition merge_subgraph_iso : iso (merge_seq (union G1 G2) h) (merge_seq G12 h') := 
     Iso merge_subgraph_hom.
-
-  (* TODO: show that [merge_union_rel e] is trivial if [e] only merges
+  
+  (* TODO?: show that [merge_union_rel e] is trivial if [e] only merges
   elements in the intersection of [V1] and [V2] *)
+
+  (* Definition merge_subgraph_iso' : iso (merge (union G1 G2) e) G12. *)
+  (*   apply: iso_comp merge_subgraph_iso _.  *)
+
 
 End MergeSubgraph.
