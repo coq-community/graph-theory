@@ -27,6 +27,7 @@ html: Makefile.coq
 
 graph: Makefile.coq
 	$(COQBIN)coqdep $(COQMF_COQLIBS) -dyndep var -c -dumpgraph depend-graph.gv $(COQMF_VFILES) >/dev/null
+	sed -i 's/\[label=\"\([^"]*\)\"]/[label="\1";URL=".\/html\/graphs.\1.html"]/g' depend-graph.gv
 	dot depend-graph.gv > depend-graph.dot
 	dot -Tsvg depend-graph.dot -o depend-graph.svg
 
