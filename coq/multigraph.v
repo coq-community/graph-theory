@@ -1,6 +1,6 @@
 Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import preliminaries finite_quotient equiv.
+Require Import edone preliminaries finite_quotient equiv.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -598,13 +598,13 @@ Definition union_bij_fwd (x : sig U + sig V) : sig (U :|: V) :=
   | inr x => Sub (val x) (union_bij_proofR (valP x))
   end.
 
-Lemma setU_dec x : x \in U :|: V -> ((x \in U) + (x \in V))%type.
-Admitted.
+Lemma setU_dec x : x \in U :|: V -> ((x \in U) + (x \notin U)*(x \in V))%type.
+Proof. case E : (x \in U); last rewrite !inE E; by [left|right]. Qed.
 
 Definition union_bij_bwd (x : sig (U :|: V)) : sig U + sig V :=
   match setU_dec (valP x) with 
   | inl p => inl (Sub (val x) p) 
-  | inr p => inr (Sub (val x) p) 
+  | inr p => inr (Sub (val x) p.2) 
   end.
 
 Inductive union_bij_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
@@ -614,17 +614,32 @@ Inductive union_bij_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
     x \notin U -> union_bij_bwd_spec (Sub x inUV) (inr (Sub x inV)).
 
 Lemma union_bij_bwdP x : union_bij_bwd_spec x (union_bij_bwd x).
-Admitted.
+Proof.
+  rewrite /union_bij_bwd. 
+  case: (setU_dec _) => p.
+  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). exact: union_bij_bwdL. 
+    by rewrite valK'.
+  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). apply: union_bij_bwdR. 
+    by rewrite p.  by rewrite valK'.
+Qed.
 
 Definition union_bij_bwdEl x (p : x \in U :|: V) (inU : x \in U) : 
   union_bij_bwd (Sub x p) = inl (Sub x inU).
-Admitted.
+Proof.
+  rewrite /union_bij_bwd. case: (setU_dec _) => p'. 
+  - rewrite /=. congr inl. exact: val_inj.
+  - exfalso. move: p'. rewrite /= inU. by case.
+Qed.
 Arguments union_bij_bwdEl [x p].
 
 Definition union_bij_bwdEr x (p : x \in U :|: V) (inV : x \in V) : 
   x \notin U -> 
   union_bij_bwd (Sub x p) = inr (Sub x inV).
-Admitted.
+Proof.
+  move => xNU. rewrite /union_bij_bwd. case: (setU_dec _) => p'. 
+  - exfalso. move: p'. by rewrite /= (negbTE xNU). 
+  - rewrite /=. congr inr. exact: val_inj.
+Qed.
 Arguments union_bij_bwdEr [x p].
 
 Hint Extern 0 (is_true (sval _ \in _)) => exact: valP.
@@ -715,7 +730,11 @@ Section MergeSubgraph.
             (h : pairs (union (subgraph_for con1) (subgraph_for con2))).
 
   Lemma consistentU : consistent (V1 :|: V2) (E1 :|: E2).
-  Proof using con1 con2. Admitted.
+  Proof using con1 con2. 
+    move => e. case/setUP => E. 
+    - case: (con1 E) => H1 H2. by rewrite !inE H1 H2.
+    - case: (con2 E) => H1 H2. by rewrite !inE H1 H2. 
+  Qed.    
 
   Hypothesis eqvI : forall x (inU : x \in V1) (inV : x \in V2), 
       inl (Sub x inU) = inr (Sub x inV) %[mod eqv_clot h].
@@ -756,13 +775,6 @@ Section MergeSubgraph.
 
   Definition merge_subgraph_iso : iso (merge_seq (union G1 G2) h) (merge_seq G12 h') := 
     Iso merge_subgraph_hom.
-  
-  (* TODO?: show that [merge_union_rel e] is trivial if [e] only merges
-  elements in the intersection of [V1] and [V2] *)
-
-  (* Definition merge_subgraph_iso' : iso (merge (union G1 G2) e) G12. *)
-  (*   apply: iso_comp merge_subgraph_iso _.  *)
-
 
 End MergeSubgraph.
 

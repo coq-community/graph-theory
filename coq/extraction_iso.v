@@ -145,10 +145,29 @@ Qed. (* QED takes forever, opacity problem? *)
 
 Lemma iso2_subgraph_forT (G : graph2) (V : {set G}) (E : {set edge G}) (con : consistent V E) i o :
   (forall x, x \in V) -> (forall e, e \in E) -> val i = g_in -> val o = g_out ->
-  point (subgraph_for con) i o ≈ G.
-Admitted.  
+  point (subgraph_for con) i o ≈ G. 
+Proof.
+  move => HV HE Hi Ho.
+  have ? : V = [set: G] by apply/setP => z; rewrite inE HV.
+  have ? : E = [set: edge G] by apply/setP => z; rewrite inE HE.
+  subst.
+  transitivity (point (subgraph_for (multigraph.consistentT G)) i o).
+  - exact: subgraph_for_iso.
+  - irewrite (iso_iso2 (iso_subgraph_forT _)). by rewrite /= Ho Hi -point_io.
+Qed.
 
-Lemma split_pip' (G : graph2) : 
+Require Import set_tac.
+
+Lemma bag_interval_cap (G : sgraph) (x y z: G) (U : {set G}) :
+  connected [set: G] -> x \in CP U -> y \in CP U -> 
+  z \in bag U x -> z \in interval x y -> z = x.
+Proof. 
+  move => conn_G xU yU Hz. 
+  rewrite /interval inE (disjointFr (interval_bag_disj _ _) Hz) // orbF.
+  case/setUP => /set1P // ?. subst z. apply/eqP. by rewrite -(@bag_cp G _ U).
+Qed.
+
+Lemma split_pip (G : graph2) : 
   connected [set: skeleton G] -> g_in != g_out :> G ->
   G ≈ @bgraph G IO g_in · (@igraph G g_in g_out · @bgraph G IO g_out).
 Proof.
@@ -160,10 +179,19 @@ Proof.
   move: (union_bij_proofR _ _) => Po.
   move: (consistentU _ _) => con1.
   rewrite /bgraph/induced. rewrite -> merge_subgraph_dot => //=.
-  rewrite -> iso2_subgraph_forT => //=.
-  (* these should be simple *)
-Admitted.
-
+  rewrite -> iso2_subgraph_forT => //=. 
+  all: have [? ?] : g_in \in @CP (skeleton G) IO /\ g_out \in @CP (skeleton G) IO
+    by split; apply: CP_extensive; rewrite !inE eqxx.
+  - move => x. move: (sinterval_bag_cover conn_G Dio). 
+    have: x \in [set: G] by []. rewrite /interval; set_tac.
+  - move => e. by rewrite -(interval_bag_edge_cover).
+  - apply: disjointsU. exact: bag_edges_disj. 
+    rewrite disjoint_sym interval_edges_sym. exact: interval_bag_edges_disj.
+  - move => x A B. rewrite inE (disjointFl (bag_disj conn_G _ _ Dio)) //= interval_sym in A.
+    exact: (@bag_interval_cap G) B A. 
+  - exact: interval_bag_edges_disj.
+  - move => x. exact: (@bag_interval_cap G).
+Qed.
 
 (* END NEW *)
   
@@ -688,163 +716,6 @@ Proof.
     exact: par2_eqv_ii.
   - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_oo.
-Qed.
-
-Lemma split_pip (G : graph2) : 
-  connected [set: skeleton G] -> g_in != g_out :> G ->
-  G ≈ @bgraph G IO g_in · (@igraph G g_in g_out · @bgraph G IO g_out).
-Proof.
-  move=> G_conn Eio. symmetry.
-  setoid_rewrite (dot2_alt (igraph g_in g_out)).
-  setoid_rewrite dot2_alt. set G' := dot2' _ _.
-  pose f (x : G') : G :=
-    match repr x with
-    | inl x => val x
-    | inr x => match repr x with
-               | inl x => val x
-               | inr x => val x
-               end
-    end.
-  pose h (x : edge G') : edge G :=
-    match x with
-    | inl x => val x
-    | inr (inl x) => val x
-    | inr (inr x) => val x
-    end.
-  have sintv_node (x : G) : x \notin @bag G IO g_in ->
-                              x \notin @bag G IO g_out ->
-                              x \in @sinterval G g_in g_out.
-  { move=> /negbTE Npi /negbTE Npo. have : x \in [set: G] by [].
-      by rewrite (sinterval_bag_cover G_conn Eio) !in_setU Npi Npo orbF. }
-  have intv_node (x : G) : x \in @sinterval G g_in g_out ->
-                                 x \in  @interval G g_in g_out.
-  { by rewrite [x \in @interval G _ _]inE => ->. }
-  pose g (x : G) : G' :=
-    match boolP (x \in @bag G IO g_in), boolP (x \in @bag G IO g_out) with
-    | AltTrue pi, _ => \pi (inl (Sub x pi))
-    | _, AltTrue po => \pi (inr (\pi (inr (Sub x po))))
-    | AltFalse Npi, AltFalse Npo =>
-      let pintv := intv_node x (sintv_node x Npi Npo) in
-      \pi (inr (\pi (inl (Sub x pintv))))
-    end.
-
-  have intv_edge (e : edge G) :
-    e \notin edge_set (@bag G IO g_in) -> e \notin edge_set (@bag G IO g_out) ->
-    e \in @interval_edges G g_in g_out.
-  { move=> /negbTE Npi /negbTE Npo. have : e \in [set: edge G] by [].
-      by rewrite (interval_bag_edge_cover G_conn Eio) !in_setU Npi Npo orbF. }
-  pose k (e : edge G) : edge G' :=
-    match boolP (e \in edge_set (@bag G IO g_in)),
-          boolP (e \in edge_set (@bag G IO g_out)) with
-    | AltTrue pi, _ => inl (Sub e pi)
-    | _, AltTrue po => inr (inr (Sub e po))
-    | AltFalse Npi, AltFalse Npo =>
-      let pintv := intv_edge e Npi Npo in inr (inl (Sub e pintv))
-    end.
-      
-  pose valE := f_equal val. pose injL := dot2_injL. pose injR := dot2_injR.
-  pose inLR := dot2_LR. pose inRL := fun e => dot2_LR (esym e).
-
-  apply Iso2'' with f g h k. 
-
-  - rewrite /f/g => x.
-    case Ex: (repr x) => [y|y]; last case Ey: (repr y) => [z|z].
-    * have y_pi : val y \in @bag G IO g_in := valP y.
-      rewrite /g. case: {-}_ / boolP => [?|H]; last by have := H; rewrite {1}y_pi.
-      rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
-    * have : val z \in @interval G g_in g_out := valP z.
-      rewrite 4!inE -orbA => /or3P[/eqP|/eqP|] Hz.
-      -- rewrite Hz /g. case: {-}_ / boolP=> H; last first.
-           by have := H; rewrite ?{1}(@bag_id G IO g_in).
-         rewrite -[x]reprK Ex. apply/eqquotP.
-         rewrite /=/dot2_eqv -[_ == inr y]/false.
-         rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
-         rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
-         rewrite -(inj_eq val_inj) eqxx sum_eqE andbT -[y]reprK Ey.
-         apply/eqP. apply/eqquotP.
-         by rewrite /=/dot2_eqv sum_eqE -(inj_eq val_inj) Hz eqxx.
-      -- rewrite Hz /g. have : g_out \in @bag G IO g_out by exact: bag_id.
-         move=> /(disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)).
-         rewrite 6!inE 2!eqxx orbT => /(_ _ _)/Wrap[]// o_pi.
-         case: {-}_ / boolP=> Hi; first by have := Hi; rewrite {1}o_pi.
-         case: {-}_ / boolP=> Ho; last first.
-           by have := Ho; rewrite ?{1}(@bag_id G IO g_out).
-         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr _)). apply/eqquotP.
-         rewrite /=/dot2_eqv -[_ == inl z]/false.
-         rewrite eqEcard subUset !sub1set !inE sum_eqE !cards2.
-         rewrite -![inl _ == inr _]/false -![inr _ == inl _]/false.
-         rewrite -(inj_eq val_inj) eqxx sum_eqE andbT orbF.
-         apply/eqP. exact: val_inj.
-      -- rewrite /g.
-         have piF : val z \in @bag G IO g_in = false.
-         { apply: disjointFl Hz. apply: interval_bag_disj.
-           apply: CP_extensive. by rewrite !inE eqxx. }
-         case: {-}_ / boolP => pi; first by have := pi; rewrite {1}piF.
-         have poF : val z \in @bag G IO g_out = false.
-         { apply: disjointFl Hz. rewrite sinterval_sym. apply: interval_bag_disj.
-           apply: CP_extensive. by rewrite !inE eqxx. }
-         case: {-}_ / boolP => po; first by have := po; rewrite {1}poF.
-         rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inl _)))).
-         exact: val_inj.
-    * have y_po : val z \in @bag G IO g_out := valP z.
-      have := disjointFl(bag_disj G_conn(CP_extensive _)(CP_extensive _)Eio)y_po.
-      rewrite !inE !eqxx orbT => /(_ _ _)/Wrap[]// y_pi.
-      rewrite /g. case: {-}_ / boolP => H1; first by have := H1; rewrite {1}y_pi.
-      case: {-}_ / boolP => H2; last by have := H2; rewrite {1}y_po.
-      rewrite -[x]reprK Ex -[y]reprK Ey. congr (\pi (inr (\pi (inr _)))).
-      exact: val_inj.
-
-  - rewrite /f/g=>x. case: {-}_ / boolP => H1; last case: {-}_ / boolP => H2.
-    * case: piP => -[y /injL/valE<-//|y /inLR[/valE]].
-      rewrite SubK =>->{y}->. by case: piP => -[y /injL<-|y /inLR[/valE?->]].
-    * case: piP => -[y /inRL[->]/inRL[/valE?/valE/=->]//|y /injR<-{y}].
-        by case: piP => -[y /inRL[->]/valE|y /injR<-].
-    * case: piP => -[y /inRL[->]/injL/valE//|y /injR<-{y}].
-        by case: piP => -[y /injL<-|y /inLR[/valE?->]].
-
-  - rewrite /h/k. case => [e|[e|e]].
-    + have He : val e \in edge_set (@bag G IO g_in) := valP e.
-      case: {-}_ / boolP => H1; last by have := H1; rewrite {1}He.
-      congr inl. exact: val_inj.
-    + have He : val e \in @interval_edges G g_in g_out := valP e.
-      case: {-}_ / boolP => H1.
-      { case: (disjointE (interval_bag_edges_disj _ _ _) H1 He) => //;
-        by apply: CP_extensive; rewrite !inE eqxx. }
-      rewrite {4}interval_edges_sym in He.
-      case: {-}_ / boolP => H2.
-      { case: (disjointE (interval_bag_edges_disj _ _ _) H2 He) => //;
-        by apply: CP_extensive; rewrite !inE eqxx. }
-      congr (inr (inl _)). exact: val_inj.
-    + have He : val e \in edge_set (@bag G IO g_out) := valP e.
-      case: {-}_ / boolP => H1.
-      { case: (disjointE (bag_edges_disj _ _ _ Eio) H1 He) => //;
-        by apply: CP_extensive; rewrite !inE eqxx. }
-      case: {-}_ / boolP => H2; last by have := H2; rewrite {1}He.
-      congr (inr (inr _)). exact: val_inj.
-  - rewrite /h/k=>e. by repeat case: {-}_ / boolP => ?.
-
-  - case=> [e|[e|e]]; rewrite /h; split=> //.
-    + rewrite /f. case: piP => -[x /injL<-//|x /inLR[He {x}->]].
-      move: He => /valE. rewrite [val (source e)]/= =>->.
-      by case: piP=> -[x /injL<-|x /inLR[/valE? {x}->]].
-    + rewrite /f. case: piP => -[x /injL<-//|x /inLR[He {x}->]].
-      move: He => /valE. rewrite [val (target e)]/= =>->.
-      by case: piP=> -[x /injL<-|x /inLR[/valE? {x}->]].
-    + rewrite /f. case: piP => -[x /inRL[->]/injL/valE//|x /injR<-{x}].
-      by case: piP => -[x /injL<-|x /inLR[/valE/=->->]].
-    + rewrite /f. case: piP => -[x /inRL[->]/injL/valE//|x /injR<-{x}].
-      by case: piP => -[x /injL<-|x /inLR[/valE/=->->]].
-    + rewrite /f. case: piP => -[x|x /injR<-{x}].
-        by move=> /inRL[->]/inRL[]/valE/=?/valE/=->.
-      by case: piP => -[x /inRL[->]/valE/=->|x /injR<-].
-    + rewrite /f. case: piP => -[x|x /injR<-{x}].
-        by move=> /inRL[->]/inRL[]/valE/=?/valE/=->.
-      by case: piP => -[x /inRL[->]/valE/=->|x /injR<-].
-
-  - rewrite /f. case: piP => -[x /injL<-//|x /inLR[_{x}->]].
-    by case: piP => -[x /injL<-|x /inLR[/valE/=?->]].
-  - rewrite /f. case: piP => -[x /inRL[->]/inRL[/valE? _]//|x /injR<-{x}].
-    by case: piP => -[x /inRL[->]|x /injR<-].
 Qed.
 
 
