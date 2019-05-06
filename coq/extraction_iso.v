@@ -96,6 +96,76 @@ Proof.
   - by [].
   - split=>//.
 Qed.
+
+(* New / Move *)
+
+Lemma eqv_clot1E (T : finType) (u v x y : T) : 
+ eqv_clot [:: (u, v)] x y -> [\/ x = y, x = u /\ y = v | x = v /\ y = u].
+Proof.
+  rewrite eqv_clotE.  case/connectP => p. elim: p x => //=.
+  - firstorder.
+  - move => a p IHp x /andP[]. rewrite /rel_of_pairs/= !inE !xpair_eqE => A pth lst.
+    move: (IHp _ pth lst). case/orP : A => /andP [] /eqP ? /eqP ?; subst; firstorder.
+Qed.
+
+Lemma eqv_clot_injL (T1 T2 : finType) (x y : T1) o i :
+      inl T2 x = inl y %[mod eqv_clot [:: (inl o,inr i)]] -> x = y. 
+Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed.
+
+Lemma eqv_clot_injR (T1 T2 : finType) (x y : T2) o i :
+      inr T1 x = inr y %[mod eqv_clot [:: (inl o,inr i)]] -> x = y. 
+Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed. 
+
+Lemma eqv_clot_LR (T1 T2 : finType) (x : T1) (y : T2) o i :
+      inl T2 x = inr T1 y %[mod eqv_clot [:: (inl o,inr i)]] -> x = o /\ y = i. 
+Proof. move/eqquotP. by case/eqv_clot1E => [[//]|[[->][->]]|[//]]. Qed.
+
+Lemma merge_subgraph_dot (G : graph2) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
+  (con1 : consistent V1 E1) (con2 : consistent V2 E2) i1 i2 o1 o2 :
+  val o1 = val i2 -> [disjoint E1 & E2] -> (forall x, x \in V1 -> x \in V2 -> x = val o1) ->
+  dot2 (point (subgraph_for con1) i1 o1) (point (subgraph_for con2) i2 o2) ≈
+  point (subgraph_for (consistentU con1 con2))
+        (Sub (val i1) (union_bij_proofL _ (valP i1))) 
+        (Sub (val o2) (union_bij_proofR _ (valP o2))).
+Proof.
+  move => Eoi disE12 cap12. rewrite /dot2.
+  setoid_rewrite -> (iso_iso2 (merge_subgraph_iso _ disE12)). 
+  rewrite /=. rewrite !quot_sameE. Unshelve.
+  irewrite merge_nothing. apply: subgraph_for_iso => //.
+  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
+    + by move/eqv_clot_injL => ->.
+    + move/eqv_clot_LR => [-> ->]. by symmetry. 
+  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
+    + move/esym/eqv_clot_LR => [-> ->]. done.
+    + by move/eqv_clot_injR => ->.
+  - repeat constructor. exact: val_inj. 
+  - move => x inV1 inV2. move: (inV1) (inV2). rewrite (cap12 _ inV1 inV2) {2 4}Eoi /= =>  ? ?. 
+    rewrite !valK'. apply/eqquotP. exact: eqv_clot_hd.
+Qed. (* QED takes forever, opacity problem? *)
+
+Lemma iso2_subgraph_forT (G : graph2) (V : {set G}) (E : {set edge G}) (con : consistent V E) i o :
+  (forall x, x \in V) -> (forall e, e \in E) -> val i = g_in -> val o = g_out ->
+  point (subgraph_for con) i o ≈ G.
+Admitted.  
+
+Lemma split_pip' (G : graph2) : 
+  connected [set: skeleton G] -> g_in != g_out :> G ->
+  G ≈ @bgraph G IO g_in · (@igraph G g_in g_out · @bgraph G IO g_out).
+Proof.
+  move => conn_G Dio. symmetry.
+  rewrite -> dotA. 
+  rewrite /= {1}/bgraph /igraph /induced. 
+  rewrite -> merge_subgraph_dot => //=. 
+  move: (union_bij_proofL _ _) => Pi.
+  move: (union_bij_proofR _ _) => Po.
+  move: (consistentU _ _) => con1.
+  rewrite /bgraph/induced. rewrite -> merge_subgraph_dot => //=.
+  rewrite -> iso2_subgraph_forT => //=.
+  (* these should be simple *)
+Admitted.
+
+
+(* END NEW *)
   
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
