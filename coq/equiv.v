@@ -1,6 +1,6 @@
 Require Import RelationClasses Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import preliminaries.
+Require Import preliminaries finite_quotient.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -28,7 +28,6 @@ Lemma equiv_of_transfer (T1 T2 : finType) (e1 : rel T1) (e2 : rel T2) (f : T1 ->
   equiv_of e1 x y -> equiv_of e2 (f x) (f y).
 Proof. exact: equiv_ofE. Qed.
 
-
 Definition pairs A := seq (A*A).
 Definition map_pairs A B (f: A -> B): pairs A -> pairs B := map (fun x => (f x.1,f x.2)). 
 
@@ -42,6 +41,49 @@ Lemma eqv_clotE (T : finType) (l : pairs T) x y :
   eqv_clot l x y = equiv_of (rel_of_pairs l) x y.
 Proof. by rewrite /eqv_clot -lock. Qed.
 
+(* move to equiv.v *)
+Lemma eqv_clot_pair (A : finType) (h : pairs A) x y : (x, y) \in h -> eqv_clot h x y.
+Proof. move => H. rewrite eqv_clotE. exact: sub_equiv_of. Qed.
+
+Lemma rel_of_pairs_mono (T : finType) (l l' : pairs T) :
+  {subset l <= l'} -> subrel (rel_of_pairs l) (rel_of_pairs l').
+Proof. move => sub_l x y. exact: sub_l. Qed.
+
+Lemma eqv_clot_subset (T : finType) (l1 l2 : pairs T) : 
+  {subset l1 <= l2} -> subrel (eqv_clot l1) (eqv_clot l2).
+Proof. 
+  move => H x y. rewrite !eqv_clotE. apply: equiv_of_transfer => u v.
+  move => R. apply: sub_equiv_of. exact: rel_of_pairs_mono R.
+Qed.
+Arguments eqv_clot_subset [T] l1 [l2].
+
+Lemma subset_catL (T : eqType) (h k : seq T) : {subset h <= h ++ k}.
+Proof. move => x H. by rewrite mem_cat H. Qed.
+Lemma subset_catR (T : eqType) (h k : seq T) : {subset k <= h ++ k}.
+Proof. move => x H. by rewrite mem_cat H orbT. Qed.
+Hint Resolve subset_catL subset_catR.
+Lemma subset_tl (T : eqType) z (l : seq T) : {subset l <= z :: l}.
+Proof. move => x y. exact: mem_tail. Qed. 
+Hint Resolve subset_tl.
+
+(* this should be eqv_clot_map, the other lemma should use the _inj suffix *)
+Lemma eqv_clot_map' (aT rT : finType) (f : aT -> rT) (l : pairs aT) x y : 
+  eqv_clot l x y -> eqv_clot (map_pairs f l) (f x) (f y).
+Proof.
+  rewrite eqv_clotE /=. apply: equiv_ofE => {x y} x y H.
+  apply: eqv_clot_pair. by apply/mapP; exists (x,y).
+Qed.
+
+Lemma eqv_clot_iso (A B: finType) (h: bij A B) (l: pairs A):
+  map_equiv h^-1 (eqv_clot l) =2 eqv_clot (map_pairs h l).
+Proof.
+  move => x y. rewrite /map_equiv/map_equiv_rel/=. apply/idP/idP.
+  - move/(eqv_clot_map' h). by rewrite !bijK'.
+  - move/(eqv_clot_map' h^-1). rewrite /map_pairs -map_comp map_id_in //. 
+    move => {x y} x y /=. by rewrite !bijK -surjective_pairing.
+Qed.
+
+(* TOTHINK: eliminate? *)
 Lemma equiv_of_sub (T : finType) (e1 e2 : rel T) :
   subrel e1 e2 -> reflexive e2 -> symmetric e2 -> transitive e2 -> subrel (equiv_of e1) e2.
 Proof. 
@@ -54,39 +96,27 @@ Lemma equiv_of_sub' (T : finType) (e1 : rel T) (e2 : equiv_rel T) :
   subrel e1 e2 -> subrel (equiv_of e1) e2.
 Proof. move => sub. apply: equiv_of_sub => //; auto using equiv_sym, equiv_trans. Qed.
 
+(* TODO: preliminaries *)
 Lemma eq_equiv (T : finType) (e : equiv_rel T) x y : x = y -> e x y.
 Proof. by move->. Qed.
 
-
-Lemma eqv_clot_trans (T: finType) (z x y: T) (l: pairs T): eqv_clot l x z -> eqv_clot l z y -> eqv_clot l x y.
+Lemma eqv_clot_trans (T: finType) (z x y: T) (l: pairs T): 
+  eqv_clot l x z -> eqv_clot l z y -> eqv_clot l x y.
 Proof. exact: equiv_trans. Qed.
 
 Instance equiv_rel_Equivalence T (e : equiv_rel T) : Equivalence [eta e].
 Proof. split => // [x y|x y z]; by [rewrite equiv_sym | apply: equiv_trans]. Qed.
   
 Lemma eqv_clot_hd (T: finType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) x y.
-Proof. 
-  rewrite eqv_clotE. apply: sub_equiv_of. by rewrite /rel_of_pairs //= mem_head. 
-Qed.
+Proof. apply: eqv_clot_pair. exact: mem_head. Qed.
 
 Lemma eqv_clot_hd' (T: finType) (x y: T) (l: pairs T): eqv_clot ((x,y)::l) y x.
 Proof. symmetry. apply eqv_clot_hd. Qed.
 
-Lemma rel_of_pairs_mono (T : finType) (l l' : pairs T) :
-  {subset l <= l'} -> subrel (rel_of_pairs l) (rel_of_pairs l').
-Proof. move => sub_l x y. exact: sub_l. Qed.
-
-Lemma subset_tl (T : eqType) z (l : seq T) : {subset l <= z :: l}.
-Proof. move => x y. exact: mem_tail. Qed. 
-Hint Resolve subset_tl.
-
 Lemma eqv_clot_tl (T: finType) (x y: T) z (l: pairs T):
   eqv_clot l x y ->
   eqv_clot (z::l) x y.
-Proof. 
-  rewrite !eqv_clotE. apply: equiv_of_sub' => /=. 
-  exact: sub_trans (rel_of_pairs_mono _) (@sub_equiv_of _ _).
-Qed.
+Proof. exact: eqv_clot_subset. Qed.
 
 Lemma ForallE (T : eqType) (P : T -> Prop) (s : list T) : 
   List.Forall P s <-> (forall x, x \in s -> P x).
@@ -104,6 +134,25 @@ Lemma eqv_clot_eq (T: finType) (h k: pairs T):
 Proof.
   rewrite !ForallE /= => A B x y. apply/idP/idP; rewrite eqv_clotE. 
   all: apply: equiv_of_sub' => u v; solve [exact: (A (u,v))|exact:(B (u,v))].
+Qed.
+
+Lemma eq_equiv_class (T : eqType) : equiv_class_of (@eq_op T). 
+Proof. split => //. exact: eq_op_trans. Qed.
+Canonical eqv_equiv (T : eqType) := EquivRelPack (@eq_equiv_class T).
+
+Lemma eqv_clot_nothing (T : finType) (h : pairs T) :
+  List.Forall (fun p => p.1 = p.2) h -> eqv_clot h =2 eq_op.
+Proof.
+  move => /ForallE H x y. rewrite eqv_clotE /= in H *. 
+  apply/idP/idP; last by move/eqP->.
+  by apply: equiv_ofE => /= u v /H /= ->.
+Qed.
+
+Lemma eqv_clot_nothing' (T : finType) (h : pairs T) :
+  List.Forall (fun p => p.1 = p.2) h -> forall x y, eqv_clot h x y -> x=y.
+Proof.
+  intro H. apply eqv_clot_nothing in H.
+  intros x y. rewrite H. apply /eqP. 
 Qed.
 
 
@@ -182,8 +231,57 @@ Proof.
   exact: rel_of_pairs_mapE.
 Qed.
 
+Lemma eqv_clot_cat (A: finType) (h k: pairs A):
+  equiv_comp (eqv_clot (map_pairs (pi (eqv_clot h)) k)) =2 eqv_clot (h++k).
+Proof.
+  move => x y. symmetry. rewrite /equiv_comp map_equivE/= !eqv_clotE /=. 
+  set e1 := rel_of_pairs _. set e2 := rel_of_pairs _. apply/idP/idP. 
+  - apply: equiv_of_transfer => {x y} u v. 
+    rewrite /e1/rel_of_pairs/= mem_cat. case/orP => H.
+    + apply: eq_equiv. apply/eqquotP. rewrite eqv_clotE. exact: sub_equiv_of.
+    + apply: sub_equiv_of. apply/mapP. by exists (u,v).
+  - suff S (u v : quot (eqv_clot h)):
+      equiv_of e2 u v -> equiv_of e1 (repr u) (repr v).
+    { move/S => H.  
+      apply: equiv_trans (equiv_trans _ _). 2: exact: H.
+      rewrite /= -eqv_clotE. exact: (eqv_clot_subset h) (piK' _ _). 
+      rewrite /= -eqv_clotE equiv_sym. exact: (eqv_clot_subset h) (piK' _ _). }
+    apply: equiv_of_transfer => {u v} u v /mapP [[u0 v0] H0] [-> ->].
+    apply: equiv_trans (equiv_trans _ _). 
+    2:{ rewrite /= -eqv_clotE. apply: (eqv_clot_subset k) _. done. 
+        rewrite eqv_clotE. apply: sub_equiv_of. exact: H0. }
+    rewrite equiv_sym. all: rewrite /= -eqv_clotE; exact: (eqv_clot_subset h) (piK' _ _).
+Qed.
 
-(* Ltac eqv := solve [reflexivity|apply: eqv_clot_hd|apply: eqv_clot_hd'|apply: eqv_clot_tl; eqv]. *)
+(* Inversion lemmas for a single pair *)
+
+Lemma eqv_clot1E (T : finType) (u v x y : T) : 
+ eqv_clot [:: (u, v)] x y -> [\/ x = y, x = u /\ y = v | x = v /\ y = u].
+Proof.
+  rewrite eqv_clotE.  case/connectP => p. elim: p x => //=.
+  - firstorder.
+  - move => a p IHp x /andP[]. rewrite /rel_of_pairs/= !inE !xpair_eqE => A pth lst.
+    move: (IHp _ pth lst). case/orP : A => /andP [] /eqP ? /eqP ?; subst; firstorder.
+Qed.
+
+Lemma eqv_clot_injL (T1 T2 : finType) (x y : T1) o i :
+      inl T2 x = inl y %[mod eqv_clot [:: (inl o,inr i)]] -> x = y. 
+Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed.
+
+Lemma eqv_clot_injR (T1 T2 : finType) (x y : T2) o i :
+      inr T1 x = inr y %[mod eqv_clot [:: (inl o,inr i)]] -> x = y. 
+Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed. 
+
+Lemma eqv_clot_LR (T1 T2 : finType) (x : T1) (y : T2) o i :
+      inl T2 x = inr T1 y %[mod eqv_clot [:: (inl o,inr i)]] -> x = o /\ y = i. 
+Proof. move/eqquotP. by case/eqv_clot1E => [[//]|[[->][->]]|[//]]. Qed.
+
+(* TODO: provide inversion lemmas for the case of two pairs (at least
+for the case of inl/inr pairs as used in [par2] *)
+
+(** Tactics for showing that some concrete equivalence closure
+contains a given pair (list of pairs) *)
+
 Ltac eqv := lazymatch goal with
             | |- is_true (equiv (eqv_clot ((?x,?y)::_)) ?x' ?y') =>
               reflexivity
@@ -194,5 +292,3 @@ Ltac eqv := lazymatch goal with
 Ltac leqv := solve [apply List.Forall_cons;[eqv|leqv] | apply List.Forall_nil].
 
 Global Opaque eqv_clot.
-
-
