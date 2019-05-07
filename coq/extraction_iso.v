@@ -97,29 +97,6 @@ Proof.
   - split=>//.
 Qed.
 
-(* New / Move *)
-
-Lemma eqv_clot1E (T : finType) (u v x y : T) : 
- eqv_clot [:: (u, v)] x y -> [\/ x = y, x = u /\ y = v | x = v /\ y = u].
-Proof.
-  rewrite eqv_clotE.  case/connectP => p. elim: p x => //=.
-  - firstorder.
-  - move => a p IHp x /andP[]. rewrite /rel_of_pairs/= !inE !xpair_eqE => A pth lst.
-    move: (IHp _ pth lst). case/orP : A => /andP [] /eqP ? /eqP ?; subst; firstorder.
-Qed.
-
-Lemma eqv_clot_injL (T1 T2 : finType) (x y : T1) o i :
-      inl T2 x = inl y %[mod eqv_clot [:: (inl o,inr i)]] -> x = y. 
-Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed.
-
-Lemma eqv_clot_injR (T1 T2 : finType) (x y : T2) o i :
-      inr T1 x = inr y %[mod eqv_clot [:: (inl o,inr i)]] -> x = y. 
-Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed. 
-
-Lemma eqv_clot_LR (T1 T2 : finType) (x : T1) (y : T2) o i :
-      inl T2 x = inr T1 y %[mod eqv_clot [:: (inl o,inr i)]] -> x = o /\ y = i. 
-Proof. move/eqquotP. by case/eqv_clot1E => [[//]|[[->][->]]|[//]]. Qed.
-
 Lemma merge_subgraph_dot (G : graph2) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
   (con1 : consistent V1 E1) (con2 : consistent V2 E2) i1 i2 o1 o2 :
   val o1 = val i2 -> [disjoint E1 & E2] -> (forall x, x \in V1 -> x \in V2 -> x = val o1) ->

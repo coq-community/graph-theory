@@ -247,36 +247,6 @@ Section merge_merge.
   Proof. eexists. eapply hom_merge_merge. Defined.
 End merge_merge.
 
-Lemma eqv_clot_subset (T : finType) (l1 l2 : pairs T) : 
-  {subset l1 <= l2} -> subrel (eqv_clot l1) (eqv_clot l2).
-Proof. 
-  move => H x y. rewrite !eqv_clotE. apply: equiv_of_transfer => u v.
-  move => R. apply: sub_equiv_of. exact: rel_of_pairs_mono R.
-Qed.       
-Arguments eqv_clot_subset [T] l1 [l2].
-
-Lemma subset_catL (T : eqType) (h k : seq T) : {subset h <= h ++ k}.
-Proof. move => x H. by rewrite mem_cat H. Qed.
-Lemma subset_catR (T : eqType) (h k : seq T) : {subset k <= h ++ k}.
-Proof. move => x H. by rewrite mem_cat H orbT. Qed.
-Hint Resolve subset_catL subset_catR.
-
-(* this should be eqv_clot_map, the other lemma should use the _inj suffix *)
-Lemma eqv_clot_map' (aT rT : finType) (f : aT -> rT) (l : pairs aT) x y : 
-  eqv_clot l x y -> eqv_clot (map_pairs f l) (f x) (f y).
-Proof.
-  rewrite !eqv_clotE /=. apply: equiv_of_transfer => {x y} x y H.
-  apply: sub_equiv_of. by apply/mapP; exists (x,y).
-Qed.
-
-Lemma eqv_clot_iso (A B: finType) (h: bij A B) (l: pairs A):
-  map_equiv h^-1 (eqv_clot l) =2 eqv_clot (map_pairs h l).
-Proof.
-  move => x y. rewrite /map_equiv/map_equiv_rel/=. apply/idP/idP.
-  - move/(eqv_clot_map' h). by rewrite !bijK'.
-  - move/(eqv_clot_map' h^-1). rewrite /map_pairs -map_comp map_id_in //. 
-    move => {x y} x y /=. by rewrite !bijK -surjective_pairing.
-Qed.
 
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
@@ -319,25 +289,6 @@ Section merge_same.
 End merge_same.
 Global Opaque merge_same.
 
-(* TODO: move *)
-Lemma eq_equiv_class (T : eqType) : equiv_class_of (@eq_op T). 
-Proof. split => //. exact: eq_op_trans. Qed.
-Canonical eqv_equiv (T : eqType) := EquivRelPack (@eq_equiv_class T).
-
-Lemma eqv_clot_nothing (T : finType) (h : pairs T) :
-  List.Forall (fun p => p.1 = p.2) h -> eqv_clot h =2 eq_op.
-Proof.
-  move => /ForallE H x y. rewrite eqv_clotE /= in H *. 
-  apply/idP/idP; last by move/eqP->.
-  by apply: equiv_ofE => /= u v /H /= ->.
-Qed.
-
-Lemma eqv_clot_nothing' (T : finType) (h : pairs T) :
-  List.Forall (fun p => p.1 = p.2) h -> forall x y, eqv_clot h x y -> x=y.
-Proof.
-  intro H. apply eqv_clot_nothing in H.
-  intros x y. rewrite H. apply /eqP. 
-Qed.
 
 Section merge_nothing.
  Variables (F: graph) (h: pairs F).
@@ -348,29 +299,6 @@ Section merge_nothing.
  Proof. apply quot_idE. Qed.
 End merge_nothing.
 Global Opaque merge_nothing.
-
-(* MOVE *)
-Lemma eqv_clot_cat (A: finType) (h k: pairs A):
-  equiv_comp (eqv_clot (map_pairs (pi (eqv_clot h)) k)) =2 eqv_clot (h++k).
-Proof.
-  move => x y. symmetry. rewrite /equiv_comp map_equivE/= !eqv_clotE /=. 
-  set e1 := rel_of_pairs _. set e2 := rel_of_pairs _. apply/idP/idP. 
-  - apply: equiv_of_transfer => {x y} u v. 
-    rewrite /e1/rel_of_pairs/= mem_cat. case/orP => H.
-    + apply: eq_equiv. apply/eqquotP. rewrite eqv_clotE. exact: sub_equiv_of.
-    + apply: sub_equiv_of. apply/mapP. by exists (u,v).
-  - suff S (u v : quot (eqv_clot h)):
-      equiv_of e2 u v -> equiv_of e1 (repr u) (repr v).
-    { move/S => H.  
-      apply: equiv_trans (equiv_trans _ _). 2: exact: H.
-      rewrite /= -eqv_clotE. exact: (eqv_clot_subset h) (piK' _ _). 
-      rewrite /= -eqv_clotE equiv_sym. exact: (eqv_clot_subset h) (piK' _ _). }
-    apply: equiv_of_transfer => {u v} u v /mapP [[u0 v0] H0] [-> ->].
-    apply: equiv_trans (equiv_trans _ _). 
-    2:{ rewrite /= -eqv_clotE. apply: (eqv_clot_subset k) _. done. 
-        rewrite eqv_clotE. apply: sub_equiv_of. exact: H0. }
-    rewrite equiv_sym. all: rewrite /= -eqv_clotE; exact: (eqv_clot_subset h) (piK' _ _).
-Qed.
 
 Section merge_merge_seq.
   Variables (F: graph) (h k: pairs F) (k': pairs (merge_seq F h)).
@@ -719,10 +647,6 @@ Proof.
   exists f f_inv; abstract (move => x; by rewrite Hf Hf' ?bijK ?bijK').
 Defined.
 Arguments bij_same [A B] f f_inv i _ _.
-
-(* move to equiv.v *)
-Lemma eqv_clot_pair (A : finType) (h : pairs A) x y : (x, y) \in h -> eqv_clot h x y.
-Proof. move => H. rewrite eqv_clotE. exact: sub_equiv_of. Qed.
 
 Section MergeSubgraph.
   Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
