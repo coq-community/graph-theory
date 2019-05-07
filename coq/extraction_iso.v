@@ -15,6 +15,10 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Isomorphim Theorem *)
 
+(** In this file we prove correctness of the extraction function. This
+mainly amounts to establishing a variety of isomorphisms corresponding
+to the way the extraction function decomposes graphs. *)
+
 Lemma comp_exit (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] ->
   g_in == g_out :> G -> C \in @components G [set~ g_in] ->
@@ -36,102 +40,6 @@ Proof.
   + exact: sedge_equiv_in.
 Qed.
 
-(* TOMOVE to ptt_graph? *)
-Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
-  (C1 : @consistent G V1 E1) (C2: consistent V2 E2) :
-  V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->
-  point (subgraph_for C1) i1 o1 ≈ point (subgraph_for C2) i2 o2.
-Proof.
-  move => eq_V eq_E eq_i eq_o. subst.
-  move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
-  apply (@Iso2 (point (subgraph_for C1) i2 o2) (point (subgraph_for C2) i2 o2) bij_id bij_id).
-  split=>//. split=>//=e.
-    * by rewrite (bool_irrelevance (source_proof C1 e) (source_proof C2 e)).
-    * by rewrite (bool_irrelevance (target_proof C1 e) (target_proof C2 e)).
-Qed.
-
-Lemma iso_top (G : graph2) :
-  g_in != g_out :> G -> 
-  (forall x : G, x \in IO) -> 
-  (forall e : edge G, False) -> G ≈ top2.
-Proof.
-  move => Dio A B. 
-  pose f (x : G) : top2 := 
-    if x == g_in then g_in else g_out.
-  pose f' (x : top2) : G := 
-    if x == g_in then g_in else g_out.
-  pose g (e : edge G) : edge top2 := 
-    match (B e) with end.
-  pose g' (e : edge top2) : edge G := 
-    match e with end.
-  unshelve refine (@Iso2 _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) _)=>/=.
-  - rewrite /f/f'/= => x.
-    case: (boolP (x == g_in)) => [/eqP <-|/=]; first by rewrite eqxx.
-    move: (A x). case/setUP => /set1P => -> //. by rewrite eqxx.
-  - rewrite /f/f'/= => x.
-    case: (boolP (x == false)) => [/eqP <-|/=]; first by rewrite eqxx.
-    case: x => // _. by rewrite eq_sym (negbTE Dio).
-  - by [].
-  - by [].
-  - split=>//. by rewrite /f eqxx. by rewrite /f eq_sym (negbTE Dio).
-Qed.
-
-Lemma iso_one (G : graph2) :
-  g_in == g_out :> G -> 
-  (forall x : G, x \in IO) -> 
-  (forall e : edge G, False) -> G ≈ one2.
-Proof.
-  move => Dio A B. 
-  pose f (x : G) : one2 := g_in.
-  pose f' (x : one2) : G := g_in.
-  pose g (e : edge G) : edge one2 := 
-    match (B e) with end.
-  pose g' (e : edge one2) : edge G := 
-    match e with end.
-  unshelve refine (@Iso2 _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) _)=>/=.
-  - rewrite /f/f'/= => x.
-    move: (A x). rewrite !inE -(eqP Dio) => /orP. by case => /eqP->.
-  - by move => [].
-  - by [].
-  - by [].
-  - split=>//.
-Qed.
-
-Lemma merge_subgraph_dot (G : graph2) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
-  (con1 : consistent V1 E1) (con2 : consistent V2 E2) i1 i2 o1 o2 :
-  val o1 = val i2 -> [disjoint E1 & E2] -> (forall x, x \in V1 -> x \in V2 -> x = val o1) ->
-  dot2 (point (subgraph_for con1) i1 o1) (point (subgraph_for con2) i2 o2) ≈
-  point (subgraph_for (consistentU con1 con2))
-        (Sub (val i1) (union_bij_proofL _ (valP i1))) 
-        (Sub (val o2) (union_bij_proofR _ (valP o2))).
-Proof.
-  move => Eoi disE12 cap12. rewrite /dot2.
-  setoid_rewrite -> (iso_iso2 (merge_subgraph_iso _ disE12)). 
-  rewrite /=. rewrite !quot_sameE. Unshelve.
-  irewrite merge_nothing. apply: subgraph_for_iso => //.
-  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
-    + by move/eqv_clot_injL => ->.
-    + move/eqv_clot_LR => [-> ->]. by symmetry. 
-  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
-    + move/esym/eqv_clot_LR => [-> ->]. done.
-    + by move/eqv_clot_injR => ->.
-  - repeat constructor. exact: val_inj. 
-  - move => x inV1 inV2. move: (inV1) (inV2). rewrite (cap12 _ inV1 inV2) {2 4}Eoi /= =>  ? ?. 
-    rewrite !valK'. apply/eqquotP. exact: eqv_clot_hd.
-Qed. (* QED takes forever, opacity problem? *)
-
-Lemma iso2_subgraph_forT (G : graph2) (V : {set G}) (E : {set edge G}) (con : consistent V E) i o :
-  (forall x, x \in V) -> (forall e, e \in E) -> val i = g_in -> val o = g_out ->
-  point (subgraph_for con) i o ≈ G. 
-Proof.
-  move => HV HE Hi Ho.
-  have ? : V = [set: G] by apply/setP => z; rewrite inE HV.
-  have ? : E = [set: edge G] by apply/setP => z; rewrite inE HE.
-  subst.
-  transitivity (point (subgraph_for (multigraph.consistentT G)) i o).
-  - exact: subgraph_for_iso.
-  - irewrite (iso_iso2 (iso_subgraph_forT _)). by rewrite /= Ho Hi -point_io.
-Qed.
 
 Require Import set_tac.
 

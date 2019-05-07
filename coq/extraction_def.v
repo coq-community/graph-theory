@@ -75,8 +75,6 @@ Qed.
 
 (** ** Subroutines *)
 
-Notation IO := ([set g_in; g_out]).
-
 Definition lens (G : graph2) := 
   [&& edge_set (@bag G IO g_in)  == set0 ,
       edge_set (@bag G IO g_out) == set0 &

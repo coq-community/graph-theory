@@ -380,39 +380,28 @@ Section merge_union_K.
 
   Hypothesis kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)].
 
-  (* TOTHINK: can this be factorized to use a general lemma about [equiv_of],
-  similar to [equiv_of_ff] ?*)
   Lemma equiv_clot_Kl: union_K_equiv (eqv_clot h) =2 eqv_clot union_K_pairs.
   Proof.
     move=> x y. rewrite /union_K_equiv map_equivE. 
     rewrite !eqv_clotE. set e1 := rel_of_pairs _. set e2 := rel_of_pairs _. 
     pose j := (fun x => match x with inl x => x | inr x => k x end).
     apply/idP/idP. 
-    suff S u v : equiv_of e1 u v -> equiv_of e2 (j u) (j v) by apply: S. (* abstract? *)
-    - case/connectP => p. elim: p u => /= [|u' p IH] u.
-      + move => _ ->. done.
-      + case/andP => uu' pth_p lst_p. apply: equiv_trans (IH _ pth_p lst_p) => /=.
-        wlog uu' : u u' {uu' pth_p lst_p} / e1 u u'. 
-        { case/orP : uu' => uu'. 2:rewrite equiv_sym. all: by apply. }
-        destruct u as [u|u]; destruct u' as [u'|u']. 
-        all: rewrite /j; apply: sub_equiv_of; apply/mapP.
-        * by exists (unl u,unl u').
-        * by exists (unl u,unr u').
-        * by exists (unr u,unl u').
-        * by exists (unr u,unr u').
-    - case/connectP => p. elim: p x => /= [|x' p IH] x.
-      + by move => _ ->. 
-      + case/andP => xx' pth_p lst_p. apply: equiv_trans (IH _ pth_p lst_p) => /=.
-        wlog xx' : x x' {xx' pth_p lst_p} / e2 x x'. 
-        { case/orP : xx' => xx'. 2:rewrite equiv_sym. all: by apply. }
-        have kh' z : equiv_of e1 (unr z) (unl (k z)).
-        { rewrite -eqv_clotE. apply/eqquotP. exact: kh. }
-        case/mapP : xx' => [[[u|u] [v|v]] H] /= [-> ->] {x x'}.
-        * exact: sub_equiv_of.
-        * apply: equiv_trans => /=. 2: exact: (kh' v). exact: sub_equiv_of.
-        * apply: equiv_trans => /=. rewrite equiv_sym /=. exact: kh'. exact: sub_equiv_of.
-        * apply: equiv_trans. 2: exact: kh'. apply: equiv_trans. 
-          rewrite equiv_sym. exact: kh'. exact: sub_equiv_of.
+    - suff S u v : equiv_of e1 u v -> equiv_of e2 (j u) (j v) by apply: S. 
+      apply: equiv_ofE => {u v} [[u|u] [u'|u']] /= H. 
+      all: rewrite /e2 /j; apply: sub_equiv_of; apply/mapP. 
+      + by exists (unl u,unl u').
+      + by exists (unl u,unr u').
+      + by exists (unr u,unl u').
+      + by exists (unr u,unr u').
+    - apply: equiv_ofE => {x y} x x' xx'. 
+      have kh' z : equiv_of e1 (unr z) (unl (k z)).
+      { rewrite -eqv_clotE. apply/eqquotP. exact: kh. }
+      case/mapP : xx' => [[[u|u] [v|v]] H] /= [-> ->] {x x'}.
+      + exact: sub_equiv_of.
+      + apply: equiv_trans => /=. 2: exact: (kh' v). exact: sub_equiv_of.
+      + apply: equiv_trans => /=. rewrite equiv_sym /=. exact: kh'. exact: sub_equiv_of.
+      + apply: equiv_trans. 2: exact: kh'. apply: equiv_trans. 
+        rewrite equiv_sym. exact: kh'. exact: sub_equiv_of.
   Qed.
   
   Definition h_merge_union_K: bij (merge_seq (union F K) h) (merge_seq F union_K_pairs).
@@ -647,6 +636,14 @@ Proof.
   exists f f_inv; abstract (move => x; by rewrite Hf Hf' ?bijK ?bijK').
 Defined.
 Arguments bij_same [A B] f f_inv i _ _.
+
+(** ** Merging Subgraphs *)
+
+(** This construction allows transforming a quotient on [G[V1,E1] + G[V2,E2]] 
+    into a quotient on [G[V1 :|: V2, E1 :|: E2]], provided the edge sets are
+    disjoint and the quotient merges all duplicated verices (i.e., those
+    occurring both in [V1] and in [V2]. Note that the underlying pair of 
+    functions only becomes a bijection after quotienting. *)
 
 Section MergeSubgraph.
   Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
