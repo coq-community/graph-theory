@@ -61,7 +61,7 @@ Lemma decomp_iso (G1 G2 : sgraph) (T : forest) B1 :
   exists2 B2, sdecomp T G2 B2 & width B2 = width B1.
 Proof.
   (* TODO: update proof to abstract against concrete implem of [diso] *)
-  case => D1 D2 D3 [[g f can_g can_f] [hom_g] [hom_f]]. 
+  case => D1 D2 D3 [[g f can_g can_f] /= hom_g hom_f]. 
   exists (fun t => [set g x | x in B1 t]). 
   - split.
     + move => x. case: (D1 (f x)) => t Ht. exists t. 
@@ -720,7 +720,7 @@ Qed.
 Lemma iso_strict_minor (G H : sgraph) : diso G H -> strict_minor H G.
 Proof.
   (* TODO: update proof to abstract against concrete implem of [diso] *)
-  move=> [[h g hgK ghK] [hH] [gH]].
+  move=> [[h g hgK ghK] /= hH gH].
   have in_preim_g x y : (y \in g @^-1 x) = (y == h x).
     rewrite -mem_preim; exact: can2_eq.
   exists g; split.

@@ -131,7 +131,7 @@ Lemma eq_diso (T : finType) (e1 e2 : rel T)
   (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
   (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2) :
 e1 =2 e2 -> diso (SGraph e1_sym e1_irrefl) (SGraph e2_sym e2_irrefl).
-Proof. intro E. exists (@bij_id T); split=> x y /=; by rewrite /edge_rel /= E. Qed.
+Proof. intro E. exists (@bij_id T) => x y /=; by rewrite /edge_rel /= E. Qed.
 
 Lemma iso_subgraph (G H : sgraph) : diso G H -> subgraph G H.
 Proof.
@@ -670,7 +670,7 @@ Lemma iso_connected (G H : sgraph) :
   diso G H -> connected [set: H] -> connected [set: G].
 Proof.
   (* TODO: update proof to abstract against concrete implem of [diso] *)
-  move=> [[h g can_h can_g] [hom_h] [hom_g]] con_H x y _ _.
+  move=> [[h g can_h can_g] /= hom_h hom_g] con_H x y _ _.
   rewrite restrictE; last by move => z; rewrite !inE.
   have := con_H (h x) (h y). rewrite !inE => /(_ isT isT).
   rewrite restrictE; last by move => z; rewrite !inE.

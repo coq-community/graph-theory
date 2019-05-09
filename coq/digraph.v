@@ -900,28 +900,24 @@ Proof. by rewrite /independent (interior_eq_nodes Npq) (interior_eq_nodes Npq').
 
 (** ** Isomorphisms *)
 
-Class is_dhom (F G: diGraph) (h: F -> G): Prop := Dhom
-  { edge_hom: forall x y, x -- y -> h x -- h y }.
+Definition is_dhom (F G: diGraph) (h: F -> G): Prop := forall x y, x -- y -> h x -- h y.
 
 Lemma dhom_id G: @is_dhom G G id.
-Proof. by split. Qed.
+Proof. by []. Qed.
 
 Lemma dhom_comp F G H h k:
   @is_dhom F G h -> @is_dhom G H k -> is_dhom (k \o h).
-Proof. intros E E'. split=> x y O. apply E', E, O. Qed.
+Proof. intros E E' => x y O. apply E', E, O. Qed.
 
 Record diso (F G: diGraph): Type := Diso
   { diso_v:> bij F G;
     diso_hom: is_dhom diso_v;
     diso_hom': is_dhom diso_v^-1 }.
-Existing Instances diso_hom diso_hom'.
 
-Lemma eqb_iff (a b: bool): a<->b -> a=b.
-Proof. case a; case b=>//. intros [H _]. by discriminate H. intros [_ H]. by discriminate H. Qed.
 Lemma edge_diso F G (h: diso F G) x y: h x -- h y = x -- y.
 Proof.
-  apply eqb_iff. split. 2: apply diso_hom.
-  intro E. apply (diso_hom' h) in E. by rewrite 2!bijK in E. 
+  apply/idP/idP; last exact: diso_hom. 
+  move/(diso_hom' h). by rewrite 2!bijK.
 Qed.
 
 Definition diso_id {A}: diso A A := @Diso A A bij_id (@dhom_id A) (@dhom_id A). 
@@ -944,10 +940,10 @@ Proof. apply (edge_diso (diso_sym h)). Qed.
 Lemma Diso' (F G: diGraph) (f: F -> G) (g: G -> F):
   cancel f g -> cancel g f -> (forall x y, x--y <-> f x -- f y) -> diso F G.
 Proof.
-  move=>fg gf H. 
-  exists (Bij fg gf).
-  abstract (split; apply H).
-  abstract (split=>x y/=; by rewrite H 2!gf).
+  move=> fg gf H. 
+  exists (Bij fg gf). 
+  abstract (firstorder).
+  abstract (move => x y /=; by rewrite H !gf).
 Defined.
 
 Lemma Diso'' (F G: diGraph) (f: F -> G) (g: G -> F):
