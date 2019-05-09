@@ -8,6 +8,11 @@ Unset Printing Implicit Defensive.
 
 (** * Simple Experimental Tactic for finite sets *)
 
+(** We use a simple "tableau style" tactic for finite sets. We start
+by turning the goal into the form [A1, ..., An |- False] and then derive
+facts from the [Ai] until a constdiction is obtained or no more rules
+are applicable. *)
+
 Section SetTac.
 Variables (T : finType) (A B C : {set T}).
 
@@ -31,7 +36,6 @@ Lemma setUPn (T : finType) (A B : {set T}) (x:T) :
   reflect (x \notin A /\ x \notin B) (x \notin A :|: B).
 Proof. rewrite !inE negb_or. exact: andP. Qed.
 
-(* Ltac notHyp b := match goal with [_ : is_true b |- _] => fail 1 | _ => idtac end. *)
 Ltac notHyp b := assert_fails (assert b by assumption).
 
 Ltac extend H T := notHyp H; have ? : H by T.
@@ -44,9 +48,9 @@ usually hidden, e.g., [is_true] or [SetDef.pred_of_set]. *)
 (** TOTHINK: For some collective predicates, in particular for paths,
 the coercion to a predicates can take several different forms. This
 means that rules involving [_ \subset _] should match up to conversion
-to not miss instances. Similarly, we need to ensure that the 'notHyp'
-test is performed on exactly the same term that ends up on the
-branch. Otherwise the same hypotheses gets added ad infinitum *)
+to not miss instances. Similarly, we need to perform a full conversion
+check when testing whether a given fact is already present. Otherwise,
+the "same" fact might be added multiple times *) 
 
 (** NOTE: The only rules that introduce hypotheses of the form
 [_\subset _] are those eliminating equalities between sets. Since
@@ -67,7 +71,7 @@ Local Notation pos := SetDef.pred_of_set.
 Ltac no_inhabitant A :=
   match goal with [ _ : ?x \in _ A |- _ ] => fail 1 | _ => idtac end.
 
-(* non-branching rules *)
+(* non-branching / closure rules *)
 Ltac set_tab_close := 
   match goal with 
   | [H : is_true (?x == ?y) |- _ ] =>
@@ -150,6 +154,9 @@ Ltac clean_mem :=
   repeat match goal with 
            [ H : _ |- _ ] => rewrite !mem_mem in H 
          end; rewrite !mem_mem.
+
+(** Tactics intened to be redefined when combining sets with set-like
+structures (e.g., paths in graphs) *)
 
 Ltac set_tac_close_plus := fail.
 Ltac set_tac_branch_plus := fail.
