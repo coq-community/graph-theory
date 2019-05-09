@@ -9,6 +9,15 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Directed Multigraphs *)
 
+(** We define finite directed multigraphs with labels from a fixed
+type [sym] (i.e., an encapuslated copy of [nat]. We define a number of
+constructions on these graphs:
+
+[union G H] : disjoint union of the graphs [G] and [H].
+[merge G e] : the quotent graph with verticies quotiented by [e:equiv_rel].
+
+*)
+
 (* FIXME: Properly abstract this *)
 Lemma _symbols : { sym : eqType & sym }. exists [eqType of nat]; exact: 0. Qed.
 Definition sym : eqType := projT1 _symbols.
@@ -131,6 +140,17 @@ Section Subgraphs.
   Proof. exists val, val. split => //=. split; exact: val_inj. Qed.
 End Subgraphs.
 
+(** Frequently used consistent sets of vertices and edges *)
+
+Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
+Proof. by []. Qed.
+Arguments consistentT [G] E.
+
+Lemma consistentTT (G : graph) : consistent [set: G] [set: edge G].
+Proof. done. Qed.
+Arguments consistentTT : clear implicits.
+
+
 Definition induced_proof (G: graph) (S : {set G}) : consistent S (edge_set S).
 Proof. move => e. by rewrite inE => /andP. Qed.
 
@@ -142,6 +162,13 @@ Proof. exact: subgraph_sub. Qed.
 
 
 (** ** Isomorphim Properties *)
+
+(** We define isomorphims as a record in [Type], with projections to
+the bijections on vertices and edges. Making isomorphims computational
+objects (rather than formalizing mereley the notion of two graphs
+being isomorphic) makes it possible to reason about isomorphisms of of
+graphs constructed from disjoint unions and quotients in a
+compositional manner *)
 
 Record iso (F G: graph): Type := Iso
   { iso_v:> bij F G;
@@ -203,7 +230,7 @@ Proof.
       (fun x => match x with inl _ => true | _ => false end)
       (vfun)
       (fun x => match x with inl x | inr x => x end).
-all: repeat first [case|split].
+all: abstract (repeat first [case|split]).
 Defined.
 
 Lemma iso_two_swap : iso two_graph two_graph.
@@ -430,26 +457,8 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
-Lemma valK' (T : eqType) (P : pred T) (u : sig_subType P) (Px : val u \in P) : 
-  Sub (val u) Px = u.
-Proof. exact: val_inj. Qed.
 
 
-Section QuotFun.
-Variables (T1 T2 : finType) (e1 : equiv_rel T1) (e2 : equiv_rel T2) (h1 : T1 -> T2).
-Definition quot_fun (x : quot e1) : quot e2 := \pi (h1 (repr x)).
-End QuotFun.
-Arguments quot_fun [T1 T2 e1 e2].
-
-Lemma quot_fun_can (T1 T2 : finType) (e1 : equiv_rel T1) (e2 : equiv_rel T2) (h1 : T1 -> T2) (h2 : T2 -> T1) :
-  {homo h2 : x y / x = y %[mod e2] >-> x = y %[mod e1]} ->
-  (forall x, h2 (h1 x) = x %[mod e1]) ->
-  @cancel (quot e2) (quot e1) (quot_fun h1) (quot_fun h2).
-Proof.
-  move => h2_hom h1_can x.
-  rewrite /quot_fun -{2}[x]reprK -[\pi (repr x)]h1_can.
-  apply: h2_hom. by rewrite reprK.
-Qed.
 
 Section BijT.
 Variables (T : finType) (P : pred T).
@@ -465,185 +474,22 @@ Definition setT_bij (T : finType) : bij {x : T | x \in setT} T :=
   Eval hnf in subT_bij (@in_setT T).
 Arguments setT_bij [T].
 
-Lemma consistentT (G : graph) : consistent [set: G] [set: edge G].
-Proof. done. Qed.
-Arguments consistentT : clear implicits.
-
-Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentT G)) G setT_bij setT_bij. 
+Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentTT G)) G setT_bij setT_bij. 
 Proof. by []. Qed.
 
-Definition iso_subgraph_forT (G : graph) : iso (subgraph_for (consistentT G)) G := 
+Definition iso_subgraph_forT (G : graph) : iso (subgraph_for (consistentTT G)) G := 
   Eval hnf in Iso (setT_bij_hom G).
 
-Section QuotBij.
-  Variables (T1 T2 : finType) (e1 : equiv_rel T1) (e2 : equiv_rel T2).
-  Variables (h : T1 -> T2) (h_inv : T2 -> T1).
-
-  (** All 4 assumptions are necessary *)
-  Hypothesis h_homo : {homo h : x y / x = y %[mod e1] >-> x = y %[mod e2]}.
-  Hypothesis h_inv_homo : {homo h_inv : x y / x = y %[mod e2] >-> x = y %[mod e1]}. 
-
-  Hypothesis h_can : forall x, h_inv (h x) = x %[mod e1].
-  Hypothesis h_inv_can : forall x, h (h_inv x) = x %[mod e2].
-
-  Definition quot_bij : bij (quot e1) (quot e2).
-  Proof. exists (quot_fun h) (quot_fun h_inv); abstract exact: quot_fun_can. Defined.
-
-  Lemma quot_bijE (x: T1): quot_bij (\pi x) = \pi h x.
-  Proof. simpl. apply: h_homo. by rewrite reprK. Qed.
-  
-  Lemma quot_bijE' (x: T2): quot_bij^-1 (\pi x) = \pi h_inv x.
-  Proof. simpl. apply: h_inv_homo. by rewrite reprK. Qed.
-End QuotBij.
-Global Opaque quot_bij.
-
-Arguments Sub : simpl never.
-
-Section union_bij.
-Variables (T : finType) (U V : {set T}).
-Notation sig S := ({ x : T | x \in S}) (only parsing).
-
-Lemma union_bij_proofL x : x \in U -> x \in U :|: V.
-Proof. apply/subsetP. exact: subsetUl. Qed.
-
-Lemma union_bij_proofR x : x \in V -> x \in U :|: V.
-Proof. apply/subsetP. exact: subsetUr. Qed.
-
-Definition union_bij_fwd (x : sig U + sig V) : sig (U :|: V) :=
-  match x with 
-  | inl x => Sub (val x) (union_bij_proofL (valP x))
-  | inr x => Sub (val x) (union_bij_proofR (valP x))
-  end.
-
-Lemma setU_dec x : x \in U :|: V -> ((x \in U) + (x \notin U)*(x \in V))%type.
-Proof. case E : (x \in U); last rewrite !inE E; by [left|right]. Qed.
-
-Definition union_bij_bwd (x : sig (U :|: V)) : sig U + sig V :=
-  match setU_dec (valP x) with 
-  | inl p => inl (Sub (val x) p) 
-  | inr p => inr (Sub (val x) p.2) 
-  end.
-
-Inductive union_bij_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
-| union_bij_bwdL x (inU : x \in U) (inUV : x \in U :|: V) : 
-    union_bij_bwd_spec (Sub x inUV) (inl (Sub x inU))
-| union_bij_bwdR x (inV : x \in V) (inUV : x \in U :|: V) : 
-    x \notin U -> union_bij_bwd_spec (Sub x inUV) (inr (Sub x inV)).
-
-Lemma union_bij_bwdP x : union_bij_bwd_spec x (union_bij_bwd x).
-Proof.
-  rewrite /union_bij_bwd. 
-  case: (setU_dec _) => p.
-  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). exact: union_bij_bwdL. 
-    by rewrite valK'.
-  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). apply: union_bij_bwdR. 
-    by rewrite p.  by rewrite valK'.
-Qed.
-
-Definition union_bij_bwdEl x (p : x \in U :|: V) (inU : x \in U) : 
-  union_bij_bwd (Sub x p) = inl (Sub x inU).
-Proof.
-  rewrite /union_bij_bwd. case: (setU_dec _) => p'. 
-  - rewrite /=. congr inl. exact: val_inj.
-  - exfalso. move: p'. rewrite /= inU. by case.
-Qed.
-Arguments union_bij_bwdEl [x p].
-
-Definition union_bij_bwdEr x (p : x \in U :|: V) (inV : x \in V) : 
-  x \notin U -> 
-  union_bij_bwd (Sub x p) = inr (Sub x inV).
-Proof.
-  move => xNU. rewrite /union_bij_bwd. case: (setU_dec _) => p'. 
-  - exfalso. move: p'. by rewrite /= (negbTE xNU). 
-  - rewrite /=. congr inr. exact: val_inj.
-Qed.
-Arguments union_bij_bwdEr [x p].
-
-Hint Extern 0 (is_true (sval _ \in _)) => exact: valP.
-Hint Extern 0 (is_true (val _ \in _)) => exact: valP.
-
-Section Dis.
-  Hypothesis disUV : [disjoint U & V].
-
-  Lemma union_bij_fwd_can : cancel union_bij_fwd union_bij_bwd.
-  Proof. 
-    move => [x|x] /=. 
-    - by rewrite union_bij_bwdEl // valK'.
-    - by rewrite union_bij_bwdEr ?valK' // (disjointFl disUV).
-  Qed.
-  
-  Lemma union_bij_bwd_can : cancel union_bij_bwd union_bij_fwd.
-  Proof. move => x. case: union_bij_bwdP => //= {x} x *; exact: val_inj. Qed.
-
-  Definition union_bij := Bij union_bij_fwd_can union_bij_bwd_can.
-
-  Lemma union_bijE :
-    (forall x, union_bij (inl x) = Sub (val x) (union_bij_proofL (valP x)))*
-    (forall x, union_bij (inr x) = Sub (val x) (union_bij_proofR (valP x))).
-  Proof. done. Qed.
-
-End Dis.
-
-Section Quot.
-  Variables (e : equiv_rel (sig U + sig V)).
-  Definition merge_union_rel := map_equiv union_bij_bwd e.
-
-  Hypothesis eqvI : forall x (inU : x \in U) (inV : x \in V), 
-      inl (Sub x inU) = inr (Sub x inV) %[mod e].
-
-  Lemma union_bij_fwd_can' x : union_bij_bwd (union_bij_fwd x) = x %[mod e].
-  Proof.
-    case: x => /= => x. 
-    - by rewrite union_bij_bwdEl valK'.
-    - case: (boolP (val x \in U)) => H. rewrite (union_bij_bwdEl H). 
-      + case: x H => x p H. exact: eqvI.
-      + by rewrite (union_bij_bwdEr _ H) // valK'.
-  Qed.
-
-  Lemma union_bij_bwd_can' x : union_bij_fwd (union_bij_bwd x) = x %[mod merge_union_rel].
-  Proof. case: union_bij_bwdP => {x} *; congr pi; exact: val_inj. Qed.
-
-  Lemma union_bij_fwd_hom : 
-    {homo union_bij_fwd : x y / x = y %[mod e] >-> x = y %[mod merge_union_rel]}.
-  Proof.
-    move => x y H. apply/eqquotP. rewrite map_equivE. apply/eqquotP. 
-    by rewrite !union_bij_fwd_can'.
-  Qed.
-
-  Lemma union_bij_bwd_hom : 
-    {homo union_bij_bwd : x y / x = y %[mod merge_union_rel] >-> x = y %[mod e]}.
-  Proof. move => x y /eqquotP. rewrite map_equivE. by move/eqquotP. Qed.
-
-  Definition merge_union_bij : bij (quot e) (quot merge_union_rel) := 
-    Eval hnf in quot_bij union_bij_fwd_hom union_bij_bwd_hom
-                             union_bij_fwd_can' union_bij_bwd_can'.
-
-  Lemma merge_unionEl x : 
-    merge_union_bij (\pi (inl x)) = \pi (Sub (val x) (union_bij_proofL (valP x))).
-  Proof. exact: quot_bijE. Qed.
-  Lemma merge_unionEr x : 
-    merge_union_bij (\pi (inr x)) = \pi (Sub (val x) (union_bij_proofR (valP x))).
-  Proof. exact: quot_bijE. Qed.
-  Definition merge_unionE := (merge_unionEl,merge_unionEr).
-End Quot.
-
-End union_bij.
-
-Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
-  f =1 i -> f_inv =1 i^-1 -> bij A B.
-Proof.
-  move => Hf Hf'.
-  exists f f_inv; abstract (move => x; by rewrite Hf Hf' ?bijK ?bijK').
-Defined.
-Arguments bij_same [A B] f f_inv i _ _.
 
 (** ** Merging Subgraphs *)
 
 (** This construction allows transforming a quotient on [G[V1,E1] + G[V2,E2]] 
     into a quotient on [G[V1 :|: V2, E1 :|: E2]], provided the edge sets are
     disjoint and the quotient merges all duplicated verices (i.e., those
-    occurring both in [V1] and in [V2]. Note that the underlying pair of 
-    functions only becomes a bijection after quotienting. *)
+    occurring both in [V1] and in [V2]. The underlying function on vertices from 
+    [G[V1,E1] + G[V2,E2]] to [G[V1 :|: V2, E1 :|: E2]] simply drops the inl/inr.
+    For the converse direction, we inject into [G[V1,E1]] if possible and otherwise 
+    into [G[V1,E2]]. Note that this only yields a bijection after quotienting. *)
 
 Section MergeSubgraph.
   Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 

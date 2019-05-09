@@ -957,6 +957,9 @@ Defined.
 
 (** ** Directed Multigraphs *)
 
+(** We introduce unlabeld directed multigraphs. For now, these are
+only used to establish a number of corollaries of Menger's theorem. *)
+
 Record mGraph := MGraph { vertex : finType;
                           edge: finType;
                           source : edge -> vertex;

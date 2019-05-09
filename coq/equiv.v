@@ -274,7 +274,7 @@ Proof. move/eqquotP. by case/eqv_clot1E => [[]|[//]|[//]]. Qed.
 
 Lemma eqv_clot_LR (T1 T2 : finType) (x : T1) (y : T2) o i :
       inl T2 x = inr T1 y %[mod eqv_clot [:: (inl o,inr i)]] -> x = o /\ y = i. 
-Proof. move/eqquotP. by case/eqv_clot1E => [[//]|[[->][->]]|[//]]. Qed.
+Proof. move/eqquotP. by case/eqv_clot1E => [//|[[->][->]]|[//]]. Qed.
 
 (* TODO: provide inversion lemmas for the case of two pairs (at least
 for the case of inl/inr pairs as used in [par2] *)

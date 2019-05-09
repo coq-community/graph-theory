@@ -16,10 +16,6 @@ Set Bullet Behavior "Strict Subproofs".
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.
 
-Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
-Proof. by []. Qed.
-Arguments consistentT [G] E.
-
 (** * Term Extraction Function *)
 
 (** ** Termination Metric *)

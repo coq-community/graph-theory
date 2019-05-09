@@ -665,7 +665,7 @@ Proof.
   have ? : V = [set: G] by apply/setP => z; rewrite inE HV.
   have ? : E = [set: edge G] by apply/setP => z; rewrite inE HE.
   subst.
-  transitivity (point (subgraph_for (multigraph.consistentT G)) i o).
+  transitivity (point (subgraph_for (consistentTT G)) i o).
   - exact: subgraph_for_iso.
   - irewrite (iso_iso2 (iso_subgraph_forT _)). by rewrite /= Ho Hi -point_io.
 Qed.

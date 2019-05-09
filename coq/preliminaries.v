@@ -71,6 +71,15 @@ Lemma bij_sumA {A B C}: bij (A+(B+C)) ((A+B)+C).
   abstract (by move=>[[|]|]). 
 Defined.
 
+Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
+  f =1 i -> f_inv =1 i^-1 -> bij A B.
+Proof.
+  move => Hf Hf'.
+  exists f f_inv; abstract (move => x; by rewrite Hf Hf' ?bijK ?bijK').
+Defined.
+Arguments bij_same [A B] f f_inv i _ _.
+
+
 
 (** *** Generic Trivialities *)
 
@@ -113,6 +122,10 @@ Proof. apply: (iffP subsetP) => [S x y /(S (x,y)) //|S [x y]]. exact: S. Qed.
 Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
+
+Lemma valK' (T : eqType) (P : pred T) (u : sig_subType P) (Px : val u \in P) : 
+  Sub (val u) Px = u.
+Proof. exact: val_inj. Qed.
 
 Lemma Some_eqE (T : eqType) (x y : T) : 
   (Some x == Some y) = (x == y).
