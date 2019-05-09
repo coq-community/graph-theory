@@ -847,6 +847,23 @@ Section CheckPoints.
     by rewrite mem_pcat mem_prev mem_edgep (negbTE zNp) /= ![z == _]eq_sym.
   Qed.
 
+  (** Variants of the lemmas above that go together with quotient graphs *)
+  Lemma bag_interval_cap (x y z: G) (U : {set G}) :
+    connected [set: G] -> x \in CP U -> y \in CP U -> 
+    z \in bag U x -> z \in interval x y -> z = x.
+  Proof. 
+    move => conn_G xU yU Hz. 
+    rewrite /interval inE (disjointFr (interval_bag_disj _ _) Hz) // orbF.
+    case/setUP => /set1P // ?. subst z. apply/eqP. by rewrite -(@bag_cp U).
+  Qed.
+
+  Lemma interval_interval_cap (x y u z: G) :
+    u \in cp x y ->
+    z \in interval x u -> z \in interval u y -> z = u.
+  Proof. 
+    move => cp_u Z1 Z2. move: (intervalI_cp cp_u). 
+    move/setP/(_ z)/esym. by rewrite 2!inE Z1 Z2 => /eqP.
+  Qed.
  
 End CheckPoints.
 

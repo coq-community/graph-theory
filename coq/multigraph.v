@@ -11,12 +11,11 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** We define finite directed multigraphs with labels from a fixed
 type [sym] (i.e., an encapuslated copy of [nat]. We define a number of
-constructions on these graphs:
+constructions on these graphs: *)
 
-[union G H] : disjoint union of the graphs [G] and [H].
-[merge G e] : the quotent graph with verticies quotiented by [e:equiv_rel].
+(** [union G H] : disjoint union of the graphs [G] and [H]. *)
 
-*)
+(** [merge G e] : the quotent graph with verticies quotiented by [e:equiv_rel]. *)
 
 (* FIXME: Properly abstract this *)
 Lemma _symbols : { sym : eqType & sym }. exists [eqType of nat]; exact: 0. Qed.

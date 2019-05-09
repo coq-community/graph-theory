@@ -2,7 +2,7 @@ Require Import RelationClasses Morphisms Setoid Omega.
 
 From mathcomp Require Import all_ssreflect.
 
-Require Import edone finite_quotient preliminaries.
+Require Import edone finite_quotient preliminaries set_tac.
 Require Import digraph sgraph minor checkpoint.
 Require Import multigraph ptt_algebra equiv ptt_graph skeleton.
 Require Import bounded extraction_def.
@@ -40,24 +40,9 @@ Proof.
   + exact: sedge_equiv_in.
 Qed.
 
-
-Require Import set_tac.
-
-Lemma bag_interval_cap (G : sgraph) (x y z: G) (U : {set G}) :
-  connected [set: G] -> x \in CP U -> y \in CP U -> 
-  z \in bag U x -> z \in interval x y -> z = x.
-Proof. 
-  move => conn_G xU yU Hz. 
-  rewrite /interval inE (disjointFr (interval_bag_disj _ _) Hz) // orbF.
-  case/setUP => /set1P // ?. subst z. apply/eqP. by rewrite -(@bag_cp G _ U).
-Qed.
-
-Lemma interval_interval_cap (G : sgraph) (x y u z: G) :
-  u \in cp G x y ->
-  z \in interval x u -> z \in interval u y -> z = u.
-Proof. 
-  move => cp_u Z1 Z2. move: (intervalI_cp cp_u). apply: contra_eq. by set_tac.
-Qed.
+(** These two lemmas make use of [merge_subgraph_dot], drastically
+simplifying their proofs (comparted to the proofs underlying the ITP
+2018 paper) *)
 
 Lemma split_pip (G : graph2) : 
   connected [set: skeleton G] -> g_in != g_out :> G ->
@@ -122,7 +107,8 @@ Proof.
   - move => x A B. rewrite interval_sym in A. exact: (@bag_interval_cap G) B A.
 Qed.
 
-(* END NEW *)
+(* TODO: prove a lemma corresponding to [merge_subgraph_dot] for
+[par2] and simplify the proofs below *)
   
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : g_in \in C) (Co : g_out \in C) (Di : g_in \in D) (Do : g_out \in D) :
