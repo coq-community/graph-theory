@@ -186,10 +186,6 @@ Proof.
 Admitted.
 
 
-
-
-(* Parameter graph_of_term_iso: forall u v, u ≡ v -> graph_of_term u ≈ graph_of_term v.  *)
-
 (** * term labelled two-pointed graphs *)
 
 Record lgraph :=
@@ -224,16 +220,23 @@ Record liso (F G: lgraph): Type :=
       liso_input: liso_v input = input;
       liso_output: liso_v output = output }.
 
+(* TOMOVE (first one) *)
+Tactic Notation "iso" uconstr(h) uconstr(k) :=
+  match goal with |- iso ?G ?H => apply (@Iso _ _ G H h k) end.
+Tactic Notation "liso" uconstr(h) uconstr(k) uconstr(d) :=
+  match goal with |- liso ?G ?H => apply (@Liso G H h k d) end.
+
 Lemma src_tgt_liso (F G: lgraph) (h: liso F G) e:
  (  (source' (liso_dir h e) (liso_e h e) = liso_v h (source e))
   * (target' (liso_dir h e) (liso_e h e) = liso_v h (target e)))%type.
 Proof. split; apply h. Qed.
 
 Definition liso_id {G: lgraph}: liso G G.
-  apply Liso with bij_id bij_id (fun _ => false)=>//.
+  exists bij_id bij_id (fun _ => false)=>//.
 Defined.
 Definition liso_comp F G H (f: liso F G) (g: liso G H): liso F H.
-  apply Liso with (bij_comp f g) (bij_comp (liso_e f) (liso_e g)) (fun e => liso_dir f e != liso_dir g (liso_e f e))=>//=.
+  exists (bij_comp f g) (bij_comp (liso_e f) (liso_e g))
+       (fun e => liso_dir f e != liso_dir g (liso_e f e))=>//=.
   move=>v. by rewrite->2vlabel_liso.
   move=>e. generalize (elabel_liso f e). generalize (elabel_liso g (liso_e f e)).
   by case liso_dir; case liso_dir=>/= E E'; rewrite<-E',<-E,?cnvI.
@@ -245,7 +248,8 @@ Definition liso_comp F G H (f: liso F G) (g: liso G H): liso F H.
   by rewrite->2liso_output.
 Defined.
 Definition liso_sym F G (f: liso F G): liso G F.
-  apply Liso with (bij_sym f) (bij_sym (liso_e f)) (fun e => liso_dir f ((liso_e f)^-1 e))=>//=.
+  exists (bij_sym f) (bij_sym (liso_e f))
+       (fun e => liso_dir f ((liso_e f)^-1 e))=>//=.
   move=>v. rewrite<-(bijK' f v) at 2. by rewrite->vlabel_liso.
   move=>e. generalize (elabel_liso f ((liso_e f)^-1 e)) =>/=. rewrite bijK'.
   case liso_dir=>/=E. by rewrite <-E, cnvI. by symmetry. 
@@ -276,7 +280,7 @@ Arguments lswap: clear implicits.
 
 Lemma swap_liso G f: liso G (lswap G f).
 Proof.
-  apply (@Liso G (lswap G f) bij_id bij_id f)=>//= e.
+  liso bij_id bij_id f=>//= e.
   rewrite /lswap/swap/elabel'/=. case (f e)=>//. apply cnvI. 
   rewrite /lswap/swap/source'/=. case (f e)=>//. 
   rewrite /lswap/swap/target'/=. case (f e)=>//.
@@ -285,13 +289,24 @@ Qed.
 Definition add_vertex (G: lgraph) (a: test): lgraph :=
   point (add_vertex G a) (Some input) (Some output).
 
+Instance add_vertex_liso: Proper (liso ==> test_weq ==> liso) add_vertex.
+Admitted.
+
 Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
   point (add_edge G x y u) input output.
 Arguments add_edge: clear implicits. 
 
+Lemma add_edge_liso G G' (I: liso G G') x x' (X: I x = x') y y' (Y: I y = y') u u' (U: u ≡ u'):
+  liso (add_edge G x y u) (add_edge G' x' y' u').
+Admitted.
+
 Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
   point (upd_vlabel G x (fun b => [a·b])) input output.
 Arguments add_test: clear implicits. 
+
+Lemma add_test_liso G G' (I: liso G G') x x' (X: I x = x') (a a': test) (A: a ≡ a'):
+  liso (add_test G x a) (add_test G' x' a').
+Admitted.
 
 Definition optionf {A B} (f: A -> B): option A -> option B :=
   fun x => match x with Some a => Some (f a) | None => None end.
@@ -331,30 +346,95 @@ Inductive step: lgraph -> lgraph -> Type :=
 
 Inductive steps: lgraph -> lgraph -> Type :=
   | liso_step: CRelationClasses.subrelation liso steps
-  | one_step: CRelationClasses.subrelation step steps
-  | steps_trans: CRelationClasses.Transitive steps.
+  | cons_step: forall F G H H', liso F G -> step G H -> steps H H' -> steps F H'.
 
-Existing Instances liso_step one_step.
+Existing Instance liso_step.
+
 Instance PreOrder_steps: CRelationClasses.PreOrder steps.
-Proof. split. intro. apply liso_step, liso_id. exact steps_trans. Qed.
+Proof.
+  split. intro. apply liso_step, liso_id.
+  intros F G H S S'. induction S as [F G I|F G G' G'' I S _ IH].
+  - destruct S' as [F' G' I'|F' G' G'' G''' I' S'].
+    apply liso_step. etransitivity; eassumption.
+    apply cons_step with G' G''=>//. etransitivity; eassumption.
+  - apply cons_step with G G'=>//. by apply IH. 
+Qed.
+
+Instance one_step: CRelationClasses.subrelation step steps.
+Proof. intros F G S. by apply cons_step with F G. Qed.
+
+Definition step_order G H (s: step G H): nat :=
+  match s with
+  | step_v1 _ _ _ _ => 0
+  | step_v2 _ _ _ _ _ _ => 1
+  | step_e0 _ _ _ => 2
+  | step_e2 _ _ _ _ _ => 3
+  end.
 
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> liso G H -> 
     {F & steps G' F * steps H' F}%type.
 Proof.
-  (* the key argument, not so easy with current definition of steps *)
-  move:G H=>G0 H0. 
-  case=>[G X u alpha|G x y u alpha v|G x u|G x y u v];
-  case=>[H i w gamma|H i j w gamma t|H i w|H i j w t] h.
+  intros S S'. wlog: S S' / step_order S <= step_order S'.
+  move=>L I. move: (leq_total (step_order S) (step_order S')). admit. 
+  move:G H S S'=>G0 H0. 
+  case=>[G x u alpha|G x y u alpha v|G x u|G x y u v];
+  case=>[H i w gamma|H i j w gamma t|H i w|H i j w t]//_ h.
   - case (option_bij_case h).
-    * move=>[h' E]. eexists. split. reflexivity. apply liso_step. admit.
+    * move=>[h' E]. eexists. split. reflexivity. apply liso_step.
+      case (option_bij_case (liso_e h))=>[[he' E']|].
+      symmetry. unshelve eapply add_test_liso.
+      liso h' he' (fun e => liso_dir h (Some e)); intros.
+        by rewrite -(vlabel_liso h (Some v)) (E (Some v)).
+        generalize (elabel_liso h (Some e)). by rewrite (E' (Some e)).
+        generalize (source_liso h (Some e)). rewrite (E' (Some e)) (E (Some (source e)))=>/=.
+        unfold source'. simpl. by case liso_dir; injection 1. 
+        generalize (target_liso h (Some e)). rewrite (E' (Some e)) (E (Some (target e)))=>/=.
+        unfold source'. simpl. by case liso_dir; injection 1.
+        generalize (liso_input h)=>/=. rewrite E/=. congruence.
+        generalize (liso_output h)=>/=. rewrite E/=. congruence.
+        simpl. generalize (source_liso h None). simpl. unfold source'. simpl.
+        case liso_dir; rewrite E' E/=; congruence.
+        apply dom_weq, dot_weq.
+        generalize (elabel_liso h None). generalize (source_liso h None).
+        case liso_dir; rewrite E' E //=. by symmetry. 
+        generalize (vlabel_liso h None). rewrite E. by symmetry.
+      move=>[A'[B'[a[ab[b U]]]]]. exfalso.
+      generalize (target_liso h None). rewrite E U/=. by case liso_dir.
     * intros (G''&H''&bg&bgh&bh&E). eexists. split.
 Admitted.
 
-Proposition confluence F G H:
-  steps F G -> steps F H -> {F' & steps G F' * steps H F'}%type.
-Admitted.  (* should follow abstractly from local confluence plus appropriate termination guarantee *)
+Definition measure (G: lgraph) := #|vertex G| + #|edge G|.
 
+Lemma step_decreases G H: step G H -> measure H < measure G.
+Proof.
+  rewrite /measure.
+  case; intros=>/=; by rewrite !card_option ?addSnnS ?addnS.
+Qed.
+
+(* TOMOVE *)
+Lemma card_bij (A B: finType): bij A B -> #|A| = #|B|.
+Admitted.
+
+Lemma liso_stagnates G H: liso G H -> measure H = measure G.
+Proof. move=>l. by rewrite /measure (card_bij (liso_v l)) (card_bij (liso_e l)). Qed.
+
+Proposition confluence F: forall G H, steps F G -> steps F H -> {F' & steps G F' * steps H F'}%type.
+Proof.
+  induction F as [F_ IH] using (well_founded_induction_type (Wf_nat.well_founded_ltof _ measure)).
+  move=> G H S.
+  move: G H S IH=> _ H [F G FG|F__ F0 G' G FF0 FG GG] IH FH.
+  - exists H; split=>//. transitivity F=>//. by apply liso_step, liso_sym.
+  - move: H FH IH FF0=> _ [F H FH|F F1 H' H FF1 FH HH] IH FF0.
+    exists G; split=>//. transitivity F. by apply liso_step, liso_sym. eauto using cons_step.
+    destruct (local_confluence FG FH) as [M[GM HM]]. transitivity F=>//. by symmetry.
+    destruct (fun D => IH G' D _ _ GG GM) as [L[GL ML]].
+     rewrite /Wf_nat.ltof -(liso_stagnates FF0). apply /ltP. by apply step_decreases.
+    have HL: steps H' L by transitivity M. 
+    destruct (fun D => IH H' D _ _ HL HH) as [R[LR HR]].
+     rewrite /Wf_nat.ltof -(liso_stagnates FF1). apply /ltP. by apply step_decreases.
+     exists R. split=>//. by transitivity L.
+Qed.
 
 
 (** ** 2pdom-operations on graphs *)
@@ -421,20 +501,38 @@ Qed.
 *)
 
 
+Lemma dot_liso: Proper (liso ==> liso ==> liso) ldot.
+Admitted.
+
+Lemma par_liso: Proper (liso ==> liso ==> liso) lpar.
+Admitted.
+
+Lemma cnv_liso: Proper (liso ==> liso) lcnv.
+Proof. intros F G l. liso (liso_v l) (liso_e l) (liso_dir l); apply l. Qed.
+
+Lemma dom_liso: Proper (liso ==> liso) ldom.
+Proof. intros F G l. liso (liso_v l) (liso_e l) (liso_dir l); apply l. Qed.
+
+Lemma step_to_steps f:
+  Proper (liso ==> liso) f -> Proper (step ==> steps) f -> Proper (steps ==> steps) f.
+Proof.
+  intros If Sf G G' S.
+  induction S as [G G' I|G G' F H' I S Ss IH].
+  - by apply liso_step, If.
+  - etransitivity. apply liso_step, If, I.
+    etransitivity. apply Sf, S. apply IH. 
+Qed.
+
 Lemma dot_steps_l G G' H: steps G G' -> steps (ldot G H) (ldot G' H).
 Proof.
-  induction 1.
-  - apply liso_step. admit.
-  - apply one_step. admit.
-  - etransitivity; eassumption. 
+  apply (step_to_steps (f:=fun G => ldot G H)).
+  apply: (fun _ _ I => dot_liso I liso_id). 
 Admitted.
+  
 
 Lemma dot_steps_r G G' H: steps G G' -> steps (ldot H G) (ldot H G').
 Proof.
-  induction 1.
-  - apply liso_step. admit.
-  - apply one_step. admit.
-  - etransitivity; eassumption. 
+  apply step_to_steps. by apply dot_liso.
 Admitted.
 
 Instance dot_steps: Proper (steps ==> steps ==> steps) ldot.
@@ -445,20 +543,17 @@ Qed.
 Lemma lparC G H: liso (lpar G H) (lpar H G).
 Admitted.
 
-Lemma par_steps_l G G' H: steps G G' -> steps (lpar G H) (lpar G' H).
+Lemma par_steps_r G G' H: steps G G' -> steps (lpar H G) (lpar H G').
 Proof.
-  induction 1.
-  - apply liso_step. admit.
-  - apply one_step. admit.
-  - etransitivity; eassumption. 
+  apply step_to_steps. by apply par_liso.
 Admitted.
 
-Lemma par_steps_r G G' H: steps G G' -> steps (lpar H G) (lpar H G').
+Lemma par_steps_l G G' H: steps G G' -> steps (lpar G H) (lpar G' H).
 Proof.
   intro.
   etransitivity. apply liso_step, lparC. 
   etransitivity. 2: apply liso_step, lparC.
-  by apply par_steps_l. 
+  by apply par_steps_r. 
 Qed.
 
 Instance par_steps: Proper (steps ==> steps ==> steps) lpar.
@@ -468,30 +563,22 @@ Qed.
 
 Instance cnv_steps: Proper (steps ==> steps) lcnv.
 Proof.
-  induction 1.
-  - apply liso_step.
-    apply (@Liso (lcnv x) (lcnv y) (liso_v l) (liso_e l) (liso_dir l)); apply l. 
-  - apply one_step.
-    destruct s.
-    * apply (@step_v1 (point G output input) x u alpha).
-    * apply (@step_v2 (point G output input) x y u alpha v).
-    * apply (@step_e0 (point G output input) x u).
-    * apply (@step_e2 (point G output input) x y u v).
-  - etransitivity; eassumption. 
+  apply step_to_steps. by apply cnv_liso.
+  move=>F G S. eapply one_step. destruct S.
+  * apply (@step_v1 (point G output input) x u alpha).
+  * apply (@step_v2 (point G output input) x y u alpha v).
+  * apply (@step_e0 (point G output input) x u).
+  * apply (@step_e2 (point G output input) x y u v).
 Qed.
 
 Instance dom_steps: Proper (steps ==> steps) ldom.
 Proof.
-  induction 1.
-  - apply liso_step.
-    apply (@Liso (ldom x) (ldom y) (liso_v l) (liso_e l) (liso_dir l)); apply l. 
-  - apply one_step.
-    destruct s.
-    * apply (@step_v1 (point G input input) x u alpha).
-    * apply (@step_v2 (point G input input) x y u alpha v).
-    * apply (@step_e0 (point G input input) x u).
-    * apply (@step_e2 (point G input input) x y u v).
-  - etransitivity; eassumption. 
+  apply step_to_steps. by apply dom_liso.
+  move=>F G S. eapply one_step. destruct S.
+  * apply (@step_v1 (point G input input) x u alpha).
+  * apply (@step_v2 (point G input input) x y u alpha v).
+  * apply (@step_e0 (point G input input) x u).
+  * apply (@step_e2 (point G input input) x y u v).
 Qed.
 
 (* TOMOVE *)
@@ -516,10 +603,7 @@ Lemma iso_vbij Lv Le (G: graph Lv Le) (V: finType) (h: bij (vertex G) V):
                 (h \o (@target _ _ G))
                 ((@vlabel _ _ G) \o h^-1)
                 (@elabel _ _ G)).
-Proof.
-  apply (@Iso _ _ G (@Graph _ _ V (edge G) _ _ _ _) h bij_id).
-  split=>//= v. by rewrite bijK. 
-Defined.
+Proof. iso h bij_id. by split=>//= v; rewrite bijK. Defined.
 
 Lemma iso_ebij Lv Le (G: graph Lv Le) (E: finType) (h: bij (edge G) E):
   iso G (@Graph _ _ (vertex G) E
@@ -527,10 +611,7 @@ Lemma iso_ebij Lv Le (G: graph Lv Le) (E: finType) (h: bij (edge G) E):
                 ((@target _ _ G) \o h^-1)
                 (@vlabel _ _ G)
                 ((@elabel _ _ G) \o h^-1)).
-Proof.
-  apply (@Iso _ _ G (@Graph _ _ (vertex G) E _ _ _ _) bij_id h).
-  by split=>//= v; rewrite bijK. 
-Defined.
+Proof. iso bij_id h. by split=>//= v; rewrite bijK. Defined.
 
 Lemma liso_vbij (G: lgraph) (V: finType) (h: bij (vertex G) V):
   liso G
@@ -552,52 +633,131 @@ Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
               input output).
 Proof. apply (iso_liso (iso_ebij h)). Qed.
 
+Tactic Notation "liso_step" uconstr(h) :=
+  match goal with
+  | |- steps ?G _ => etransitivity;
+                     [apply liso_step;
+                      first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
+  | |- liso ?G _ => etransitivity;
+                    [first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
+  end.
+
+Definition S_option A: bij (unit+A) (option A).
+Proof.
+  exists (fun x => match x with inr a => Some a | inl _ => None end)
+         (fun x => match x with Some a => inr a | None => inl tt end);
+    case=>//; case=>//.
+Defined.
+
+Definition two_bool: bij (unit+unit) bool.
+Proof. etransitivity. apply S_option. symmetry. apply bool_option_unit. Defined.
+
+Definition two_option_option_void: bij (unit+unit) (option (option void)).
+Proof.
+  etransitivity. apply bij_sumC.
+  etransitivity. apply S_option.
+  apply option_bij. apply unit_option_void.
+Defined.
+
+Definition merge43: bij (quot (eqv_clot [::(inl true,inr false)])) (option bool).
+Admitted.
+Lemma merge43E:
+  ((merge43 (\pi inl false) = Some false) *
+   (merge43 (\pi inl true) = None) *
+   (merge43 (\pi inr false) = None) *
+   (merge43 (\pi inr true) = Some true))%type.
+Admitted.
+Lemma merge43E':
+  ((merge43^-1 (Some false) = \pi inl false) *
+   (merge43^-1 None = \pi inl true) *
+   (merge43^-1 (Some true) = \pi inr true))%type.
+Admitted.
+
 Proposition reduce (u: term): steps (lgraph_of_term u) (lgraph_of_nf_term (nf u)).
 Proof.
   induction u=>//=.
   - etransitivity. apply dot_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
-    admit.
-    admit.
-    admit.
-    admit.
+    * apply liso_step.
+      rewrite /ldot/=.
+      admit.
+    * apply liso_step.
+      admit. 
+    * apply liso_step.
+      admit.
+    * rewrite /ldot/=.
+      etransitivity. apply liso_step.
+      2: etransitivity.
+      2: apply one_step, (step_v2 (G:=point (two_graph a d) false true) false true u [b·c] v).
+      2: apply liso_step.
+      2: liso_step (bij_sym unit_option_void)=>/=.
+      2: liso bij_id bij_id (fun _ => false)=>//= _; by rewrite !dotA.
+      liso_step merge43=>/=. 
+      liso_step two_option_option_void=>/=.
+      liso bij_id bij_id (fun _ => false)=>//=;
+           (repeat case)=>//=;
+           rewrite ?merge43E ?merge43E' //=.
+      admit.
+      admit.
+      admit.
+      
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
-    admit.
-    admit.
-    admit.
-    admit.
+    * apply liso_step.
+      admit.
+    * apply liso_step.
+      admit. 
+    * apply liso_step.
+      admit.
+    * rewrite /lpar/=.
+      etransitivity. apply liso_step.
+      2: etransitivity.
+      2: apply one_step, (step_e2 (G:=point (two_graph [a·c] [b·d]) false true) false true u v).
+      admit.
+      apply liso_step.
+      liso_step (bij_sym unit_option_void)=>/=. 
+      liso bij_id bij_id (fun _ => false)=>//.
+      
   - etransitivity. apply cnv_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
     apply liso_step.
-    rewrite /lcnv/=.
-    apply (@Liso ((point (edge_graph a v b)) true false) ((point (edge_graph b v° a)) false true) bool_swap bij_id (fun _ => true))=>//=.
+    rewrite /lcnv/=. liso bool_swap bij_id (fun _ => true)=>//=.
       by case.
       move=>_. apply cnvI.
+      
   - etransitivity. apply dom_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
     rewrite /ldom/=.
     etransitivity. apply liso_step.
     2: etransitivity. 2: apply one_step, (@step_v1 (point (unit_graph a) tt tt) tt v b).
     simpl.
-    etransitivity. 
-    apply (liso_vbij (G:=((point (edge_graph a v b)) _ _)) bool_option_unit)=>/=.
-    etransitivity. 
-    apply (liso_ebij (G:=((point (@Graph _ _ _ _ _ _ _ _)) _ _)) unit_option_void)=>/=.
-    match goal with |- liso ?G ?H => 
-                    apply (@Liso G H bij_id bij_id (fun _ => false))
-    end=>//=; case=>//.
+    liso_step bool_option_unit=>/=. 
+    liso_step unit_option_void=>/=.
+    liso bij_id bij_id (fun _ => false)=>//=; case=>//.
     apply liso_step.
-    match goal with |- liso ?G ?H => 
-                    apply (@Liso G H bij_id bij_id (fun _ => false))
-    end=>//=; case=>//.
+    liso bij_id bij_id (fun _ => false)=>//=; case=>//.
     apply dotC. 
 Admitted.
 
-Lemma nf_steps (s: nf_term) G: steps (lgraph_of_nf_term s) G -> liso (lgraph_of_nf_term s) G.
-Admitted.                       (* boring but ok *)
+Lemma nf_steps s: forall H, steps (lgraph_of_nf_term s) H -> liso (lgraph_of_nf_term s) H.
+Proof.
+  suff E: forall G H, steps G H -> liso G (lgraph_of_nf_term s) -> liso G H
+    by intros; apply E. 
+  destruct 1 as [G H I|G' G H H' I S _ _]=>//L.
+  - exfalso. apply (liso_comp (liso_sym I)) in L. clear -S L. generalize (card_bij (liso_e L)).
+    destruct s; destruct S; simpl in *; try by rewrite !card_option ?card_unit ?card_void.
+    * move=>_.
+      generalize (liso_input L). generalize (liso_output L). simpl.
+      suff E: input=output :>G by congruence.
+      apply (card_le1 (D:=predT))=>//. 
+      apply liso_v, card_bij in L. rewrite card_option card_bool in L.
+      by injection L=>->. 
+    * move=>_.
+      generalize (source_liso L None). generalize (target_liso L None).
+      case liso_dir; simpl; congruence.
+Qed.
 
 Lemma liso_nf (s t: nf_term):
   liso (lgraph_of_nf_term s) (lgraph_of_nf_term t) ->
@@ -625,10 +785,9 @@ Theorem completeness (u v: term): liso (lgraph_of_term u) (lgraph_of_term v) -> 
 Proof.
   move=>h.
   pose proof (reduce u) as H.
-  have H' : steps (lgraph_of_term u) (lgraph_of_nf_term (nf v)).
-   etransitivity. apply liso_step, h. apply reduce. 
+  have H' : steps (lgraph_of_term u) (lgraph_of_nf_term (nf v))
+    by liso_step h; apply reduce. 
   case (confluence H H')=>F [/nf_steps HF /nf_steps HF'].
   rewrite-> (nf_correct u), (nf_correct v).
-  apply liso_nf.
-  etransitivity. apply HF. symmetry. apply HF'.
+  apply liso_nf. liso_step HF. by symmetry. 
 Qed.
