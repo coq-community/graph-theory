@@ -8,6 +8,22 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 
+(* 
+   strategy:
+
+   1. 2pdom + TaT=T    (with rule G+· --> G)
+   2. 2pdom by conservativity
+   3. 2p by normalisation and reduction to 2pdom (for nfs u v, G(u)≃G(v) -> G(u[t/T])≃G(v[t/T]))
+
+   alternative is:
+   1. 2p
+   2. 2pdom by conservativity
+   3. 2pdom + TaT by simple analysis
+   (boring thing here is that we need 'graphs with a term' for the rewriting system)
+
+ *)
+
+
 (** TOMOVE  *)
 
 Lemma bij_inj A B (f: bij A B) a a': f a = f a' -> a = a'.
@@ -15,6 +31,71 @@ Proof. move =>E. by rewrite -(bijK f a) E bijK. Qed.
 
 Lemma bij_inj' A B (f: bij A B) b b': f^-1 b = f^-1 b' -> b = b'.
 Proof. move =>E. by rewrite -(bijK' f b) E bijK'. Qed.
+
+Definition bool_swap: bij bool bool.
+  exists negb negb; by case.
+Defined.
+
+Definition bool_option_unit: bij bool (option unit).
+  exists (fun b => if b then None else  Some tt)
+         (fun o => if o is None then true else false); case=>//; by case.
+Defined.
+
+Definition unit_option_void: bij unit (option void).
+  exists (fun _ => None)
+         (fun _ => tt); by case.
+Defined.
+
+Definition optionf {A B} (f: A -> B): option A -> option B :=
+  fun x => match x with Some a => Some (f a) | None => None end.
+Definition option_bij A B (f: bij A B): bij (option A) (option B).
+  exists (optionf f) (optionf f^-1); move=>[e|]=>//=; congr Some; apply f.
+Defined.
+Definition option2f {A B} (f: A -> B): option (option A) -> option (option B) :=
+  fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
+Definition option2_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
+  exists (option2f f) (option2f f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
+Defined.
+Lemma option_bij_case A B (f: bij (option A) (option B)):
+  {f': bij A B | f =1 option_bij f'} +
+  {A': Type & {B': Type & {a: bij A (option A') & {ab: bij A' B' & {b: bij (option B') B 
+       | f=1 bij_comp (option_bij a) (bij_comp (option2_bij ab) (option_bij b))}}}}}.
+Proof.
+  case_eq (f None)=>[b|] E.
+Admitted.
+
+
+Definition S_option A: bij (unit+A) (option A).
+Proof.
+  exists (fun x => match x with inr a => Some a | inl _ => None end)
+         (fun x => match x with Some a => inr a | None => inl tt end);
+    case=>//; case=>//.
+Defined.
+
+Definition two_bool: bij (unit+unit) bool.
+Proof. etransitivity. apply S_option. symmetry. apply bool_option_unit. Defined.
+
+Definition two_option_option_void: bij (unit+unit) (option (option void)).
+Proof.
+  etransitivity. apply bij_sumC.
+  etransitivity. apply S_option.
+  apply option_bij. apply unit_option_void.
+Defined.
+
+Definition merge43: bij (quot (eqv_clot [::(inl true,inr false)])) (option bool).
+Admitted.
+Lemma merge43E:
+  ((merge43 (\pi inl false) = Some false) *
+   (merge43 (\pi inl true) = None) *
+   (merge43 (\pi inr false) = None) *
+   (merge43 (\pi inr true) = Some true))%type.
+Admitted.
+Lemma merge43E':
+  ((merge43^-1 (Some false) = \pi inl false) *
+   (merge43^-1 None = \pi inl true) *
+   (merge43^-1 (Some true) = \pi inr true))%type.
+Admitted.
+
 
 (** 2pdom terms  *)
 
@@ -36,6 +117,9 @@ Notation "1"  := (one): pttdom_ops.
 Reserved Notation "x ≡ y" (at level 79).
 
 (** 2pdom axioms  *)
+(* NOTE: the 2pdom axioms are listed here, while the rest of the code is for 2p + TaT=T
+   (to be fixed later)
+ *)
 
 Inductive weq: relation term :=
 | weq_refl: Reflexive weq
@@ -199,8 +283,10 @@ Notation point G := (@LGraph G).
 Definition label (G: lgraph) (x: vertex G + edge G): term :=
   match x with inl v => vlabel v | inr e => elabel e end.
 
+Definition cnv' (b: bool) (u: term): term :=
+  if b then u° else u.
 Definition elabel' (G: lgraph) (b: bool) (e: edge G): term :=
-  if b then (elabel e) ° else elabel e.
+  cnv' b (elabel e).
 Definition source' (G: lgraph) (b: bool) (e: edge G): G :=
   if b then target e else source e.
 Definition target' (G: lgraph) (b: bool) (e: edge G): G :=
@@ -292,12 +378,18 @@ Definition add_vertex (G: lgraph) (a: test): lgraph :=
 Instance add_vertex_liso: Proper (liso ==> test_weq ==> liso) add_vertex.
 Admitted.
 
+Lemma add_vertexC G a b: liso (add_vertex (add_vertex G b) a) (add_vertex (add_vertex G a) b).
+Admitted.
+
 Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
   point (add_edge G x y u) input output.
 Arguments add_edge: clear implicits. 
 
 Lemma add_edge_liso G G' (I: liso G G') x x' (X: I x = x') y y' (Y: I y = y') u u' (U: u ≡ u'):
   liso (add_edge G x y u) (add_edge G' x' y' u').
+Admitted.
+
+Lemma add_edgeC G x y u i j v: liso (add_edge (add_edge G x y u) i j v) (add_edge (add_edge G i j v) x y u).
 Admitted.
 
 Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
@@ -308,25 +400,40 @@ Lemma add_test_liso G G' (I: liso G G') x x' (X: I x = x') (a a': test) (A: a �
   liso (add_test G x a) (add_test G' x' a').
 Admitted.
 
-Definition optionf {A B} (f: A -> B): option A -> option B :=
-  fun x => match x with Some a => Some (f a) | None => None end.
-Definition option_bij A B (f: bij A B): bij (option A) (option B).
-  exists (optionf f) (optionf f^-1); move=>[e|]=>//=; congr Some; apply f.
-Defined.
-Definition option2f {A B} (f: A -> B): option (option A) -> option (option B) :=
-  fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
-Definition option2_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
-  exists (option2f f) (option2f f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
-Defined.
-Lemma option_bij_case A B (f: bij (option A) (option B)):
-  {f': bij A B | f =1 option_bij f'} +
-  {A': Type & {B': Type & {a: bij A (option A') & {ab: bij A' B' & {b: bij (option B') B 
-       | f=1 bij_comp (option_bij a) (bij_comp (option2_bij ab) (option_bij b))}}}}}.
-Proof.
-  case_eq (f None)=>[b|] E.
+Lemma add_vertex_vertex G a H b
+  (l: liso (add_vertex G a) (add_vertex H b)):
+  ((liso G H) * (a ≡ b) * (l None = None)
+   + { F & liso G (add_vertex F b) * liso H (add_vertex F a) * (l None <> None)})%type.
+Admitted.
+
+Lemma add_vertex_vertex' G a H b
+  (l: liso (add_vertex G a) (add_vertex H b)):
+  ({ l': liso G H &
+   { e: a ≡ b & 
+     l = add_vertex_liso l' e }}
+   +
+   { F &
+   { l': liso G (add_vertex F b) &
+   { l'': liso (add_vertex F a) H &
+     l = liso_comp (add_vertex_liso l' (weq_refl _)) (
+         liso_comp (add_vertexC _ _ _)
+                   (add_vertex_liso l'' (weq_refl _)))
+  }}})%type.
+Admitted.
+
+Lemma add_vertex_edge G a H x y u
+  (l: liso (add_vertex G a) (add_edge H x y u)):
+  { F & {x' & {y' & {h: liso H (add_vertex F a) &
+                        liso G (add_edge F x' y' u) *
+                        (h x = Some x') *
+                        (h y = Some y') }}}}%type.
 Admitted.
 
 Inductive step: lgraph -> lgraph -> Type :=
+  | step_v0: forall G alpha,
+      step
+        (add_vertex G alpha)
+        G
   | step_v1: forall G x u alpha,
       step
         (add_edge (add_vertex G alpha) (Some x) None u)
@@ -365,10 +472,58 @@ Proof. intros F G S. by apply cons_step with F G. Qed.
 
 Definition step_order G H (s: step G H): nat :=
   match s with
-  | step_v1 _ _ _ _ => 0
-  | step_v2 _ _ _ _ _ _ => 1
-  | step_e0 _ _ _ => 2
-  | step_e2 _ _ _ _ _ => 3
+  | step_v0 _ _ => 0
+  | step_v1 _ _ _ _ => 1
+  | step_v2 _ _ _ _ _ _ => 2
+  | step_e0 _ _ _ => 3
+  | step_e2 _ _ _ _ _ => 4
+  end.
+
+
+(* TOMOVE *)
+Lemma iso_vbij Lv Le (G: graph Lv Le) (V: finType) (h: bij (vertex G) V):
+  iso G (@Graph _ _ V (edge G)
+                (h \o (@source _ _ G))
+                (h \o (@target _ _ G))
+                ((@vlabel _ _ G) \o h^-1)
+                (@elabel _ _ G)).
+Proof. iso h bij_id. by split=>//= v; rewrite bijK. Defined.
+
+Lemma iso_ebij Lv Le (G: graph Lv Le) (E: finType) (h: bij (edge G) E):
+  iso G (@Graph _ _ (vertex G) E
+                ((@source _ _ G) \o h^-1)
+                ((@target _ _ G) \o h^-1)
+                (@vlabel _ _ G)
+                ((@elabel _ _ G) \o h^-1)).
+Proof. iso bij_id h. by split=>//= v; rewrite bijK. Defined.
+
+Lemma liso_vbij (G: lgraph) (V: finType) (h: bij (vertex G) V):
+  liso G
+       (point (@Graph _ _ V (edge G)
+                      (h \o (@source _ _ G))
+                      (h \o (@target _ _ G))
+                      ((@vlabel _ _ G) \o h^-1)
+                      (@elabel _ _ G))
+              (h input) (h output)).
+Proof. apply (iso_liso (iso_vbij h)). Qed.
+
+Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
+  liso G
+       (point (@Graph _ _ (vertex G) E
+                ((@source _ _ G) \o h^-1)
+                ((@target _ _ G) \o h^-1)
+                (@vlabel _ _ G)
+                ((@elabel _ _ G) \o h^-1))
+              input output).
+Proof. apply (iso_liso (iso_ebij h)). Qed.
+
+Tactic Notation "liso_step" uconstr(h) :=
+  match goal with
+  | |- steps ?G _ => etransitivity;
+                     [apply liso_step;
+                      first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
+  | |- liso ?G _ => etransitivity;
+                    [first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
   end.
 
 Proposition local_confluence G G' H H':
@@ -376,10 +531,22 @@ Proposition local_confluence G G' H H':
     {F & steps G' F * steps H' F}%type.
 Proof.
   intros S S'. wlog: S S' / step_order S <= step_order S'.
-  move=>L I. move: (leq_total (step_order S) (step_order S')). admit. 
+  move=>L I. move:(leq_total (step_order S) (step_order S')). admit. 
   move:G H S S'=>G0 H0. 
-  case=>[G x u alpha|G x y u alpha v|G x u|G x y u v];
-  case=>[H i w gamma|H i j w gamma t|H i w|H i j w t]//_ h.
+  case=>[G alpha|G x u alpha|G x y u alpha v|G x u|G x y u v];
+  case=>[H gamma|H i w gamma|H i j w gamma t|H i w|H i j w t]//_ h.
+  - destruct (add_vertex_vertex h) as [[[GH E] _]|[F [[HF GF] _]]].
+    exists G. split=>//. apply liso_step. by symmetry.
+    exists F. split.
+     liso_step HF. apply one_step, step_v0.
+     liso_step GF. apply one_step, step_v0.
+  - apply add_vertex_edge in h as [F[x[y[HF[[GF X] Y]]]]].
+    destruct (add_vertex_vertex HF) as [[[HF' E] HFN]|[F' [[HF' FF'] _]]]. congruence.
+    (* exists (add_test F' (HF' i) [dom(w·gamma)]).  *)
+    admit.
+  - admit.
+  - admit.
+  - admit.
   - case (option_bij_case h).
     * move=>[h' E]. eexists. split. reflexivity. apply liso_step.
       case (option_bij_case (liso_e h))=>[[he' E']|].
@@ -565,6 +732,7 @@ Instance cnv_steps: Proper (steps ==> steps) lcnv.
 Proof.
   apply step_to_steps. by apply cnv_liso.
   move=>F G S. eapply one_step. destruct S.
+  * apply (@step_v0 (point G output input) alpha).
   * apply (@step_v1 (point G output input) x u alpha).
   * apply (@step_v2 (point G output input) x y u alpha v).
   * apply (@step_e0 (point G output input) x u).
@@ -575,103 +743,12 @@ Instance dom_steps: Proper (steps ==> steps) ldom.
 Proof.
   apply step_to_steps. by apply dom_liso.
   move=>F G S. eapply one_step. destruct S.
+  * apply (@step_v0 (point G input input) alpha).
   * apply (@step_v1 (point G input input) x u alpha).
   * apply (@step_v2 (point G input input) x y u alpha v).
   * apply (@step_e0 (point G input input) x u).
   * apply (@step_e2 (point G input input) x y u v).
 Qed.
-
-(* TOMOVE *)
-Definition bool_swap: bij bool bool.
-  exists negb negb; by case.
-Defined.
-
-Definition bool_option_unit: bij bool (option unit).
-  exists (fun b => if b then None else  Some tt)
-         (fun o => if o is None then true else false); case=>//; by case.
-Defined.
-
-Definition unit_option_void: bij unit (option void).
-  exists (fun _ => None)
-         (fun _ => tt); by case.
-Defined.
-
-(* TOMOVE *)
-Lemma iso_vbij Lv Le (G: graph Lv Le) (V: finType) (h: bij (vertex G) V):
-  iso G (@Graph _ _ V (edge G)
-                (h \o (@source _ _ G))
-                (h \o (@target _ _ G))
-                ((@vlabel _ _ G) \o h^-1)
-                (@elabel _ _ G)).
-Proof. iso h bij_id. by split=>//= v; rewrite bijK. Defined.
-
-Lemma iso_ebij Lv Le (G: graph Lv Le) (E: finType) (h: bij (edge G) E):
-  iso G (@Graph _ _ (vertex G) E
-                ((@source _ _ G) \o h^-1)
-                ((@target _ _ G) \o h^-1)
-                (@vlabel _ _ G)
-                ((@elabel _ _ G) \o h^-1)).
-Proof. iso bij_id h. by split=>//= v; rewrite bijK. Defined.
-
-Lemma liso_vbij (G: lgraph) (V: finType) (h: bij (vertex G) V):
-  liso G
-       (point (@Graph _ _ V (edge G)
-                      (h \o (@source _ _ G))
-                      (h \o (@target _ _ G))
-                      ((@vlabel _ _ G) \o h^-1)
-                      (@elabel _ _ G))
-              (h input) (h output)).
-Proof. apply (iso_liso (iso_vbij h)). Qed.
-
-Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
-  liso G
-       (point (@Graph _ _ (vertex G) E
-                ((@source _ _ G) \o h^-1)
-                ((@target _ _ G) \o h^-1)
-                (@vlabel _ _ G)
-                ((@elabel _ _ G) \o h^-1))
-              input output).
-Proof. apply (iso_liso (iso_ebij h)). Qed.
-
-Tactic Notation "liso_step" uconstr(h) :=
-  match goal with
-  | |- steps ?G _ => etransitivity;
-                     [apply liso_step;
-                      first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
-  | |- liso ?G _ => etransitivity;
-                    [first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
-  end.
-
-Definition S_option A: bij (unit+A) (option A).
-Proof.
-  exists (fun x => match x with inr a => Some a | inl _ => None end)
-         (fun x => match x with Some a => inr a | None => inl tt end);
-    case=>//; case=>//.
-Defined.
-
-Definition two_bool: bij (unit+unit) bool.
-Proof. etransitivity. apply S_option. symmetry. apply bool_option_unit. Defined.
-
-Definition two_option_option_void: bij (unit+unit) (option (option void)).
-Proof.
-  etransitivity. apply bij_sumC.
-  etransitivity. apply S_option.
-  apply option_bij. apply unit_option_void.
-Defined.
-
-Definition merge43: bij (quot (eqv_clot [::(inl true,inr false)])) (option bool).
-Admitted.
-Lemma merge43E:
-  ((merge43 (\pi inl false) = Some false) *
-   (merge43 (\pi inl true) = None) *
-   (merge43 (\pi inr false) = None) *
-   (merge43 (\pi inr true) = Some true))%type.
-Admitted.
-Lemma merge43E':
-  ((merge43^-1 (Some false) = \pi inl false) *
-   (merge43^-1 None = \pi inl true) *
-   (merge43^-1 (Some true) = \pi inr true))%type.
-Admitted.
 
 Proposition reduce (u: term): steps (lgraph_of_term u) (lgraph_of_nf_term (nf u)).
 Proof.
@@ -748,16 +825,18 @@ Proof.
   destruct 1 as [G H I|G' G H H' I S _ _]=>//L.
   - exfalso. apply (liso_comp (liso_sym I)) in L. clear -S L. generalize (card_bij (liso_e L)).
     destruct s; destruct S; simpl in *; try by rewrite !card_option ?card_unit ?card_void.
+    * admit.                    (* because input must be there in G *)
     * move=>_.
       generalize (liso_input L). generalize (liso_output L). simpl.
       suff E: input=output :>G by congruence.
       apply (card_le1 (D:=predT))=>//. 
       apply liso_v, card_bij in L. rewrite card_option card_bool in L.
-      by injection L=>->. 
+        by injection L=>->.
+    * admit.
     * move=>_.
       generalize (source_liso L None). generalize (target_liso L None).
       case liso_dir; simpl; congruence.
-Qed.
+Admitted.
 
 Lemma liso_nf (s t: nf_term):
   liso (lgraph_of_nf_term s) (lgraph_of_nf_term t) ->
