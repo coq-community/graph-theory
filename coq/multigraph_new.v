@@ -529,14 +529,15 @@ Definition setT_bij (T : finType) : bij {x : T | x \in setT} T :=
   Eval hnf in subT_bij (@in_setT T).
 Arguments setT_bij [T].
 
-Lemma consistentT (G : graph) : consistent [set: G] [set: edge G].
-Proof. done. Qed.
-Arguments consistentT : clear implicits.
+Lemma consistentT (G : graph) (E : {set edge G}) : consistent [set: G] E. by []. Qed.
 
-Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentT G)) G setT_bij setT_bij. 
+Lemma consistentTT (G : graph) : consistent [set: G] [set: edge G]. by []. Qed.
+Arguments consistentTT : clear implicits.
+
+Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentTT G)) G setT_bij setT_bij. 
 Proof. by []. Qed.
 
-Definition iso_subgraph_forT (G : graph) : iso (subgraph_for (consistentT G)) G := 
+Definition iso_subgraph_forT (G : graph) : iso (subgraph_for (consistentTT G)) G := 
   Eval hnf in Iso (setT_bij_hom G).
 
 Section QuotBij.

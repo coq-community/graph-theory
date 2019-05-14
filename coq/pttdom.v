@@ -26,11 +26,41 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** TOMOVE  *)
 
-Lemma bij_inj A B (f: bij A B) a a': f a = f a' -> a = a'.
-Proof. move =>E. by rewrite -(bijK f a) E bijK. Qed.
+Notation "'Σ' x .. y , p" :=
+  (sigT (fun x => .. (sigT (fun y => p%type)) ..))
+  (at level 200, x binder, y binder, right associativity).
 
-Lemma bij_inj' A B (f: bij A B) b b': f^-1 b = f^-1 b' -> b = b'.
-Proof. move =>E. by rewrite -(bijK' f b) E bijK'. Qed.
+Lemma bij_bijective A B (f : bij A B) : bijective f.
+Proof. case: f => f g can_f can_g. by exists g. Qed.
+
+Lemma bij_bijective' A B (f : bij A B) : bijective f^-1.
+Proof. case: f => f g can_f can_g. by exists f. Qed.
+
+Hint Resolve bij_bijective bij_bijective'.
+
+Lemma bij_injective A B (f: bij A B) : injective f.
+Proof. exact: bij_inj. Qed.
+
+Lemma bij_injective' A B (f: bij A B) : injective f^-1.
+Proof. exact: bij_inj. Qed.
+
+Hint Resolve bij_injective bij_injective'.
+
+Lemma orb_sum (a b : bool) : a || b -> (a + b)%type.
+Proof. by case: a => /=; [left|right]. Qed.
+
+Lemma inj_card_leq (A B: finType) (f : A -> B) : injective f -> #|A| <= #|B|.
+Proof. move => inj_f. by rewrite -[#|A|](card_codom (f := f)) // max_card. Qed.
+
+Lemma bij_card_eq (A B: finType) (f : A -> B) : bijective f -> #|A| = #|B|.
+Proof. 
+  case => g can_f can_g. apply/eqP. 
+  rewrite eqn_leq (inj_card_leq (f := f)) ?(inj_card_leq (f := g)) //; exact: can_inj.
+Qed.
+
+Lemma card_bij (A B: finType) (f : bij A B) : #|A| = #|B|.
+Proof. exact: (bij_card_eq (f := f)). Qed.
+Arguments card_bij [A B] f.
 
 Definition bool_swap: bij bool bool.
   exists negb negb; by case.
@@ -46,21 +76,21 @@ Definition unit_option_void: bij unit (option void).
          (fun _ => tt); by case.
 Defined.
 
-Definition optionf {A B} (f: A -> B): option A -> option B :=
-  fun x => match x with Some a => Some (f a) | None => None end.
-Definition option_bij A B (f: bij A B): bij (option A) (option B).
-  exists (optionf f) (optionf f^-1); move=>[e|]=>//=; congr Some; apply f.
+Definition option_bij (A B : Type) (f : bij A B) : bij (option A) (option B).
+exists (option_map f) (option_map f^-1); abstract (case => //= x; by rewrite ?bijK ?bijK'). 
 Defined.
-Definition option2f {A B} (f: A -> B): option (option A) -> option (option B) :=
+
+Definition option2x {A B} (f: A -> B): option (option A) -> option (option B) :=
   fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
-Definition option2_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
-  exists (option2f f) (option2f f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
+Definition option2x_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
+  exists (option2x f) (option2x f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
 Defined.
+
 Lemma option_bij_case A B (f: bij (option A) (option B)):
-  {f': bij A B | f =1 option_bij f'} +
-  {A': Type & {B': Type & {a: bij A (option A') & {ab: bij A' B' & {b: bij (option B') B 
-       | f=1 bij_comp (option_bij a) (bij_comp (option2_bij ab) (option_bij b))}}}}}.
-Proof.
+  (Σ f' : bij A B, f =1 option_bij f') +
+  (Σ (A' B' : Type) (a : bij A (option A')) (ab : bij A' B') (b : bij (option B') B),
+   f =1 bij_comp (option_bij a) (bij_comp (option2x_bij ab) (option_bij b))).
+Proof. 
   case_eq (f None)=>[b|] E.
 Admitted.
 
@@ -340,9 +370,9 @@ Definition liso_sym F G (f: liso F G): liso G F.
   move=>e. generalize (elabel_liso f ((liso_e f)^-1 e)) =>/=. rewrite bijK'.
   case liso_dir=>/=E. by rewrite <-E, cnvI. by symmetry. 
   move=>e. generalize (src_tgt_liso f ((liso_e f)^-1 e)) =>/=. rewrite bijK'. 
-  case liso_dir=>/=E; by apply (@bij_inj _ _ f); rewrite bijK' -E.
+  case liso_dir=>/=E; by apply (@bij_injective _ _ f); rewrite bijK' -E.
   move=>e. generalize (src_tgt_liso f ((liso_e f)^-1 e)) =>/=. rewrite bijK'. 
-  case liso_dir=>/=E; by apply (@bij_inj _ _ f); rewrite bijK' -E.
+  case liso_dir=>/=E; by apply (@bij_injective _ _ f); rewrite bijK' -E.
   rewrite<-(bijK f input). by rewrite->liso_input.
   rewrite<-(bijK f output). by rewrite->liso_output.
 Defined.
@@ -376,10 +406,18 @@ Definition add_vertex (G: lgraph) (a: test): lgraph :=
   point (add_vertex G a) (Some input) (Some output).
 
 Instance add_vertex_liso: Proper (liso ==> test_weq ==> liso) add_vertex.
-Admitted.
+Proof.
+  move => G H [Iv Ie E Lv Le Is It Ii Io] a b /= weq_ab.
+  liso (option_bij Iv) Ie E; try abstract (by rewrite //= ?Ii ?Io).
+  - abstract (case => /= [x//|]; by symmetry).
+  - abstract (move => e /=; rewrite -Is; by case: (E e)).
+  - abstract (move => e /=; rewrite -It; by case: (E e)).
+Qed.
 
 Lemma add_vertexC G a b: liso (add_vertex (add_vertex G b) a) (add_vertex (add_vertex G a) b).
-Admitted.
+Proof. 
+  liso (option2x_bij bij_id) bij_id (fun _ => false); solve [by move => [[v|]|]| done].
+Qed.
 
 Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
   point (add_edge G x y u) input output.
@@ -402,31 +440,43 @@ Admitted.
 
 Lemma add_vertex_vertex G a H b
   (l: liso (add_vertex G a) (add_vertex H b)):
-  ((liso G H) * (a ≡ b) * (l None = None)
-   + { F & liso G (add_vertex F b) * liso H (add_vertex F a) * (l None <> None)})%type.
+  (liso G H) * (a ≡ b) * (l None = None)
+   + (Σ F, liso G (add_vertex F b) * liso H (add_vertex F a) * (l None <> None)).
 Admitted.
 
-Lemma add_vertex_vertex' G a H b
-  (l: liso (add_vertex G a) (add_vertex H b)):
-  ({ l': liso G H &
-   { e: a ≡ b & 
-     l = add_vertex_liso l' e }}
-   +
-   { F &
-   { l': liso G (add_vertex F b) &
-   { l'': liso (add_vertex F a) H &
-     l = liso_comp (add_vertex_liso l' (weq_refl _)) (
-         liso_comp (add_vertexC _ _ _)
-                   (add_vertex_liso l'' (weq_refl _)))
-  }}})%type.
+Lemma add_vertex_vertex' G a H b (l: liso (add_vertex G a) (add_vertex H b)):
+ (Σ (l' : liso G H) (e : a ≡ b), l = add_vertex_liso l' e) +
+ (Σ (F : lgraph) (l' : liso G (add_vertex F b)) (l'' : liso (add_vertex F a) H),
+  l = liso_comp (add_vertex_liso l' (weq_refl a))
+                (liso_comp (add_vertexC F a b) (add_vertex_liso l'' (weq_refl b)))).
 Admitted.
 
-Lemma add_vertex_edge G a H x y u
-  (l: liso (add_vertex G a) (add_edge H x y u)):
-  { F & {x' & {y' & {h: liso H (add_vertex F a) &
-                        liso G (add_edge F x' y' u) *
-                        (h x = Some x') *
-                        (h y = Some y') }}}}%type.
+Definition mkLGraph (V : finType) (E : finType) (s t : E -> V) 
+                    (lv : V -> test_setoid) (le : E -> term_setoid) (i o : V) := point (Graph s t lv le) i o.
+
+Definition del_edge (G : lgraph) (e0 : edge G) := Eval hnf in 
+  @mkLGraph G [finType of { e : edge G | e != e0}] 
+            (fun e => source (val e)) (fun e => target (val e)) (@vlabel _ _ G) (fun e => elabel (val e)) input output.
+Arguments del_edge : clear implicits.
+
+Definition strip (A B : Type) (x0 : B) (f : A -> option B) x := 
+  if f x is Some z then z else x0.
+(* Lemma stripE (A B : Type) (f : A -> option B) (x0 : B) (forall x, f x) x :  *)
+(*   strip f x  *)
+
+Lemma add_vertex_edge G a H x y u (l: liso (add_vertex G a) (add_edge H x y u)):
+  Σ (F : lgraph) (x' y' : F) (h : liso H (add_vertex F a)),
+  (liso G (add_edge F x' y' u) * (h x = Some x') * (h y = Some y')).
+Proof.
+  (* What's a good choice of F here? 
+     G without the edge added in H or the vertices of G and the edges of H? *)
+  move/liso_sym in l.
+  pose s := strip input (fun e : edge H => l (@source' (add_edge H x y u) (liso_dir l (Some e)) (Some e))). 
+  pose t := strip input (fun e : edge H => l (@target' (add_edge H x y u) (liso_dir l (Some e)) (Some e))). 
+  pose F := @mkLGraph G (edge H) s t (@vlabel _ _ G) (@elabel _ _ H) input output.
+  exists F. 
+  have @h : liso H (add_vertex F a).
+  { rewrite /F. 
 Admitted.
 
 Inductive step: lgraph -> lgraph -> Type :=
@@ -530,8 +580,10 @@ Proposition local_confluence G G' H H':
     step G G' -> step H H' -> liso G H -> 
     {F & steps G' F * steps H' F}%type.
 Proof.
-  intros S S'. wlog: S S' / step_order S <= step_order S'.
-  move=>L I. move:(leq_total (step_order S) (step_order S')). admit. 
+  intros S S'. wlog: G G' H H' S S' / step_order S <= step_order S'.
+  { move => L I. case/orb_sum: (leq_total (step_order S) (step_order S')) => SS. 
+    - exact: L SS I. 
+    - case: (L _ _ _ _ S' S SS (liso_sym I)) => F [F1 F2]. exists F. by split. }
   move:G H S S'=>G0 H0. 
   case=>[G alpha|G x u alpha|G x y u alpha v|G x u|G x y u v];
   case=>[H gamma|H i w gamma|H i j w gamma t|H i w|H i j w t]//_ h.
@@ -578,10 +630,6 @@ Proof.
   rewrite /measure.
   case; intros=>/=; by rewrite !card_option ?addSnnS ?addnS.
 Qed.
-
-(* TOMOVE *)
-Lemma card_bij (A B: finType): bij A B -> #|A| = #|B|.
-Admitted.
 
 Lemma liso_stagnates G H: liso G H -> measure H = measure G.
 Proof. move=>l. by rewrite /measure (card_bij (liso_v l)) (card_bij (liso_e l)). Qed.
