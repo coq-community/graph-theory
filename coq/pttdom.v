@@ -324,7 +324,8 @@ Definition target' (G: lgraph) (b: bool) (e: edge G): G :=
 
 Import CMorphisms.
 
-Record liso (F G: lgraph): Type :=
+Universe L.
+Record liso (F G: lgraph): Type@{L} :=
   Liso {
       liso_v:> bij F G;
       liso_e: bij (edge F) (edge G);
@@ -529,8 +530,8 @@ Lemma add_edge_edge G H x y a b u w (i : liso (add_edge G x y u) (add_edge H a b
    (g x = x') * (g y = y') * (h a = a') * (h b = b')). (* what else? *)
 Admitted.
   
-
-Inductive step: lgraph -> lgraph -> Type :=
+Universe S.
+Inductive step: lgraph -> lgraph -> Type@{S} :=
   | step_v0: forall G alpha,
       step
         (add_vertex G alpha)
@@ -552,10 +553,13 @@ Inductive step: lgraph -> lgraph -> Type :=
         (add_edge (add_edge G x y u) x y v)
         (add_edge G x y (u∥v)).
 
-Inductive steps: lgraph -> lgraph -> Type :=
+(** It is crucial that we name the universe steps resides in. Without
+the explicit name, the inferred universe is a max-universe, causing
+setoid rewite underneath of steps to fail with the anomaly: "Unable to
+handle arbitrary u+k <= v constraints." *)
+Inductive steps: lgraph -> lgraph -> Type@{S} :=
   | liso_step: CRelationClasses.subrelation liso steps
   | cons_step: forall F G H H', liso F G -> step G H -> steps H H' -> steps F H'.
-
 Existing Instance liso_step.
 
 Instance PreOrder_steps: CRelationClasses.PreOrder steps.
@@ -580,16 +584,15 @@ Definition step_order G H (s: step G H): nat :=
   | step_e2 _ _ _ _ _ => 4
   end.
 
-(* TOTHNIK rewriting with liso under steps raises an anomaly (u+k <= v constraints) *)
-Instance steps_proper : Proper (liso ==> liso ==> iffT) steps.
-Admitted.
-
+(* Lemmas for manual chaining *)
 Lemma steps_lisoL G G' H : steps G' H -> liso G G' -> steps G H.
 Admitted.
 
 Lemma steps_stepL G G' H : steps G' H -> step G G' -> steps G H.
 Admitted.
 
+Lemma steps_comp F G H : steps F G -> steps G H -> steps F H.
+Admitted.
 
 (* TOMOVE *)
 Lemma iso_vbij Lv Le (G: graph Lv Le) (V: finType) (h: bij (vertex G) V):
@@ -636,6 +639,15 @@ Tactic Notation "liso_step" uconstr(h) :=
   | |- liso ?G _ => etransitivity;
                     [first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
   end.
+
+Instance steps_proper : Proper (liso ==> liso ==> iffT) steps.
+Proof.
+  move => G G' g H H' h. split => S. 
+  - apply: steps_lisoL (liso_sym g). apply: steps_comp S _. exact: liso_step.
+  - apply: steps_lisoL g. apply: steps_comp S _. apply: liso_step. exact: liso_sym.
+Qed. 
+
+
 
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> liso G H -> 
@@ -697,13 +709,11 @@ Proof.
       move: (add_vertex_edge' f) => [F'] [a''] [b''] [f'] [g'] [[[H1 H2] H3] H4].
       exists (add_test (add_test F' (g' x) (tst_dom (u·alpha))) a'' [1∥w]). split.
       * subst. 
-        liso_step (liso_add_test g' x (tst_dom (u·alpha))).
-        liso_step (liso_add_test_edge _ _).
+        rewrite -> (liso_add_test g' x (tst_dom (u·alpha))).
+        rewrite -> (liso_add_test_edge _ _).
         have E: a'' = b''. admit. subst b''. 
         exact: steps_stepL (step_e0 _ _). 
-      * Fail rewrite -> (liso_add_test g).
-    
-
+      * rewrite -> (liso_add_test g).
 Admitted.
 
 Definition measure (G: lgraph) := #|vertex G| + #|edge G|.
