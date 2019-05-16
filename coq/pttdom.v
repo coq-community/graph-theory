@@ -433,7 +433,15 @@ Admitted.
 
 Lemma liso_add_edge G G' (l : liso G G') x y u : 
   liso (add_edge G x y u) (add_edge G' (l x) (l y) u).
+Proof.
+  liso (liso_v l) (option_bij l.e) (fun e => if e is Some e' then liso_dir l e' else false).
+  all: try done.
 Admitted.
+(* Should compute *)
+Lemma liso_add_edgeE G G' (l : liso G G') x y u :
+  (liso_add_edge l x y u =1 l) * ((liso_add_edge l x y u).e =1 option_bij l.e).
+Admitted.
+
 
 Lemma add_edge_liso G G' (I: liso G G') x x' (X: I x = x') y y' (Y: I y = y') u u' (U: u ≡ u'):
   liso (add_edge G x y u) (add_edge G' x' y' u').
@@ -501,8 +509,12 @@ Lemma liso_add_test_edge G x y u z a :
   liso (add_test (add_edge G x y u) z a) (add_edge (add_test G z a) x y u).
 Admitted.
 
-Lemma liso_add_test_vertex G a b x : 
+Lemma liso_add_test_vertex (G:lgraph) a b x : 
   liso (add_test (add_vertex G a) (Some x) b) (add_vertex (add_test G x b) a).
+Admitted.
+(* should compute *)
+Lemma liso_add_test_vertexE (G:lgraph) a b (x:G) z: 
+  (liso_add_test_vertex a b x) z = z.
 Admitted.
 
 Lemma add_vertex_edge G a H x y u (l: liso (add_vertex G a) (add_edge H x y u)):
@@ -726,13 +738,11 @@ Proof.
         rewrite -> (liso_add_test g' x (tst_dom (u·alpha))).
         rewrite -> (liso_add_test_edge _ _).
         exact: steps_stepL (step_e0 _ _). 
-      * rewrite -> (liso_add_test g). 
-        move: (liso_add_edge_plus f' x' y' u) => [I] [I1 I2].
-        rewrite -> (liso_add_test I). rewrite !I1 => {I I1 I2}.
-        rewrite -> liso_add_test_edge. subst. rewrite C H3.  
-        rewrite [(f (Some x))]H1 H2 !bijK'. 
-        move: (@liso_add_test_vertex F' alpha [1∥w] (a'')) => I. 
-        rewrite -> (liso_add_edge I). have HI z : I z = z by admit. rewrite !HI.
+      * rewrite -> (liso_add_test g).  
+        rewrite -> (liso_add_test (liso_add_edge f' x' y' u)). rewrite !liso_add_edgeE.
+        rewrite -> liso_add_test_edge. subst. rewrite C H3 [(f (Some x))]H1 H2 !bijK'. 
+        rewrite -> (liso_add_edge (@liso_add_test_vertex F' alpha [1∥w] (a''))). 
+        rewrite !liso_add_test_vertexE. 
         apply: steps_stepL (step_v1 _ _ _). by  rewrite -> add_testC. 
 Admitted.
 
