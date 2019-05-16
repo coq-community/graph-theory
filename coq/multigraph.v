@@ -1,6 +1,6 @@
 Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries finite_quotient equiv.
+Require Import edone preliminaries bij finite_quotient equiv.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

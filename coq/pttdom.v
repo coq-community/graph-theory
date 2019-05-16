@@ -1,6 +1,6 @@
 Require Import Setoid CMorphisms Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries equiv multigraph_new.
+Require Import edone finite_quotient preliminaries bij equiv multigraph_new.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -30,56 +30,6 @@ Notation "'Σ' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p%type)) ..))
   (at level 200, x binder, y binder, right associativity).
 
-Lemma bij_bijective A B (f : bij A B) : bijective f.
-Proof. case: f => f g can_f can_g. by exists g. Qed.
-
-Lemma bij_bijective' A B (f : bij A B) : bijective f^-1.
-Proof. case: f => f g can_f can_g. by exists f. Qed.
-
-Hint Resolve bij_bijective bij_bijective'.
-
-Lemma bij_injective A B (f: bij A B) : injective f.
-Proof. exact: bij_inj. Qed.
-
-Lemma bij_injective' A B (f: bij A B) : injective f^-1.
-Proof. exact: bij_inj. Qed.
-
-Hint Resolve bij_injective bij_injective'.
-
-Lemma orb_sum (a b : bool) : a || b -> (a + b)%type.
-Proof. by case: a => /=; [left|right]. Qed.
-
-Lemma inj_card_leq (A B: finType) (f : A -> B) : injective f -> #|A| <= #|B|.
-Proof. move => inj_f. by rewrite -[#|A|](card_codom (f := f)) // max_card. Qed.
-
-Lemma bij_card_eq (A B: finType) (f : A -> B) : bijective f -> #|A| = #|B|.
-Proof. 
-  case => g can_f can_g. apply/eqP. 
-  rewrite eqn_leq (inj_card_leq (f := f)) ?(inj_card_leq (f := g)) //; exact: can_inj.
-Qed.
-
-Lemma card_bij (A B: finType) (f : bij A B) : #|A| = #|B|.
-Proof. exact: (bij_card_eq (f := f)). Qed.
-Arguments card_bij [A B] f.
-
-Definition bool_swap: bij bool bool.
-  exists negb negb; by case.
-Defined.
-
-Definition bool_option_unit: bij bool (option unit).
-  exists (fun b => if b then None else  Some tt)
-         (fun o => if o is None then true else false); case=>//; by case.
-Defined.
-
-Definition unit_option_void: bij unit (option void).
-  exists (fun _ => None)
-         (fun _ => tt); by case.
-Defined.
-
-Definition option_bij (A B : Type) (f : bij A B) : bij (option A) (option B).
-exists (option_map f) (option_map f^-1); abstract (case => //= x; by rewrite ?bijK ?bijK'). 
-Defined.
-
 Definition option2x {A B} (f: A -> B): option (option A) -> option (option B) :=
   fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
 Definition option2x_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
@@ -93,7 +43,6 @@ Lemma option_bij_case A B (f: bij (option A) (option B)):
 Proof. 
   case_eq (f None)=>[b|] E.
 Admitted.
-
 
 Definition S_option A: bij (unit+A) (option A).
 Proof.

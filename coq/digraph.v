@@ -1,7 +1,7 @@
 Require Import Setoid CMorphisms.
 Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries.
+Require Import edone preliminaries bij.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

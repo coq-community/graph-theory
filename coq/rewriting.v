@@ -1,6 +1,6 @@
 Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries equiv ptt_algebra multigraph ptt_graph.
+Require Import edone finite_quotient preliminaries bij equiv ptt_algebra multigraph ptt_graph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

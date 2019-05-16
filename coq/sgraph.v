@@ -1,6 +1,6 @@
 Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries digraph.
+Require Import edone preliminaries bij digraph.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

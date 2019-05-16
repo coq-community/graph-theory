@@ -1,6 +1,6 @@
 Require Import RelationClasses Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import preliminaries finite_quotient.
+Require Import preliminaries bij finite_quotient.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

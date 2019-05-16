@@ -1,6 +1,6 @@
 Require Import Setoid CMorphisms.
 Require Import mathcomp.ssreflect.all_ssreflect.
-Require Import preliminaries.
+Require Import preliminaries bij.
 Local Open Scope quotient_scope.
 
 Set Implicit Arguments.
