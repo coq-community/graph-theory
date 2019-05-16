@@ -75,7 +75,6 @@ Lemma merge43E':
    (merge43^-1 (Some true) = \pi inr true))%type.
 Admitted.
 
-
 (** 2pdom terms  *)
 
 Inductive term :=
@@ -271,6 +270,9 @@ Definition source' (G: lgraph) (b: bool) (e: edge G): G :=
 Definition target' (G: lgraph) (b: bool) (e: edge G): G :=
   if b then source e else target e.
 
+Definition mkLGraph (V : finType) (E : finType) (s t : E -> V) 
+                    (lv : V -> test_setoid) (le : E -> term_setoid) (i o : V) := point (Graph s t lv le) i o.
+
 Import CMorphisms.
 
 Universe L.
@@ -354,9 +356,62 @@ Proof.
   rewrite /lswap/swap/target'/=. case (f e)=>//.
 Qed.
 
+
+(* TOMOVE *)
+Lemma iso_vbij Lv Le (G: graph Lv Le) (V: finType) (h: bij (vertex G) V):
+  iso G (@Graph _ _ V (edge G)
+                (h \o (@source _ _ G))
+                (h \o (@target _ _ G))
+                ((@vlabel _ _ G) \o h^-1)
+                (@elabel _ _ G)).
+Proof. iso h bij_id. by split=>//= v; rewrite bijK. Defined.
+
+Lemma iso_ebij Lv Le (G: graph Lv Le) (E: finType) (h: bij (edge G) E):
+  iso G (@Graph _ _ (vertex G) E
+                ((@source _ _ G) \o h^-1)
+                ((@target _ _ G) \o h^-1)
+                (@vlabel _ _ G)
+                ((@elabel _ _ G) \o h^-1)).
+Proof. iso bij_id h. by split=>//= v; rewrite bijK. Defined.
+
+Lemma liso_vbij (G: lgraph) (V: finType) (h: bij (vertex G) V):
+  liso G
+       (point (@Graph _ _ V (edge G)
+                      (h \o (@source _ _ G))
+                      (h \o (@target _ _ G))
+                      ((@vlabel _ _ G) \o h^-1)
+                      (@elabel _ _ G))
+              (h input) (h output)).
+Proof. apply (iso_liso (iso_vbij h)). Qed.
+
+Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
+  liso G
+       (point (@Graph _ _ (vertex G) E
+                ((@source _ _ G) \o h^-1)
+                ((@target _ _ G) \o h^-1)
+                (@vlabel _ _ G)
+                ((@elabel _ _ G) \o h^-1))
+              input output).
+Proof. apply (iso_liso (iso_ebij h)). Qed.
+
+
+(** Basic Operations used to express the rewrite system *)
+
 Definition add_vertex (G: lgraph) (a: test): lgraph :=
   point (add_vertex G a) (Some input) (Some output).
 
+Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
+  point (add_edge G x y u) input output.
+Arguments add_edge: clear implicits. 
+
+Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
+  point (upd_vlabel G x (fun b => [a·b])) input output.
+Arguments add_test: clear implicits. 
+
+
+(** Morphims *)
+
+(** TOTHINK: How useful are these really? *)
 Instance add_vertex_liso: Proper (liso ==> test_weq ==> liso) add_vertex.
 Proof.
   move => G H [Iv Ie E Lv Le Is It Ii Io] a b /= weq_ab.
@@ -366,55 +421,62 @@ Proof.
   - abstract (move => e /=; rewrite -It; by case: (E e)).
 Qed.
 
+(** Commutation Lemmas *)
+
+Tactic Notation "liso_lift" uconstr(l) := 
+  abstract (first [move => [?|]|move => ?|idtac]; try done ; apply l).
+
 Lemma add_vertexC G a b: liso (add_vertex (add_vertex G b) a) (add_vertex (add_vertex G a) b).
 Proof. 
-  liso (option2x_bij bij_id) bij_id (fun _ => false); solve [by move => [[v|]|]| done].
-Qed.
+  liso (option2x_bij bij_id) bij_id (fun _ => false); abstract (solve [by move => [[v|]|]| done]).
+Defined.
 
-Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
-  point (add_edge G x y u) input output.
-Arguments add_edge: clear implicits. 
+Lemma add_edgeC G x y u i j v: 
+  liso (add_edge (add_edge G x y u) i j v) (add_edge (add_edge G i j v) x y u).
+Proof.
+  liso bij_id (option2x_bij bij_id) (fun _ => false); abstract (solve [by move => [[e|]|]| done]).
+Defined.
 
-(* TOTHINK: Maybe this should be a definition *)
-Lemma liso_add_edge_plus G G' (l : liso G G') x y u : 
-  Σ (g : liso (add_edge G x y u) (add_edge G' (l x) (l y) u)), (g =1 l) * (g.e =1 option_bij l.e).
-Admitted.
+Lemma add_testC (G:lgraph) (x y :G) a b : 
+  liso (add_test (add_test G x a) y b) (add_test (add_test G y b) x a).
+Proof.
+  liso bij_id bij_id (fun _ => false); try abstract done. 
+  abstract (move => v /=; do 2 case: ifP => //=; by rewrite !dotA dotC).
+Defined.
+
+Lemma liso_add_test_edge G x y u z a : 
+  liso (add_test (add_edge G x y u) z a) (add_edge (add_test G z a) x y u).
+Proof.
+  liso bij_id bij_id (fun _ => false); done.
+Defined.
+
+Lemma liso_add_test_vertex (G:lgraph) a b x : 
+  liso (add_test (add_vertex G a) (Some x) b) (add_vertex (add_test G x b) a).
+Proof.
+  liso bij_id bij_id (fun _ => false); liso_lift void.
+Defined.
+
+(** Context Lemmas *)
 
 Lemma liso_add_edge G G' (l : liso G G') x y u : 
   liso (add_edge G x y u) (add_edge G' (l x) (l y) u).
 Proof.
   liso (liso_v l) (option_bij l.e) (fun e => if e is Some e' then liso_dir l e' else false).
-  all: try done.
-Admitted.
-(* Should compute *)
-Lemma liso_add_edgeE G G' (l : liso G G') x y u :
-  (liso_add_edge l x y u =1 l) * ((liso_add_edge l x y u).e =1 option_bij l.e).
-Admitted.
+  all: liso_lift l.
+Defined.
 
+Lemma liso_add_test G G' (l: liso G G') x a : 
+  liso (add_test G x a) (add_test G' (l x) a).
+Proof. 
+  liso l l.e (liso_dir l); try liso_lift l.
+  abstract (move => v /=; rewrite bij_eq //; case: ifP => /= _; by rewrite (vlabel_liso l)).
+Defined.
+
+(** Other Lemmas - really needed / best format ? *)
 
 Lemma add_edge_liso G G' (I: liso G G') x x' (X: I x = x') y y' (Y: I y = y') u u' (U: u ≡ u'):
   liso (add_edge G x y u) (add_edge G' x' y' u').
 Admitted.
-
-Lemma add_edgeC G x y u i j v: liso (add_edge (add_edge G x y u) i j v) (add_edge (add_edge G i j v) x y u).
-Admitted.
-
-Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
-  point (upd_vlabel G x (fun b => [a·b])) input output.
-Arguments add_test: clear implicits. 
-
-Lemma add_testC (G:lgraph) (x y :G) a b : 
-  liso (add_test (add_test G x a) y b) (add_test (add_test G y b) x a).
-Admitted.
-
-(* TOTHINK: are the equalities useful, the rest of the statment doesn't depend on g *)
-Lemma liso_add_test_plus G G' (l: liso G G') x a : 
-  Σ (g : liso (add_test G x a) (add_test G' (l x) a)), (l =1 g) * (l.e =1 g.e).
-Admitted.
-
-Lemma liso_add_test G G' (l: liso G G') x a : 
-  liso (add_test G x a) (add_test G' (l x) a).
-Proof. exact: (projT1 (liso_add_test_plus _ _ _)). Qed.
 
 Lemma add_test_liso G G' (I: liso G G') x x' (X: I x = x') (a a': test) (A: a ≡ a'):
   liso (add_test G x a) (add_test G' x' a').
@@ -422,6 +484,11 @@ Proof.
   apply: liso_comp (liso_add_test I x a ) _. rewrite X.
   (* congruence lemma? *)
 Admitted.
+
+
+(** Inversion lemmas *)
+
+(* TODO: express the inversion lemmas using the commutation lemmas above *)
 
 Lemma add_vertex_vertex G a H b
   (l: liso (add_vertex G a) (add_vertex H b)):
@@ -436,35 +503,10 @@ Lemma add_vertex_vertex' G a H b (l: liso (add_vertex G a) (add_vertex H b)):
                 (liso_comp (add_vertexC F a b) (add_vertex_liso l'' (weq_refl b)))).
 Admitted.
 
-Definition mkLGraph (V : finType) (E : finType) (s t : E -> V) 
-                    (lv : V -> test_setoid) (le : E -> term_setoid) (i o : V) := point (Graph s t lv le) i o.
-
-Definition del_edge (G : lgraph) (e0 : edge G) := Eval hnf in 
-  @mkLGraph G [finType of { e : edge G | e != e0}] 
-            (fun e => source (val e)) (fun e => target (val e)) (@vlabel _ _ G) (fun e => elabel (val e)) input output.
-Arguments del_edge : clear implicits.
-
 Definition strip (A B : Type) (x0 : B) (f : A -> option B) x := 
   if f x is Some z then z else x0.
 (* Lemma stripE (A B : Type) (f : A -> option B) (x0 : B) (forall x, f x) x :  *)
 (*   strip f x  *)
-
-(* (* Deleting an edge and adding it back *) *)
-(* Lemma liso_del_add_edge (G : lgraph) (e : edge G) :  *)
-(*   liso (add_edge (del_edge G e) (source e) (target e) (elabel e)) G. *)
-(* Admitted. *)
-
-Lemma liso_add_test_edge G x y u z a : 
-  liso (add_test (add_edge G x y u) z a) (add_edge (add_test G z a) x y u).
-Admitted.
-
-Lemma liso_add_test_vertex (G:lgraph) a b x : 
-  liso (add_test (add_vertex G a) (Some x) b) (add_vertex (add_test G x b) a).
-Admitted.
-(* should compute *)
-Lemma liso_add_test_vertexE (G:lgraph) a b (x:G) z: 
-  (liso_add_test_vertex a b x) z = z.
-Admitted.
 
 Lemma add_vertex_edge G a H x y u (l: liso (add_vertex G a) (add_edge H x y u)):
   Σ (F : lgraph) (x' y' : F) (h : liso H (add_vertex F a)),
@@ -493,8 +535,6 @@ Lemma add_vertex_edge' G w H x y u (l: liso (add_vertex G w) (add_edge H x y u))
   (l None = h^-1 None) *
   (h x = Some x') * (h y = Some y').
 Admitted.
-
-
 
 (* TODO: there is a third case with [u ≡ u'°] *)
 Lemma add_edge_edge G H x y a b u w (i : liso (add_edge G x y u) (add_edge H a b w)) :
@@ -567,42 +607,13 @@ Admitted.
 Lemma steps_comp F G H : steps F G -> steps G H -> steps F H.
 Admitted.
 
-(* TOMOVE *)
-Lemma iso_vbij Lv Le (G: graph Lv Le) (V: finType) (h: bij (vertex G) V):
-  iso G (@Graph _ _ V (edge G)
-                (h \o (@source _ _ G))
-                (h \o (@target _ _ G))
-                ((@vlabel _ _ G) \o h^-1)
-                (@elabel _ _ G)).
-Proof. iso h bij_id. by split=>//= v; rewrite bijK. Defined.
 
-Lemma iso_ebij Lv Le (G: graph Lv Le) (E: finType) (h: bij (edge G) E):
-  iso G (@Graph _ _ (vertex G) E
-                ((@source _ _ G) \o h^-1)
-                ((@target _ _ G) \o h^-1)
-                (@vlabel _ _ G)
-                ((@elabel _ _ G) \o h^-1)).
-Proof. iso bij_id h. by split=>//= v; rewrite bijK. Defined.
-
-Lemma liso_vbij (G: lgraph) (V: finType) (h: bij (vertex G) V):
-  liso G
-       (point (@Graph _ _ V (edge G)
-                      (h \o (@source _ _ G))
-                      (h \o (@target _ _ G))
-                      ((@vlabel _ _ G) \o h^-1)
-                      (@elabel _ _ G))
-              (h input) (h output)).
-Proof. apply (iso_liso (iso_vbij h)). Qed.
-
-Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
-  liso G
-       (point (@Graph _ _ (vertex G) E
-                ((@source _ _ G) \o h^-1)
-                ((@target _ _ G) \o h^-1)
-                (@vlabel _ _ G)
-                ((@elabel _ _ G) \o h^-1))
-              input output).
-Proof. apply (iso_liso (iso_ebij h)). Qed.
+Instance steps_proper : Proper (liso ==> liso ==> iffT) steps.
+Proof.
+  move => G G' g H H' h. split => S. 
+  - apply: steps_lisoL (liso_sym g). apply: steps_comp S _. exact: liso_step.
+  - apply: steps_lisoL g. apply: steps_comp S _. apply: liso_step. exact: liso_sym.
+Qed. 
 
 Tactic Notation "liso_step" uconstr(h) :=
   match goal with
@@ -612,15 +623,6 @@ Tactic Notation "liso_step" uconstr(h) :=
   | |- liso ?G _ => etransitivity;
                     [first [apply h|apply (@liso_vbij G _ h)|apply (@liso_ebij G _ h)]|]
   end.
-
-Instance steps_proper : Proper (liso ==> liso ==> iffT) steps.
-Proof.
-  move => G G' g H H' h. split => S. 
-  - apply: steps_lisoL (liso_sym g). apply: steps_comp S _. exact: liso_step.
-  - apply: steps_lisoL g. apply: steps_comp S _. apply: liso_step. exact: liso_sym.
-Qed. 
-
-
 
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> liso G H -> 
@@ -688,11 +690,10 @@ Proof.
         rewrite -> (liso_add_test_edge _ _).
         exact: steps_stepL (step_e0 _ _). 
       * rewrite -> (liso_add_test g).  
-        rewrite -> (liso_add_test (liso_add_edge f' x' y' u)). rewrite !liso_add_edgeE.
+        rewrite -> (liso_add_test (liso_add_edge f' x' y' u)) => /=.
         rewrite -> liso_add_test_edge. subst. rewrite C H3 [(f (Some x))]H1 H2 !bijK'. 
-        rewrite -> (liso_add_edge (@liso_add_test_vertex F' alpha [1∥w] (a''))). 
-        rewrite !liso_add_test_vertexE. 
-        apply: steps_stepL (step_v1 _ _ _). by  rewrite -> add_testC. 
+        rewrite -> (liso_add_edge (@liso_add_test_vertex F' alpha [1∥w] (a''))) => /=.
+        apply: steps_stepL (step_v1 _ _ _). by rewrite -> add_testC. 
 Admitted.
 
 Definition measure (G: lgraph) := #|vertex G| + #|edge G|.
