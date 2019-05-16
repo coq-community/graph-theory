@@ -427,8 +427,12 @@ Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
 Arguments add_edge: clear implicits. 
 
 (* TOTHINK: Maybe this should be a definition *)
-Lemma liso_add_edge G G' (l : liso G G') x y u : 
+Lemma liso_add_edge_plus G G' (l : liso G G') x y u : 
   Σ (g : liso (add_edge G x y u) (add_edge G' (l x) (l y) u)), (g =1 l) * (g.e =1 option_bij l.e).
+Admitted.
+
+Lemma liso_add_edge G G' (l : liso G G') x y u : 
+  liso (add_edge G x y u) (add_edge G' (l x) (l y) u).
 Admitted.
 
 Lemma add_edge_liso G G' (I: liso G G') x x' (X: I x = x') y y' (Y: I y = y') u u' (U: u ≡ u'):
@@ -441,6 +445,10 @@ Admitted.
 Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
   point (upd_vlabel G x (fun b => [a·b])) input output.
 Arguments add_test: clear implicits. 
+
+Lemma add_testC (G:lgraph) (x y :G) a b : 
+  liso (add_test (add_test G x a) y b) (add_test (add_test G y b) x a).
+Admitted.
 
 (* TOTHINK: are the equalities useful, the rest of the statment doesn't depend on g *)
 Lemma liso_add_test_plus G G' (l: liso G G') x a : 
@@ -484,13 +492,17 @@ Definition strip (A B : Type) (x0 : B) (f : A -> option B) x :=
 (* Lemma stripE (A B : Type) (f : A -> option B) (x0 : B) (forall x, f x) x :  *)
 (*   strip f x  *)
 
-(* Deleting an edge and adding it back *)
-Lemma liso_del_add_edge (G : lgraph) (e : edge G) : 
-  liso (add_edge (del_edge G e) (source e) (target e) (elabel e)) G.
-Admitted.
+(* (* Deleting an edge and adding it back *) *)
+(* Lemma liso_del_add_edge (G : lgraph) (e : edge G) :  *)
+(*   liso (add_edge (del_edge G e) (source e) (target e) (elabel e)) G. *)
+(* Admitted. *)
 
 Lemma liso_add_test_edge G x y u z a : 
   liso (add_test (add_edge G x y u) z a) (add_edge (add_test G z a) x y u).
+Admitted.
+
+Lemma liso_add_test_vertex G a b x : 
+  liso (add_test (add_vertex G a) (Some x) b) (add_vertex (add_test G x b) a).
 Admitted.
 
 Lemma add_vertex_edge G a H x y u (l: liso (add_vertex G a) (add_edge H x y u)):
@@ -705,15 +717,23 @@ Proof.
     + (* contradiction: identical edges *) exfalso. 
       move: (source_liso h None) (target_liso h None). rewrite !B !C /=. 
       case: (liso_dir _ _) => /= ->; by move/(@bij_injective _ _ g).
-    + move => [F] [a'] [b'] [x'] [y'] [f] [g] [[[A B] C] D].
+    + (* distinct edges *)
+      move => [F] [a'] [b'] [x'] [y'] [f] [g] [[[A B] C] D].
       move: (add_vertex_edge' f) => [F'] [a''] [b''] [f'] [g'] [[[H1 H2] H3] H4].
+      have E: a'' = b'' by congruence. subst b''.
       exists (add_test (add_test F' (g' x) (tst_dom (u·alpha))) a'' [1∥w]). split.
       * subst. 
         rewrite -> (liso_add_test g' x (tst_dom (u·alpha))).
         rewrite -> (liso_add_test_edge _ _).
-        have E: a'' = b''. admit. subst b''. 
         exact: steps_stepL (step_e0 _ _). 
-      * rewrite -> (liso_add_test g).
+      * rewrite -> (liso_add_test g). 
+        move: (liso_add_edge_plus f' x' y' u) => [I] [I1 I2].
+        rewrite -> (liso_add_test I). rewrite !I1 => {I I1 I2}.
+        rewrite -> liso_add_test_edge. subst. rewrite C H3.  
+        rewrite [(f (Some x))]H1 H2 !bijK'. 
+        move: (@liso_add_test_vertex F' alpha [1∥w] (a'')) => I. 
+        rewrite -> (liso_add_edge I). have HI z : I z = z by admit. rewrite !HI.
+        apply: steps_stepL (step_v1 _ _ _). by  rewrite -> add_testC. 
 Admitted.
 
 Definition measure (G: lgraph) := #|vertex G| + #|edge G|.
