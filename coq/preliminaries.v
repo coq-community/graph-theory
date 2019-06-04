@@ -151,9 +151,9 @@ Definition ord3 {n : nat} : 'I_n.+4 := Ordinal (isT : 3 < n.+4).
 
 Lemma ord_size_enum n (s : seq 'I_n) : uniq s -> n <= size s -> forall k, k \in s.
 Proof. 
-  move => uniq_s size_s. 
-  case: (@leq_size_perm _ s (enum 'I_n)) => // [z||H1 H2 k].
-  all: by rewrite ?H1 ?mem_enum ?size_enum_ord.
+  move => uniq_s size_s k. 
+  rewrite (@uniq_min_size _ _ (enum 'I_n)) ?size_enum_ord ?mem_enum // => z _.
+  by rewrite mem_enum.
 Qed.
 
 Lemma ord_fresh n (s : seq 'I_n) : size s < n -> exists k : 'I_n, k \notin s.
