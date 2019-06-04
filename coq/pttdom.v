@@ -87,8 +87,8 @@ Inductive term :=
 
 Bind Scope pttdom_ops with term.
 Open Scope pttdom_ops.
-Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): pttdom_ops.
-Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): pttdom_ops.
+Notation "x ∥ y" := (par x y) (left associativity, at level 25, format "x ∥ y"): pttdom_ops.
+Notation "x · y" := (dot x y) (left associativity, at level 20, format "x · y"): pttdom_ops.
 Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): pttdom_ops.
 Notation "1"  := (one): pttdom_ops.
 
@@ -289,6 +289,7 @@ Record liso (F G: lgraph): Type@{L} :=
       liso_output: liso_v output = output }.
 
 Notation "h '.e'" := (liso_e h) (at level 2, left associativity, format "h '.e'"). 
+Notation "h '.d'" := (liso_dir h) (at level 2, left associativity, format "h '.d'"). 
 
 (* TOMOVE (first one) *)
 Tactic Notation "iso" uconstr(h) uconstr(k) :=
@@ -408,6 +409,13 @@ Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
   point (upd_vlabel G x (fun b => [a·b])) input output.
 Arguments add_test: clear implicits. 
 
+(** Experimental notations *)
+Definition weq_dir (b : bool) (u v : term) := cnv' b u ≡ v.
+Notation "u ≡[ b ] v" := (weq_dir b u v) (at level 31, format "u  ≡[ b ]  v").
+Notation "G ∔ [ x , u , y ]" := (add_edge G x y u) (at level 20,left associativity).
+Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
+Notation "G [ x <- a ]" := (add_test G x a) (at level 20, left associativity, format "G [ x  <-  a ]").
+
 
 (** Morphims *)
 
@@ -419,7 +427,12 @@ Proof.
   - abstract (case => /= [x//|]; by symmetry).
   - abstract (move => e /=; rewrite -Is; by case: (E e)).
   - abstract (move => e /=; rewrite -It; by case: (E e)).
-Qed.
+Defined.
+
+Lemma add_vertex_lisoE (G H : lgraph) (l : liso G H ) a b (e : test_weq a b) :
+  (add_vertex_liso l e =1 option_bij l) * ((add_vertex_liso l e).e =1 l.e).
+Proof. rewrite /add_vertex_liso. by case: l. Qed.
+Opaque add_vertex_liso.
 
 (** Commutation Lemmas *)
 
@@ -488,20 +501,34 @@ Admitted.
 
 (** Inversion lemmas *)
 
-(* TODO: express the inversion lemmas using the commutation lemmas above *)
+(** We need a number of inversion lemmas analysing isomorphisms
+between graphs with added edges or vertives (e.g., to analyse 
+[l : liso (G ∔ [x, u, v]) (G ∔ a)]. *)
 
-Lemma add_vertex_vertex G a H b
-  (l: liso (add_vertex G a) (add_vertex H b)):
-  (liso G H) * (a ≡ b) * (l None = None)
-   + (Σ F, liso G (add_vertex F b) * liso H (add_vertex F a) * (l None <> None)).
-Admitted.
+Definition liso_eq (G H : lgraph) (i j : liso G H) : Type :=
+  (i =1 j) * (i.e =1 j.e) * (i.d =1 i.d).
 
-Lemma add_vertex_vertex' G a H b (l: liso (add_vertex G a) (add_vertex H b)):
- (Σ (l' : liso G H) (e : a ≡ b), l = add_vertex_liso l' e) +
+Notation "i =iso j" := (liso_eq i j)  (at level 30).
+Notation "i ∘ j" := (liso_comp i j) (at level 15,right associativity).
+
+Lemma invert_vertex_vertex G a H b (l: liso (add_vertex G a) (add_vertex H b)):
+ (Σ (l' : liso G H) (e : a ≡ b), l =iso add_vertex_liso l' e) +
  (Σ (F : lgraph) (l' : liso G (add_vertex F b)) (l'' : liso (add_vertex F a) H),
-  l = liso_comp (add_vertex_liso l' (weq_refl a))
+  l =iso liso_comp (add_vertex_liso l' (weq_refl a))
                 (liso_comp (add_vertexC F a b) (add_vertex_liso l'' (weq_refl b)))).
+Proof.
 Admitted.
+
+(* incomplete version used below *)
+(* Proved as an example to use the composition-conditions *)
+Lemma invert_vertex_vertex' G a H b (l: liso (add_vertex G a) (add_vertex H b)):
+  (liso G H) * (a ≡ b) * (l None = None)
++ (Σ F, liso G (add_vertex F b) * liso H (add_vertex F a) * (l None <> None)).
+Proof.
+  case: (invert_vertex_vertex l) => [[h] [e] El|[F] [g] [h] El].
+  - left. repeat split => //. by rewrite El add_vertex_lisoE. 
+  - right. exists F. repeat split => //. exact: liso_sym. by rewrite El /= !add_vertex_lisoE. 
+Qed.
 
 Definition strip (A B : Type) (x0 : B) (f : A -> option B) x := 
   if f x is Some z then z else x0.
@@ -536,13 +563,27 @@ Lemma add_vertex_edge' G w H x y u (l: liso (add_vertex G w) (add_edge H x y u))
   (h x = Some x') * (h y = Some y').
 Admitted.
 
+Definition same_edge (G G' : lgraph) (d : bool) (x : G) (x' : G') (y : G) (y' : G') u u' :
+  if b then [/\ 
+
+Definition add_edge_liso' (G G' : lgraph) (l : liso G G') (d : bool) (x : G) (x' : G') (y : G) (y' : G') u u' :
+  same_edge b (x,u,y) (x',u',y') ->
+  liso (G ∔ [x, u, y]) (G' ∔ [x', u', y']).
+(* TODO: there is a third case with [u ≡ u'°] *)
+Lemma invert_edge_edge G H x y a b u w (i : liso (add_edge G x y u) (add_edge H a b w)) :
+  (Σ (h : liso G H), (u ≡[i.d None] w) * (i =iso add_edge_liso h
++ (Σ F a' b' x' y' (g : liso G (add_edge F a' b' w)) (h : liso H (add_edge F x' y' u)), 
+   (g x = x') * (g y = y') * (h a = a') * (h b = b')). (* what else? *)
+Admitted.
+
+
 (* TODO: there is a third case with [u ≡ u'°] *)
 Lemma add_edge_edge G H x y a b u w (i : liso (add_edge G x y u) (add_edge H a b w)) :
   (Σ (h : liso G H), (u ≡ w) * (i =1 h) * (i.e =1 option_bij h.e))
 + (Σ F a' b' x' y' (g : liso G (add_edge F a' b' w)) (h : liso H (add_edge F x' y' u)), 
    (g x = x') * (g y = y') * (h a = a') * (h b = b')). (* what else? *)
 Admitted.
-  
+
 Universe S.
 Inductive step: lgraph -> lgraph -> Type@{S} :=
   | step_v0: forall G alpha,
@@ -635,13 +676,13 @@ Proof.
   move:G H S S'=>G0 H0. 
   case=>[G alpha|G x u alpha|G x y u alpha v|G x u|G x y u v];
   case=>[H gamma|H i w gamma|H i j w gamma t|H i w|H i j w t]//_ h.
-  - destruct (add_vertex_vertex h) as [[[GH E] _]|[F [[HF GF] _]]].
+  - destruct (invert_vertex_vertex' h) as [[[GH E] _]|[F [[HF GF] _]]].
     exists G. split=>//. apply liso_step. by symmetry.
     exists F. split.
      liso_step HF. apply one_step, step_v0.
      liso_step GF. apply one_step, step_v0.
   - apply add_vertex_edge in h as [F[x[y[HF[[GF X] Y]]]]].
-    destruct (add_vertex_vertex HF) as [[[HF' E] HFN]|[F' [[HF' FF'] _]]]. congruence.
+    destruct (invert_vertex_vertex' HF) as [[[HF' E] HFN]|[F' [[HF' FF'] _]]]. congruence.
     (* exists (add_test F' (HF' i) [dom(w·gamma)]).  *)
     admit.
   - admit.
