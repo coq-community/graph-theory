@@ -9,6 +9,12 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Two-Pointed Graphs *)
 
+Section pttGraph.
+Variable (sym : eqType).
+Notation graph := (@graph sym).
+Notation unl := (@unl sym).
+Notation unr := (@unr sym).
+
 Record graph2 :=
   Graph2 { graph_of :> graph;
            g_in : graph_of;
@@ -71,8 +77,7 @@ Defined.
 Definition Iso2'' F G f g h k fg gf hk kh H I O :=  
   @Iso2 F G (@Bij _ _ f g fg gf) (@Bij _ _ h k hk kh) (@Hom2 _ _ f h (Hom' H) I O).
 
-
-Definition iso2_id G: G ≈ G := Iso2' (h:=iso_id) erefl erefl. 
+Definition iso2_id G: G ≈ G := Iso2' (h:=@iso_id sym _) erefl erefl. 
 
 Definition iso2_sym F G: F ≈ G -> G ≈ F.
 Proof.
@@ -467,7 +472,7 @@ Qed.
 Lemma topR (F: graph2): F·top ≡ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
 Proof.
   rewrite /=/dot2/=.
-  irewrite (merge_iso2 (union_iso (@iso_id _) iso_two_graph))=>/=. 
+  irewrite (merge_iso2 (union_iso (@iso_id _ _) iso_two_graph))=>/=. 
   irewrite (merge_iso2 (union_A _ _ _))=>/=. 
   setoid_rewrite (merge_union_K_ll (F:=union F _) _ _ (k:=fun x => unl g_out))=>//=.
   apply merge_nothing. by constructor. 
@@ -618,7 +623,7 @@ Qed.
 underlying bag and interval subgraphs used in the extraction
 function. *)
 Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
-  (C1 : @consistent G V1 E1) (C2: consistent V2 E2) :
+  (C1 : @consistent _ G V1 E1) (C2: consistent V2 E2) :
   V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->
   point (subgraph_for C1) i1 o1 ≈ point (subgraph_for C2) i2 o2.
 Proof.
@@ -842,3 +847,11 @@ Section alt.
  Proof. apply: merge_same=>//. apply par2_eqvE. Qed.
 
 End alt.
+
+End pttGraph.
+
+Arguments g_in [_ _].
+Arguments g_out [_ _].
+Notation IO := ([set g_in; g_out]).
+Notation "G ≈ H" := (iso2 G H) (at level 45).
+Notation point G := (@Graph2 _ G).

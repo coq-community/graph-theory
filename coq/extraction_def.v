@@ -12,6 +12,12 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+Arguments edge_set [sym] G _,[sym G] _.
+
+Section ExtractionDef.
+Variable sym : eqType.
+Notation graph := (@graph sym).
+Notation graph2 := (@graph2 sym).
 
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.
@@ -48,14 +54,14 @@ Proof.
   do 2 case: (g_in == g_out) => //=; somega.
 Qed.
 
-Lemma measure_subgraph (G : graph2) V E (con : @consistent G V E) x y e : 
+Lemma measure_subgraph (G : graph2) V E (con : @consistent _ G V E) x y e : 
   e \notin E -> measure (@point (subgraph_for con) x y) < measure G.
 Proof. 
   move => He. apply: measure_card. rewrite card_sig. 
   apply: proper_card. apply/properP. split; by [exact/subsetP| exists e].
 Qed.
 
-Lemma measure_node (G : graph2) V E (con : @consistent G V E) v x y : 
+Lemma measure_node (G : graph2) V E (con : @consistent _ G V E) v x y : 
   connected [set: skeleton G] -> 
   v \notin V -> measure (@point (subgraph_for con) x y) < measure G.
 Proof.
@@ -72,8 +78,8 @@ Qed.
 (** ** Subroutines *)
 
 Definition lens (G : graph2) := 
-  [&& edge_set (@bag G IO g_in)  == set0 ,
-      edge_set (@bag G IO g_out) == set0 &
+  [&& edge_set G (@bag G IO g_in)  == set0 ,
+      edge_set G (@bag G IO g_out) == set0 &
       @link_rel (skeleton G) g_in g_out].
 
 Lemma get_edge (G : graph) (U : {set G}) (x y : skeleton G) : 
@@ -97,7 +103,7 @@ Proof.
 Qed.
 
 Lemma lens_io_set (G : graph2) : 
-  lens G -> @edge_set G IO = edges g_in g_out :|: edges g_out g_in.
+  lens G -> @edge_set _ G IO = edges g_in g_out :|: edges g_out g_in.
 Proof.
   move => /and3P [A B _]. apply/setP => e. apply/idP/idP.
   - rewrite !inE. 
@@ -134,7 +140,7 @@ at least two parallel components *)
 Lemma split_K4_nontrivial (G : graph2) : 
   g_in != g_out :> G -> 
   lens G -> 
-  ~~ @adjacent G g_in g_out -> 
+  ~~ @adjacent _ G g_in g_out -> 
   CK4F G ->
   1 < #|components (@sinterval (skeleton G) g_in g_out)|.
 Proof.
@@ -170,7 +176,7 @@ Definition redirect_to (G : graph2) (H : {set G}) (o:G) :=
 (** subgraph induced by [i |: H] without i-selfloops and with [o] set
 to some neighbor of [i] in H *)
 Definition redirect (G : graph2) (H : {set G}) : graph2 :=
-  if [pick z in H | adjacent g_in z] isn't Some z then one2 
+  if [pick z in H | adjacent g_in z] isn't Some z then @one2 _ 
   else redirect_to H z.
 
 
@@ -203,7 +209,7 @@ the terms for the i-o components *)
 Definition tm_ (G : graph2) (e : edge G): term sym := 
   if e \in edges g_in g_out then tm_var (label e) else (tm_var (label e))°.
 
-Definition tmEs (G : graph2) : seq (term sym) := [seq tm_ e | e in @edge_set G IO].
+Definition tmEs (G : graph2) : seq (term sym) := [seq tm_ e | e in edge_set G IO].
 
 (** ** The Extraction Functional *)
 
@@ -222,25 +228,25 @@ Definition simple_check_point_term (g : graph2 -> term sym) (G : graph2) : term 
 Definition term_of_rec (term_of : graph2 -> term sym) (G : graph2) := 
   if g_in == g_out :> G
   then (* input equals output *)
-    let E := @edge_set G IO in
+    let E := edge_set G IO in
     if E == set0 then
       if [pick C in @components G [set~ g_in]] is Some C then
         dom (term_of (redirect C)) ∥ term_of (induced2 (~: C))
       else 1
-    else (\big[@par _/top]_(e in @edge_set G IO) tm_ e) ∥
+    else (\big[@par _/top]_(e in edge_set G IO) tm_ e) ∥
          term_of (point (remove_edges E) g_in g_out)
   else (* distinct input and output *)
     if lens G
     then (* no checkpoints and no bags on i and o *)
       let P := components (@sinterval (skeleton G) g_in g_out) in
-      let E := @edge_set G IO in
+      let E := edge_set G IO in
       if E == set0 
       then 
         if [pick C in P] isn't Some C then 1 
         else term_of (component C) ∥ term_of (induced2 (~: C))
       else if P == set0 
-           then \big[@par _/top]_(e in @edge_set G IO) tm_ e
-           else  (\big[@par _/top]_(e in @edge_set G IO) tm_ e) ∥ 
+           then \big[@par _/top]_(e in edge_set G IO) tm_ e
+           else  (\big[@par _/top]_(e in edge_set G IO) tm_ e) ∥ 
                  term_of (point (remove_edges E) g_in g_out) 
     else (* at least one nontrivial bag or checkpoint *)
       @simple_check_point_term term_of G.
@@ -275,10 +281,10 @@ Qed.
 Lemma measure_igraph (G : graph2) :
     connected [set: skeleton G] ->
     (edge_set (@bag G IO g_in) != set0) || (edge_set (@bag G IO g_out) != set0) ->
-    measure (@igraph G g_in g_out) < measure G.
+    measure (@igraph _ G g_in g_out) < measure G.
 Proof.
   move=> G_conn A.
-  suff [e] : exists e, e \notin @interval_edges G g_in g_out
+  suff [e] : exists e, e \notin @interval_edges _ G g_in g_out
     by exact: measure_subgraph.
   have [i_cp o_cp] : g_in \in @CP G IO /\ g_out \in @CP G IO
     by split; apply: CP_extensive; rewrite !inE eqxx.
@@ -296,7 +302,7 @@ Proof.
   case/upathPR => p /upathW.
   elim: p u => [?|a p IH u]. 
   - move/pathp_nil/val_inj ->. exact: connect0.
-  - rewrite pathp_cons /= (lock sk_rel) -!andbA -lock => /and5P [A B C D E].
+  - rewrite pathp_cons /= -!andbA => /and5P [A B C D E].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
     apply: connect1. move: C. by rewrite /sk_rel -val_eqE adjacent_induced.
 Qed.
@@ -356,7 +362,7 @@ Lemma CK4F_remove_component (G : graph2) (C : {set G}) :
   C \in @components G [set~ g_in] -> CK4F G -> CK4F (induced2 (~: C)).
 Proof.
   move=> C_comp G_CK4F. apply: CK4F_induced2 (G_CK4F). case: G_CK4F => G_conn _.
-  have Hi : (@g_in G)\notin[set~ g_in] by rewrite !inE negbK.
+  have Hi : (@g_in _ G)\notin[set~ g_in] by rewrite !inE negbK.
   apply: (@remove_component G) Hi C_comp G_conn _. rewrite setCK. exact: connected1.
 Qed.
 
@@ -376,7 +382,7 @@ Proof.
   rewrite induced2_induced. exact: measure_node.
 Qed.
 
-Lemma CK4F_one : CK4F one2.
+Lemma CK4F_one : CK4F (one2 _).
 Proof. 
   split. move => [] [] _ _. exact: connect0.
   apply small_K4_free. by rewrite card_unit.
@@ -454,7 +460,7 @@ Proof.
 Qed.
 
 Lemma lens_components (G : graph2) C :
-  CK4F G -> lens G -> @edge_set G IO == set0 ->
+  CK4F G -> lens G -> edge_set G IO == set0 ->
   C \in components (@sinterval G g_in g_out) ->
   exists2 D, D \in components (@sinterval G g_in g_out) & D != C.
 Proof.
@@ -463,7 +469,7 @@ Proof.
   move=> /eqP compU compI comp0 [G_conn G_K4F] G_lens Eio0 C_comp.
   have iNo : g_in != g_out :> G
     by case/and3P: G_lens => _ _ /(@sg_edgeNeq (link_graph G))->.
-  have Nio : ~~ @adjacent G g_in g_out.
+  have Nio : ~~ @adjacent _ G g_in g_out.
   { apply: contraTN Eio0 => io. apply/set0Pn.
     case/existsP: io => e. rewrite inE => He. exists e.
     by case/orP: He; apply: edge_in_set; rewrite in_set2 eqxx. }
@@ -473,7 +479,7 @@ Proof.
 Qed.
 
 Lemma measure_lens (G : graph2) C :
-  CK4F G -> lens G -> @edge_set G IO == set0 ->
+  CK4F G -> lens G -> edge_set G IO == set0 ->
   C \in components (@sinterval (skeleton G) g_in g_out) ->
   measure (component C) < measure G.
 Proof.
@@ -520,7 +526,7 @@ Proof.
   apply: CK4F_igraph => //. rewrite cp_sym. exact: mem_cpl. 
 Qed.
 
-Lemma CK4F_split_cpM : CK4F (@bgraph G IO z).
+Lemma CK4F_split_cpM : CK4F (@bgraph _ G IO z).
 Proof. 
   apply rec_bag => //. 
   apply/bigcupP. exists (g_in,g_out) => //. by rewrite !inE /= !eqxx.
@@ -542,7 +548,7 @@ Proof.
   by rewrite eq_sym -in_set1 -(intervalI_cp Hz') inE C.
 Qed.
 
-Lemma measure_split_cpM : measure (@bgraph G IO z) < measure G.
+Lemma measure_split_cpM : measure (@bgraph _ G IO z) < measure G.
 Proof.
   apply: (measure_node (v := g_in)); first apply CK4F_G.
   rewrite (@bag_cp G) 1?eq_sym //; first apply CK4F_G.
@@ -578,12 +584,12 @@ Qed.
 Lemma CK4F_remove_edges (G : graph2) : 
   CK4F G -> g_in != g_out :> G -> lens G ->
   components (@sinterval G g_in g_out) != set0 ->
-  CK4F (point (remove_edges (@edge_set G IO)) g_in g_out).
+  CK4F (point (remove_edges (edge_set G IO)) g_in g_out).
 Proof.
-  move => CK4F_G Hio lens_G Ps. set E := @edge_set G IO.
+  move => CK4F_G Hio lens_G Ps. set E := edge_set G IO.
   split.
   - case: CK4F_G => G_conn _. apply: remove_edges_connected G_conn.
-    suff io_conn : connect (sk_rel (remove_edges E)) g_in g_out.
+    suff io_conn : connect (@sk_rel _ (remove_edges E)) g_in g_out.
     { move=> e. rewrite !inE. case/andP=> /orP[]/eqP-> /orP[]/eqP-> //.
       rewrite connect_symI //. exact: sk_rel_sym. }
     move: Ps. set sI := sinterval _ _. case/set0Pn=> /= C C_comp.
@@ -616,7 +622,7 @@ Qed.
 
 Lemma CK4F_remove_loops (G : graph2) :
   CK4F G -> g_in == g_out :> G ->
-  CK4F (point (remove_edges (@edge_set G IO)) g_in g_out).
+  CK4F (point (remove_edges (edge_set G IO)) g_in g_out).
 Proof.
   move=> [G_conn G_CK4F] /eqP Eio. rewrite -Eio setUid edge_set1. split.
   - apply: iso_connected G_conn. symmetry. 
@@ -628,7 +634,7 @@ Proof.
 Qed.
 
 Lemma CK4F_lens_rest (G : graph2) C : 
-  CK4F G -> lens G -> @edge_set G IO == set0 -> 
+  CK4F G -> lens G -> edge_set G IO == set0 -> 
   C \in @components G (@sinterval G g_in g_out) -> CK4F (induced2 (~: C)).
 Proof.
   set sI := sinterval _ _. case/and3P: (partition_components sI).
@@ -669,8 +675,8 @@ Lemma term_of_rec_eq (f g : graph2 -> term sym) (G : graph2) :
   term_of_rec f G = term_of_rec g G.
 Proof.
   move=> CK4F_G Efg. rewrite /term_of_rec.
-  case: (boolP (@g_in G == g_out)) => Hio.
-  - case (boolP (@edge_set G IO == set0)) => Es.
+  case: (boolP (@g_in _ G == g_out)) => Hio.
+  - case (boolP (edge_set G IO == set0)) => Es.
     + case: pickP => //= C HC. rewrite !Efg //.
       * exact: CK4F_remove_component.
       * move: HC. rewrite -[set1 g_in]setUid {2}(eqP Hio).
@@ -694,3 +700,5 @@ Qed.
 
 Lemma term_of_eq : forall (G : graph2), CK4F G -> term_of G = term_of_rec term_of G.
 Proof. apply: Fix_eq term_of_rec_eq. Qed.
+
+End ExtractionDef.

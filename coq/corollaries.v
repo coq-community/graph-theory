@@ -11,9 +11,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Second Proof of Excluded-Minor Characterization *)
 
-(** TODO: This file should use extraction_top *)
-
-Corollary minor_exclusion_2p (G : graph2) :
+Corollary minor_exclusion_2p (sym : eqType) (G : graph2 sym) :
   K4_free (sskeleton G) <-> 
   exists (T : forest) (B : T -> {set G}), [/\ sdecomp T (sskeleton G) B & width B <= 3].
 Proof.
@@ -38,7 +36,7 @@ Proof.
   { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
     apply: leq_trans (width_bound _) _. by rewrite G_empty. }
   move=>HG.
-  have [G' [iso_G _]] := flesh_out x.
+  have [G' [iso_G _]] := flesh_out 0 x.
   apply (iso_K4_free iso_G) in HG.
   apply minor_exclusion_2p in HG as (T&B&D&W).
   case: (decomp_iso D iso_G) => B' D' W'.
