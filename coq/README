@@ -4,12 +4,12 @@ Graph Theory in Coq: Minors, Treewidth, and Isomorphisms
 
 To build the theory files you need:
 
-   coq-8.9 and mathcomp-1.7.0
+   coq-8.9 and mathcomp-1.9.0
 
 To build the developemnt and the HTML documentation (with foldable
 proofs provided by CoqDocJS) run:
 
-   make -j5 html
+   make html
 
 and point your browser to "html/toc.htm".
 

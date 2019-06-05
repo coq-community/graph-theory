@@ -21,7 +21,7 @@ Notation graph2 := (@graph2 sym).
 Open Scope ptt_ops.
 
 
-(** * Extranction from Disconnected Graphs *)
+(** * Extraction from Disconnected Graphs *)
 
 Arguments top2 [sym].
 Arguments iso_id [sym G].
