@@ -966,3 +966,9 @@ Proof.
   apply leq_trans with (maxn (width B1) (width B2)) => //.
   by rewrite geq_max w1 w2.  
 Qed.
+
+Theorem excluded_minor_TW2 (G : sgraph) :
+  K4_free G <-> 
+  exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
+Proof. split => [|[T][B][]]. exact: TW2_of_K4F. exact: TW2_K4_free. Qed.
+

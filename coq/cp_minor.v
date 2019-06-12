@@ -222,7 +222,7 @@ Qed.
 (** TOTHINK: Make this the definition of the link relation? Is the
 link relation realiy needed in the first place ? *)
 Lemma link_rel_sep2 (G : sgraph) (x y : G) :
-  connected [set: G] -> ~~ x -- y -> link_rel G x y -> 
+  connected [set: G] -> ~~ x -- y -> link_rel x y -> 
   x != y /\ forall S, separates x y S -> 2 <= #|S|.
 Proof.
   move => con_G xNy /andP [xDy cp_sub]. split => // S sep_xy. 
@@ -249,7 +249,7 @@ Qed.
 Open Scope implicit_scope.
 
 Lemma ssplit_K4_nontrivial (G : sgraph) (i o : G) : 
-  ~~ i -- o -> link_rel G i o -> K4_free (add_edge G i o) -> 
+  ~~ i -- o -> link_rel i o -> K4_free (add_edge G i o) -> 
   (* bag [set i;o] i = [set i] -> *)
   connected [set: G] -> disconnected (sinterval i o).
 Proof.

@@ -14,9 +14,19 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Extranction from Disconnected Graphs *)
+Section ExtractionTop.
+Variable sym : eqType.
+Notation graph := (@graph sym).
+Notation graph2 := (@graph2 sym).
+Open Scope ptt_ops.
 
-Arguments merge_union_K_ll [F K i o h] k.
+
+(** * Extraction from Disconnected Graphs *)
+
+Arguments top2 [sym].
+Arguments iso_id [sym G].
+Arguments iso_two_swap [sym].
+Arguments merge_union_K_ll [sym F K i o h] k.
 
 Lemma iso2_TGT (G : graph2) : top · G · top ≈ point (union G top2) (inr g_in) (inr g_out).
 Proof. 
@@ -47,7 +57,7 @@ Proof.
   rewrite -> parC. 
   rewrite /=/par2/=.
   rewrite -> (merge_iso2 (union_A _ _ _)) =>/=.
-  pose k (x : two_graph) : union H G := if ~~ x then (unl g_in) else (unl g_out).
+  pose k (x : @two_graph sym) : union H G := if ~~ x then (unl g_in) else (unl g_out).
   apply: iso2_comp. apply: (merge_union_K_ll k). 
   - by case. 
   - move => [|]; rewrite /k/=; apply/eqquotP; eqv. 
@@ -81,7 +91,8 @@ Proof.
   set C := component_of _.
   rewrite /component1.
   set G1 := point _ _ _. set G2 := point _ _ _.
-  rewrite -> dot2A,iso2_TGT. rewrite -> par_component.
+  change (top·(G1·top)∥G2 ≈ G). (* wasn't necessary before adding abstracting sym *)
+  rewrite -> dot2A,iso2_TGT. simpl. rewrite -> par_component.
   rewrite /G1 /G2 /=.
   have comp_C : C \in @components G [set: G]. apply: component_of_components.
   apply: iso2_comp. apply: (iso_iso2 (iso_component comp_C)).
@@ -94,6 +105,7 @@ Lemma iso_disconnected_io (G : graph2) :
   G ≈ dot2 (@component1 G g_in) (dot2 top2 (@component1 G g_out)). 
 Proof.
   move => no_comp dis_io. symmetry.
+  change ((@component1 G g_in)·(top2·(@component1 G g_out)) ≈ G).
   rewrite -> dot2A. rewrite -> iso2_GTG. 
   rewrite {1}/component1. rewrite /=.
   move: (in_component_of _) => I1. move: (in_component_of _) => I2.
@@ -172,3 +184,5 @@ Proof.
       apply/subsetP => x _. move/(_ x) : H. apply: contraFT => H.
       rewrite !(component_exchange x) H /=. by rewrite (same_component E).
 Qed.
+
+End ExtractionTop.

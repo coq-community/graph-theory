@@ -1,23 +1,21 @@
 Coq development accompanying the paper:
 
-  A Formal Proof of the Minor-Exclusion
-   Property for Treewidth-Two Graphs
+Graph Theory in Coq: Minors, Treewidth, and Isomorphisms
 
 To build the theory files you need:
 
-   coq-8.7 and mathcomp-1.6.4
-   (coq-8.6 and mathcomp-1.6.1 should work as well)
+   coq-8.9 and mathcomp-1.9.0
 
 To build the developemnt and the HTML documentation (with foldable
 proofs provided by CoqDocJS) run:
 
-   make -j5 html
+   make html
 
 and point your browser to "html/toc.htm".
 
 The documentation can also be browsed online at:
 
-  https://perso.ens-lyon.fr/christian.doczkal/itp18/
+  https://perso.ens-lyon.fr/christian.doczkal/graphs/
 
 NOTE: This development is under active development; please see the URL
 above for updated versions.

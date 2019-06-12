@@ -7,6 +7,11 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+Section Subalgebra.
+Variable sym : eqType.
+Notation graph := (@graph sym).
+Notation graph2 := (@graph2 sym).
+
 Implicit Types (G H : graph) (U : sgraph) (T : forest).
 
 Open Scope implicit_scope.
@@ -42,7 +47,7 @@ Lemma hom_eqL (V : finType) (e1 e2 : rel V) (G : sgraph) (h : V -> G)
 Proof. move => E hom_h x y. rewrite /edge_rel/= -E. exact: hom_h. Qed.
 
 
-Lemma skel_union_join (G1 G2 : graph) : sk_rel (union G1 G2) =2 @join_rel G1 G2.
+Lemma skel_union_join (G1 G2 : graph) : @sk_rel _ (union G1 G2) =2 @join_rel G1 G2.
 Proof.
   move => [x|x] [y|y] /=. 
   - rewrite /edge_rel/= sum_eqE. 
@@ -106,7 +111,7 @@ Section Quotients.
     pose h := pi e : skeleton (union G1 G2) -> skeleton (merge _ e).
     exists T'. exists (rename D' h); split; last by exists None.
     - apply: rename_decomp => //. 
-      + apply: hom_eqL (pi_hom e). exact: skel_union_join.
+      + apply: hom_eqL (pi_hom (e := e)). exact: skel_union_join.
       + exact: pi_surj.
       + move => x y. move/sk_rel_mergeE => [? [x0] [y0] /= [? ? ?]]. 
         exists x0;exists y0. split => //. by rewrite /edge_rel/= -skel_union_join.
@@ -225,3 +230,5 @@ Proof.
 Qed.
 
 (* TODO: define the subalgebra as a ptt_algebra? (with sigma types) *)
+
+End Subalgebra.

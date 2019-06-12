@@ -12,6 +12,11 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+Section ExtractionIso.
+Variable sym : eqType.
+Notation graph := (@graph sym).
+Notation graph2 := (@graph2 sym).
+Open Scope ptt_ops.
 
 (** * Isomorphim Theorem *)
 
@@ -46,7 +51,7 @@ simplifying their proofs (comparted to the proofs underlying the ITP
 
 Lemma split_pip (G : graph2) : 
   connected [set: skeleton G] -> g_in != g_out :> G ->
-  G ≈ @bgraph G IO g_in · (@igraph G g_in g_out · @bgraph G IO g_out).
+  G ≈ @bgraph _ G IO g_in · (@igraph _ G g_in g_out · @bgraph _ G IO g_out).
 Proof.
   move => conn_G Dio. symmetry.
   rewrite -> dotA. 
@@ -74,7 +79,7 @@ Lemma split_cp (G : graph2) (u : skeleton G) :
   connected [set: skeleton G] -> u \in @cp G g_in g_out :\: IO ->
   edge_set (@bag G IO g_in) == set0 -> 
   edge_set (@bag G IO g_out) == set0 ->
-  G ≈ @igraph G g_in u · (@bgraph G IO u · @igraph G u g_out).
+  G ≈ @igraph _ G g_in u · (@bgraph _ G IO u · @igraph _ G u g_out).
 Proof.
   move => conn_G proper_u Ei0 Eo0. symmetry.
   have Dio: g_in != g_out :> G. 
@@ -120,7 +125,7 @@ Proof.
   move => subIO fullCD disjE fullE. symmetry. setoid_rewrite par2_alt.
   set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
 
-  have injL (x y : G1) : inl x = inl y %[mod @par2_eqv_equivalence G1 G2] -> x = y.
+  have injL (x y : G1) : inl x = inl y %[mod @par2_eqv_equivalence _ G1 G2] -> x = y.
   { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
@@ -128,7 +133,7 @@ Proof.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  have injR (x y : G2) : inr x = inr y %[mod @par2_eqv_equivalence G1 G2] -> x = y.
+  have injR (x y : G2) : inr x = inr y %[mod @par2_eqv_equivalence _ G1 G2] -> x = y.
   { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
@@ -197,27 +202,27 @@ Proof.
   - case => [e|e]; split => //.
     + rewrite /f/h. case: piP => [[y|y]] /=. 
       * by move/injL <-. 
-      * by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
+      * by move/(@par2_LR _ G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
     + rewrite /f/h. case: piP => [[y|y]] /=. 
       * by move/injL <-. 
-      * by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
+      * by move/(@par2_LR _ G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
     + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/esym/(@par2_LR G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
+      * by move/esym/(@par2_LR _ G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
       * by move/injR <-. 
     + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/esym/(@par2_LR G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
+      * by move/esym/(@par2_LR _ G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
       * by move/injR <-. 
   - rewrite /f. case: piP => [[y|y]] /=. 
     + by move/injL<-.
-    + by move/(@par2_LR G1 G2) => [[_ ->]|[/valE/= -> ->]]. 
+    + by move/(@par2_LR _ G1 G2) => [[_ ->]|[/valE/= -> ->]]. 
   - rewrite /f. case: piP => [[y|y]] /=. 
     + by move/injL<-.
-    + by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[_ ->]].
+    + by move/(@par2_LR _ G1 G2) => [[/valE/= -> ->]|[_ ->]].
 Qed.
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] -> g_in == g_out :> G ->
-  @edge_set G IO == set0 -> C \in @components G [set~ g_in] ->
+  edge_set G IO == set0 -> C \in @components G [set~ g_in] ->
   component C ≈ dom2 (redirect C).
 Proof.
   move => G_conn Eio no_loops HC.
@@ -230,8 +235,8 @@ Proof.
 Qed.
 
 Lemma componentless_one (G : graph2) :
-  g_in == g_out :> G -> @edge_set G IO == set0 ->
-  @components G [set~ g_in] == set0 -> G ≈ one2.
+  g_in == g_out :> G -> edge_set G IO == set0 ->
+  @components G [set~ g_in] == set0 -> G ≈ one2 _.
 Proof.
   move => Eio E com0. 
   have A (x : G) : x = g_in. 
@@ -244,7 +249,7 @@ Proof.
 Qed.
 
 Lemma split_component (G : graph2) (C : {set G}) :
-  @edge_set G IO == set0 -> C \in @components G (~: IO) ->
+  edge_set G IO == set0 -> C \in @components G (~: IO) ->
   G ≈ par2 (component C) (induced2 (~: C)).
 Proof.
   move=> NEio C_comp.
@@ -298,7 +303,7 @@ Definition edges2_graph (As : seq (sym * bool)) : graph :=
 Definition edges2 (As : seq (sym * bool)) : graph2 := 
   point (edges2_graph As) false true.
 
-Lemma edges2_nil : edges2 nil ≈ top2.
+Lemma edges2_nil : edges2 nil ≈ @top2 _.
 Proof. 
   apply: iso_top => //; last by case. 
   move => x. rewrite !inE. by case: x.
@@ -333,9 +338,9 @@ Proof.
   apply Iso2'' with f g h k.
   - rewrite /f/g=>x.
     case: piP => [] [y|y] /= /esym Hy.
-    * move/(@par2_LR (sym2b' a b) (edges2 Ar)) : Hy.
+    * move/(@par2_LR _ (sym2b' a b) (edges2 Ar)) : Hy.
       case => [[-> ->]|[-> ->]]; by destruct b.
-    * move/(@par2_injR (sym2b' a b) (edges2 Ar)) : Hy. apply. 
+    * move/(@par2_injR _ (sym2b' a b) (edges2 Ar)) : Hy. apply. 
         by destruct b.
   - rewrite /f/g=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
       rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqquotP => /=. 
@@ -371,7 +376,7 @@ Proof.
 Qed.
 
 Lemma edges2_big (As : seq (sym * bool)) : 
-  edges2 As ≈ \big[par2/top2]_(x <- As) sym2b x.1 x.2.
+  edges2 As ≈ \big[@par2 sym/@top2 _]_(x <- As) sym2b x.1 x.2.
 Proof.
   elim: As => [|[a b] Ar IH].
   - setoid_rewrite big_nil. apply edges2_nil.
@@ -417,10 +422,10 @@ Proof.
   apply Iso2'' with f g h k.
   - rewrite /f/g=>x/=.
     case: piP => /= [[y|y]] /esym Hy.
-    * move/(@par2_LR (edges2 [seq strip e | e in E]) 
+    * move/(@par2_LR _ (edges2 [seq strip e | e in E]) 
                      (point (remove_edges E) g_in g_out)) : Hy.
         by case => [][-> ->]. 
-    * exact: (@par2_injR (edges2 [seq strip e | e in E]) 
+    * exact: (@par2_injR _ (edges2 [seq strip e | e in E]) 
                          (point (remove_edges E) g_in g_out)).
   - rewrite /f/g=>x/=. case def_y : (repr x) => [y|y].
     * rewrite -[x]reprK def_y. symmetry. apply/eqquotP => /=. 
@@ -459,7 +464,7 @@ Qed.
 
 Lemma componentless_top (G : graph2) : 
   g_in != g_out :> G -> @components G (~: IO) == set0 -> 
-  point (@remove_edges G (edge_set IO)) g_in g_out ≈ top2.
+  point (@remove_edges _ G (edge_set IO)) g_in g_out ≈ @top2 _.
 Proof.
   move => Dio com0.
   have A (x: G) : x \in IO. 
@@ -471,14 +476,16 @@ Proof.
   case/orP: He; by rewrite A.
 Qed.  
 
-
+Set Printing Universes.
 
 Lemma edges2_graph_of (G : graph2) : 
-  edges2 [seq strip e | e in @edges G g_in g_out :|: edges g_out g_in] ≈ 
-  graph_of_term (\big[@tm_par _/@tm_top _]_(e in (@edges G g_in g_out :|: edges g_out g_in)) tm_ e).
+  edges2 [seq strip e | e in @edges _ G g_in g_out :|: edges g_out g_in] ≈ 
+  graph_of_term (\big[@tm_par _/@tm_top _]_(e in (@edges _ G g_in g_out :|: edges g_out g_in)) tm_ e).
 Proof.
   setoid_rewrite edges2_big. rewrite big_map.
-  setoid_rewrite graph_of_big_pars. rewrite -big_enum_in.
+  (* setoid_rewrite graph_of_big_pars. -- breaks with u+v<=k constraint error *)
+  etransitivity. 2: eapply iso2_sym. 2: eapply graph_of_big_pars.  
+  rewrite -big_enum_in.
   set s := enum _. 
   apply: big_par_iso2.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges g_in _). 
@@ -487,7 +494,7 @@ Qed.
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> G ≈ (graph_of_term (term_of G)).
 Proof.
-  elim: (wf_leq term_of_measure G) => {G} G _ IH CK4F_G.
+  elim: (wf_leq (@term_of_measure sym) G) => {G} G _ IH CK4F_G.
   rewrite term_of_eq // /term_of_rec. 
   case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)
@@ -564,4 +571,6 @@ Proof.
            by rewrite !inE !eqxx.
         -- apply IH=> //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
+
+End ExtractionIso.
 

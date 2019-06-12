@@ -17,11 +17,8 @@ constructions on these graphs: *)
 
 (** [merge G e] : the quotent graph with verticies quotiented by [e:equiv_rel]. *)
 
-(* FIXME: Properly abstract this *)
-Lemma _symbols : { sym : eqType & sym }. exists [eqType of nat]; exact: 0. Qed.
-Definition sym : eqType := projT1 _symbols.
-Definition sym0 : sym := projT2 _symbols.
-
+Section mgraph.
+Variable (sym : eqType).
 
 Record graph := Graph { vertex :> finType;
                         edge: finType;
@@ -544,3 +541,14 @@ Section MergeSubgraph.
 
 End MergeSubgraph.
 
+End mgraph.
+
+Arguments merge [sym] G r.
+Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
+Notation merge_seq G l := (merge G (eqv_clot l)).
+
+Arguments unit_graph [sym].
+Arguments two_graph [sym].
+Arguments iso_two_graph [sym].
+Arguments consistentTT [sym].
+Prenex Implicits unit_graph two_graph iso_two_graph.

@@ -1094,9 +1094,9 @@ Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') :=
 (** ** Complete graphs *)
 
 Definition complete_rel n := [rel x y : 'I_n | x != y].
-Fact complete_sym n : symmetric (complete_rel n).
+Fact complete_sym n : symmetric (@complete_rel n).
 Proof. move => x y /=. by rewrite eq_sym. Qed.
-Fact complete_irrefl n : irreflexive (complete_rel n).
+Fact complete_irrefl n : irreflexive (@complete_rel n).
 Proof. move => x /=. by rewrite eqxx. Qed.
 Definition complete n := SGraph (@complete_sym n) (@complete_irrefl n).
 Notation "''K_' n" := (complete n)
