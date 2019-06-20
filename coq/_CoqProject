@@ -22,8 +22,10 @@ extraction_iso.v
 extraction_top.v
 corollaries.v
 
-rewriting.v
+# rewriting.v
 
 multigraph_new.v
 bij.v
 pttdom.v
+liso.v
+confluence.v

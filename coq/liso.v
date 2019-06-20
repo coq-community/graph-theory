@@ -310,4 +310,4 @@ Definition weq_dir (b : bool) (u v : term) := cnv' b u ≡ v.
 Notation "u ≡[ b ] v" := (weq_dir b u v) (at level 31, format "u  ≡[ b ]  v").
 Notation "G ∔ [ x , u , y ]" := (add_edge G x y u) (at level 20,left associativity).
 Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
-Notation "G [ x <- a ]" := (add_test G x a) (at level 20, left associativity, format "G [ x  <-  a ]").
+Notation "G [tst x <- a ]" := (add_test G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]").
