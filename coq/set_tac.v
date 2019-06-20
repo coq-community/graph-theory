@@ -85,6 +85,10 @@ Ltac set_tab_close :=
     first [notHyp (x \in A)|notHyp(x \notin B)]; case/setDP : (H) => [? ?]
   | [H : is_true (?x \notin _ (?A :|: ?B)) |- _] => 
     first [notHyp (x \notin A)|notHyp(x \notin B)]; case/setUPn : (H) => [? ?]
+  | [H : is_true (?x \in pos (~: ?A)) |- _] =>
+    extend (x \notin A) ltac:(move: H; rewrite in_setC)
+  | [H : is_true (?x \notin pos (~: ?A)) |- _] => 
+    extend (x \in A) ltac:(move: H; rewrite in_setC negbK)
 
   | [H : is_true (?x \in _ [set _ in ?p]) |- _ ] => 
     extend (x \in p) ltac:(move: H; rewrite inE)
