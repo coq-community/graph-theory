@@ -123,6 +123,9 @@ Admitted.
 Lemma del_vertex_IO x (Hx : x \in [set~ z]) : x \notin IO -> (Sub x Hx : del_vertex) \notin IO.
 Proof. by rewrite !inE -!val_eqE /=. Qed.
 
+Lemma del_vertex_IO' (x : del_vertex) : x \notin IO -> val x \notin IO.
+Admitted.
+
 Lemma del_vertex_arc x y u e (Hx : x \in [set~ z]) (Hy : y \in [set~ z]) (He : e \in ~: edges_in [set z] ):
   arc e x u y -> @arc del_vertex (Sub e He) (Sub x Hx) u (Sub y Hy). 
 Admitted.
@@ -208,20 +211,49 @@ Tactic Notation "inst" tactic(tac) :=
   inst; first match goal with 
                 |- ?G => let S := fresh "S" in have S : G; [abstract by tac| exact: S]
               end.
-
-
-Notation "G  \  [ x , Hx ]" := (del_vertex G x Hx) (at level 30).
+Tactic Notation "h_abstract" tactic(tac) := 
+       match goal with 
+         |- ?G => let S := fresh "S" in have S : G; [abstract by tac| exact: S]
+       end.
 
 (** liso lemmas *)
 
-Arguments exist [A P] _ _.
+Notation "G  \  [ x , Hx ]" := (del_vertex G x Hx) (at level 29,left associativity).
+Notation "G ≅ H" := (liso G H) (at level 45).
 
 Lemma cnvtst (u : test) : u° ≡ u.
 Admitted.
 
+Arguments del_vertex_IO [G z Hz x Hx].
+Arguments del_vertex_IO' [G z Hz x].
+
+Lemma del_vertex_val (G : lgraph) z Hz (z' : G \ [z,Hz]) : z \in [set~ val z'].
+Admitted.
+Arguments del_vertex_val [G z Hz z'].
+
+Set Nested Proofs Allowed.
+
 Section liso.
   Variable (G : lgraph).
+
+  Lemma liso_add_edge_congr H (l : G ≅ H) x u y : G ∔ [x, u, y] ≅ H ∔ [l x, u, l y].
+  Admitted.
+
+  Lemma del_vertexC z Hz (z' : G \ [z,Hz]) Hz' : 
+    G \ [z,Hz] \ [z', Hz'] ≅ G \ [val z', del_vertex_IO' Hz'] \ [Sub z del_vertex_val, del_vertex_IO Hz]. 
+  Admitted.
   
+    
+  Lemma sub1 (z x : G) Hz (z' : G \ [z, Hz]) Hx (Hx' : Sub x Hx \in [set~ z']) : x \in [set~ sval z'].
+  Admitted.
+
+  Lemma sub2 (z x : G) Hz (z' : G \ [z, Hz]) Hz' Hx (Hx' : Sub x Hx \in [set~ z']) :
+    (Sub x (sub1 Hx') : G \ [val z', del_vertex_IO' Hz']) \in [set~ Sub z del_vertex_val].
+  Admitted.
+
+  Lemma del_vertexCE z Hz z' Hz' x Hx Hx' : 
+    @del_vertexC z Hz z' Hz' (Sub (Sub x Hx) Hx') = Sub (Sub x (sub1 Hx')) (sub2 Hz' Hx') . 
+  Admitted.
   
   Lemma liso_del_tst x Hx y Hy a :
     liso (add_test (G \ [x,Hx]) (Sub y Hy) a) (add_test G y a \ [x,Hx]).
@@ -237,7 +269,26 @@ End liso.
 Arguments edges_at [Lv Le] G _.
 Arguments edges_in [Lv Le] G _.
 
+Local Notation "[prf  X ]" := (ssr_have X _ _).
 Local Notation "⌈ x ⌉" := (Sub x _) (format "⌈ x ⌉") : sub_scope.
+Local Notation "G  \  x" := (del_vertex G x _) (at level 30) : sub_scope.
+
+Lemma liso_delv_adde {G z Hz x y Hx Hy u} : 
+  G \ [z,Hz] ∔ [Sub x Hx,u,Sub y Hy] ≅ G ∔ [x,u,y] \ [z,Hz]. 
+Admitted.
+
+Lemma liso_adde_addt {G z a x y u} :
+  G[tst z <- a] ∔ [x,u,y] ≅ G ∔ [x,u,y] [tst z <- a].
+Admitted.
+Lemma liso_adde_addtE {G z a x y u} k :
+  (@liso_adde_addt G z a x y u k = k)*((@liso_adde_addt G z a x y u)^-1 k = k).
+Admitted.  
+
+Lemma liso_delv_proof {G H z} {l : G ≅ H} : z \notin IO -> l z \notin IO. 
+Admitted.
+Lemma liso_delv_congr {G H z Hz} (l : G ≅ H) :
+  G \ [z,Hz] ≅ H \ [l z, liso_delv_proof Hz].
+Admitted.
 
 Lemma local_confluence (G Gl Gr: lgraph) : 
   step G Gl -> step G Gr -> Σ Hl Hr, steps Gl Hl * steps Gr Hr * liso Hl Hr.
@@ -294,29 +345,34 @@ Proof.
         7: apply Ae1'. 9: apply Ae2'.
         (* side conditions - should be automatable *)
         inst (rewrite !inE eq_sym).  
-        exact: del_vertex_IO.
+        h_abstract exact: del_vertex_IO.
         inst set_tac.
-        abstract (rewrite !inE -val_eqE /=; set_tac).
+        h_abstract (rewrite !inE -val_eqE /=; set_tac).
         inst set_tac. 
-        abstract (rewrite !inE -val_eqE /=; by set_tac). 
+        h_abstract (rewrite !inE -val_eqE /=; by set_tac). 
         done.
         done.
-        abstract (by rewrite edges_at_del_vertices edges_at_test /= Iz' set2_Sub).
+        h_abstract (by rewrite edges_at_del_vertices edges_at_test /= Iz' set2_Sub).
         by rewrite -val_eqE. 
       * apply: step_step. apply: step_v1. 
         3: apply: add_edge_arc'; last apply: del_vertex_arc; last apply Ae.
         inst set_tac.
-        exact: del_vertex_IO.
+        h_abstract exact: del_vertex_IO.
         inst set_tac. 
-        by rewrite -val_eqE. 
-        done.
+        h_abstract by rewrite -val_eqE. 
+        assumption.
         admit.
-      * Local Notation "[prf  X ]" := (ssr_have X _ _).
-        repeat (let S := fresh "S" in move: (ssr_have _ _ _) => S).
-        repeat (let S := fresh "S" in set S := (ssr_have _ _ _)).
-        (let S := fresh "S" in move: {1}(ssr_have _ _ _) => S).
-        set X := del_vertex_IO _ _ _. set X' := del_vertex_IO _ _ _.
+      * Open Scope sub_scope.
+        apply: liso_comp. apply: liso_add_edge_congr. apply: del_vertexC.
+        rewrite del_vertexCE. rewrite del_vertexCE. rewrite [val _]/=.
+        apply: liso_comp. apply: liso_delv_adde.
+        apply: liso_comp _ (liso_sym _). 
+        2:{. apply: liso_delv_congr. apply: liso_sym. apply liso_adde_addt. }
+        rewrite ![liso_sym _ _]/=. Close Scope sub_scope.
+        (* hrmpf *) move: (liso_delv_proof _). 
         
+
+          
   - (* Case V1 / E1 *) admit.
   - (* Case V1 / E2 *) admit.
   - (* Case V2 / V2 *) admit.
