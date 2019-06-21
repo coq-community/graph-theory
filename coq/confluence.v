@@ -205,17 +205,23 @@ Require Import set_tac.
 Tactic Notation "inst" := 
   unshelve instantiate (1 := ltac: (apply: id)); first try assumption.
 Tactic Notation "inst" tactic(tac) := 
-  try (unshelve instantiate (1 := ltac: (apply: id)); first abstract by tac).
+  inst; first match goal with 
+                |- ?G => let S := fresh "S" in have S : G; [abstract by tac| exact: S]
+              end.
+
 
 Notation "G  \  [ x , Hx ]" := (del_vertex G x Hx) (at level 30).
 
 (** liso lemmas *)
+
+Arguments exist [A P] _ _.
 
 Lemma cnvtst (u : test) : u° ≡ u.
 Admitted.
 
 Section liso.
   Variable (G : lgraph).
+  
   
   Lemma liso_del_tst x Hx y Hy a :
     liso (add_test (G \ [x,Hx]) (Sub y Hy) a) (add_test G y a \ [x,Hx]).
@@ -305,7 +311,10 @@ Proof.
         by rewrite -val_eqE. 
         done.
         admit.
-      * Open Scope sub_scope.
+      * Local Notation "[prf  X ]" := (ssr_have X _ _).
+        repeat (let S := fresh "S" in move: (ssr_have _ _ _) => S).
+        repeat (let S := fresh "S" in set S := (ssr_have _ _ _)).
+        (let S := fresh "S" in move: {1}(ssr_have _ _ _) => S).
         set X := del_vertex_IO _ _ _. set X' := del_vertex_IO _ _ _.
         
   - (* Case V1 / E1 *) admit.
