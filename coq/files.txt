@@ -11,6 +11,7 @@ equiv:			lemmas about equivalence closure
 *** JAR19 submission (general purpose graph library)
 digraph:  	     	directed graphs, paths
 sgraph:			simple graphs, trees and forests
+helly:			Helly property for trees
 treewidth:		tree decompositions, treewidth
 minor:			minors, links with treewidth
 menger:			Menger's theorem and corollaries

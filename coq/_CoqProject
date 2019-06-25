@@ -18,6 +18,7 @@ equiv.v
 ## general purpose graph library (JAR19)
 digraph.v
 sgraph.v
+helly.v
 treewidth.v
 minor.v
 menger.v
