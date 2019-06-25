@@ -370,9 +370,7 @@ Proof.
         2:{. apply: liso_delv_congr. apply: liso_sym. apply liso_adde_addt. }
         rewrite ![liso_sym _ _]/=. Close Scope sub_scope.
         (* hrmpf *) move: (liso_delv_proof _). 
-        
-
-          
+        admit.
   - (* Case V1 / E1 *) admit.
   - (* Case V1 / E2 *) admit.
   - (* Case V2 / V2 *) admit.
@@ -382,4 +380,3 @@ Proof.
   - (* Case E1 / E2 *) admit.
   - (* Case E2 / E2 *) admit.
 Admitted.
-
