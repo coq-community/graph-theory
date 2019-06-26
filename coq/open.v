@@ -151,11 +151,9 @@ Definition imfset_bij := Bij can_vset can_vset'.
 End Bij.
 
 Lemma openK (G : lgraph) : G ≅ close (open G). 
-apply: (@Liso G (close (open G)) 
-              (imfset_bij (@inj_v_inj G)) 
-              (imfset_bij (@inj_e_inj (edge G)))
-              (fun => false)
-        ) => /=.
+liso (imfset_bij (@inj_v_inj G)) 
+     (imfset_bij (@inj_e_inj (edge G)))
+     (fun => false) => /=.
 - move => v. by rewrite inj_vK.
 - move => e. by rewrite inj_eK.
 - move => e. apply: val_inj => /=. by rewrite inj_eK.
@@ -168,3 +166,65 @@ Definition oliso (G H : pre_graph) :=
   Σ (graph_G : is_graph G) (graph_H : is_graph H), close G ≅ close H.
 
 Notation "G ⩭ H" := (oliso G H) (at level 45).
+
+Lemma close_irrelevance (G : pre_graph) (graph_G graph_G' : is_graph G) : 
+  @close G graph_G ≅ @close G graph_G'.
+Proof.
+  liso bij_id bij_id (fun _ => false) => //= [e|e||]; exact: val_inj.
+Qed.
+  
+Lemma liso_of_oliso (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) : 
+  G ⩭ H -> close G ≅ close H.
+Proof. 
+  case => graph_G' [graph_H'] I. rewrite -> (close_irrelevance graph_H graph_H'). 
+  apply: liso_comp I. exact: close_irrelevance.
+Qed.
+
+
+Section PreGraphOps.
+Variables (G : pre_graph).
+
+Definition incident x e := (src G e == x) || (tgt G e == x).
+
+Definition edges_at x := [fset e in eset G | incident x e].
+
+
+End PreGraphOps.
+
+Definition del_vertex (G : pre_graph) (x : VT) := 
+  {| vset := vset G `\ x;
+     eset := eset G `\` edges_at G x;
+     src := src G;
+     tgt := tgt G;
+     lv := lv G;
+     le := le G;
+     p_in := p_in G;
+     p_out := p_out G |}.
+
+Definition IO (G : pre_graph) := [fset p_in G; p_out G].
+
+Notation "G \ x" := (del_vertex G x) (at level 25,left associativity).
+
+Global Instance del_vertex_graph (G : pre_graph) {graph_G : is_graph G} (x : VT) {Hx : x \notin IO G} : 
+  is_graph (del_vertex G x).
+Proof.
+  rewrite /del_vertex; split => //=. 
+Admitted.
+
+Lemma edges_at_del (G : pre_graph) (z x : VT) : 
+  edges_at (G \ z) x = edges_at G x `\` edges_at G z.
+Admitted.
+
+Lemma fsetDDD (T : choiceType) (A B C : {fset T}) : A `\` B `\` (C `\` B) = A `\` (B `|` C).
+Proof. apply/fsetP => z. rewrite !inE. by case (z \in B). Qed.
+
+Lemma del_vertexC (G : pre_graph) (x y : VT) : G \ x \ y = G \ y \ x.
+Proof.
+  rewrite /del_vertex/=; f_equal. 
+  - by rewrite fsetDDl fsetUC -fsetDDl.
+  - by rewrite !edges_at_del fsetDDD fsetUC -fsetDDD.
+Qed.
+
+
+
+  
