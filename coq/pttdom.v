@@ -30,6 +30,8 @@ Notation "'Σ' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p%type)) ..))
   (at level 200, x binder, y binder, right associativity).
 
+Notation IO := [set input; output].
+
 Definition option2x {A B} (f: A -> B): option (option A) -> option (option B) :=
   fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
 Definition option2x_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
@@ -491,9 +493,13 @@ Qed.
 
 Notation merge_seq G l := (@merge _ _ test_monoid G (eqv_clot l)).
 
+(** Note: We choose [unl input] as input and [unr output] as output
+for both binary operations. This allows us to state lemmas for both
+without generalizing only over the sequence *)
+
 Definition lpar (F G: lgraph) :=
   point (merge_seq (union F G) [::(unl input,unr input); (unl output,unr output)])
-        (\pi (unl input)) (\pi (unl output)).
+        (\pi (unl input)) (\pi (unr output)).
 
 Definition ldot (F G: lgraph) :=
   point (merge_seq (union F G) [::(unl output,unr input)])
@@ -573,13 +579,40 @@ Proof.
     etransitivity. apply Sf, S. apply IH. 
 Qed.
 
+Fixpoint mentions (A  : eqType) (l : pairs A) := flatten [seq [:: x.1;x.2] | x <- l].
+
+Definition admissible_l (G H : lgraph) (e : pairs (union G H)) := 
+  all (fun x => if x is inl z then z \in IO else true) (mentions e).
+
+Definition replace_ioL (G G' H : lgraph) (e : pairs (union G H)) : pairs (union G' H) := 
+  map_pairs (fun (x: union G H) => match x with 
+                   | inl z => if z == output :> G then inl output else inl input
+                   | inr z => inr z
+                   end) e.
+Arguments replace_ioL [G G' H].
+
+Lemma steps_merge (G' G H : lgraph) (l : pairs (union G H)) : 
+  admissible_l l -> step G G' -> 
+  steps (point (merge_seq (union G H) l) (\pi (unl input)) (\pi (unr output)))
+        (point (merge_seq (union G' H) (replace_ioL l)) (\pi (unl input)) (\pi (unr output))).
+Proof.
+  move => A B. destruct B. (* why does case fail? *)
+  - admit.
+  - (* need to lift add_* out of the quotient *)
+
+Lemma step_IO G G' : step G G' -> (input == output :> G) = (input == output :> G').
+Proof. by case. Qed.
+
 Lemma dot_steps_l G G' H: steps G G' -> steps (ldot G H) (ldot G' H).
 Proof.
-  apply (step_to_steps (f:=fun G => ldot G H)).
-  apply: (fun _ _ I => dot_liso I liso_id). 
-Admitted.
-  
+  apply (step_to_steps (f:=fun G => ldot G H)) => {G G'}.
+  - apply: (fun _ _ I => dot_liso I liso_id). 
+  - move => G G' stp_G_G'. rewrite /ldot. etransitivity. apply: (@steps_merge G') => //=.
+    + rewrite /admissible_l/=. by rewrite !inE eqxx.
+    + by rewrite /replace_ioL/= eqxx. 
+Qed.  
 
+(* This should follow with [dot_steps_l and cnv_steps] *)
 Lemma dot_steps_r G G' H: steps G G' -> steps (ldot H G) (ldot H G').
 Proof.
   apply step_to_steps. by apply dot_liso.
@@ -593,20 +626,26 @@ Qed.
 Lemma lparC G H: liso (lpar G H) (lpar H G).
 Admitted.
 
-Lemma par_steps_r G G' H: steps G G' -> steps (lpar H G) (lpar H G').
-Proof.
-  apply step_to_steps => {G G'}. by apply par_liso.
-  move => F F'. case.
-  
-Admitted.
-
 Lemma par_steps_l G G' H: steps G G' -> steps (lpar G H) (lpar G' H).
+Proof.
+  apply (step_to_steps (f:=fun G => lpar G H))  => {G G'}. 
+  - move => G G' I. by apply par_liso.
+  - move => G G' step_G_G'. 
+    etransitivity. apply: (@steps_merge G') => //=.
+    + by rewrite /admissible_l/= !inE !eqxx.
+    + rewrite /replace_ioL/= !eqxx. case: ifP => [E|//].
+      rewrite (step_IO step_G_G') in E.
+      by rewrite -[in (inl output,inr input)](eqP E). 
+Qed.
+
+Lemma par_steps_r G G' H: steps G G' -> steps (lpar H G) (lpar H G').
 Proof.
   intro.
   etransitivity. apply liso_step, lparC. 
   etransitivity. 2: apply liso_step, lparC.
-  by apply par_steps_r. 
+  by apply par_steps_l. 
 Qed.
+
 
 Instance par_steps: Proper (steps ==> steps ==> steps) lpar.
 Proof.
