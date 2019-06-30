@@ -339,16 +339,18 @@ Proof.
       have He2 : e2' \in ~: edges_in (G[tst x <- [dom (u·vlabel z)]]) [set z]. admit.
       have He : e \in ~: edges_in G [set z']. admit.
       have D : x != z'. admit. (* both edges at z' lead to vertices distinct from z *)
+      have [Hz'' Hx''] : z' \in [set~ z] /\ x' \in [set~ z] by split;set_tac.
+      have [Hy''] : y' \in [set~ z] by set_tac.
       do 2 eexists; repeat split.
       * apply step_step. apply: step_v2. 
         4,5: apply: del_vertex_arc; last apply: add_test_arc.
         7: apply Ae1'. 9: apply Ae2'.
         (* side conditions - should be automatable *)
-        inst (rewrite !inE eq_sym).  
+        inst. 
         h_abstract exact: del_vertex_IO.
-        inst set_tac.
+        inst. 
         h_abstract (rewrite !inE -val_eqE /=; set_tac).
-        inst set_tac. 
+        inst. 
         h_abstract (rewrite !inE -val_eqE /=; by set_tac). 
         done.
         done.
@@ -362,13 +364,13 @@ Proof.
         h_abstract by rewrite -val_eqE. 
         assumption.
         admit.
-      * Open Scope sub_scope.
+      * (*  Open Scope sub_scope.  -- hide the proof terms *)
         apply: liso_comp. apply: liso_add_edge_congr. apply: del_vertexC.
         rewrite del_vertexCE. rewrite del_vertexCE. rewrite [val _]/=.
         apply: liso_comp. apply: liso_delv_adde.
         apply: liso_comp _ (liso_sym _). 
-        2:{. apply: liso_delv_congr. apply: liso_sym. apply liso_adde_addt. }
-        rewrite ![liso_sym _ _]/=. Close Scope sub_scope.
+        2:{ apply: liso_delv_congr. apply: liso_sym. apply liso_adde_addt. }
+        rewrite ![liso_sym _ _]/=.
         (* hrmpf *) move: (liso_delv_proof _). 
         admit.
   - (* Case V1 / E1 *) admit.
