@@ -360,7 +360,7 @@ Definition oarc (G : pre_graph) e x u y :=
 
 Inductive ostep : pre_graph -> pre_graph -> Type := 
   ostep_v1 (G : pre_graph) x z e u : 
-    Top.edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
+    edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
     ostep G (add_test G  x [dom(u·lv G z)] \ z).
 
 Section Transfer.

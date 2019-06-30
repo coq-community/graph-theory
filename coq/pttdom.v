@@ -599,6 +599,7 @@ Proof.
   move => A B. destruct B. (* why does case fail? *)
   - admit.
   - (* need to lift add_* out of the quotient *)
+Admitted.
 
 Lemma step_IO G G' : step G G' -> (input == output :> G) = (input == output :> G').
 Proof. by case. Qed.
