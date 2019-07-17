@@ -9,6 +9,14 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+
+Section Canonical.
+Variable (G : lgraph).
+Canonical lgraph_finType := [finType of G].
+(* Canonical lgraph_eqType := [eqType of G]. *)
+(* Canonical lgraph_choiceType := [choiceType of G]. *)
+End Canonical.
+
 Lemma set2_Sub (T : finType) (p : pred T) (x y : T) (Hx : p x) (Hy : p y) :
   [set Sub x Hx ; Sub y Hy] = [set z | val z \in [set x;y]] :> {set sig p}.
 Proof. apply/setP=>k. rewrite !inE -!val_eqE. done. Qed.
@@ -17,7 +25,8 @@ Notation "'Σ' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p%type)) ..))
   (at level 200, x binder, y binder, right associativity).
 
-Notation IO := [set input; output].
+Definition IO (G: lgraph) : {set G} := [set input; output].
+Arguments IO [G].
 
 Section multigraph_plus.
 Variables (Lv Le : setoid) (G : graph Le Lv).
@@ -110,6 +119,9 @@ Admitted.
 
 Definition del_vertex := del_vertices [set z] del_vertex_proof.
 
+Definition Sub_delv (x : G) (Hx : x \in [set~ z]) : del_vertex := Sub x Hx.
+Definition Sub_delv_e (e : edge G) (He : e \in ~: edges_in [set z]) : edge del_vertex := Sub e He.
+
 
 Lemma edges_at_del_vertices (x : del_vertex) :
   edges_at del_vertex x = [set e : edge del_vertex | val e \in edges_at (val x)].
@@ -120,20 +132,52 @@ Lemma edges_at_del_vertices0 x : edges_at (val x) \subset edges_at z ->
 Proof. rewrite edges_at_del_vertices. 
 Admitted.
 
-Lemma del_vertex_IO x (Hx : x \in [set~ z]) : x \notin IO -> (Sub x Hx : del_vertex) \notin IO.
+Lemma del_vertex_IO x (Hx : x \in [set~ z]) : x \notin IO -> @Sub_delv x Hx \notin IO.
 Proof. by rewrite !inE -!val_eqE /=. Qed.
 
 Lemma del_vertex_IO' (x : del_vertex) : x \notin IO -> val x \notin IO.
 Admitted.
 
 Lemma del_vertex_arc x y u e (Hx : x \in [set~ z]) (Hy : y \in [set~ z]) (He : e \in ~: edges_in [set z] ):
-  arc e x u y -> @arc del_vertex (Sub e He) (Sub x Hx) u (Sub y Hy). 
+  arc e x u y -> @arc del_vertex (@Sub_delv_e e He) (@Sub_delv x Hx) u (@Sub_delv y Hy). 
 Admitted.
 
 End DelVertex.
 
-Arguments arc : clear implicits.
 Arguments del_vertex : clear implicits.
+Notation "G  \  [ x , Hx ]" := (del_vertex G x Hx) (at level 29,left associativity).
+Notation "G ≅ H" := (liso G H) (at level 45).
+
+Arguments Sub_delv [G z Hz] x Hx.
+Definition Sub_adde (G : lgraph) u (x y z : G) : G ∔ [x, u, y] := x.
+
+
+Section Tst.
+Variables (G : lgraph) (x : G) (Hx : x \notin IO) (z : G) (Hz : z \in [set~ x]) (u : term).
+(* Set Printing All. *)
+Check (G \ [x,Hx] ∔ [Sub z Hz, u, Sub z Hz]). 
+(* Problem: the inferred arguments to Sub are huge *)
+Check (G \ [x,Hx] ∔ [Sub_delv z Hz, u, Sub_delv z Hz]). 
+(* Good *)
+Check (G ∔ [z,u,z] \ [x,Hx]).
+(* Good. Typechecking modulo conversion does not increase term size *)
+End Tst.
+
+
+Definition in_delv (G : lgraph) (z : G) (Hz : z \notin IO) (x : G) : G \ [z,Hz] := 
+  insubd (@input (G \ [z,Hz])) x.
+Arguments in_delv [G z Hz] x.
+
+(** Experimental: A class of boxed properties to allow inference of "non-class" assumptions *)
+Class box (P : Prop) : Prop := Box { boxed : P }.
+Hint Extern 0 (box _) => apply Box; assumption : typeclass_instances.
+
+Lemma in_delvT (G : lgraph) (z : G) (Hz : z \notin IO) (x : G) { Hx : box (x \in [set~ z]) } :
+  in_delv x = Sub_delv x boxed :> G \ [z,Hz].
+Proof. rewrite /in_delv/insubd insubT => [|Hx']. exact: boxed. exact: val_inj. Qed.
+
+Arguments arc : clear implicits.
+
 
 Definition del_edges (G : lgraph) (E : {set edge G}) := 
   point (remove_edges E) input output.
@@ -141,7 +185,7 @@ Arguments del_edges : clear implicits.
 
 Notation del_edge G e := (del_edges G [set e]).
 
-
+Definition del_vertex_sort (G : lgraph) (x : G) (Hx : x \notin IO) := (G \ [x,Hx] : Type).
 
 Lemma add_test_arc (G : lgraph) (e : edge G) x y z u a :
   arc G e x u y -> arc (add_test G z a) e x u y.
@@ -157,16 +201,18 @@ Universe S.
 
 Variant Rule := RULE_V1 | RULE_V2 | RULE_E1 | RULE_E2.
 
+Set Printing Coercions.
+
 (* TOTHINK: Put the the add_test below the del_vertex to avoid the dependency? *)
 Inductive step : lgraph -> lgraph -> Type@{S} := 
 | step_v1 G x z e (Hz : z \notin IO) (Hx : (* x \in [set~ z]) *) x != z) u:  
     arc G e x u z -> edges_at z = [set e] ->
     step G (del_vertex (add_test G x [dom(u·vlabel z)]) z Hz)
-    (* step G (add_test (del_vertex G z Hz) (Sub x Hx) [dom(u·vlabel z)]) *)
+    (* step G (add_test (del_vertex G z Hz) (Sub_delv x Hx) [dom(u·vlabel z)]) *)
 | step_v2 G x y z e1 e2 (Hz : z \notin IO) (Hx : x \in [set~ z]) (Hy : y \in [set~ z]) u v : 
     arc G e1 x u z -> arc G e2 z v y -> edges_at z = [set e1;e2] -> e1 != e2 ->
     (* step G (del_vertex (add_edge G x y (u·vlabel z·v)) z Hz). *)
-    step G (add_edge (del_vertex G z Hz) (Sub x Hx) (Sub y Hy) (u·vlabel z·v))
+    step G (add_edge (del_vertex G z Hz) (Sub_delv x Hx) (Sub_delv y Hy) (u·vlabel z·v))
 | step_e1 G e x : 
     source e = x -> target e = x -> 
     step G (add_test (del_edge G e) x [1∥elabel e])
@@ -174,6 +220,12 @@ Inductive step : lgraph -> lgraph -> Type@{S} :=
     arc G e1 x u y -> arc G e2 x v y -> x != y ->
     step G (add_edge (del_edges G [set e1;e2]) x y (u∥v))
 .
+
+
+(* Lemma step_v2' G x y z e1 e2 (Hz : z \notin IO) (Hx : x \in [set~ z]) (Hy : y \in [set~ z]) u v :  *)
+(*     arc G e1 x u z -> arc G e2 z v y -> edges_at z = [set e1;e2] -> e1 != e2 -> *)
+(*     step G (add_edge (del_vertex G z Hz) (in_delv x) (in_delv y) (u·vlabel z·v)). *)
+(* Proof. rewrite /in_delv/insubd !insubT. exact: step_v2. Qed. *)
 
 Definition step_order G H (s: step G H): nat :=
   match s with
@@ -218,8 +270,6 @@ Tactic Notation "h_abstract" tactic(tac) :=
 
 (** liso lemmas *)
 
-Notation "G  \  [ x , Hx ]" := (del_vertex G x Hx) (at level 29,left associativity).
-Notation "G ≅ H" := (liso G H) (at level 45).
 
 Lemma cnvtst (u : test) : u° ≡ u.
 Admitted.
@@ -240,11 +290,11 @@ Section liso.
   Admitted.
 
   Lemma del_vertexC z Hz (z' : G \ [z,Hz]) Hz' : 
-    G \ [z,Hz] \ [z', Hz'] ≅ G \ [val z', del_vertex_IO' Hz'] \ [Sub z del_vertex_val, del_vertex_IO Hz]. 
+    G \ [z,Hz] \ [z', Hz'] ≅ 
+    G \ [val z', del_vertex_IO' Hz'] \ [Sub_delv z del_vertex_val, del_vertex_IO Hz]. 
   Admitted.
   
-    
-  Lemma sub1 (z x : G) Hz (z' : G \ [z, Hz]) Hx (Hx' : Sub x Hx \in [set~ z']) : x \in [set~ sval z'].
+  Lemma sub1 (z x : G) Hz (z' : G \ [z, Hz]) Hx (Hx' : Sub_delv x Hx \in [set~ z']) : x \in [set~ sval z'].
   Admitted.
 
   Lemma sub2 (z x : G) Hz (z' : G \ [z, Hz]) Hz' Hx (Hx' : Sub x Hx \in [set~ z']) :
@@ -252,13 +302,17 @@ Section liso.
   Admitted.
 
   Lemma del_vertexCE z Hz z' Hz' x Hx Hx' : 
-    @del_vertexC z Hz z' Hz' (Sub (Sub x Hx) Hx') = Sub (Sub x (sub1 Hx')) (sub2 Hz' Hx') . 
+    @del_vertexC z Hz z' Hz' (Sub_delv (Sub_delv x Hx) Hx') = Sub_delv (Sub_delv x (sub1 Hx')) (sub2 Hz' Hx') . 
+  Admitted.
+
+  Lemma del_vertexCE' z Hz z' Hz' x : 
+    @del_vertexC z Hz z' Hz' x = in_delv (in_delv (val (val x))). 
   Admitted.
   
   Lemma liso_del_tst x Hx y Hy a :
-    liso (add_test (G \ [x,Hx]) (Sub y Hy) a) (add_test G y a \ [x,Hx]).
+    liso (add_test (G \ [x,Hx]) (Sub_delv y Hy) a) (add_test G y a \ [x,Hx]).
   Admitted.
-
+ 
   Lemma liso_add_edgeC x y u : liso (add_edge G x y u) (add_edge G y x u°).
   Admitted.
 
@@ -289,6 +343,15 @@ Admitted.
 Lemma liso_delv_congr {G H z Hz} (l : G ≅ H) :
   G \ [z,Hz] ≅ H \ [l z, liso_delv_proof Hz].
 Admitted.
+
+Lemma setD1sub (T : finType) (P : pred T) (s : subFinType P) x y (Hx : P x) (Hy : P y) : 
+  x \in [set~ y] -> (Sub x Hx : s) \in [set~ Sub y Hy].
+Proof. move => A. by rewrite !inE -val_eqE !SubK in A *. Qed.
+
+Lemma setD1C (T : finType) (x y : T) : x \in [set~ y] -> y \in [set~ x].
+Proof. move => A. by rewrite !inE eq_sym in A *. Qed.
+
+Opaque del_vertex.
 
 Lemma local_confluence (G Gl Gr: lgraph) : 
   step G Gl -> step G Gr -> Σ Hl Hr, steps Gl Hl * steps Gr Hr * liso Hl Hr.
@@ -327,10 +390,11 @@ Proof.
         admit.
         rewrite edges_at_del_vertices edges_at_test /= Iz'. admit. 
       * (* the x'z-edge is now the only edge incident at z *)
-        apply step_step. apply step_v1 with None. 2:apply add_edge_arc. admit.
+        apply step_step. apply step_v1 with None. 2:apply add_edge_arc. 
+        rewrite -!val_eqE eq_sym/=. admit.
         rewrite edges_at_add_edgeT ?inD //. 
-        rewrite edges_at_del_vertices0 ?imset0 ?setU0 //= Iz Iz'. apply: subsetUr. 
-      * inst (exact: del_vertex_IO). 
+        rewrite edges_at_del_vertices0 ?imset0 ?setU0 ?in_delvT //= Iz Iz'. apply: subsetUr. 
+      * (* inst (exact: del_vertex_IO).  *)
         (* repeat match goal with |- context [Sub _ (?x ?y)] => let S := fresh "sub" in set S := x y end. *)
         (* set X := _ _ _ _ _ _ _ _ _ _. *)
         (* erewrite -> liso_del_tst. *) admit.
@@ -347,26 +411,32 @@ Proof.
         7: apply Ae1'. 9: apply Ae2'.
         (* side conditions - should be automatable *)
         inst. 
-        h_abstract exact: del_vertex_IO.
+        exact: del_vertex_IO.
         inst. 
-        h_abstract (rewrite !inE -val_eqE /=; set_tac).
+        exact: setD1sub.
         inst. 
-        h_abstract (rewrite !inE -val_eqE /=; by set_tac). 
+        exact: setD1sub.
         done.
         done.
         h_abstract (by rewrite edges_at_del_vertices edges_at_test /= Iz' set2_Sub).
         by rewrite -val_eqE. 
       * apply: step_step. apply: step_v1. 
         3: apply: add_edge_arc'; last apply: del_vertex_arc; last apply Ae.
+        inst; first exact: setD1C.
+        exact: del_vertex_IO.
         inst set_tac.
-        h_abstract exact: del_vertex_IO.
-        inst set_tac. 
         h_abstract by rewrite -val_eqE. 
         assumption.
         admit.
-      * (*  Open Scope sub_scope.  -- hide the proof terms *)
+      * (* Open Scope sub_scope. *)
+        (* do ! (let S := fresh "S" in move: (ssr_have _ _ _) => S). *)
+        (* (*  Open Scope sub_scope.  -- hide the proof terms *) *)
         apply: liso_comp. apply: liso_add_edge_congr. apply: del_vertexC.
-        rewrite del_vertexCE. rewrite del_vertexCE. rewrite [val _]/=.
+        Set Printing All.
+        set V := @vertex  test_setoid term_setoid (graph_of G). fold V in Hz'.
+        Set Printing Implicit.
+        Set Printing Coercions.
+        rewrite del_vertexCE. rewrite del_vertexCE. rewrite [val _]/=. Set 
         apply: liso_comp. apply: liso_delv_adde.
         apply: liso_comp _ (liso_sym _). 
         2:{ apply: liso_delv_congr. apply: liso_sym. apply liso_adde_addt. }
