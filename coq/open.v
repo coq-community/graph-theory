@@ -25,8 +25,11 @@ Proof. apply: val_inj. by rewrite SubK. Qed.
 
 Definition fresh (E : {fset nat}) : nat := (\max_(e <- E) e).+1.
 
-Lemma freshP (E : {fset nat}) : fresh E \in E = false. 
+Lemma freshP (E : {fset nat}) : fresh E \notin E. 
 Proof. Admitted.
+
+Lemma fsval_eqF (T:choiceType) (E : {fset T}) (e : E) x : x \notin E -> val e == x = false.
+Admitted.
 
 Lemma fresh_eqF (E : {fset nat}) (x : E) : val x == fresh E = false.
 Admitted.
@@ -62,40 +65,50 @@ Arguments fset1Ur [K x a B].
 Arguments fset1U1 [K x B].
 Arguments fset1U1 [K x B].
 
+(** TOTHINK: how to have simpl keep the [h/h^-1] notation unless the functions actually reduce? *)
+
 Section Bij.
 Variable (G : finType) (T : choiceType) (g : G -> T).
 Hypothesis g_inj : injective g.
 Let vset := [fset g x | x in G].
-Let f (x : G) : vset := Sub (g x) (in_imfsetT g x).
-Let f_inv (x : vset) : G := tag (imfset_inv x).
+Definition imfset_bij_fwd (x : G) : vset := Sub (g x) (in_imfsetT g x).
+Definition imfset_bij_bwd (x : vset) : G := tag (imfset_inv x).
 
-Lemma can_vset : cancel f f_inv.
+Lemma can_vset : cancel imfset_bij_fwd imfset_bij_bwd.
 Proof. 
-  move => x. rewrite /f_inv /f /=. set S := Sub _ _. 
+  move => x. rewrite /imfset_bij_fwd /imfset_bij_bwd /=. set S := Sub _ _. 
   apply: g_inj. by rewrite (tagged (imfset_inv S)).
 Qed.
 
-Lemma can_vset' : cancel f_inv f.
+Lemma can_vset' : cancel imfset_bij_bwd imfset_bij_fwd.
 Proof.
-  move => [x Hx]. rewrite /f /f_inv. apply: val_inj => /=.
+  move => [x Hx]. rewrite /imfset_bij_fwd /imfset_bij_bwd. apply: val_inj => /=.
   by rewrite (tagged (imfset_inv [` Hx])).
 Qed.
 
 Definition imfset_bij := Bij can_vset can_vset'.
+
+Lemma imfset_bij_bwdE x p : imfset_bij_bwd (Sub (g x) p) = x.
+Proof. 
+  rewrite /imfset_bij_bwd. set t := imfset_inv _. 
+  by move/g_inj : (tagged t).
+Qed.
+
 End Bij.
 
 (* TODO: generalize to any [e \notin E] *)
-Lemma fresh_bij (T : finType) (E : {fset nat}) (f : bij T E) : bij (option T) (fresh E |` E).
+Lemma fresh_bij (T : finType) (E : {fset nat}) (f : bij T E) e (He : e \notin E) : 
+  bij (option T) (e |` E).
 Proof.
-  pose g (x : option T) : fresh E |` E := 
-    if x is Some z then Sub (val (f z)) (fset1Ur (valP (f z))) else Sub (fresh E) fset1U1.
-  pose g_inv  (x : fresh E |` E) : option T := 
+  pose g (x : option T) :  e |` E := 
+    if x is Some z then Sub (val (f z)) (fset1Ur (valP (f z))) else Sub e fset1U1.
+  pose g_inv  (x : e |` E) : option T := 
     match fsetULVR (valP x) with inl _ => None | inr p => Some (f^-1 (Sub (val x) p)) end.
   have can_g : cancel g g_inv.
   { move => [x|]; rewrite /g/g_inv/=; case: (fsetULVR _) => [|p] //=. 
-    - by rewrite inE fresh_eqF.
+    - by rewrite inE fsval_eqF.
     - by rewrite valK' bijK.
-    - exfalso. by rewrite freshP in p. }
+    -  exfalso. by rewrite p in He. }
   have can_g_inv : cancel g_inv g.
   { move => [x Hx]; rewrite /g/g_inv/=. case: (fsetULVR _) => [|p] //=. 
     - rewrite !inE => A. apply: val_inj => /=. by rewrite (eqP A).
@@ -103,9 +116,9 @@ Proof.
   apply: (Bij can_g can_g_inv).
 Defined.
 
-Lemma fresh_bijE (T : finType) (E : {fset nat}) (f : bij T E) : 
-  (forall x, fresh_bij f (Some x) = Sub (val (f x)) (fset1Ur (valP (f x))))*
-  (fresh_bij f None = Sub (fresh E) fset1U1).
+Lemma fresh_bijE (T : finType) (E : {fset nat}) (f : bij T E) x (Hx : x \notin E) : 
+  (forall x, fresh_bij f Hx (Some x) = Sub (val (f x)) (fset1Ur (valP (f x))))*
+  (fresh_bij f Hx None = Sub x fset1U1).
 Proof. done. Qed.
 
 
@@ -150,7 +163,11 @@ Lemma update_same (aT : eqType) (rT : Type) (f : aT -> rT) x a b :
   f[upd x := a][upd x := b] =1 f[upd x := b].
 Admitted.
 
-Require Import confluence.
+Lemma eqv_update (aT : eqType) (rT : Type) (f g : aT -> rT) (E : relation rT) z u v : 
+  (forall x, E (f x) (g x)) -> E u v -> forall x, E (f[upd z := u] x) (g[upd z := v] x).
+Admitted.
+
+Require Import pttdom confluence.
 Notation "G ≅ H" := (liso G H) (at level 45).
 
 
@@ -177,6 +194,8 @@ Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
 Lemma inj_e_inj : injective inj_e. 
 Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
 End inject.
+
+Hint Resolve inj_v_inj inj_e_inj.
 
 Record pre_graph := { vset : {fset VT};
                       eset : {fset ET};
@@ -276,6 +295,7 @@ Lemma close_vK (G : pre_graph) (graph_G : is_graph G) (x : VT) :
 Proof. move => xG. rewrite /close_v. by case: {-}_ /idP. Qed.
 
 Arguments close_v [G graph_G] _. 
+Arguments close_v : simpl never.
 
 
 Lemma openK (G : lgraph) : G ≅ close (open G). 
@@ -289,6 +309,14 @@ liso (imfset_bij (@inj_v_inj G))
 - exact: val_inj.
 - exact: val_inj.
 Defined.
+
+Lemma openKE (G : lgraph) (x : G) :
+  openK G x = close_v (inj_v x).
+Proof. 
+  rewrite /close_v /=. case: {-}_ /idP => [p|np]; first exact: val_inj.
+  by rewrite in_imfsetT in np.
+Qed.
+
 
 (** We define isomorphisms via closing *)
 
@@ -314,12 +342,17 @@ Proof.
   apply: liso_comp I. exact: close_irrelevance.
 Qed.
 
-Definition vfun_of (G H : pre_graph) (h : G ⩭ H) (x : VT) : VT := 
-  let: existT _ (existT _ h) := h in 
-  match @idP (x \in vset G) with
-  | ReflectT p => val (h (Sub x p))
-  | ReflectF _ => x
-  end.
+Definition vfun_body (G H : pre_graph) 
+  (graph_G : is_graph G) (graph_H : is_graph H) (h : bij (close G) (close H)) (x : VT) : VT := 
+  locked (match @idP (x \in vset G) with
+          | ReflectT p => val (h (Sub x p))
+          | ReflectF _ => x
+          end).
+
+Definition vfun_of (G H : pre_graph) (h : G ⩭ H) := 
+  let: existT GG (existT GH h) := h in vfun_body h.
+
+Arguments vfun_of [G H] h x.
 
 Coercion vfun_of : oliso >-> Funclass.
 
@@ -329,14 +362,44 @@ same underlying structure with different, but equivalent, labels *)
 Record weqG (G H : pre_graph) : Prop := WeqG {
   sameV : vset G = vset H;
   sameE : eset G = eset H;
-  same_src : src G =1 src H;
-  same_tgt : tgt G =1 tgt H;
-  eqv_lv x : lv G x ≡ lv H x;
-  eqv_le e : le G e ≡ le H e }.
+  same_src : {in eset G, src G =1 src H};
+  same_tgt : {in eset G, tgt G =1 tgt H};
+  eqv_lv x : x \in vset G -> lv G x ≡ lv H x;
+  eqv_le e : e \in eset G -> le G e ≡ le H e;
+  same_in : p_in G = p_in H;
+  same_out : p_out G = p_out H
+}.
                                        
 Instance weqG_Equivalence : Equivalence weqG. Admitted.
 
 Notation "G ≡G H" := (weqG G H) (at level 79).
+
+
+Section BijCast.
+Variables (T : choiceType) (A A' : {fset T}) (eqA : A = A').
+Definition bij_cast : bij A A'.
+Proof. case eqA. exact bij_id. Defined.
+
+Lemma cast_proof x : x \in A -> x \in A'. case eqA. exact id. Qed.
+
+Lemma bij_castE x (Hx : x \in A) : bij_cast [` Hx] = [` cast_proof Hx].
+Proof. 
+  rewrite /bij_cast. move: (cast_proof _). case eqA => Hx'. exact: val_inj.
+Qed.
+End BijCast.
+
+Definition weqG_oliso (G H : pre_graph) : 
+  is_graph G -> is_graph H -> G ≡G H -> G ⩭ H.
+Proof.
+  move => isG isH [EV EE Es Et Elv Ele]. do 2 eexists. 
+  liso (bij_cast EV) (bij_cast EE) (fun _ => false).
+  - move => [v p]. by rewrite bij_castE /= Elv.
+  - move => [e p]. by rewrite bij_castE /= Ele.
+  - move => [e p]. rewrite !bij_castE /=. apply: val_inj => /=. by rewrite Es.
+  - move => [e p]. rewrite !bij_castE /=. apply: val_inj => /=. by rewrite Et.
+  - rewrite bij_castE. exact: val_inj.
+  - rewrite bij_castE. exact: val_inj.
+Qed.
 
 (** Experimental: A class of boxed properties to allow inference of "non-class" assumptions *)
 Class box (P : Prop) : Prop := Box { boxed : P }.
@@ -394,18 +457,18 @@ Proof.
   - case: Hx => Hx. by rewrite !inE p_outP andbT pIO_No.
 Qed.
 
-Definition add_vertex (G : pre_graph) (x : VT) := 
+Definition add_vertex (G : pre_graph) (x : VT) a := 
   {| vset := x |` vset G ;
      eset := eset G;
      src := src G;
      tgt := tgt G;
-     lv := lv G;
+     lv := (lv G)[upd x := a];
      le := le G;
      p_in := p_in G;
      p_out := p_out G |}.
 
-Global Instance add_vertex_graph (G : pre_graph) `{graph_G : is_graph G} (x : VT) : 
-  is_graph (add_vertex G x).
+Global Instance add_vertex_graph (G : pre_graph) `{graph_G : is_graph G} (x : VT) a : 
+  is_graph (add_vertex G x a).
 Admitted.
 
 Definition del_edges (G : pre_graph) (E : {fset ET}) := 
@@ -498,9 +561,64 @@ Proof.
     by rewrite eqxx in xy. all: by rewrite !updateE.
 Qed.
 
+(* TODO: all notations for graph operations should be left associative
+and at the same level, because this is the only way in which they can
+be parsed *)
+Notation "G ∔ [ x , u , y ]" := (add_edge G x u y) (at level 20,left associativity) : open_scope.
+Open Scope open_scope.
+
+Lemma del_vertex_add_test (G : pre_graph) z x a : 
+  (G \ z)[adt x <- a] ≡G G[adt x <- a] \ z.
+Proof. done. Qed.
+
+(** This does not hold since [add_edge] takes the lowest available
+edge, which may change after deleting [z]. It would hold, if the edges
+were named (and equal) *)
+Lemma del_vertex_add_edge (G : pre_graph) z x y u : z != x -> z != y ->
+  (G \ z) ∔ [x, u, y] ≡G G ∔ [x, u, y] \ z.
+Abort.
+
+Lemma add_edge_test (G : pre_graph) x y z u a : 
+  (G ∔ [x,u,y])[adt z <- a] ≡G G[adt z <- a] ∔ [x,u,y].
+Proof. done. Qed.
+
+(** ** Morphism Lemmas *)
+
+Instance add_edge_morphism : Proper (weqG ==> eq ==> weq ==> eq ==> weqG) add_edge.
+Proof. 
+  move => G H [EV EE Es Et Elv Ele Ei Eo] ? x ? u v uv ? y ?. subst. 
+  split => //=; rewrite -?EE -?EV //.
+  (* TODO: lemma in_evq_update *)
+Admitted.
+
+Instance del_vertex_morphism : Proper (weqG ==> eq ==> weqG) del_vertex.
+Proof. 
+  move => G H [EV EE Es Et Elv Ele Ei Eo] ? x ?. subst. 
+  split => //=; rewrite -?EE -?EV //. 
+  rewrite /edges_at/incident. rewrite !EE. congr fsetD. 
+  apply/fsetP => z. 
+Admitted.
+
+
+Lemma test (G : pre_graph) (isG : is_graph G) z z' x a x' u y' : 
+  z != x' -> z != y' ->
+   ((G \ z) [adt x <- a] \ z') ∔ [x', u, y']
+⩭ ((G \ z') ∔ [x', u, y'] \ z)[adt x <- a].
+Proof. 
+  move => Hz1 Hz2.
+  apply weqG_oliso. 
+  - admit.
+  - admit.
+  - (* the edge on the left may be different (lower) than the edge on the right. 
+       Thus, we require a proper isomorphism step *)
+    rewrite !del_vertex_add_test del_vertexC add_edge_test.
+    rewrite del_vertex_add_test. 
+Admitted.
+
 
 (** ** Commutation with open/close *)
 
+Arguments freshP [E].
 
 Lemma close_add_edge (G : pre_graph) (x y : VT) u 
   (graph_G : is_graph G) (graph_G' : is_graph (add_edge G x u y)) : 
@@ -508,15 +626,34 @@ Lemma close_add_edge (G : pre_graph) (x y : VT) u
 ≅ liso.add_edge (close G) (close_v x) (close_v y) u.
 Proof.
   apply: liso_sym. 
-  liso (bij_id) (fresh_bij bij_id) (fun => false) => //. 
+  liso (bij_id) (fresh_bij bij_id freshP) (fun => false) => //. 
   4-5: exact: val_inj.
-  - move => [e|]; by rewrite /= updateE // ?fresh_eqF.
-  - move => [e|] /=; apply: val_inj => /=; rewrite updateE ?fresh_eqF //. 
+  - move => [e|]; by rewrite fresh_bijE /= updateE /= ?fresh_eqF.
+  - move => [e|] /=; apply: val_inj; rewrite /= updateE ?fresh_eqF //. 
     by rewrite close_vK // add_edgeV.
-  - move => [e|] /=; apply: val_inj => /=; rewrite updateE ?fresh_eqF //. 
+  - move => [e|] /=; apply: val_inj; rewrite /= updateE ?fresh_eqF //. 
     by rewrite close_vK // add_edgeV.
 Defined.
 
+Definition close_add_vertex (G : pre_graph) (graph_G : is_graph G) x a : x \notin vset G -> 
+  close (add_vertex G x a) ≅ liso.add_vertex (close G) a.
+Proof.
+  move => xG. apply: liso_sym. 
+  liso (fresh_bij bij_id xG) bij_id (fun => false) => //. 2-5: move => *; exact: val_inj.
+  move => [v|] => //=; by rewrite /= updateE // fsval_eqF.
+Defined.
+
+(* Lemma vfunE (G H : lgraph) (h : bij (close (open G)) (close (open H))) (x : G) : *)
+(*   vfun_body h (inj_v x) = inj_v (h (openK _ x)). *)
+(* Admitted. *)
+
+Lemma vfun_bodyE (G : lgraph) (H : pre_graph) (graph_H : is_graph H)
+     (h : bij (close (open G)) (close H)) (x : G) : 
+  vfun_body h (inj_v x) = val (h (Sub (inj_v x) (in_imfsetT _ _))).
+Proof. 
+  unlock vfun_body. case: {-}_/idP => [p|]; last by rewrite in_imfsetT.
+  by rewrite [in_imfsetT _ _](bool_irrelevance _ p).
+Qed.
 
 Section Transfer.
 Variable (G : lgraph).
@@ -535,6 +672,26 @@ Lemma inj_v_open (x : G) : inj_v x \in vset (open G).
 Proof. by rewrite in_imfset. Qed.
 Hint Resolve inj_v_open.
 
+Definition open_add_vertex a : 
+  open (liso.add_vertex G a) ⩭ add_vertex (open G) (fresh (vset (open G))) a.
+Proof. 
+  rewrite /oliso; do 2 eexists.
+  apply: liso_comp (liso_sym _) _. apply: openK.
+  apply: liso_comp (liso_sym _). 2: apply: close_add_vertex freshP. 
+  apply: add_vertex_liso => //. exact: openK.
+Defined.
+
+Set Nested Proofs Allowed.
+
+Lemma open_add_vertexE a x: 
+  ((open_add_vertex a (@inj_v (G ∔ a) None) = fresh (vset (open G)))
+  *(open_add_vertex a (@inj_v (G ∔ a) (Some x)) = @inj_v G x))%type. 
+Proof. 
+  split.
+  all: rewrite /= vfun_bodyE /=.
+  all: by rewrite imfset_bij_bwdE. 
+Qed.
+
 Lemma open_add_edge (x y : G) u : 
   open (liso.add_edge G x y u) ⩭ add_edge (open G) (inj_v x) u (inj_v y).
 Proof. 
@@ -546,7 +703,7 @@ Proof.
   (* apply: liso_comp (liso_sym (close_add_edge _ _)).   *)
   (* TODO: use close_add_edge *)
   liso (imfset_bij (@inj_v_inj G)) 
-       (fresh_bij (imfset_bij (@inj_e_inj (edge G))))
+       (fresh_bij (imfset_bij (@inj_e_inj (edge G))) freshP)
        (fun => false).
   - move => v /=. by rewrite inj_vK.
   - case => [e|] //=. 
