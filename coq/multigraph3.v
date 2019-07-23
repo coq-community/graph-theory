@@ -547,6 +547,7 @@ Goal forall z Hz x Hx a z' Hz1' Hz2' Hz3' (x':G) Hx1' Hx2' Hx3' w (y' : G) Hy1' 
 Abort.
 
 (* Notation SUB x := (Sub_delv2 x _). *)
+Notation "⌈ x ⌉" := (Sub_delv2 x _).
 
 Lemma test_cast:
   forall (z : G) (Hz : z \notin IO) (x : G) (Hx : x != z) (a : test) (z' : G) (Hz1' : z' != z)
@@ -564,19 +565,6 @@ Proof.
   rewrite -> (adde2_cong (delv2_cong (delv2_tst _ _ _))). 
   rewrite 2!delv2_congE. 
 Abort.
-
-Lemma test_cast:
-  forall (z : G) (Hz : z \notin IO) (x : G) (Hx : x != z) (a : test) (z' : G) (Hz1' : z' != z)
-    (Hz2' : atv (Sub_delv2 z' Hz1') \notin IO) (Hz3' : z' \notin IO) (x' : G) (Hx1' : x' != z)
-    (Hx2' : atv (Sub_delv2 x' Hx1') != atv (Sub_delv2 z' Hz1')) (Hx3' : x' != z') (w : term) 
-    (y' : G) (Hy1' : y' != z) (Hy2' : atv (Sub_delv2 y' Hy1') != atv (Sub_delv2 z' Hz1')) 
-    (Hy3' : y' != z') (Hz2 : z != z') (Hz3 : aev (Sub_delv2 z Hz2) \notin IO) (Hx2 : x != z')
-    (Hx3 : aev (Sub_delv2 x Hx2) != aev (Sub_delv2 z Hz2)),
-    ((G \ [z, Hz])[tst Sub_delv2 x Hx <- a] \ [atv (Sub_delv2 z' Hz1'), Hz2'])
-      ∔ [Sub_delv2 (atv (Sub_delv2 x' Hx1')) Hx2', w, Sub_delv2 (atv (Sub_delv2 y' Hy1')) Hy2']
-  ≅ ((G \ [z', Hz3']) ∔ [Sub_delv2 x' Hx3', w, Sub_delv2 y' Hy3'] \ [aev (Sub_delv2 z Hz2), Hz3])
-  [tst Sub_delv2 (aev (Sub_delv2 x Hx2)) Hx3 <- a].
-Proof.
 
 Timeout 10 Lemma test_wo_cast:
   forall (z : G) (Hz : z \notin IO) (x : G) (Hx : x != z) (a : test) (z' : G) (Hz1' : z' != z)
