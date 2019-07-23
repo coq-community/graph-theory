@@ -206,7 +206,7 @@ Definition subgraph_for : mGraph := Eval hnf in
          (fun e => Sub (target (val e)) (sub_target_proof (valP e))).
 
 
-(* Definition subgraph_for : mGraph := Eval hnf in  *)
+(* Definition subgraph_for : mGraph := Eval hnf in *)
 (*   @MGraph [finType of { x | x \in V }] *)
 (*           [finType of { e | e \in E }] *)
 (*           (fun e => Sub (source (val e)) (sub_source_proof (valP e))) *)

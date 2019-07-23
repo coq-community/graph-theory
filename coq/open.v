@@ -167,6 +167,12 @@ Lemma eqv_update (aT : eqType) (rT : Type) (f g : aT -> rT) (E : relation rT) z 
   (forall x, E (f x) (g x)) -> E u v -> forall x, E (f[upd z := u] x) (g[upd z := v] x).
 Admitted.
 
+Lemma in_eqv_update (aT : choiceType) (rT : Type) (f g : aT -> rT) (E : relation rT) 
+  (z : aT) (u v : rT) (A : {fset aT}) : 
+  {in A, forall x : aT, E (f x) (g x)} -> E u v -> 
+  {in z |` A, forall x : aT, E (f[upd z := u] x) (g[upd z := v] x)}.
+Admitted.
+
 Require Import pttdom confluence.
 Notation "G ≅ H" := (liso G H) (at level 45).
 
@@ -342,6 +348,12 @@ Proof.
   apply: liso_comp I. exact: close_irrelevance.
 Qed.
 
+Instance oliso_Equivalence : CRelationClasses.Equivalence oliso.
+Admitted.
+
+Lemma oliso_trans : CRelationClasses.Transitive oliso.
+Proof. apply: CRelationClasses.Equivalence_Transitive. Qed.
+
 Definition vfun_body (G H : pre_graph) 
   (graph_G : is_graph G) (graph_H : is_graph H) (h : bij (close G) (close H)) (x : VT) : VT := 
   locked (match @idP (x \in vset G) with
@@ -486,8 +498,7 @@ Global Instance del_edges_graph (G : pre_graph) `{graph_G : is_graph G} (E : {fs
 Admitted.
 
 
-Definition add_edge (G : pre_graph) x u y :=
-  let e := fresh (eset G) in
+Definition add_edge' (G : pre_graph) (e:ET) x u y :=
   {| vset := vset G;
      eset := e |` eset G;
      src := update (src G) e x;
@@ -496,6 +507,8 @@ Definition add_edge (G : pre_graph) x u y :=
      le := update (le G) e u;
      p_in := p_in G;
      p_out := p_out G |}.
+
+Definition add_edge (G : pre_graph) x u y := add_edge' G (fresh (eset G)) x u y.
 
 (* TOTHINK: This is not an instance because [x \in vset G] is not
 inferrable. One could box it though and make it inferrable through
@@ -526,20 +539,18 @@ Lemma edges_at_del (G : pre_graph) (z x : VT) :
   edges_at (G \ z) x = edges_at G x `\` edges_at G z.
 Admitted.
 
+(** TODO: generalize to add_edge' *)
 Lemma add_edgeV (G : pre_graph) (x y : VT) (u : term) : 
   is_graph (add_edge G x u y) -> ((x \in vset G) * (y \in vset G))%type.
 Proof.
   intros graph_G. split.
   - rewrite [x](_ : _ = src (add_edge G x u y) (fresh (eset G))).
-    + apply: srcP. by rewrite !inE eqxx.
+    + apply: srcP. by rewrite /add_edge !inE eqxx.
     + by rewrite /= update_eq.
   - rewrite [y](_ : _ = tgt (add_edge G x u y) (fresh (eset G))).
-    + apply: tgtP. by rewrite !inE eqxx.
+    + apply: tgtP. by rewrite /add_edge !inE eqxx.
     + by rewrite /= update_eq.
 Qed. 
-
-
-
 
 (** ** Commutation Lemmas *)
 
@@ -571,12 +582,14 @@ Lemma del_vertex_add_test (G : pre_graph) z x a :
   (G \ z)[adt x <- a] ≡G G[adt x <- a] \ z.
 Proof. done. Qed.
 
-(** This does not hold since [add_edge] takes the lowest available
-edge, which may change after deleting [z]. It would hold, if the edges
-were named (and equal) *)
-Lemma del_vertex_add_edge (G : pre_graph) z x y u : z != x -> z != y ->
-  (G \ z) ∔ [x, u, y] ≡G G ∔ [x, u, y] \ z.
-Abort.
+(** This does not hold for [add_edge] since [add_edge] takes the
+lowest available edge, which may change after deleting [z]. *)
+Lemma del_vertex_add_edge (G : pre_graph) z x y u e : z != x -> z != y ->
+  e \notin eset G ->                                                      
+  add_edge' (G \ z) e x u y ≡G (add_edge' G e x u y) \ z.
+Proof.
+  move => Hx Hy He. split => //=. 
+Admitted.
 
 Lemma add_edge_test (G : pre_graph) x y z u a : 
   (G ∔ [x,u,y])[adt z <- a] ≡G G[adt z <- a] ∔ [x,u,y].
@@ -584,12 +597,20 @@ Proof. done. Qed.
 
 (** ** Morphism Lemmas *)
 
+
+
 Instance add_edge_morphism : Proper (weqG ==> eq ==> weq ==> eq ==> weqG) add_edge.
 Proof. 
   move => G H [EV EE Es Et Elv Ele Ei Eo] ? x ? u v uv ? y ?. subst. 
-  split => //=; rewrite -?EE -?EV //.
-  (* TODO: lemma in_evq_update *)
+  split => //=; rewrite -?EE -?EV //; exact: in_eqv_update.
+Qed.
+
+Instance add_edge_morphism' : Proper (weqG ==> eq ==> eq ==> weq ==> eq ==> weqG) add_edge'.
+Proof. 
+  move => G H [EV EE Es Et Elv Ele Ei Eo] ? x ? u v uv ? y ?. subst. 
+  (* split => //=; rewrite -?EE -?EV //; exact: in_eqv_update. *)
 Admitted.
+
 
 Instance del_vertex_morphism : Proper (weqG ==> eq ==> weqG) del_vertex.
 Proof. 
@@ -599,13 +620,21 @@ Proof.
   apply/fsetP => z. 
 Admitted.
 
+Lemma name_add_edge (G : pre_graph) x y u (e : ET) :
+  e \notin eset G -> G ∔ [x,u,y] ⩭ add_edge' G e x u y.
+Admitted.
+Arguments name_add_edge [G x y u] e _.
 
+  
 Lemma test (G : pre_graph) (isG : is_graph G) z z' x a x' u y' : 
   z != x' -> z != y' ->
    ((G \ z) [adt x <- a] \ z') ∔ [x', u, y']
 ⩭ ((G \ z') ∔ [x', u, y'] \ z)[adt x <- a].
 Proof. 
-  move => Hz1 Hz2.
+  move => Hz1 Hz2. 
+  pose e : ET := fresh (vset (G \ z)).
+  apply: oliso_trans. apply: (name_add_edge e).
+  { admit. }
   apply weqG_oliso. 
   - admit.
   - admit.
