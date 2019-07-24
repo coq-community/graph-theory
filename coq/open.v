@@ -173,8 +173,23 @@ Lemma in_eqv_update (aT : choiceType) (rT : Type) (f g : aT -> rT) (E : relation
   {in z |` A, forall x : aT, E (f[upd z := u] x) (g[upd z := v] x)}.
 Admitted.
 
-Require Import pttdom confluence.
+Require Import confluence pttdom.
+
+
 Notation "G ≅ H" := (liso G H) (at level 45).
+
+Definition split_edge (G : lgraph) (e : edge G) : 
+  del_edge G e ∔ [source e, elabel e, target e] ≅ G.
+Admitted.
+
+Lemma split_edgeE (G : lgraph) (e : edge G) (x : G) : 
+  (split_edge e x = x) * ((split_edge e).e None = e).
+Admitted.
+
+Lemma split_vertex (G : lgraph) (z : G) (Hz : z \notin IO) :  
+  edges_at G z = set0 -> G \ [z,Hz] ∔ vlabel z ≅ G. 
+Admitted.
+
 
 
 (** * Open Graphs *)
@@ -620,13 +635,16 @@ Proof.
   apply/fsetP => z. 
 Admitted.
 
+Instance add_test_morphism : Proper (weqG ==> eq ==> test_weq ==> weqG) add_test.
+Admitted.
+
 Lemma name_add_edge (G : pre_graph) x y u (e : ET) :
   e \notin eset G -> G ∔ [x,u,y] ⩭ add_edge' G e x u y.
 Admitted.
 Arguments name_add_edge [G x y u] e _.
 
   
-Lemma test (G : pre_graph) (isG : is_graph G) z z' x a x' u y' : 
+Lemma oliso_wegG_test (G : pre_graph) (isG : is_graph G) z z' x a x' u y' : 
   z != x' -> z != y' ->
    ((G \ z) [adt x <- a] \ z') ∔ [x', u, y']
 ⩭ ((G \ z') ∔ [x', u, y'] \ z)[adt x <- a].
@@ -684,6 +702,10 @@ Proof.
   by rewrite [in_imfsetT _ _](bool_irrelevance _ p).
 Qed.
 
+Definition close_add_test (G : pre_graph) (isG : is_graph G) x (Hx : x \in vset G) a :
+  (close G)[tst close_v x <- a] ≅ close (G[adt x <- a]).
+Admitted.
+
 Section Transfer.
 Variable (G : lgraph).
 
@@ -712,11 +734,11 @@ Defined.
 
 Set Nested Proofs Allowed.
 
-Lemma open_add_vertexE a x: 
-  ((open_add_vertex a (@inj_v (G ∔ a) None) = fresh (vset (open G)))
-  *(open_add_vertex a (@inj_v (G ∔ a) (Some x)) = @inj_v G x))%type. 
+Lemma open_add_vertexE : 
+  ((forall a, open_add_vertex a (@inj_v (G ∔ a) None) = fresh (vset (open G)))
+  *(forall a x, open_add_vertex a (@inj_v (G ∔ a) (Some x)) = @inj_v G x))%type. 
 Proof. 
-  split.
+  split => *.
   all: rewrite /= vfun_bodyE /=.
   all: by rewrite imfset_bij_bwdE. 
 Qed.
@@ -749,6 +771,10 @@ Lemma oarc_open (x y : G) (e : edge G) u :
   arc G e x u y -> oarc (open G) (inj_e e) (inj_v x) u (inj_v y).
 Admitted.
 
+Definition open_add_test (x : G) a : 
+  open (G[tst x <- a]) ⩭ (open G)[adt inj_v x <- a].
+Admitted.
+
 End Transfer. 
    
  
@@ -776,24 +802,122 @@ Proof.
   liso (@bij_delv G z) B (fun _ => false).
 Admitted.
 
+Definition add_edge_cong (G H : pre_graph) (h : G ⩭ H) x u y : G ∔ [x,u,y] ⩭ H ∔ [h x,u,h y].
+Admitted.
+
 (** * Step relation (TODO) *)
 
-
 Inductive ostep : pre_graph -> pre_graph -> Type := 
-  ostep_v1 (G : pre_graph) x z e u : 
+| ostep_v1 (G : pre_graph) x z e u : 
     edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
-    ostep G (add_test G  x [dom(u·lv G z)] \ z).
+    ostep G (add_test G  x [dom(u·lv G z)] \ z)
+| ostep_v2 (G : pre_graph) x y z e1 e2 u v : 
+    edges_at G z = [fset e1;e2] -> z \notin pIO G -> x != z -> y != z ->
+    oarc G e1 x u z -> oarc G e2 z v y -> 
+    ostep G ((G \ z) ∔ [x,u·lv G z·v,y])
+| ostep_e0 G x e : 
+    src G e = x -> tgt G e = x ->
+    ostep G ((del_edges G [fset e])[adt x <- [1∥le G e]])
+| ostep_e2 G x y e1 e2 u v : 
+    oarc G e1 x u y -> oarc G e2 x v y ->
+    ostep G ((del_edges G [fset e1;e2]) ∔ [x,u∥v,y]).
 
+Inductive osteps: pre_graph -> pre_graph -> Type@{S} :=
+  | oliso_step:    CRelationClasses.subrelation oliso osteps
+  | ostep_step:    CRelationClasses.subrelation ostep osteps
+  | osteps_trans : CRelationClasses.Transitive osteps.
 
-Lemma ostep_of (G H : lgraph) :
-  step G H -> Σ H' : pre_graph, ostep (open G) H' * (H' ⩭ open H).
-Proof.
-  case => {G H}.
-  - move => G x z e Hz xDz u arc_e at_z. eexists; split.
-    + apply: ostep_v1. 3: apply: oarc_open arc_e.  
-      admit. admit. admit.
-    + 
+Lemma oliso_stepL G G' H : G ⩭ G' -> osteps G' H -> osteps G H.
 Admitted.
+
+Lemma ostep_stepL G G' H : ostep G G' -> osteps G' H -> osteps G H.
+Admitted.
+
+Lemma oliso_stepR G H H' : oliso H H' -> osteps G H' -> osteps G H.
+Admitted.
+
+
+Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left associativity) : open_scope.
+
+Lemma edges_at_add_vertex (G : pre_graph) x a : x \notin vset G -> 
+  edges_at (add_vertex G x a) x = fset0.
+Admitted.
+
+Lemma edges_at_add_edge (G : pre_graph) x y e u : e \notin eset G -> 
+  edges_at (add_edge' G e x u y) y = e |` edges_at G y.
+Admitted.
+
+Lemma pIO_add_vertex (G : pre_graph) x a : pIO (add_vertex G x a) = pIO G. done. Qed.
+Lemma pIO_add_edge (G : pre_graph) e x u y : pIO (add_edge' G e x u y) = pIO G. done. Qed.
+Definition pIO_add := (pIO_add_edge,pIO_add_vertex).
+
+Lemma pIO_fresh (G : pre_graph) (isG : is_graph G) x : 
+  x \notin vset G -> x \notin pIO G.
+Proof. apply: contraNN. rewrite !inE. case/orP => /eqP ->; [exact: p_inP|exact: p_outP]. Qed.
+
+Lemma oarc_add_edge (G : pre_graph) e x y u : oarc (G ∔ [e,x,u,y]) e x u y. 
+Proof. by left; split; rewrite /= update_eq. Qed.
+
+Lemma add_edge_del_vertex (G : pre_graph) e x u y : G ∔ [e,x,u,y] \ y ≡G G \ y.
+Admitted.
+
+Lemma add_vertexK (G : pre_graph) x a : add_vertex G x a \ x ≡G G.
+Admitted.
+
+Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. done. Qed.
+
+Lemma osteps_of (G H : lgraph) : step G H -> osteps (open G) (open H).
+Proof with eauto with typeclass_instances.
+  case => {G H}.
+  - admit. (* do we really want the v0 rule? *)
+  - move => G x u a.
+    apply: oliso_stepL (open_add_edge _ _ _) _.
+    apply: oliso_stepL. apply: add_edge_cong. apply open_add_vertex. 
+    rewrite !open_add_vertexE. 
+    apply: oliso_stepR. apply open_add_test.
+    rewrite /add_edge. set z := fresh (vset _). set e := fresh (eset _). 
+    apply: ostep_stepL. apply: (@ostep_v1 _ (inj_v x) z e u).
+    + by rewrite edges_at_add_edge ?edges_at_add_vertex ?freshP // fsetU0.
+    + rewrite !pIO_add. by rewrite pIO_fresh // freshP.
+    + exact: oarc_add_edge.
+    + admit.
+    + set b := [dom _]. apply: oliso_step. apply weqG_oliso...
+      { admit. }
+      rewrite -del_vertex_add_test add_edge_del_vertex add_vertexK. 
+      by rewrite /b/= updateE.
+  - admit.
+  - admit.
+  - admit.
+Admitted.
+      
+Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
+  ostep G H -> steps (close G) (close H).
+Proof.
+  move => S. case: S isG isH => {G H}.
+  - move => G x z e u He Hz arc_e xDz isG isH.
+    set a := lv G z in isH *.
+    have h : close G ≅ liso.add_edge (liso.add_vertex (close (G \ z )) a) (Some (close_v x)) None u.
+    { admit. }
+    have HDz : x \in vset (G \ z). 
+    { admit. }
+    apply: cons_step h _ _. constructor. 
+    apply liso_step. rewrite -> close_add_test => //. 
+    apply: liso_of_oliso. apply: weqG_oliso. by rewrite del_vertex_add_test.
+  - admit.  
+  - admit.
+  - admit.
+Admitted.
+
+
+(* Lemma ostep_of (G H : lgraph) : *)
+(*   step G H -> Σ H' : pre_graph, ostep (open G) H' * (H' ⩭ open H). *)
+(* Proof. *)
+(*   case => {G H}. *)
+(*   - move => G x z e Hz xDz u arc_e at_z. eexists; split. *)
+(*     + apply: ostep_v1. 3: apply: oarc_open arc_e.   *)
+(*       admit. admit. admit. *)
+(*     +  *)
+(* Admitted. *)
 
 (* TOTHINK: It appears that the "additive" variant of the step
 relation (i.e., the one that never deletes anything) is more
