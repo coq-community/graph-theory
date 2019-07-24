@@ -889,17 +889,34 @@ Proof with eauto with typeclass_instances.
   - admit.
   - admit.
 Admitted.
+
+Lemma del_vertexK (G : pre_graph) (isG : is_graph G) z : 
+  add_vertex (G \ z) z (lv G z) ≡G del_edges G (edges_at G z).
+Admitted.
+
+Lemma fsvalK (T : choiceType) (A : {fset T}) (x : A) (p : fsval x \in A) : Sub (fsval x) p = x.
+Proof. exact: val_inj. Qed.
+
       
 Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
   ostep G H -> steps (close G) (close H).
-Proof.
+Proof with eauto with typeclass_instances.
   move => S. case: S isG isH => {G H}.
   - move => G x z e u He Hz arc_e xDz isG isH.
     set a := lv G z in isH *.
+    have x_del_z : x \in vset (G \ z). admit.
+    have z_del_z : z \notin vset (G \ z). admit.
     have h : close G ≅ liso.add_edge (liso.add_vertex (close (G \ z )) a) (Some (close_v x)) None u.
-    { admit. }
-    have HDz : x \in vset (G \ z). 
-    { admit. }
+    { symmetry.
+      apply: liso_comp. apply: liso.liso_add_edge. apply: (liso_sym (close_add_vertex _ _ z_del_z)).
+      rewrite /=. 
+      set Sx := Sub _ _. set Sz := Sub z _. set G' := add_vertex _ _ _.
+      have -> : Sx = (@close_v G' _ x). { admit. }
+      have -> : Sz = (@close_v G' _ z). { admit. } 
+      apply: liso_comp (liso_sym _) _. eapply close_add_edge. 
+      apply: liso_of_oliso. apply weqG_oliso...
+      - admit.
+      - admit. }
     apply: cons_step h _ _. constructor. 
     apply liso_step. rewrite -> close_add_test => //. 
     apply: liso_of_oliso. apply: weqG_oliso. by rewrite del_vertex_add_test.
