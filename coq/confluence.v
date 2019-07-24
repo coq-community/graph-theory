@@ -436,12 +436,12 @@ Proof.
         set V := @vertex  test_setoid term_setoid (graph_of G). fold V in Hz'.
         Set Printing Implicit.
         Set Printing Coercions.
-        rewrite del_vertexCE. rewrite del_vertexCE. rewrite [val _]/=. Set 
+        rewrite del_vertexCE. rewrite del_vertexCE. rewrite [val _]/=. 
         apply: liso_comp. apply: liso_delv_adde.
         apply: liso_comp _ (liso_sym _). 
         2:{ apply: liso_delv_congr. apply: liso_sym. apply liso_adde_addt. }
         rewrite ![liso_sym _ _]/=.
-        (* hrmpf *) move: (liso_delv_proof _). 
+        (* (* hrmpf *) move: (liso_delv_proof _).  *)
         admit.
   - (* Case V1 / E1 *) admit.
   - (* Case V1 / E2 *) admit.

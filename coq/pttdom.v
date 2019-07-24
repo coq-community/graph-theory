@@ -32,11 +32,6 @@ Notation "'Σ' x .. y , p" :=
 
 Notation IO := [set input; output].
 
-Definition option2x {A B} (f: A -> B): option (option A) -> option (option B) :=
-  fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
-Definition option2x_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
-  exists (option2x f) (option2x f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
-Defined.
 
 Lemma option_bij_case A B (f: bij (option A) (option B)):
   (Σ f' : bij A B, f =1 option_bij f') +
@@ -116,94 +111,7 @@ Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
 Proof. apply (iso_liso (iso_ebij h)). Qed.
 
 
-(** Basic Operations used to express the rewrite system *)
 
-Definition add_vertex (G: lgraph) (a: test): lgraph :=
-  point (add_vertex G a) (Some input) (Some output).
-
-Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
-  point (add_edge G x y u) input output.
-Arguments add_edge: clear implicits. 
-
-Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
-  point (upd_vlabel G x (fun b => [a·b])) input output.
-Arguments add_test: clear implicits. 
-
-(** Experimental notations *)
-Definition weq_dir (b : bool) (u v : term) := cnv' b u ≡ v.
-Notation "u ≡[ b ] v" := (weq_dir b u v) (at level 31, format "u  ≡[ b ]  v").
-Notation "G ∔ [ x , u , y ]" := (add_edge G x y u) (at level 20,left associativity).
-Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
-Notation "G [ x <- a ]" := (add_test G x a) (at level 20, left associativity, format "G [ x  <-  a ]").
-
-
-(** Morphims *)
-
-(** TOTHINK: How useful are these really? *)
-Instance add_vertex_liso: Proper (liso ==> test_weq ==> liso) add_vertex.
-Proof.
-  move => G H [Iv Ie E Lv Le Is It Ii Io] a b /= weq_ab.
-  liso (option_bij Iv) Ie E; try abstract (by rewrite //= ?Ii ?Io).
-  - abstract (case => /= [x//|]; by symmetry).
-  - abstract (move => e /=; rewrite -Is; by case: (E e)).
-  - abstract (move => e /=; rewrite -It; by case: (E e)).
-Defined.
-
-Lemma add_vertex_lisoE (G H : lgraph) (l : liso G H ) a b (e : test_weq a b) :
-  (add_vertex_liso l e =1 option_bij l) * ((add_vertex_liso l e).e =1 l.e).
-Proof. rewrite /add_vertex_liso. by case: l. Qed.
-Opaque add_vertex_liso.
-
-(** Commutation Lemmas *)
-
-Tactic Notation "liso_lift" uconstr(l) := 
-  abstract (first [move => [?|]|move => ?|idtac]; try done ; apply l).
-
-Lemma add_vertexC G a b: liso (add_vertex (add_vertex G b) a) (add_vertex (add_vertex G a) b).
-Proof. 
-  liso (option2x_bij bij_id) bij_id (fun _ => false); abstract (solve [by move => [[v|]|]| done]).
-Defined.
-
-Lemma add_edgeC G x y u i j v: 
-  liso (add_edge (add_edge G x y u) i j v) (add_edge (add_edge G i j v) x y u).
-Proof.
-  liso bij_id (option2x_bij bij_id) (fun _ => false); abstract (solve [by move => [[e|]|]| done]).
-Defined.
-
-Lemma add_testC (G:lgraph) (x y :G) a b : 
-  liso (add_test (add_test G x a) y b) (add_test (add_test G y b) x a).
-Proof.
-  liso bij_id bij_id (fun _ => false); try abstract done. 
-  abstract (move => v /=; do 2 case: ifP => //=; by rewrite !dotA dotC).
-Defined.
-
-Lemma liso_add_test_edge G x y u z a : 
-  liso (add_test (add_edge G x y u) z a) (add_edge (add_test G z a) x y u).
-Proof.
-  liso bij_id bij_id (fun _ => false); done.
-Defined.
-
-Lemma liso_add_test_vertex (G:lgraph) a b x : 
-  liso (add_test (add_vertex G a) (Some x) b) (add_vertex (add_test G x b) a).
-Proof.
-  liso bij_id bij_id (fun _ => false); liso_lift void.
-Defined.
-
-(** Context Lemmas *)
-
-Lemma liso_add_edge G G' (l : liso G G') x y u : 
-  liso (add_edge G x y u) (add_edge G' (l x) (l y) u).
-Proof.
-  liso (liso_v l) (option_bij l.e) (fun e => if e is Some e' then liso_dir l e' else false).
-  all: liso_lift l.
-Defined.
-
-Lemma liso_add_test G G' (l: liso G G') x a : 
-  liso (add_test G x a) (add_test G' (l x) a).
-Proof. 
-  liso l l.e (liso_dir l); try liso_lift l.
-  abstract (move => v /=; rewrite bij_eq //; case: ifP => /= _; by rewrite (vlabel_liso l)).
-Defined.
 
 (** Other Lemmas - really needed / best format ? *)
 

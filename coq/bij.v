@@ -96,6 +96,11 @@ exists (option_map f) (option_map f^-1); abstract (case => //= x; by rewrite ?bi
 Defined.
 
 
+Definition option2x {A B} (f: A -> B): option (option A) -> option (option B) :=
+  fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
+Definition option2x_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
+  exists (option2x f) (option2x f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
+Defined.
 
 (** Useful to obtain bijections with good simplification properties *)
 Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
