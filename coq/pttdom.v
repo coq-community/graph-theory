@@ -464,7 +464,6 @@ Proof.
 Qed.
 *)
 
-
 Lemma dot_liso: Proper (liso ==> liso ==> liso) ldot.
 Admitted.
 
@@ -472,7 +471,10 @@ Lemma par_liso: Proper (liso ==> liso ==> liso) lpar.
 Admitted.
 
 Lemma cnv_liso: Proper (liso ==> liso) lcnv.
-Proof. intros F G l. liso (liso_v l) (liso_e l) (liso_dir l); apply l. Qed.
+Proof. intros F G l. liso (liso_v l) (liso_e l) (liso_dir l) ; apply l. Qed.
+
+Lemma lcnvC G : liso (lcnv (lcnv G)) G.
+Proof. case: G => G i o. rewrite /lcnv/=. apply: liso_id. Defined.
 
 Lemma dom_liso: Proper (liso ==> liso) ldom.
 Proof. intros F G l. liso (liso_v l) (liso_e l) (liso_dir l); apply l. Qed.
@@ -487,6 +489,29 @@ Proof.
     etransitivity. apply Sf, S. apply IH. 
 Qed.
 
+Instance cnv_steps: Proper (steps ==> steps) lcnv.
+Proof.
+  apply step_to_steps. by apply cnv_liso.
+  move=>F G S. eapply one_step. destruct S.
+  * apply (@step_v0 (point G output input) alpha).
+  * apply (@step_v1 (point G output input) x u alpha).
+  * apply (@step_v2 (point G output input) x y u alpha v).
+  * apply (@step_e0 (point G output input) x u).
+  * apply (@step_e2 (point G output input) x y u v).
+Qed.
+
+Instance dom_steps: Proper (steps ==> steps) ldom.
+Proof.
+  apply step_to_steps. by apply dom_liso.
+  move=>F G S. eapply one_step. destruct S.
+  * apply (@step_v0 (point G input input) alpha).
+  * apply (@step_v1 (point G input input) x u alpha).
+  * apply (@step_v2 (point G input input) x y u alpha v).
+  * apply (@step_e0 (point G input input) x u).
+  * apply (@step_e2 (point G input input) x y u v).
+Qed.
+
+
 Fixpoint mentions (A  : eqType) (l : pairs A) := flatten [seq [:: x.1;x.2] | x <- l].
 
 Definition admissible_l (G H : lgraph) (e : pairs (union G H)) := 
@@ -499,14 +524,94 @@ Definition replace_ioL (G G' H : lgraph) (e : pairs (union G H)) : pairs (union 
                    end) e.
 Arguments replace_ioL [G G' H].
 
+Lemma replace_ioE (vT eT1 eT2 :finType) s1 t1 s2 t2 lv1 lv2 le1 le2 i1 i2 o1 o2 H e : admissible_l e -> 
+   i1 = i2 -> o1 = o2 ->                                                                      
+   @replace_ioL (@LGraph (@Graph test_setoid term_setoid vT eT1 s1 t1 lv1 le1) i1 o1) 
+                (@LGraph (@Graph test_setoid term_setoid vT eT2 s2 t2 lv2 le2) i2 o2) H e = e.
+Admitted.
+
+(* Local Notation merge := (@merge test_setoid term_setoid test_monoid). *)
+
+Lemma iso_merge_add_edgeL (G H : lgraph) x y u e : 
+  iso (merge_seq (union (G ∔ [x,u,y]) H) e) 
+      (multigraph_new.add_edge (merge_seq (union G H) e) (\pi unl x) (\pi unl y) u).
+Admitted.
+
+Definition merge_add_edgeL (G H : lgraph) x y u l i o : 
+  liso (point (merge_seq (union (G ∔ [x,u,y]) H) l) i o)
+       (point (merge_seq (union G H) l) i o ∔ [\pi unl x,u,\pi unl y]).
+Admitted.
+
+Lemma merge_add_edgeLE G H x y u l i o z : @merge_add_edgeL G H x y u l i o z = z.
+Admitted.  
+
+Definition merge_add_testL (G H : lgraph) x a (l : pairs (union (G[tst x <- a]) H)) i o : 
+  liso (point (merge_seq (union (G[tst x <- a]) H) l) i o)
+       ((point (merge_seq (union G H) l) i o)[tst \pi unl x <- a]).
+Admitted.
+
+(*
+Fixpoint pmap_pairs A B (f : A -> option B) (l : pairs A) : pairs B := 
+  match l with 
+  | [::] => [::]
+  | (x,y)::l' => if (f x,f y) is (Some x',Some y') 
+                then (x',y') :: pmap_pairs f l' 
+                else pmap_pairs f l'
+  end.
+
+Fixpoint strip_SomeL A B (l : pairs ((option A) + B)) : pairs (A + B) := 
+  pmap_pairs (fun p => match p with 
+                    | inl (Some x) => Some (inl x)
+                    | inr x => Some (inr x) 
+                    | inl None => None 
+                    end) l.
+*)
+
+Definition merge_add_vertexL (G H : lgraph) a l : admissible_l l ->
+  liso (point (merge_seq (union (G ∔ a) H) l) (\pi (unl input)) (\pi (unr output)))
+       ((point (merge_seq (union G H) (replace_ioL l)) (\pi (unl input)) (\pi (unr output))) ∔ a).
+Admitted.
+
+Lemma merge_add_vertexLE (G H : lgraph) a (l : pairs(union (G ∔ a) H)) (A : admissible_l l) :
+  ((forall x, merge_add_vertexL A (\pi inl (Some x)) = Some (\pi inl x))*
+   (merge_add_vertexL A (\pi inl None) = None))%type.
+Admitted.
+
+Arguments merge_add_edgeL [G H x y u l i o].
+Arguments liso_add_edge [G G'] l [x y u].
+
+Lemma liso_add_edgeE G H l x y u z : @liso_add_edge G H l x y u z = l z. by []. Qed.
+
 Lemma steps_merge (G' G H : lgraph) (l : pairs (union G H)) : 
   admissible_l l -> step G G' -> 
   steps (point (merge_seq (union G H) l) (\pi (unl input)) (\pi (unr output)))
         (point (merge_seq (union G' H) (replace_ioL l)) (\pi (unl input)) (\pi (unr output))).
 Proof.
+  Arguments replace_ioL : clear implicits.
   move => A B. destruct B. (* why does case fail? *)
   - admit.
-  - (* need to lift add_* out of the quotient *)
+  - apply: steps_lisoL merge_add_edgeL.
+    apply: steps_lisoL. 2: apply: liso_add_edge. 2: apply (merge_add_vertexL A).
+    rewrite !merge_add_vertexLE.
+    apply: steps_stepL (step_v1 _ _ _ ) .
+    apply: liso_step.  apply: liso_sym. exact: merge_add_testL.
+  - apply: steps_lisoL merge_add_edgeL.
+    apply: steps_lisoL (liso_add_edge (merge_add_edgeL)).
+    rewrite !merge_add_edgeLE. 
+    apply: steps_lisoL (liso_add_edge (liso_add_edge (merge_add_vertexL A))).
+    rewrite [X in steps X _]/=. rewrite !merge_add_vertexLE.
+    apply: steps_stepL (step_v2 _ _ _ _ _) . 
+    exact: steps_lisoL (liso_sym merge_add_edgeL). 
+  - apply: steps_lisoL merge_add_edgeL.
+    apply: steps_stepL (step_e0 _ _).
+    apply: steps_lisoL. 2: apply liso_sym. 2: apply: merge_add_testL.
+    by rewrite replace_ioE.
+  - apply: steps_lisoL merge_add_edgeL.
+    apply: steps_lisoL (liso_add_edge (merge_add_edgeL)).
+    rewrite !merge_add_edgeLE.
+    apply: steps_stepL (step_e2 _ _ _ _).
+    apply: steps_lisoL. 2: apply liso_sym. 2: simpl. 2:exact merge_add_edgeL.
+    by rewrite replace_ioE.
 Admitted.
 
 Lemma step_IO G G' : step G G' -> (input == output :> G) = (input == output :> G').
@@ -519,12 +624,14 @@ Proof.
   - move => G G' stp_G_G'. rewrite /ldot. etransitivity. apply: (@steps_merge G') => //=.
     + rewrite /admissible_l/=. by rewrite !inE eqxx.
     + by rewrite /replace_ioL/= eqxx. 
-Qed.  
+Qed.
 
 (* This should follow with [dot_steps_l and cnv_steps] *)
 Lemma dot_steps_r G G' H: steps G G' -> steps (ldot H G) (ldot H G').
 Proof.
-  apply step_to_steps. by apply dot_liso.
+  apply step_to_steps; first by apply dot_liso. 
+  move => {G G'} G G' step_G_G'. 
+  etransitivity. apply liso_step, (liso_sym (lcnvC _)).  
 Admitted.
 
 Instance dot_steps: Proper (steps ==> steps ==> steps) ldot.
@@ -561,27 +668,6 @@ Proof.
   repeat intro. by etransitivity; [apply par_steps_l | apply par_steps_r].
 Qed.
 
-Instance cnv_steps: Proper (steps ==> steps) lcnv.
-Proof.
-  apply step_to_steps. by apply cnv_liso.
-  move=>F G S. eapply one_step. destruct S.
-  * apply (@step_v0 (point G output input) alpha).
-  * apply (@step_v1 (point G output input) x u alpha).
-  * apply (@step_v2 (point G output input) x y u alpha v).
-  * apply (@step_e0 (point G output input) x u).
-  * apply (@step_e2 (point G output input) x y u v).
-Qed.
-
-Instance dom_steps: Proper (steps ==> steps) ldom.
-Proof.
-  apply step_to_steps. by apply dom_liso.
-  move=>F G S. eapply one_step. destruct S.
-  * apply (@step_v0 (point G input input) alpha).
-  * apply (@step_v1 (point G input input) x u alpha).
-  * apply (@step_v2 (point G input input) x y u alpha v).
-  * apply (@step_e0 (point G input input) x u).
-  * apply (@step_e2 (point G input input) x y u v).
-Qed.
 
 Proposition reduce (u: term): steps (lgraph_of_term u) (lgraph_of_nf_term (nf u)).
 Proof.
