@@ -308,6 +308,7 @@ Definition close := Eval hnf in
 End Close.
 Arguments close G [_].
 
+(** tracing vertices through the closing operation *)
 Definition close_v (G : pre_graph) (graph_G : is_graph G) (x : VT) : close G :=
   match @idP (x \in vset G) with
   | ReflectT p => Sub x p
@@ -335,7 +336,7 @@ liso (imfset_bij (@inj_v_inj G))
 Defined.
 
 Lemma openKE (G : lgraph) (x : G) :
-  openK G x = close_v (inj_v x).
+  openK G x = close_v (inj_v x) :> close (open G).
 Proof. 
   rewrite /close_v /=. case: {-}_ /idP => [p|np]; first exact: val_inj.
   by rewrite in_imfsetT in np.
@@ -456,9 +457,13 @@ Admitted.
 Lemma pIO_No x : x \notin pIO -> p_out G != x.
 Admitted.
 
+(** Making [e \in eset G] part of the definition of oarc allows us to mostly avoid
+explicitly mentioning this assumption in the step relation. Moreover,
+it avoids spurious lemmas such as [oarc G e x u y -> oarc (G \ z) e x u y] *)
 Definition oarc e x u y := 
-  [/\ src G e = x, tgt G e = y & le G e ≡ u] \/
-  [/\ tgt G e = x, src G e = y & le G e ≡ u°].
+  e \in eset G /\ 
+  ([/\ src G e = x, tgt G e = y & le G e ≡ u] \/
+   [/\ tgt G e = x, src G e = y & le G e ≡ u°]).
 
 End PreGraphTheory.
 
@@ -496,6 +501,8 @@ Definition add_vertex (G : pre_graph) (x : VT) a :=
      p_in := p_in G;
      p_out := p_out G |}.
 
+Notation "G  ∔  [ x , a ]" := (add_vertex G x a) (at level 20) : open_scope.
+
 Global Instance add_vertex_graph (G : pre_graph) `{graph_G : is_graph G} (x : VT) a : 
   is_graph (add_vertex G x a).
 Admitted.
@@ -512,8 +519,10 @@ Definition del_edges (G : pre_graph) (E : {fset ET}) :=
 
 Global Instance del_edges_graph (G : pre_graph) `{graph_G : is_graph G} (E : {fset ET}) :
   is_graph (del_edges G E).
-Admitted.
-
+Proof. 
+  split; try by apply graph_G. 
+  all: move => e /fsetDP [He _]; by apply graph_G.
+Qed.
 
 Definition add_edge' (G : pre_graph) (e:ET) x u y :=
   {| vset := vset G;
@@ -586,7 +595,7 @@ Proof.
   - by rewrite !edges_at_del fsetDDD fsetUC -fsetDDD.
 Qed.
 
-Lemma add_testC (G H : pre_graph) x y a b :
+Lemma add_testC (G : pre_graph) x y a b :
   G[adt x <- a][adt y <- b] ≡G G[adt y <- b][adt x <- a].
 Proof.
   split => //= z. 
@@ -617,8 +626,6 @@ Lemma add_edge_test (G : pre_graph) x y z u a :
 Proof. done. Qed.
 
 (** ** Morphism Lemmas *)
-
-
 
 Instance add_edge_morphism : Proper (weqG ==> eq ==> weq ==> eq ==> weqG) add_edge.
 Proof. 
@@ -673,10 +680,8 @@ Admitted.
 
 Arguments freshP [E].
 
-Lemma close_add_edge (G : pre_graph) (x y : VT) u 
-  (graph_G : is_graph G) (graph_G' : is_graph (add_edge G x u y)) : 
-  close (add_edge G x u y) 
-≅ liso.add_edge (close G) (close_v x) (close_v y) u.
+Lemma close_add_edge (G : pre_graph) (x y : VT) u (isG : is_graph G) (isG' : is_graph (G ∔ [x, u, y])) : 
+  close (G ∔ [x, u, y]) ≅ close G ∔ [close_v x, u, close_v y].
 Proof.
   apply: liso_sym. 
   liso (bij_id) (fresh_bij bij_id freshP) (fun => false) => //. 
@@ -811,24 +816,27 @@ Admitted.
 Definition add_edge_cong (G H : pre_graph) (h : G ⩭ H) x u y : G ∔ [x,u,y] ⩭ H ∔ [h x,u,h y].
 Admitted.
 
-(** * Step relation (TODO) *)
+(** * Open Step relation  *)
 
-Delimit Scope open_scope with O.
+Section ostep.
+Implicit Types (x y z : VT) (e : ET).
 
-Inductive ostep : pre_graph -> pre_graph -> Type := 
-| ostep_v1 (G : pre_graph) x z e u : 
+(** We turn the first argument into a parameter, this keeps
+case/destruct from introducing a new name for G *)
+Variant ostep (G : pre_graph) : pre_graph -> Type := 
+| ostep_v1 x z e u : 
     edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
     ostep G (add_test G  x [dom(u·lv G z)] \ z)
-| ostep_v2 (G : pre_graph) x y z e1 e2 u v : 
+| ostep_v2 x y z e1 e2 u v : 
     edges_at G z = [fset e1;e2] -> z \notin pIO G -> x != z -> y != z ->
     oarc G e1 x u z -> oarc G e2 z v y -> 
-    ostep G ((G \ z) ∔ [maxn e1 e1, x,u·lv G z·v,y])
-| ostep_e0 G x e : 
-    src G e = x -> tgt G e = x ->
+    ostep G ((G \ z) ∔ [maxn e1 e2, x,u·lv G z·v,y])
+| ostep_e0 x e : 
+    e \in eset G -> src G e = x -> tgt G e = x ->
     ostep G ((del_edges G [fset e])[adt x <- [1∥le G e]])
-| ostep_e2 G x y e1 e2 u v : 
+| ostep_e2 x y e1 e2 u v : 
     oarc G e1 x u y -> oarc G e2 x v y ->
-    ostep G ((del_edges G [fset e1;e2]) ∔ [x,u∥v,y]).
+    ostep G ((del_edges G [fset e1;e2]) ∔ [maxn e1 e2,x,u∥v,y]).
 
 Inductive osteps: pre_graph -> pre_graph -> Type@{S} :=
   | oliso_step:    CRelationClasses.subrelation oliso osteps
@@ -861,15 +869,106 @@ Lemma pIO_fresh (G : pre_graph) (isG : is_graph G) x :
 Proof. apply: contraNN. rewrite !inE. case/orP => /eqP ->; [exact: p_inP|exact: p_outP]. Qed.
 
 Lemma oarc_add_edge (G : pre_graph) e x y u : oarc (G ∔ [e,x,u,y]) e x u y. 
-Proof. by left; split; rewrite /= update_eq. Qed.
+Proof. 
+  split. 
+  - by rewrite !inE eqxx.
+  - by left; split; rewrite /= update_eq. 
+Qed.
 
+
+Lemma oarc_del_vertex (G : pre_graph) z e x y u : 
+  e \notin edges_at G z -> oarc G e x u y -> oarc (G \ z) e x u y.
+Proof. move => Iz [edge_e H]. apply: conj H. by rewrite inE Iz. Qed.
+  
 Lemma add_edge_del_vertex (G : pre_graph) e x u y : G ∔ [e,x,u,y] \ y ≡G G \ y.
 Admitted.
 
 Lemma add_vertexK (G : pre_graph) x a : add_vertex G x a \ x ≡G G.
 Admitted.
 
+Lemma edges_at_test (G : pre_graph) x a z : edges_at G[adt x <- a] z = edges_at G z. done. Qed.
+
 Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. done. Qed.
+
+Definition step_order G H (s: ostep G H): nat :=
+  match s with
+  | ostep_v1 _ _ _ _ _ _ _ _ => 1
+  | ostep_v2 _ _ _ _ _ _ _ _ _ _ _ _ _ => 2
+  | ostep_e0 _ _ _ _ _ => 3
+  | ostep_e2 _ _ _ _ _ _ _ _ => 4
+  end.
+
+Definition oconnected (G : pre_graph) (isG : is_graph G) : Prop. 
+Admitted.
+Arguments oconnected G [isG].
+
+Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).
+Proof. case: b => //=. by move/(_ isT) => H /H. Qed.
+
+Lemma contraPneq (T:eqType) (a b : T) (P : Prop) : (a = b -> ~ P) -> (P -> a != b).
+Proof. move => A. by apply: contraPN => /eqP. Qed.
+
+Lemma no_duo (G : pre_graph) (isG : is_graph G) x y : x != y ->
+  edges_at G x = edges_at G y -> x \notin pIO G -> y \notin pIO G -> ~ oconnected G.
+Admitted.
+
+Proposition local_confluence (G : pre_graph) (isG : is_graph G) Gl Gr : 
+  oconnected G ->
+  ostep G Gl -> ostep G Gr -> Σ Gl' Gr', osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr'). 
+Proof.
+  move => conn_G S1 S2.
+  wlog : Gl Gr S1 S2 / step_order S1 <= step_order S2.
+  { move => W. case/orb_sum: (leq_total (step_order S1) (step_order S2)) => SS.
+    - exact: W SS.
+    - case: (W _ _ _ _ SS) => H' [G'] [[stpG stpH] E]. 
+      do 2 eexists; split; first split. 1-2:eassumption. by symmetry. }
+  (* naming convention: primes on the second/right rule *)
+  destruct S1 as [x  z  e  u  Iz  zIO  arc_e  xDz |
+                  x y z e1 e2 u v Iz zIO xDz yDz arc_e1 arc_e2|
+                  x e edge_e src_e tgt_e|
+                  x y e1 e2 u v arc_e1 arc_e2];
+  destruct S2 as [x' z' e' u' Iz' zIO' arc_e' xDz'|
+                  x' y' z' e1' e2' u' v' Iz' zIO' xDz' yDz' arc_e1' arc_e2'|
+                  x' e' edge_e' src_e' tgt_e'|
+                  x' y' e1' e2' u' v' arc_e1' arc_e2'];
+  rewrite //=; move => CASE_TAG.
+  - (* V1 / V1 *) 
+    case: (altP (z =P z')) => [E|D]. 
+    + (* same instance *)
+      subst z'. 
+      have/eqP ? : e == e'. { admit. }
+      subst e'.
+      admit.
+    + have [E Z1 Z2] : [/\ e != e', z != x' & z' != x].
+      { have E : e != e'. 
+        { apply: contraPneq conn_G => ?. subst e. apply: no_duo zIO zIO' => //. congruence. }
+        (* otherwise z-e-z' is a disconnected component *) 
+        admit. }
+      do 2 eexists. split. split. 
+      * eapply ostep_step, ostep_v1. 3: eapply oarc_del_vertex. 4: apply arc_e'.
+        all: try done. 
+        by rewrite edges_at_del /= !edges_at_test Iz' Iz mem_fsetD1 // inE.
+        by rewrite edges_at_test Iz inE eq_sym.
+      * eapply ostep_step, ostep_v1. 3: eapply oarc_del_vertex. 4: apply arc_e.
+        all: try done. 
+        by rewrite edges_at_del /= !edges_at_test Iz' Iz mem_fsetD1 // inE eq_sym.
+        by rewrite edges_at_test Iz' inE.
+      * by rewrite !del_vertex_add_test del_vertexC add_testC /= !updateE. 
+  - (* V1 / V2 *) admit.
+  - (* V1 / E0 *) admit.
+  - (* V1 / E2 *) admit.
+  - (* V2 / V2 *) admit.
+  - (* V2 / E0 *) admit.
+  - (* V2 / E2 *) admit.
+  - (* E0 / E0 *) admit.
+  - (* E0 / E2 *) admit.
+  - (* E2 / E2 *) admit.
+Admitted.
+    
+
+
+
+(** connecting the open step relation with the additive one on typed graphs *)
 
 Lemma osteps_of (G H : lgraph) : step G H -> osteps (open G) (open H).
 Proof with eauto with typeclass_instances.
