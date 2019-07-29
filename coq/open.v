@@ -233,6 +233,9 @@ Class is_graph (G : pre_graph) :=
     p_inP : p_in G \in vset G;
     p_outP : p_out G \in vset G}.
 
+Bind Scope open_scope with pre_graph.
+Delimit Scope open_scope with O.
+
 (** ** Opening and closing of type-based graphs *)
 
 Section Open.
@@ -471,8 +474,7 @@ Definition del_vertex (G : pre_graph) (x : VT) :=
      p_in := p_in G;
      p_out := p_out G |}.
 
-
-Notation "G \ x" := (del_vertex G x) (at level 29,left associativity).
+Notation "G \ x" := (del_vertex G x) (at level 29,left associativity) : open_scope.
 
 Global Instance del_vertex_graph (G : pre_graph) `{graph_G : is_graph G} (x : VT) `{Hx : box (x \notin pIO G)} : 
   is_graph (del_vertex G x).
@@ -525,6 +527,9 @@ Definition add_edge' (G : pre_graph) (e:ET) x u y :=
 
 Definition add_edge (G : pre_graph) x u y := add_edge' G (fresh (eset G)) x u y.
 
+Notation "G ∔ [ x , u , y ]" := (add_edge G x u y) (at level 20,left associativity) : open_scope.
+Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left associativity) : open_scope.
+
 (* TOTHINK: This is not an instance because [x \in vset G] is not
 inferrable. One could box it though and make it inferrable through
 some external hints *)
@@ -542,11 +547,16 @@ Definition add_test (G : pre_graph) (x:VT) (a:test) :=
      p_in := p_in G;
      p_out := p_out G |}.
 
+(* TODO: all notations for graph operations should be left associative
+and at the same level, because this is the only way in which they can
+be parsed *)
+
 Instance add_test_graph (G : pre_graph) `{graph_G : is_graph G} x a :
   is_graph (add_test G x a). 
 Proof. split => //=; apply graph_G. Qed.
 
-Notation "G [adt x <- a ]" := (add_test G x a) (at level 2, left associativity, format "G [adt  x  <-  a ]").
+Notation "G [adt x <- a ]" := (add_test G x a) 
+   (at level 2, left associativity, format "G [adt  x  <-  a ]") : open_scope.
 
 (** ** Properties of the operations *)
 
@@ -569,8 +579,8 @@ Qed.
 
 (** ** Commutation Lemmas *)
 
-Lemma del_vertexC (G : pre_graph) (x y : VT) : G \ x \ y = G \ y \ x.
-Proof.
+Lemma del_vertexC (G : pre_graph) (x y : VT) : (G \ x \ y)%O = (G \ y \ x)%O. 
+Proof. 
   rewrite /del_vertex/=; f_equal. 
   - by rewrite fsetDDl fsetUC -fsetDDl.
   - by rewrite !edges_at_del fsetDDD fsetUC -fsetDDD.
@@ -587,11 +597,7 @@ Proof.
     by rewrite eqxx in xy. all: by rewrite !updateE.
 Qed.
 
-(* TODO: all notations for graph operations should be left associative
-and at the same level, because this is the only way in which they can
-be parsed *)
-Notation "G ∔ [ x , u , y ]" := (add_edge G x u y) (at level 20,left associativity) : open_scope.
-Open Scope open_scope.
+
 
 Lemma del_vertex_add_test (G : pre_graph) z x a : 
   (G \ z)[adt x <- a] ≡G G[adt x <- a] \ z.
@@ -735,8 +741,8 @@ Defined.
 Set Nested Proofs Allowed.
 
 Lemma open_add_vertexE : 
-  ((forall a, open_add_vertex a (@inj_v (G ∔ a) None) = fresh (vset (open G)))
-  *(forall a x, open_add_vertex a (@inj_v (G ∔ a) (Some x)) = @inj_v G x))%type. 
+  ((forall a, open_add_vertex a (@inj_v (G ∔ a)%L None) = fresh (vset (open G)))
+  *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%L (Some x)) = @inj_v G x))%type. 
 Proof. 
   split => *.
   all: rewrite /= vfun_bodyE /=.
@@ -744,7 +750,7 @@ Proof.
 Qed.
 
 Lemma open_add_edge (x y : G) u : 
-  open (liso.add_edge G x y u) ⩭ add_edge (open G) (inj_v x) u (inj_v y).
+  open (G ∔ [x, u, y]) ⩭ open G ∔ [inj_v x, u, inj_v y].
 Proof. 
   have X : is_graph (add_edge (open G) (inj_v x) u (inj_v y)). 
   { exact: add_edge_graph. }
@@ -807,6 +813,8 @@ Admitted.
 
 (** * Step relation (TODO) *)
 
+Delimit Scope open_scope with O.
+
 Inductive ostep : pre_graph -> pre_graph -> Type := 
 | ostep_v1 (G : pre_graph) x z e u : 
     edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
@@ -814,7 +822,7 @@ Inductive ostep : pre_graph -> pre_graph -> Type :=
 | ostep_v2 (G : pre_graph) x y z e1 e2 u v : 
     edges_at G z = [fset e1;e2] -> z \notin pIO G -> x != z -> y != z ->
     oarc G e1 x u z -> oarc G e2 z v y -> 
-    ostep G ((G \ z) ∔ [x,u·lv G z·v,y])
+    ostep G ((G \ z) ∔ [maxn e1 e1, x,u·lv G z·v,y])
 | ostep_e0 G x e : 
     src G e = x -> tgt G e = x ->
     ostep G ((del_edges G [fset e])[adt x <- [1∥le G e]])
@@ -835,9 +843,6 @@ Admitted.
 
 Lemma oliso_stepR G H H' : oliso H H' -> osteps G H' -> osteps G H.
 Admitted.
-
-
-Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left associativity) : open_scope.
 
 Lemma edges_at_add_vertex (G : pre_graph) x a : x \notin vset G -> 
   edges_at (add_vertex G x a) x = fset0.
@@ -871,6 +876,7 @@ Proof with eauto with typeclass_instances.
   case => {G H}.
   - admit. (* do we really want the v0 rule? *)
   - move => G x u a.
+    (* test *)
     apply: oliso_stepL (open_add_edge _ _ _) _.
     apply: oliso_stepL. apply: add_edge_cong. apply open_add_vertex. 
     rewrite !open_add_vertexE. 
@@ -906,9 +912,9 @@ Proof with eauto with typeclass_instances.
     set a := lv G z in isH *.
     have x_del_z : x \in vset (G \ z). admit.
     have z_del_z : z \notin vset (G \ z). admit.
-    have h : close G ≅ liso.add_edge (liso.add_vertex (close (G \ z )) a) (Some (close_v x)) None u.
+    have h : close G ≅ close (G \ z) ∔ a ∔ [Some (close_v x), u, None].
     { symmetry.
-      apply: liso_comp. apply: liso.liso_add_edge. apply: (liso_sym (close_add_vertex _ _ z_del_z)).
+      apply: liso_comp. apply: liso_add_edge. apply: (liso_sym (close_add_vertex _ _ z_del_z)).
       rewrite /=. 
       set Sx := Sub _ _. set Sz := Sub z _. set G' := add_vertex _ _ _.
       have -> : Sx = (@close_v G' _ x). { admit. }

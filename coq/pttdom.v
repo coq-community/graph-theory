@@ -385,8 +385,8 @@ Proof.
   move=> G H S.
   move: G H S IH => _ H [F G FG|F__ F0 G' G FF0 FG GG] IH FH.
   - exists H; split=>//. transitivity F=>//. by apply liso_step, liso_sym.
-  - move: H FH IH FF0=> _ [F H FH|F F1 H' H FF1 FH HH] IH FF0.
-    exists G; split=>//. transitivity F. by apply liso_step, liso_sym. eauto using cons_step.
+  - move: H FH IH FF0=> _ [F H FH|F F1 H' H FF1 FH HH] IH FF0. 
+      exists G; split=>//. transitivity F. by apply liso_step, liso_sym. eauto using cons_step.
     destruct (local_confluence FG FH) as [M[GM HM]]. transitivity F=>//. by symmetry.
     destruct (fun D => IH G' D _ _ GG GM) as [L[GL ML]].
      rewrite /Wf_nat.ltof -(liso_stagnates FF0). apply /ltP. by apply step_decreases.
@@ -531,6 +531,8 @@ Lemma replace_ioE (vT eT1 eT2 :finType) s1 t1 s2 t2 lv1 lv2 le1 le2 i1 i2 o1 o2 
 Admitted.
 
 (* Local Notation merge := (@merge test_setoid term_setoid test_monoid). *)
+
+Local Open Scope lgraph_scope.
 
 Lemma iso_merge_add_edgeL (G H : lgraph) x y u e : 
   iso (merge_seq (union (G ∔ [x,u,y]) H) e) 

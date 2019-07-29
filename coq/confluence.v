@@ -25,6 +25,8 @@ Notation "'Σ' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p%type)) ..))
   (at level 200, x binder, y binder, right associativity).
 
+Local Open Scope lgraph_scope.
+
 Definition IO (G: lgraph) : {set G} := [set input; output].
 Arguments IO [G].
 

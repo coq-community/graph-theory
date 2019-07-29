@@ -192,6 +192,9 @@ Arguments input [_].
 Arguments output [_].
 Notation point G := (@LGraph G).
 
+Bind Scope lgraph_scope with lgraph.
+Delimit Scope lgraph_scope with L.
+
 Definition label (G: lgraph) (x: vertex G + edge G): term :=
   match x with inl v => vlabel v | inr e => elabel e end.
 
@@ -296,21 +299,31 @@ Qed.
 
 Definition add_vertex (G: lgraph) (a: test): lgraph :=
   point (add_vertex G a) (Some input) (Some output).
+Arguments add_vertex : clear implicits.
 
 Definition add_edge (G: lgraph) (x y: G) (u: term): lgraph :=
   point (add_edge G x y u) input output.
-Arguments add_edge: clear implicits. 
+Arguments add_edge : clear implicits.
 
 Definition add_test (G: lgraph) (x: G) (a: test): lgraph :=
   point (upd_vlabel G x (fun b => [a·b])) input output.
-Arguments add_test: clear implicits. 
+Arguments add_test : clear implicits.
 
 (** Experimental notations *)
 Definition weq_dir (b : bool) (u v : term) := cnv' b u ≡ v.
-Notation "u ≡[ b ] v" := (weq_dir b u v) (at level 31, format "u  ≡[ b ]  v").
-Notation "G ∔ [ x , u , y ]" := (add_edge G x y u) (at level 20,left associativity).
-Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
-Notation "G [tst x <- a ]" := (add_test G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]").
+Notation "u ≡[ b ] v" := 
+  (weq_dir b u v) (at level 31, format "u  ≡[ b ]  v").
+Notation "G ∔ [ x , u , y ]" := 
+  (add_edge G x y u) (at level 20,left associativity) : lgraph_scope.
+Notation "G ∔ a" := 
+  (add_vertex G a) (at level 20, left associativity) : lgraph_scope.
+Notation "G [tst x <- a ]" := 
+  (add_test G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]") : lgraph_scope.
+
+
+
+
+
 
 
 (** TOTHINK: How useful are these really? *)
