@@ -875,6 +875,24 @@ Proof.
   - by left; split; rewrite /= update_eq. 
 Qed.
 
+Lemma oarc_edge_atL (G : pre_graph) e x y u : 
+  oarc G e x u y -> e \in edges_at G x.
+Proof. by case => E [[A B C]|[A B C]]; rewrite !inE E /incident ?A ?B eqxx. Qed.
+
+Instance oarc_morphism : Proper (weqG ==> eq ==> eq ==> weq ==> eq ==> iff) oarc.
+Admitted.
+
+Lemma oarc_cnv (G : pre_graph) e x y u : oarc G e x u y <-> oarc G e y u° x. 
+Proof. 
+  wlog suff W : x u y / oarc G e x u y -> oarc G e y u° x. 
+  { split; first exact: W. move/W. by rewrite cnvI. }
+  case => E [[A B C]|[A B C]]; split => //; [right|left]. 
+  all: rewrite ?A ?B; split => //. by rewrite cnvI.
+Qed.
+
+Lemma oarc_edge_atR (G : pre_graph) e x y u : 
+  oarc G e x u y -> e \in edges_at G y.
+Proof. rewrite oarc_cnv. exact: oarc_edge_atL. Qed.
 
 Lemma oarc_del_vertex (G : pre_graph) z e x y u : 
   e \notin edges_at G z -> oarc G e x u y -> oarc (G \ z) e x u y.
@@ -912,6 +930,20 @@ Lemma no_duo (G : pre_graph) (isG : is_graph G) x y : x != y ->
   edges_at G x = edges_at G y -> x \notin pIO G -> y \notin pIO G -> ~ oconnected G.
 Admitted.
 
+Lemma eqfset1 (T : choiceType) (x y : T) : ([fset x] == [fset y]) = (x == y).
+Admitted.
+
+Lemma oarc_injL (G : pre_graph) e x x' y u u' : 
+  oarc G e x u y -> oarc G e x' u' y -> x = x'.
+Admitted.
+
+Lemma oarc_weq (G : pre_graph) e x y u u' : 
+  oarc G e x u y -> oarc G e x u' y -> u ≡ u'.
+Admitted.
+
+Lemma osteps_refl (G : pre_graph) (isG : is_graph G) : osteps G G.
+Proof. apply: oliso_step. do 2 eexists. exact: liso_id. Qed.
+
 Proposition local_confluence (G : pre_graph) (isG : is_graph G) Gl Gr : 
   oconnected G ->
   ostep G Gl -> ostep G Gr -> Σ Gl' Gr', osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr'). 
@@ -936,14 +968,20 @@ Proof.
     case: (altP (z =P z')) => [E|D]. 
     + (* same instance *)
       subst z'. 
-      have/eqP ? : e == e'. { admit. }
-      subst e'.
-      admit.
-    + have [E Z1 Z2] : [/\ e != e', z != x' & z' != x].
-      { have E : e != e'. 
-        { apply: contraPneq conn_G => ?. subst e. apply: no_duo zIO zIO' => //. congruence. }
-        (* otherwise z-e-z' is a disconnected component *) 
-        admit. }
+      have/eqP ? : e == e' by rewrite -eqfset1 -Iz -Iz'. subst e'. 
+      have ? : x = x' by apply: oarc_injL arc_e arc_e'. subst x'.
+      do 2 eexists; split;[split|]. 
+      * exact: osteps_refl.
+      * exact: osteps_refl.
+      * suff -> : test_weq [dom (u·lv G z)] [dom (u'·lv G z)] by [].
+        by rewrite /test_weq/= (oarc_weq arc_e arc_e').
+    + (* distinct instances *)
+      have E : e != e'. 
+      { apply: contraPneq conn_G => ?. subst e. apply: no_duo zIO zIO' => //. congruence. }
+      gen have H,Hz : z z' x x' e e' u u' Iz Iz' arc_e' arc_e E {xDz xDz' zIO zIO' D} / z != x'. 
+      { apply: contraTneq E => ?. subst x'. 
+        rewrite negbK eq_sym -in_fset1 -Iz. apply: oarc_edge_atL arc_e'. }
+      have {H} Hz' : z' != x by apply: H arc_e arc_e' _ ; rewrite // eq_sym.
       do 2 eexists. split. split. 
       * eapply ostep_step, ostep_v1. 3: eapply oarc_del_vertex. 4: apply arc_e'.
         all: try done. 
@@ -964,7 +1002,6 @@ Proof.
   - (* E0 / E2 *) admit.
   - (* E2 / E2 *) admit.
 Admitted.
-    
 
 
 
