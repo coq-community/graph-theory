@@ -869,6 +869,9 @@ Admitted.
 
 Lemma edges_at_add_edge (G : pre_graph) x y e u : e \notin eset G -> 
   edges_at (add_edge' G e x u y) y = e |` edges_at G y.
+Proof.
+  move => _.
+  rewrite /edges_at/=. 
 Admitted.
 
 Lemma pIO_add_vertex (G : pre_graph) x a : pIO (add_vertex G x a) = pIO G. done. Qed.
@@ -1072,6 +1075,43 @@ Proof.
   move => D D' A B.
 Admitted.
   
+Lemma maxn_fsetD n m (A : {fset nat}) : maxn n m \notin A `\` [fset n; m]. Admitted.
+
+Lemma edges_atC G e x y u : edges_at (G ∔ [e,x,u,y]) =1 edges_at (G ∔ [e,y,u°,x]).
+Admitted.
+
+Lemma add_edge_del_edges (G : pre_graph) e E x y u : 
+  e \notin E -> G ∔ [e,x,u,y] - E ≡G (G - E) ∔ [e,x,u,y]. 
+Proof. move => He. split => //=. by rewrite fsetUDl mem_fsetD1. Qed.
+
+Lemma del_edges_vertex (G : pre_graph) E z : 
+  (G - E) \ z ≡G G \ z - E.
+Proof. split => //=. by rewrite edges_at_del_edges fsetDDD fsetDDl fsetUC. Qed.
+
+Lemma add_test_edge (G : pre_graph) e x y z a u : 
+  (G[adt z <- a] ∔ [e,x,u,y])%O = ((G ∔ [e,x,u,y])[adt z <- a])%O.
+Proof. done. Qed.
+
+Lemma del_edges_edges (G : pre_graph) E E' : 
+  G - E - E' ≡G G - (E `|` E').
+Proof. split => //=. by rewrite fsetDDl. Qed.
+
+
+(*TOTHINK: this looks messier than needed *)
+Lemma edges_replace (G : pre_graph) (z z' : VT) (e1 e2 e2' : ET) (x : VT) (u : term) :
+    edges_at G z = [fset e1; e2] -> edges_at G z' = [fset e2; e2'] ->
+    e1 != e2 -> e2 != e2' -> e1 != e2' -> 
+    edges_at ((G \ z) ∔ [maxn e1 e2, x, u, z']) z' = [fset maxn e1 e2; e2'].
+Proof.
+  move => Iz Iz' /negbTE E1 /negbTE E2 /negbTE E3. 
+  rewrite edges_at_add_edge /= ?Iz ?maxn_fsetD //.
+  suff -> : edges_at (G \ z) z' = [fset e2'] by [].
+  rewrite edges_at_del Iz Iz'. apply/fsetP => e. rewrite !inE negb_or -andbA.
+  apply/and3P/idP => [[A B /orP [/eqP C|/eqP C]]|/eqP->] ; subst. 
+  - by rewrite eqxx in B. 
+  - by rewrite eq_sym E3 in A.
+  - by rewrite eqxx orbT eq_sym E3 eq_sym E2.
+Qed.
 
 Proposition local_confluence (G : pre_graph) (isG : is_graph G) Gl Gr : 
   oconnected G ->
@@ -1228,21 +1268,53 @@ Proof with eauto with typeclass_instances.
          6: apply: oarc_added_edge. 
          6: apply: oarc_add_edge. 6: apply: oarc_del_vertex arc_e2'. 
          all: try done. 
-         -- rewrite edges_at_add_edge ?edges_at_del.
-         -- admit.
+         -- exact: edges_replace.
+         -- by case/orP : (maxn_eq e1 e2) => /eqP ->.
          -- apply: contraTneq (oarc_edge_atL arc_e1) => ->. by rewrite Iz' !inE negb_or e1De2.
+         -- by rewrite Iz !inE negb_or eq_sym E1 eq_sym.
        * eapply ostep_step,ostep_v2. 
          7: apply: oarc_added_edge.
          6: apply: oarc_add_edge. 6: apply: oarc_del_vertex arc_e1.
-         all: try done. all: admit.
+         all: try done. 
+         -- rewrite edges_atC fsetUC maxnC. apply: edges_replace; by rewrite // 1?fsetUC 1?eq_sym.
+         -- by case/orP : (maxn_eq e2 e2') => /eqP ->.
+         -- apply: contraTneq (oarc_edge_atR arc_e2') => ->.
+            by rewrite Iz !inE negb_or eq_sym E1 eq_sym.
+         -- by rewrite Iz' !inE negb_or e1De2.
        * rewrite !add_edgeKr !add_edgeKl /= del_vertexC. 
          by rewrite maxnA !dotA C.
-  - (* V2 / E0 *) admit.
+  - (* V2 / E0 *) 
+    have xDz' : z != x'. admit.
+    (* { apply: contraTneq isT => ?. subst x'. admit. } *)
+    have He : e' \notin edges_at G z. admit.
+    have He' : e' != maxn e1 e2. admit.
+    e2split. 
+    * eapply ostep_step,ostep_e0. apply: oarc_add_edge. exact: oarc_del_vertex arc_e'.
+    * eapply ostep_step,ostep_v2. 
+      6: { apply: oarc_del_edges arc_e1. 
+           rewrite inE. apply: contraNneq He => <-. by rewrite Iz !inE eqxx. }
+      6: { apply: oarc_del_edges arc_e2. 
+           rewrite inE. apply: contraNneq He => <-. by rewrite Iz !inE eqxx. }
+      all: try done. 
+      by rewrite edges_at_test edges_at_del_edges -Iz mem_fsetD1.
+    * rewrite /= !updateE //. rewrite add_edge_del_edges ?inE 1?eq_sym //. 
+      by rewrite -del_vertex_add_test del_edges_vertex add_test_edge.
   - (* V2 / E2 *) admit.
-  - (* E0 / E0 *) admit.
+  - (* E0 / E0 *)
+    case: (altP (e =P e')) => [?|xDx']; first subst e'.
+    + (* same loop *)
+      have ? : x' = x by case: (same_oarc arc_e arc_e') => [[? ? ?]|[? ? ?]]; subst.
+      subst. exact: close_same_step. 
+    + (* two independent loops *)
+      e2split.
+      * eapply ostep_step,ostep_e0. apply: oarc_del_edges arc_e'. by rewrite inE eq_sym.
+      * eapply ostep_step,ostep_e0. apply: oarc_del_edges arc_e. by rewrite inE.
+      * rewrite /=. by rewrite -!del_edges_add_test add_testC !del_edges_edges fsetUC.
   - (* E0 / E2 *) admit.
   - (* E2 / E2 *) admit.
 Admitted.
+
+  
 
 
 (** connecting the open step relation with the additive one on typed graphs *)
