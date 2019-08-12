@@ -874,6 +874,11 @@ Proof.
   rewrite /edges_at/=. 
 Admitted.
 
+Lemma edges_at_add_edge' G e x y z u : 
+  x != z -> y != z -> edges_at (G ∔ [e,x,u,y]) z = edges_at G z.
+Admitted.
+
+
 Lemma pIO_add_vertex (G : pre_graph) x a : pIO (add_vertex G x a) = pIO G. done. Qed.
 Lemma pIO_add_edge (G : pre_graph) e x u y : pIO (add_edge' G e x u y) = pIO G. done. Qed.
 Definition pIO_add := (pIO_add_edge,pIO_add_vertex).
@@ -1005,9 +1010,6 @@ Proof. apply: oliso_step. do 2 eexists. exact: liso_id. Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
-Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
-Admitted.
-
 Lemma add_edge_flip (G : pre_graph) (isG : is_graph G) e x y u v: 
   u° ≡ v ->
   x \in vset G -> y \in vset G -> G ∔ [e,x,u,y] ⩭ G ∔ [e,y,v,x].
@@ -1078,8 +1080,32 @@ Lemma fset2_cases (T : choiceType) (x y x' y' : T) : x != y -> x' != y' ->
 Proof.
   move => D D' A B.
 Admitted.
+
+Inductive maxn_cases n m : nat -> Type := 
+| MaxnR of n <= m : maxn_cases n m m
+| MaxnL of m < n : maxn_cases n m n.
+
+Lemma maxnP n m : maxn_cases n m (maxn n m).
+Proof. 
+  case: (leqP n m) => H.
+  - rewrite (maxn_idPr H). by constructor.
+  - rewrite (maxn_idPl _); [by constructor|exact: ltnW].
+Qed.
+
+Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
+Proof. case: maxnP; by rewrite !eqxx. Qed.
+
+Lemma mem_maxn n m (A : {fset nat}) : n \notin A -> m \notin A -> maxn n m \notin A.
+Proof. by case: maxnP. Qed.
+
+Lemma maxn_fset2 n m : maxn n m \in [fset n; m].
+Proof. case: maxnP; by rewrite !in_fset2 eqxx. Qed.
   
-Lemma maxn_fsetD n m (A : {fset nat}) : maxn n m \notin A `\` [fset n; m]. Admitted.
+Lemma maxn_fsetD n m (A : {fset nat}) : maxn n m \notin A `\` [fset n; m]. 
+Proof. by rewrite inE negb_and negbK maxn_fset2. Qed.
+
+Lemma fset2_maxn_neq n m x : x \notin [fset n; m] -> x != maxn n m.
+Proof. apply: contraNneq => ->. exact: maxn_fset2. Qed.
 
 Lemma edges_atC G e x y u : edges_at (G ∔ [e,x,u,y]) =1 edges_at (G ∔ [e,y,u°,x]).
 Admitted.
@@ -1108,6 +1134,9 @@ Lemma del_edges_edges (G : pre_graph) E E' :
   G - E - E' ≡G G - (E `|` E').
 Proof. split => //=. by rewrite fsetDDl. Qed.
 
+Lemma add_edge_edge G e e' x y x' y' u u' : e != e' ->
+  G ∔ [e,x,u,y] ∔ [e',x',u',y'] ≡G G ∔ [e',x',u',y'] ∔ [e,x,u,y].
+Admitted.
 
 (*TOTHINK: this looks messier than needed *)
 Lemma edges_replace (G : pre_graph) (z z' : VT) (e1 e2 e2' : ET) (x : VT) (u : term) :
@@ -1129,6 +1158,10 @@ Lemma pardot u v a : (u ∥ v)·a ≡ u ∥ v·a. Admitted.
 
 Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v.
 Proof. by rewrite -dotA A10 cnvdot cnvtst pardot. Qed.
+
+Lemma edges_at_oarc G e x y z u : 
+  e \in edges_at G z -> oarc G e x u y -> x = z \/ y = z.
+Admitted.
 
 
 Proposition local_confluence (G : pre_graph) (isG : is_graph G) Gl Gr : 
@@ -1343,15 +1376,41 @@ Proof with eauto with typeclass_instances.
       e2split.
       * eapply ostep_step,ostep_e0. apply: oarc_added_edge.
       * eapply ostep_step,ostep_v1. 3: apply: oarc_added_edge. 
-        all: try done. rewrite edges_at_add_edge ?edges_at_del_edges -Iz ?fsetDv ?fsetU0 //.
-        admit.
+        all: try done. 
+        by rewrite edges_at_add_edge ?edges_at_del_edges -Iz ?fsetDv ?fsetU0 //= Iz maxn_fsetD.
       * rewrite /= !updateE.
         rewrite -del_vertex_add_test add_edgeKr add_edge_del_edgesK ?inE ?eqxx //.
         rewrite del_vertex_edges. 
         rewrite !del_edges_vertexK ?fsubUset ?fsub1set ?Iz ?in_fset2 ?eqxx ?maxn_eq //.
         apply: add_test_morphism => //=. by rewrite /test_weq/= -Eu -Ev critical_pair1.
     + (* independent case *)
-      admit.
+      rewrite in_fset2 negb_or ![z == _]eq_sym in Hz. case/andP : Hz => xDz' yDz'.
+      gen have H,H1 : e1' u' {e1De2'} arc_e1' / e1' \notin edges_at G z.
+      { apply/negP => H. 
+        case: (edges_at_oarc H arc_e1') => ?; subst; by rewrite ?eqxx in xDz' yDz'. }
+      move: (H _ _ arc_e2') => H2 {H}.
+      have He1 : e1 \notin [fset e1'; e2']. 
+      { apply/negP. by case/fset2P => ?; subst; rewrite Iz !in_fset2 !eqxx in H1 H2. }
+      have He2 : e2 \notin [fset e1'; e2']. 
+      { apply/negP. by case/fset2P => ?; subst; rewrite Iz !in_fset2 !eqxx ?orbT in H1 H2. }
+      set e := maxn e1 e2. set e' := maxn e1' e2'.
+      have ? : e' != e. 
+      { rewrite /e /e' eq_sym. case: (maxnP e1 e2) => _; exact: fset2_maxn_neq. }
+      e2split. 
+      * eapply ostep_step,ostep_e2. 
+        3:{ apply: oarc_add_edge. exact: oarc_del_vertex arc_e2'. }
+        2:{ apply: oarc_add_edge. exact: oarc_del_vertex arc_e1'. } 
+        done.
+      * eapply ostep_step,ostep_v2. 
+        7: { apply: oarc_add_edge. exact: oarc_del_edges arc_e2. }
+        6: { apply: oarc_add_edge. exact: oarc_del_edges arc_e1. }
+        all: try done.
+        rewrite edges_at_add_edge' // edges_at_del_edges. 
+        by rewrite -fsetDDl !mem_fsetD1.
+      * rewrite /=. 
+        rewrite -del_vertex_add_edge ?[z == _]eq_sym //= ?maxn_fsetD //.
+        rewrite del_edges_vertex add_edge_edge //.
+        rewrite add_edge_del_edges //. exact: mem_maxn.
   - (* E0 / E0 *)
     case: (altP (e =P e')) => [?|xDx']; first subst e'.
     + (* same loop *)
