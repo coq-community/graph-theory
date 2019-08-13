@@ -993,6 +993,10 @@ Lemma oarc_injL (G : pre_graph) e x x' y u u' :
   oarc G e x u y -> oarc G e x' u' y -> x = x'.
 Admitted.
 
+Lemma oarc_injR (G : pre_graph) e x y y' u u' : 
+  oarc G e x u y -> oarc G e x u' y' -> y = y'.
+Admitted.
+
 Lemma oarc_weq (G : pre_graph) e x y u u' : 
   x != y -> oarc G e x u y -> oarc G e x u' y -> u ≡ u'.
 Admitted.
@@ -1248,31 +1252,48 @@ Proof with eauto with typeclass_instances.
       * eapply ostep_step, ostep_v1. 
         3: { apply: oarc_del_vertex arc_e1'. by  rewrite Iz inE. }
         all: try done.
-        rewrite edges_at_del !edges_at_test Iz Iz'. admit. 
+        rewrite edges_at_del !edges_at_test Iz Iz'. 
+        (* fset? *) by rewrite fsetDUl fsetDv fsetU0 mem_fsetD1 // inE eq_sym.
       * eapply ostep_step, ostep_v1. 
         3: exact: oarc_added_edge. 
         all: try done.
-        rewrite edges_at_add_edge ?edges_at_del. admit. admit.
+        rewrite edges_at_add_edge ?edges_at_del. 
+        -- rewrite Iz Iz'. rewrite [_ `\` _](_ : _ = fset0) ?fsetU0 //.
+           apply/eqP. by rewrite fsetD_eq0 fsub1set in_fset2 eqxx.
+        -- by rewrite /= Iz' maxn_fsetD.
       * rewrite /= updateE. set a := lv G z. set b := lv G z'. 
         rewrite -del_vertex_add_test del_vertexC add_testK. 
         rewrite -del_vertex_add_test add_edgeKr.
         apply: add_test_morphism => //. rewrite /test_weq/=. 
         by rewrite dotA -A13 !dotA (oarc_weq _ arc_e2' arc_e).
     + (* independent case *)
+      move: xD'. rewrite in_fset2 negb_or => /andP [zDx zDy].
+      have E1 : e1' != e. 
+      { rewrite -in_fset1 -Iz. apply/negP => H. move:(edges_at_oarc H arc_e1'). 
+        case => ?;subst; by rewrite eqxx in zDx zDz'.  }
+      have E2 : e2' != e. 
+      { rewrite -in_fset1 -Iz. apply/negP => H. move:(edges_at_oarc H arc_e2'). 
+        case => ?;subst; by rewrite eqxx in zDy zDz'. }
+      have Z : z' != x. 
+      { apply: contraTneq (oarc_edge_atL arc_e) => <-. 
+        by rewrite Iz' in_fset2 negb_or ![e == _]eq_sym E1. }
       e2split. 
       * eapply ostep_step, ostep_v2. 
-        6: { apply: oarc_del_vertex. 2: apply: arc_e1'. rewrite edges_at_test Iz. admit. }
-        6: { apply: oarc_del_vertex. 2: apply: arc_e2'. rewrite edges_at_test Iz. admit. }
+        6: { apply: oarc_del_vertex. 2: apply: arc_e1'. by rewrite edges_at_test Iz inE. }
+        6: { apply: oarc_del_vertex. 2: apply: arc_e2'. by rewrite edges_at_test Iz inE. }
         all: try done. 
-        rewrite edges_at_del !edges_at_test. admit.
+        rewrite edges_at_del !edges_at_test. 
+        by rewrite Iz Iz' mem_fsetD1 // in_fset2 negb_or ![e == _]eq_sym E1.
       * eapply ostep_step, ostep_v1. 
-        3: { apply: oarc_add_edge. apply: oarc_del_vertex arc_e. admit. }
+        3: { apply: oarc_add_edge. apply: oarc_del_vertex arc_e. 
+             by rewrite Iz' !inE negb_or ![e == _]eq_sym E1 E2. }
         all: try done. 
-        admit.
+        rewrite edges_at_add_edge' ?[_ == z]eq_sym // edges_at_del Iz Iz'.
+        by rewrite -fsetDDl !mem_fsetD1 ?inE.
       * set e12 := maxn _ _. set a := lv G z. set b := lv G z'. set a' := lv _ z. set b' := lv _ z'. 
-        have <- : a = a' by []. have <- : b = b'. rewrite /b /b' /= updateE //. admit. 
-        rewrite del_vertexC -del_vertex_add_test add_edge_test. rewrite -del_vertex_add_edge. done.
-        admit. admit. by rewrite /= inE negb_and negbK Iz' !inE maxn_eq.
+        have <- : a = a' by []. have <- : b = b'. rewrite /b /b' /= updateE //. 
+        rewrite del_vertexC -del_vertex_add_test add_edge_test. rewrite -del_vertex_add_edge //. 
+        by rewrite /= inE negb_and negbK Iz' !inE maxn_eq.
   - (* V1 / E0 - no nontrivial interaction *)
     have De : e != e'. 
     { apply: contra_neq xDz => ?; subst e'. exact: oarc_loop arc_e arc_e'. }
@@ -1287,7 +1308,32 @@ Proof with eauto with typeclass_instances.
     * rewrite /= updateE 1?eq_sym //. 
       rewrite del_vertex_edges -del_edges_add_test. 
       by rewrite del_vertex_add_test add_testC. 
-  - (* V1 / E2 - no nontrivial interaction *) admit.
+  - (* V1 / E2 - no nontrivial interaction *)
+    gen have D,zDx : e1' e2' x' y' u' v' arc_e1' arc_e2' e1De2' / x' != z. 
+    { apply: contra_neq e1De2' => ?. subst x'. 
+      wlog suff : e1' e2' u' v' arc_e1' arc_e2' / e1' = e. 
+      { move => S. by rewrite (S _ _ _ _ arc_e1' arc_e2') (S _ _ _ _ arc_e2' arc_e1'). }
+      apply/eqP. rewrite -in_fset1 -Iz. apply: oarc_edge_atL arc_e1'. }
+    have {D} zDy : y' != z. 
+    { rewrite -> oarc_cnv in arc_e1',arc_e2'. apply: D arc_e2' arc_e1' _. by rewrite eq_sym. }
+    have E1 : e1' != e. 
+    { rewrite -in_fset1 -Iz. apply/negP => H. move:(edges_at_oarc H arc_e1'). 
+      case => ?;subst; by rewrite eqxx in zDx zDy. }
+    have E2 : e2' != e. 
+    { rewrite -in_fset1 -Iz. apply/negP => H. move:(edges_at_oarc H arc_e2'). 
+      case => ?;subst; by rewrite eqxx in zDx zDy. }
+    e2split.
+    * eapply ostep_step, ostep_e2. 
+      -- exact: e1De2'.
+      -- apply: oarc_del_vertex arc_e1'. by rewrite Iz inE.
+      -- apply: oarc_del_vertex arc_e2'. by rewrite Iz inE.
+    * eapply ostep_step, ostep_v1.
+      3: { apply: oarc_add_edge. apply: oarc_del_edges arc_e. 
+           by rewrite !inE ![e == _]eq_sym negb_or E1 E2. }
+      all: try done.
+      by rewrite edges_at_add_edge' // edges_at_del_edges -fsetDDl !mem_fsetD1 // Iz in_fset1.
+    * rewrite /= add_edge_test del_edges_add_test -del_vertex_add_edge -?del_vertex_edges // 1?eq_sym //.
+      by rewrite maxn_fsetD.
   - (* V2 / V2 *) 
     move: (fset2_cases e1De2 e1De2') => [[E|D]|[e He]].
     + (* same instance up to direction *)
@@ -1303,8 +1349,41 @@ Proof with eauto with typeclass_instances.
         apply: oliso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
         by rewrite !cnvdot cnvtst dotA. }
       eapply close_same_step. 1-2: apply add_edge_graph'; eauto with vset typeclass_instances.
-      admit.
-     + (* independent instances *) admit.
+      subst e1' e2'. 
+      move: (oarc_injL arc_e1 arc_e1') (oarc_injR arc_e2 arc_e2') => ? ?. subst x' y'.
+      by rewrite (oarc_weq _ arc_e1' arc_e1) ?(oarc_weq _ arc_e2' arc_e2) // eq_sym.
+     + (* independent instances *)
+       move: (fdisjointP D) => D1. rewrite fdisjoint_sym in D. move: (fdisjointP D) => D2.
+       have ?: x != z'. 
+       { apply: contraTneq (oarc_edge_atL arc_e1) => ->. by rewrite Iz' D1 // in_fset2 eqxx. }
+       have ?: y != z'. 
+       { apply: contraTneq (oarc_edge_atR arc_e2) => ->. by rewrite Iz' D1 // in_fset2 eqxx. }
+       have ?: x' != z. 
+       { apply: contraTneq (oarc_edge_atL arc_e1') => ->. by rewrite Iz D2 // in_fset2 eqxx. }
+       have ?: y' != z. 
+       { apply: contraTneq (oarc_edge_atR arc_e2') => ->. by rewrite Iz D2 // in_fset2 eqxx. }
+       (* have zDz' : z != z'. by admit. *)       
+       e2split.
+       * eapply ostep_step,ostep_v2. 
+         7: { apply: oarc_add_edge. apply: oarc_del_vertex arc_e2'. 
+              by rewrite Iz D2 // !inE eqxx. }
+         6: { apply: oarc_add_edge. apply: oarc_del_vertex arc_e1'. 
+              by rewrite Iz D2 // !inE eqxx. }
+         all: try done.
+         rewrite edges_at_add_edge' // edges_at_del Iz Iz'. 
+         by apply/fsetDidPl.
+       * eapply ostep_step,ostep_v2. 
+         7: { apply: oarc_add_edge. apply: oarc_del_vertex arc_e2. 
+              by rewrite Iz' D1 // !inE eqxx. }
+         6: { apply: oarc_add_edge. apply: oarc_del_vertex arc_e1. 
+              by rewrite Iz' D1 // !inE eqxx. }
+         all: try done.
+         (* FIXME : swap disequality assumptions on edges_at_add_edge' *)
+         rewrite edges_at_add_edge' // edges_at_del Iz Iz'. 
+         apply/fsetDidPl. by rewrite fdisjoint_sym.
+       * rewrite /=. rewrite -!del_vertex_add_edge /= ?Iz ?Iz' 1?eq_sym ?maxn_fsetD //.
+         rewrite del_vertexC add_edge_edge //. 
+         by case: maxnP => _; rewrite fset2_maxn_neq // D1 // !inE eqxx.
      + (* overlap in one edge *) 
        wlog ? : e1 e2 x y u v  arc_e1 arc_e2 Iz e1De2 zIO xDz yDz He / e = e2 ; [move => W|subst e]. 
        { have: e \in [fset e1;e2]. { move/fsetP : He => /(_ e). rewrite in_fset1 eqxx. by case/fsetIP. }
@@ -1349,10 +1428,12 @@ Proof with eauto with typeclass_instances.
        * rewrite !add_edgeKr !add_edgeKl /= del_vertexC. 
          by rewrite maxnA !dotA C.
   - (* V2 / E0 *) 
-    have xDz' : z != x'. admit.
-    (* { apply: contraTneq isT => ?. subst x'. admit. } *)
-    have He : e' \notin edges_at G z. admit.
-    have He' : e' != maxn e1 e2. admit.
+    have He : e' \notin edges_at G z. 
+    { rewrite Iz in_fset2 negb_or. apply/andP; split.
+      - apply: contra_neq xDz => ?; subst e'. exact: oarc_loop arc_e1 arc_e'.
+      - apply: contra_neq yDz => ?; subst e'. symmetry. exact: oarc_loop arc_e2 arc_e'. }
+    have xDz' : z != x' by apply: contraTneq (oarc_edge_atL arc_e') => <-. 
+    have He' : e' != maxn e1 e2. apply: fset2_maxn_neq. by rewrite -Iz. 
     e2split. 
     * eapply ostep_step,ostep_e0. apply: oarc_add_edge. exact: oarc_del_vertex arc_e'.
     * eapply ostep_step,ostep_v2. 
@@ -1447,8 +1528,8 @@ Proof with eauto with typeclass_instances.
         case: (W _ _ _ _ _ _ arc_e2' arc_e1' _ E); rewrite 1?eq_sym //.
         move => Gl [Gr] [[Sl Sr] Elr]. e2split; [exact: Sl | | exact: Elr].
         rewrite fsetUC maxnC. apply: oliso_stepL Sr. eapply weqG_oliso.
-        - admit.
-        - admit.
+        - apply: add_edge_graph'; by eauto with vset.
+        - apply: add_edge_graph'; by eauto with vset.
         - by rewrite parC. }
       subst e1'. move: (oarc_loop arc_e1' arc_e) => ?. subst y'.
       have [?] : x' = x by case: (same_oarc arc_e arc_e1') => [] [? ? ?]; congruence.
@@ -1569,7 +1650,7 @@ Proof with eauto with typeclass_instances.
         all: try by case: maxnP; rewrite !inE eqxx.
         by rewrite fsetUA.
         by rewrite fsetUC.
-Admitted.
+Qed.
 
   
 
