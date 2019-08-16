@@ -560,6 +560,8 @@ Definition del_edges (G : pre_graph) (E : {fset ET}) :=
      p_in := p_in G;
      p_out := p_out G |}.
 
+Notation "G - E" := (del_edges G E) : open_scope.
+
 Global Instance del_edges_graph (G : pre_graph) `{graph_G : is_graph G} (E : {fset ET}) :
   is_graph (del_edges G E).
 Proof. 
@@ -628,6 +630,7 @@ Notation "G [adt x <- a ]" := (add_test G x a)
 
 
 Lemma incident_delv G z : incident (G \ z) =2 incident G. done. Qed.
+Lemma incident_dele (G : pre_graph) E : incident (G - E) =2 incident G. done. Qed.
 
 Lemma edges_at_del (G : pre_graph) (z x : VT) : 
   edges_at (G \ z) x = edges_at G x `\` edges_at G z.
@@ -655,15 +658,14 @@ Proof.
 Qed.
 
 
-(** TODO: generalize to add_edge' *)
-Lemma add_edgeV (G : pre_graph) (x y : VT) (u : term) : 
-  is_graph (add_edge G x u y) -> ((x \in vset G) * (y \in vset G))%type.
+Lemma add_edgeV (G : pre_graph) e (x y : VT) (u : term) : 
+  is_graph (add_edge' G e x u y) -> ((x \in vset G) * (y \in vset G))%type.
 Proof.
   intros graph_G. split.
-  - rewrite [x](_ : _ = src (add_edge G x u y) (fresh (eset G))).
+  - rewrite [x](_ : _ = src (add_edge' G e x u y) e).
     + apply: srcP. by rewrite /add_edge !inE eqxx.
     + by rewrite /= update_eq.
-  - rewrite [y](_ : _ = tgt (add_edge G x u y) (fresh (eset G))).
+  - rewrite [y](_ : _ = tgt (add_edge' G e x u y) e).
     + apply: tgtP. by rewrite /add_edge !inE eqxx.
     + by rewrite /= update_eq.
 Qed. 
@@ -760,18 +762,24 @@ Arguments name_add_edge [G x y u] e _.
 
 Arguments freshP [E].
 
+Lemma close_add_edge' G e x y u (isG : is_graph G)(isG' : is_graph (G ∔ [e,x, u, y])) :
+  e \notin eset G -> 
+  close (G ∔ [e,x, u, y]) ≅ close G ∔ [close_v x, u, close_v y].
+Proof. 
+  move => eG.
+  apply: liso_sym. 
+  liso (bij_id) (fresh_bij bij_id eG) (fun => false) => //. 
+  4-5: exact: val_inj.
+  - move => [e'|]; by rewrite fresh_bijE /= updateE ?fsval_eqF. 
+  - move => [e'|] /=; apply: val_inj; rewrite /= updateE ?fsval_eqF //.
+    by rewrite close_vK // add_edgeV.
+  - move => [e'|] /=; apply: val_inj; rewrite /= updateE ?fsval_eqF //. 
+    by rewrite close_vK // add_edgeV.
+Qed.
+
 Lemma close_add_edge (G : pre_graph) (x y : VT) u (isG : is_graph G) (isG' : is_graph (G ∔ [x, u, y])) : 
   close (G ∔ [x, u, y]) ≅ close G ∔ [close_v x, u, close_v y].
-Proof.
-  apply: liso_sym. 
-  liso (bij_id) (fresh_bij bij_id freshP) (fun => false) => //. 
-  4-5: exact: val_inj.
-  - move => [e|]; by rewrite fresh_bijE /= updateE /= ?fresh_eqF.
-  - move => [e|] /=; apply: val_inj; rewrite /= updateE ?fresh_eqF //. 
-    by rewrite close_vK // add_edgeV.
-  - move => [e|] /=; apply: val_inj; rewrite /= updateE ?fresh_eqF //. 
-    by rewrite close_vK // add_edgeV.
-Defined.
+Proof. exact: close_add_edge' freshP. Defined.
 
 Definition close_add_vertex (G : pre_graph) (graph_G : is_graph G) x a : x \notin vset G -> 
   close (add_vertex G x a) ≅ liso.add_vertex (close G) a.
@@ -1010,11 +1018,13 @@ Qed.
 
 Lemma edges_at_test (G : pre_graph) x a z : edges_at G[adt x <- a] z = edges_at G z. done. Qed.
 
+
+
 Lemma edges_at_del_edges (G : pre_graph) z E : 
   edges_at (del_edges G E) z = edges_at G z `\` E. 
-Proof. 
-  rewrite /del_edges {1}/edges_at/incident /=. 
-Admitted.
+Proof.
+  apply/fsetP => e. by rewrite !(inE,edges_atE) -andbA incident_dele.
+Qed.
 
 Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. done. Qed.
 
@@ -1047,34 +1057,39 @@ Proof. move => A. by apply: contraPN => /eqP. Qed.
 Lemma contraPeq (T:eqType) (a b : T) (P : Prop) : (a != b -> ~ P) -> (P -> a = b).
 Proof. move => H HP. by apply: contraTeq isT => /H /(_ HP). Qed.
 
-Lemma eqfset1 (T : choiceType) (x y : T) : ([fset x] == [fset y]) = (x == y).
-Admitted.
-
 Lemma oarc_uniqeR (G : pre_graph) e e' x y u : 
   edges_at G y = [fset e] -> oarc G e' x u y -> e' = e.
-Admitted.
+Proof. move => Iy /oarc_edge_atR. rewrite Iy. by move/fset1P. Qed.
 
 Lemma oarc_uniqeL (G : pre_graph) e e' x y u : 
   edges_at G x = [fset e] -> oarc G e' x u y -> e' = e.
-Admitted.
+Proof. rewrite oarc_cnv. exact: oarc_uniqeR. Qed.
 
 Lemma oarc_injL (G : pre_graph) e x x' y u u' : 
   oarc G e x u y -> oarc G e x' u' y -> x = x'.
-Admitted.
+Proof. move => [E [[? ? ?]|[? ? ?]]] [_ [[? ? ?]|[? ? ?]]]; by subst. Qed.
 
 Lemma oarc_injR (G : pre_graph) e x y y' u u' : 
   oarc G e x u y -> oarc G e x u' y' -> y = y'.
-Admitted.
+Proof. move => [E [[? ? ?]|[? ? ?]]] [_ [[? ? ?]|[? ? ?]]]; by subst. Qed.
 
 Lemma oarc_weq (G : pre_graph) e x y u u' : 
   x != y -> oarc G e x u y -> oarc G e x u' y -> u ≡ u'.
-Admitted.
+Proof. 
+  move => xDy [E A1] [_ A2]. 
+  case: A1 => [[S1 T1 E1]|[S1 T1 E1]]; case: A2 => [[S2 T2 E2]|[S2 T2 E2]]; subst.
+  - by rewrite -?E1 -?E2 //. 
+  - by rewrite S2 eqxx in xDy.
+  - by rewrite S2 eqxx in xDy.
+  - by rewrite -[u]cnvI -E1 E2 cnvI.
+Qed.
 
-Lemma oarc_loop G e e' x y x' u u' : oarc G e x u y -> oarc G e' x' u' x' -> x = y.
-Admitted.
+Lemma oarc_loop G e x y x' u u' : oarc G e x u y -> oarc G e x' u' x' -> x = y.
+Proof. move => [E [[? ? ?]|[? ? ?]]] [_ [[? ? ?]|[? ? ?]]]; by subst. Qed.
 
 Lemma same_oarc G e x y x' y' u u' : oarc G e x u y -> oarc G e x' u' y' ->
   [/\ x = x', y = y' & u ≡ u'] + [/\ x = y', y = x' & u ≡ u'°].
+
 Admitted.   
     
 
@@ -1083,10 +1098,37 @@ Proof. apply: oliso_step. do 2 eexists. exact: liso_id. Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
+Lemma liso_edge_flip (G : lgraph) (x y : G) u : G ∔ [x,u,y] ≅ G ∔ [y,u°,x].
+Proof.
+  pose dir (e : edge (G ∔ [x,u,y])%L) := ~~ e.
+  liso bij_id bij_id dir => //.
+  - abstract (move => [e|] //=; by rewrite cnvI).
+  - abstract (by case).
+  - abstract (by case).
+Defined.
+
+(* We prove this directly rather than going though [liso_edge_flip],
+because this way we can avoid the assumption [e \notin eset G] *)
 Lemma add_edge_flip (G : pre_graph) (isG : is_graph G) e x y u v: 
   u° ≡ v ->
   x \in vset G -> y \in vset G -> G ∔ [e,x,u,y] ⩭ G ∔ [e,y,v,x].
-Admitted.
+Proof.
+  move => E xG yG. 
+  have isG1 : is_graph (G ∔ [e,x,u,y]) by apply: add_edge_graph'.
+  have isG2 : is_graph (G ∔ [e,y,v,x]) by apply: add_edge_graph'.
+  do 2 eexists.
+  pose dir (e0 : edge (@close (G ∔ [e,x,u,y]) isG1)) := val e0 == e.
+  liso bij_id bij_id dir => //=. 4-5: exact: val_inj.
+  - case => e' /= He'. case: (fset1UE He') => [?|]. 
+    + subst e'. by rewrite /dir/= eqxx /= !updateE /= -E cnvI.
+    + case => A ?. by rewrite /dir/= (negbTE A) //= !updateE.
+  - case => e' /= He'. apply: val_inj => /=. case: (fset1UE He') => [?|].
+    + subst e'. by rewrite /dir/= eqxx /= !updateE.
+    + case => A ?. by rewrite /dir/= (negbTE A) /= !updateE.
+  - case => e' /= He'. apply: val_inj => /=. case: (fset1UE He') => [?|].
+    + subst e'. by rewrite /dir/= eqxx /= !updateE.
+    + case => A ?. by rewrite /dir/= (negbTE A) /= !updateE.
+Defined.
 
 Lemma del_edges_add_test (G : pre_graph) E x a : 
   (del_edges G E)[adt x <- a] ≡G del_edges G[adt x <- a] E. 
@@ -1099,8 +1141,6 @@ Proof.
   by rewrite edges_at_del_edges fsetDDD (fsetUidPr _ _ subE).
 Qed.
 
-Notation "G - E" := (del_edges G E) : open_scope.
-
 Lemma del_vertex_edges G E z : G \ z - E ≡G (G - E)\z.
 Proof. 
   split => //. 
@@ -1109,7 +1149,12 @@ Qed.
 
 Lemma degree_one_two G x y e e1 e2 : e1 != e2 -> 
   edges_at G x = [fset e] -> edges_at G y = [fset e1;e2] -> x != y.
-Admitted.
+Proof.
+  move => A Ix Iy. apply: contra_neq A => ?;subst y. 
+  wlog suff S : e1 e2 Iy / e1 = e.
+  { rewrite (S _ _ Iy). symmetry. apply: S. by rewrite Iy fsetUC. }
+  apply/eqP. by rewrite -in_fset1 -Ix Iy in_fset2 eqxx.
+Qed.
 
 Lemma vset_del_vertex G x z : x \in vset G -> x != z -> x \in vset (G \ z).
 Proof. by rewrite /= !inE => -> ->. Qed.
@@ -1121,11 +1166,11 @@ Hint Resolve vset_del_vertex vset_del_edges : vset.
 
 Lemma oarc_vsetL G (isG : is_graph G) e x y u : 
   oarc G e x u y -> x \in vset G.
-Admitted.
+Proof. by case => E [[S T ?]|[S T ?]]; rewrite -?S -?T ?srcP ?tgtP. Qed.
 
 Lemma oarc_vsetR G (isG : is_graph G) e x y u : 
   oarc G e x u y -> y \in vset G.
-Admitted.
+Proof. by case => E [[S T ?]|[S T ?]]; rewrite -?S -?T ?srcP ?tgtP. Qed.
 
 Hint Resolve oarc_vsetL oarc_vsetR : vset.
 
@@ -1138,13 +1183,17 @@ Proof.
   - rewrite !inE eqxx orbT [y == y']eq_sym D orbF. by move/esym/eqP.
 Qed.
 
-Lemma fset_cardI1 (T : choiceType) (A B : {fset T}) (x y : T) : 
-  #|`A `&` B| = 1%N -> x \in A -> x \in B -> y \in A -> y \in B -> x = y.
-Admitted.
-
 Lemma close_same_step (Gl Gr : pre_graph) (isGl : is_graph Gl) (isGr : is_graph Gr) : 
   Gl ≡G Gr -> Σ Gl' Gr' : pre_graph, osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr').
 Proof. move => E. do 2 eexists; split;[split|]; by try exact: osteps_refl. Qed.
+
+Lemma cardsDsub (T : choiceType) (A B : {fset T}) : 
+  #|` A `\` B | == 0 -> A `<=` B.
+Proof. by rewrite -fsetD_eq0 cardfs_eq0. Qed.
+
+Lemma cardsIsub (T : choiceType) (A B : {fset T}) :
+  #|`A `&` B| = #|`B| -> B `<=` A.
+Proof. move => H. by rewrite cardsDsub // cardfsD fsetIC H subnn. Qed.
 
 Lemma fset2_cases (T : choiceType) (x y x' y' : T) : x != y -> x' != y' ->
   let A := [fset x;y] in 
@@ -1152,7 +1201,20 @@ Lemma fset2_cases (T : choiceType) (x y x' y' : T) : x != y -> x' != y' ->
   (A = B) + [disjoint A & B] + (Σ z : T, A `&` B = [fset z]).
 Proof.
   move => D D' A B.
-Admitted.
+  have [CA CB] : #|` A| = 2 /\ #|` B| = 2. 
+  { by  rewrite !cardfs2 ?(negbTE D) ?(negbTE D'). }
+  move C : (#|` A `&` B|) => n. case: n C => [|[|[|]]] => C.
+  - left;right. by rewrite -fsetI_eq0 (cardfs0_eq C).
+  - right.
+    have E : exists z : T, A `&` B == [fset z].
+    { setoid_rewrite <- (rwP eqP). apply/cardfs1P. exact/eqP. }
+    exists (xchoose E). apply/eqP. exact: (xchooseP E). 
+  - left;left. apply/eqP. 
+    by rewrite eqEfsubset !cardsIsub // ?CA ?CB ?[_ `&` A]fsetIC.
+  - move/eqP. rewrite eqn_leq [C.+3 <= _]negbTE ?andbF // -leqNgt -addn2.
+    apply: leq_trans (leq_addl _ _). rewrite -CA. 
+    apply: fsubset_leq_card. exact: fsubsetIl.
+Qed.
 
 Inductive maxn_cases n m : nat -> Type := 
 | MaxnR of n <= m : maxn_cases n m m
@@ -1180,20 +1242,44 @@ Proof. by rewrite inE negb_and negbK maxn_fset2. Qed.
 Lemma fset2_maxn_neq n m x : x \notin [fset n; m] -> x != maxn n m.
 Proof. apply: contraNneq => ->. exact: maxn_fset2. Qed.
 
+Lemma incident_flip_edge G e x u y : incident (G ∔ [e, x, u, y]) =2 incident (G ∔ [e, y, u°, x]).
+Proof. 
+  move => z f. rewrite /incident/=. 
+  case: (altP (f =P e)) => [->|?]; by rewrite !updateE // orbC.
+Qed.
+
 Lemma edges_atC G e x y u : edges_at (G ∔ [e,x,u,y]) =1 edges_at (G ∔ [e,y,u°,x]).
-Admitted.
+Proof. move => z. apply/fsetP => f. by rewrite !edges_atE /= incident_flip_edge. Qed.
 
 Lemma add_edge_del_edges (G : pre_graph) e E x y u : 
   e \notin E -> G ∔ [e,x,u,y] - E ≡G (G - E) ∔ [e,x,u,y]. 
 Proof. move => He. split => //=. by rewrite fsetUDl mem_fsetD1. Qed.
 
+Lemma fset1D (T : choiceType) (x:T) (A : {fset T}) : 
+  [fset x] `\` A = if x \in A then fset0 else [fset x].
+Proof. 
+  case: (boolP (x \in A)) => xA. 
+  - apply/eqP. by rewrite fsetD_eq0 fsub1set.
+  - apply/fsetDidPl. by rewrite fdisjoint1X.
+Qed.
+
 Lemma add_edge_del_edgesK (G : pre_graph) e E x y u : 
   e \in E -> G ∔ [e,x,u,y] - E ≡G (G - E). 
-Admitted.
+Proof.
+  move => eE. 
+  have X : (e |` eset G) `\` E = eset G `\` E.
+  { by rewrite fsetDUl fset1D eE fset0U. }
+  split => //=; rewrite X.
+  all: move => f Hf; rewrite updateE //.
+  all: apply: contraTneq Hf => ->; by rewrite inE eE.
+Qed.
 
 Lemma del_edges_vertexK (G : pre_graph) E z : 
   E `<=` edges_at G z -> (G - E) \ z ≡G G \ z.
-Admitted.
+Proof. 
+  move => EIz. split => //=. 
+  by rewrite fsetDDl edges_at_del_edges fsetUDl fsetDv fsetD0 (fsetUidPr _ _ EIz).
+Qed.
 
 Lemma del_edges_vertex (G : pre_graph) E z : 
   (G - E) \ z ≡G G \ z - E.
@@ -1209,7 +1295,11 @@ Proof. split => //=. by rewrite fsetDDl. Qed.
 
 Lemma add_edge_edge G e e' x y x' y' u u' : e != e' ->
   G ∔ [e,x,u,y] ∔ [e',x',u',y'] ≡G G ∔ [e',x',u',y'] ∔ [e,x,u,y].
-Admitted.
+Proof.
+  move => eDe'. split => //=; first by rewrite fsetUA [[fset _;_]]fsetUC -fsetUA.
+  all: move => f; case/fset1UE => [->|[?]]; last case/fset1UE => [->|[? ?]].
+  all: by rewrite !updateE // eq_sym.
+Qed.
 
 (*TOTHINK: this looks messier than needed *)
 Lemma edges_replace (G : pre_graph) (z z' : VT) (e1 e2 e2' : ET) (x : VT) (u : term) :
@@ -1227,7 +1317,17 @@ Proof.
   - by rewrite eqxx orbT eq_sym E3 eq_sym E2.
 Qed.
 
-Lemma pardot u v a : (u ∥ v)·a ≡ u ∥ v·a. Admitted.
+Lemma testP (a : test) : 1∥a ≡ a.
+Proof. 
+  case: a => a /=. elim: a => [u IHu v IHv|u IHu v IHv|u IHu|u IHu| |a] //=.
+  - case/andP => /IHu U /IHv V. 
+    rewrite A10.
+Admitted.
+
+Lemma pardot u v (a:test) : (u ∥ v)·a ≡ u ∥ v·a. 
+Proof. 
+
+Admitted.
 
 Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v.
 Proof. by rewrite -dotA A10 cnvdot cnvtst pardot. Qed.
@@ -1792,10 +1892,6 @@ Admitted.
 Lemma fsvalK (T : choiceType) (A : {fset T}) (x : A) (p : fsval x \in A) : Sub (fsval x) p = x.
 Proof. exact: val_inj. Qed.
 
-Lemma close_add_edge' G e x y u (isG : is_graph G)(isG' : is_graph (G ∔ [e,x, u, y])) :
-  e \notin eset G -> 
-  close (G ∔ [e,x, u, y]) ≅ close G ∔ [close_v x, u, close_v y].
-Admitted.
 
 Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : is_graph (G ∔ [e,x, u, y])) :
   e \notin eset G -> x' = close_v x :> close G -> y' = close_v y :> close G -> 
