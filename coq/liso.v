@@ -90,12 +90,57 @@ Lemma cnv_test (a: test): is_test (a°).
 Proof. by rewrite /=testE. Qed.
 Canonical Structure tst_cnv a := Test (cnv_test a).
 
+
+(** Some facts about 2pdom algebras *)
+
+Lemma cnvone : 1° ≡ 1.
+Proof. rewrite -{1}[1°]dotx1 -{2}[1]cnvI. by rewrite -cnvdot dotx1 cnvI. Qed.
+
+Lemma tstdom' u : 1 ∥ dom u ≡ dom u.
+Proof. by rewrite parC -{2}[dom u]dotx1 -{2}par11 A14 dotx1. Qed.
+
+Lemma domtst' u : dom (1 ∥ u) ≡ 1 ∥ u.
+Proof. by rewrite parC -{1}cnvone -A10 dotx1 parC. Qed.
+
+Lemma cnvtst' u : (1∥u)° ≡ 1∥u.
+Proof. by rewrite -{1}[u]dotx1 cnvpar cnvdot cnvone A10 cnvI domtst'. Qed.
+
+Lemma lifttstL' u v w : (1∥u)·v ∥ w ≡ (1∥u)·(v ∥ w).
+Proof. by rewrite -[1∥u]domtst' A14. Qed.
+
+Lemma lifttstR' u v w : v ∥ w·(1∥u) ≡ (v ∥ w)·(1∥u).
+Proof. 
+  rewrite -[X in X ≡ _]cnvI cnvpar cnvdot cnvtst' parC.
+  by rewrite lifttstL' -{1}(cnvtst' u) -cnvpar -cnvdot cnvI parC.
+Qed.
+
+Lemma dotpartst' u v : (1∥u)·(1∥v) ≡ (1∥u)∥(1∥v).
+Proof. by rewrite -lifttstL' dotx1 parA [_ ∥1]parC parA par11. Qed.
+
+Lemma testP (a : test) : a ≡ 1∥a.
+Proof. 
+  case: a => a /=. elim: a => [u IHu v IHv|u IHu v IHv|u IHu|u IHu| |a] //=.
+  - case/andP => /IHu U /IHv V. by rewrite U V dotpartst' !parA par11.
+  - case/orP => [/IHu U | /IHv V]; first by rewrite parA -U. 
+    by rewrite parA [1 ∥ _]parC -parA -V.
+  - move/IHu => U. by rewrite -{1}cnvone -cnvpar -U.
+  - by rewrite tstdom'.
+  - by rewrite par11.
+Qed.
+
+Lemma lifttstR u v (a:test) : u ∥ v·a ≡ (u ∥ v)·a. 
+Proof. by rewrite testP lifttstR'. Qed.
+
+Lemma dotpartst (a b : test) : a·b ≡ a ∥ b.
+Proof. by rewrite (testP a) (testP b) dotpartst'. Qed.
+
 Lemma dotC (a b: test): a·b ≡ b·a.
-Admitted.
+Proof. by rewrite dotpartst parC -dotpartst. Qed.
 
 Definition test_weq (a b: test) := a ≡ b.
 Instance Equivalence_test_weq: Equivalence test_weq.
-Admitted.
+Proof. split. exact: weq_refl. exact: weq_sym. exact: weq_trans. Qed.
+
 Canonical Structure test_setoid := Setoid Equivalence_test_weq.
 Instance test_monoid: comm_monoid test_setoid :=
   { mon0 := [1];
@@ -105,7 +150,6 @@ Instance test_monoid: comm_monoid test_setoid :=
   apply dotC.   
   by intros ?; apply dotx1.
 Defined.
-
 
 (** * normalisation  *)
 

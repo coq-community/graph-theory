@@ -1317,23 +1317,11 @@ Proof.
   - by rewrite eqxx orbT eq_sym E3 eq_sym E2.
 Qed.
 
-Lemma testP (a : test) : 1∥a ≡ a.
-Proof. 
-  case: a => a /=. elim: a => [u IHu v IHv|u IHu v IHv|u IHu|u IHu| |a] //=.
-  - case/andP => /IHu U /IHv V. 
-    rewrite A10.
-Admitted.
-
-Lemma pardot u v (a:test) : (u ∥ v)·a ≡ u ∥ v·a. 
-Proof. 
-
-Admitted.
-
 Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v.
-Proof. by rewrite -dotA A10 cnvdot cnvtst pardot. Qed.
+Proof. by rewrite -dotA A10 cnvdot cnvtst -lifttstR. Qed.
 
 Lemma critical_pair2 u v : (1∥u)·(1∥v) ≡ 1∥(u∥v).
-Proof. Admitted.
+Proof. by rewrite dotpartst' parA [_∥1]parC !parA par11. Qed.
 
 Lemma edges_at_oarc G e x y z u : 
   e \in edges_at G z -> oarc G e x u y -> x = z \/ y = z.
@@ -2005,3 +1993,4 @@ Proof.
 Admitted.
 *)
 
+End ostep.
