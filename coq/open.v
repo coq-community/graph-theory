@@ -466,7 +466,7 @@ Proof.
 Qed.
 
 (** Experimental: A class of boxed properties to allow inference of "non-class" assumptions *)
-Class box (P : Prop) : Prop := Box { boxed : P }.
+Class box (P : Type) : Type := Box { boxed : P }.
 Hint Extern 0 (box _) => apply Box; assumption : typeclass_instances.
 
 (** ** Helper functions *)
@@ -793,13 +793,21 @@ Defined.
 (*   vfun_body h (inj_v x) = inj_v (h (openK _ x)). *)
 (* Admitted. *)
 
-Lemma vfun_bodyE (G : lgraph) (H : pre_graph) (graph_H : is_graph H)
-     (h : bij (close (open G)) (close H)) (x : G) : 
-  vfun_body h (inj_v x) = val (h (Sub (inj_v x) (in_imfsetT _ _))).
-Proof. 
-  unlock vfun_body. case: {-}_/idP => [p|]; last by rewrite in_imfsetT.
-  by rewrite [in_imfsetT _ _](bool_irrelevance _ p).
+Lemma vfun_bodyE (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) x
+  (h : bij (@close G isG) (@close H isH)) (p : x \in vset G) : vfun_body h x = val (h (Sub x p)).
+Proof.
+  unlock vfun_body. 
+  case: {-}_ / idP => [p'|]; by [rewrite (bool_irrelevance p p')| move/(_ p)].
 Qed.
+
+Lemma inj_v_open (G : lgraph) (x : G) : inj_v x \in vset (open G).
+Proof. by rewrite in_imfset. Qed.
+Hint Resolve inj_v_open.
+
+Lemma vfun_bodyEinj (G : lgraph) (H : pre_graph) (graph_H : is_graph H)
+     (h : bij (close (open G)) (close H)) (x : G) :
+  vfun_body h (inj_v x) = val (h (Sub (inj_v x) (inj_v_open x))).
+Proof. by rewrite vfun_bodyE. (* why is the side conition resolved automatically? *) Qed.
 
 Definition close_add_test (G : pre_graph) (isG : is_graph G) x (Hx : x \in vset G) a :
   (close G)[tst close_v x <- a] ≅ close (G[adt x <- a]).
@@ -818,9 +826,6 @@ Lemma fresh_imfsetF (T : finType) (f : T -> ET) (e : T) :
    f e == fresh [fset f x | x in T] = false.
 Admitted. 
 
-Lemma inj_v_open (x : G) : inj_v x \in vset (open G).
-Proof. by rewrite in_imfset. Qed.
-Hint Resolve inj_v_open.
 
 Definition open_add_vertex a : 
   open (liso.add_vertex G a) ⩭ add_vertex (open G) (fresh (vset (open G))) a.
@@ -837,8 +842,8 @@ Lemma open_add_vertexE :
   ((forall a, open_add_vertex a (@inj_v (G ∔ a)%L None) = fresh (vset (open G)))
   *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%L (Some x)) = @inj_v G x))%type. 
 Proof. 
-  split => *.
-  all: rewrite /= vfun_bodyE /=.
+  split => *. 
+  all: rewrite /= vfun_bodyEinj /=.
   all: by rewrite imfset_bij_bwdE. 
 Qed.
 
@@ -876,9 +881,87 @@ Admitted.
 
 End Transfer. 
    
+Lemma oliso_is_graphL (G H : pre_graph) (h : G ⩭ H) : is_graph G.
+Proof. by case: h. Qed.
 
-Definition add_edge_cong (G H : pre_graph) (h : G ⩭ H) x u y : G ∔ [x,u,y] ⩭ H ∔ [h x,u,h y].
-do 2 eexists. 
+Lemma oliso_is_graphR (G H : pre_graph) (h : G ⩭ H) : is_graph H.
+Proof. by case: h => [? []]. Qed.
+
+
+(* TOTHINK: the converse does NOT hold since [h] is the identity on
+vertices outside of [G]. This could be made to hold by taking [fresh (vset H)] 
+as value outside of [G] *)
+Lemma vfun_of_vset (G H : pre_graph) (h : G ⩭ H) x : x \in vset G -> h x \in vset H.
+Proof. case: h  => isG [isH h] /= xG. rewrite vfun_bodyE. exact: valP. Qed.
+
+Section FsetU1Fun.
+Variables (T : choiceType) (A B : {fset T}) (f : A -> B) (x y : T).
+
+Definition fsetU1_fun  (a : (x |` A)) : (y |`B) :=
+  match fset1UE (fsvalP a) with
+  | inl _ => Sub y fset1U1
+  | inr (_,p) => Sub (val (f [` p])) (fset1Ur (valP (f [` p])))
+  end.
+
+(* Use below *)
+Lemma fsetU1_funE1 (p : x \in x |` A) : fsetU1_fun [`p] = Sub y fset1U1.
+Admitted.
+
+Lemma fsetU1_funE2 z (p : z \in x |` A) (p' : z \in A) :                                        
+    fsetU1_fun [`p] = Sub (val (f [` p'])) (fset1Ur (valP (f [` p']))).
+Admitted.
+
+
+End FsetU1Fun.
+Arguments fsetU1_fun [T A B] f x y a.
+
+Lemma fsetU1_fun_can (T : choiceType) (A B : {fset T}) (x y : T) (f : A -> B) (g : B -> A) : 
+  x \notin A -> y \notin B -> cancel f g -> cancel (fsetU1_fun f x y) (fsetU1_fun g y x).
+Proof.
+  move => Hx Hy can_f a. 
+  rewrite {2}/fsetU1_fun. case: fset1UE => [/=|[D Ha]].
+  - rewrite /fsetU1_fun. case: fset1UE => //=. 
+    + move => _ E. apply: val_inj => /=. by rewrite E.
+    + rewrite eqxx. by case.
+  - rewrite /fsetU1_fun /=. case: fset1UE.
+    + move => E. by rewrite -E (fsvalP _) in Hy. 
+    + case => A1 A2. apply: val_inj => //=. 
+      rewrite (_ : [`A2] = (f.[Ha])%fmap) ?can_f //. exact: val_inj.
+Qed.
+
+Section Fresh2Bij.
+Variables (T : choiceType) (A B : {fset T}) (x y : T) (f : bij A B) (Hx : x \notin A) (Hy : y \notin B).
+
+Definition fresh2_bij : bij (x |` A) (y |`B).
+Proof.
+  pose fwd := fsetU1_fun f x y.
+  pose bwd := fsetU1_fun f^-1 y x.
+  exists fwd bwd. 
+  - abstract (apply: fsetU1_fun_can => //; exact: bijK).
+  - abstract (apply: fsetU1_fun_can => //; exact: bijK').
+Defined.
+
+End Fresh2Bij.
+
+Definition add_edge_cong (G H : pre_graph) (h : G ⩭ H) x u y : 
+  x \in vset G -> y \in vset G -> G ∔ [x,u,y] ⩭ H ∔ [h x,u,h y].
+Proof.
+  move => xG yG. case: (h) => [isG [isH h']] /=.
+  unshelve (do 2 eexists).
+  - exact: add_edge_graph.
+  - unshelve apply: add_edge_graph. all:by rewrite vfun_bodyE; exact: valP.
+  - liso h' (fresh2_bij h'.e freshP freshP) (fun => false) => //.
+    + move => v. by rewrite (vlabel_liso h').
+    + case => /= e He. case/fset1UE : (He) => [E|[E1 E2]].
+      * subst e. by rewrite fsetU1_funE1 /= !updateE. 
+      * 
+
+    apply: liso_comp. apply: close_add_edge.
+    apply: liso_comp. 2: apply: liso_sym. 2: apply: close_add_edge.
+    have C z : z \in vset G -> close_v (vfun_body h' z) = h' (@close_v G isG z).
+    { move => zG. unlock vfun_body. 
+    rewrite !C. 
+    apply: liso_add_edge_congr.
 Admitted.
 
 (** * Open Step relation  *)
@@ -1847,6 +1930,7 @@ Proof with eauto with typeclass_instances.
     (* test *)
     apply: oliso_stepL (open_add_edge _ _ _) _.
     apply: oliso_stepL. apply: add_edge_cong. apply open_add_vertex. 
+      1-2: exact: inj_v_open.
     rewrite !open_add_vertexE. 
     apply: oliso_stepR. apply open_add_test. 
     rewrite /add_edge. set z := fresh (vset _). set e := fresh (eset _). 
