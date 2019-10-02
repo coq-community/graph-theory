@@ -9,18 +9,48 @@ Set Bullet Behavior "Strict Subproofs".
 
 
 (* 
-   strategy:
+   strategies:
 
-   1. 2pdom + TaT=T    (with rule G+· --> G)
-   2. 2pdom by conservativity
-   3. 2p by normalisation and reduction to 2pdom (for nfs u v, G(u)≃G(v) -> G(u[t/T])≃G(v[t/T]))
+   A
+    1. 2pdom + TaT=T    (with rule G+· --> G)
+    2. 2pdom by conservativity
+    3. 2p by normalisation and reduction to 2pdom (for nfs u v, G(u)≃G(v) -> G(u[t/T])≃G(v[t/T]))
 
-   alternative is:
-   1. 2p
-   2. 2pdom by conservativity
-   3. 2pdom + TaT by simple analysis
-   (boring thing here is that we need 'graphs with a term' for the rewriting system)
+    + reasonable syntactic normalisation
+    + nice rewriting system
+    + confluence without having to deal with connectedness
+    -- reduction for 2p should remain complicated (zig-zags)
 
+
+   B
+    1. 2pdom (for CPP) then 2p
+    2. 2pdom by conservativity
+    3. 2pdom + TaT by simple analysis
+    
+    + target for CPP
+    + 2pdom + TaT not necessary
+    + confluence without having to deal with connectedness (even in the intermediate case with the kill rule)
+    - need 'graphs with a term' for the rewriting system
+    - syntactic normalisation is rather heavy
+
+   C
+    1. 2pdom
+    2. 2p by global analysis
+    3. 2pdom + TaT by simple analysis
+    + simple syntactic normalisation
+    + smaller rewriting system
+    + 2pdom + TaT not necessary
+    - analysis for 2p should be complicated (zig-zags)
+
+   B seems the most reasonable option in the long term ; so for now we focus on B1 for 2pdom
+
+  
+   TOTHINK: algebra of lgraphs v.s. algebra of graphs ???
+   . would be convenient to have some of the laws on lgraphs
+   . current [completeness] theorem, at the end of the file, stated in terms of lgraphs
+     -> need to get 
+     iso (graph_of_term u) (graph_of_term v)  -> liso (lgraph_of_term u) (lgraph_of_term v)
+     (certainly through homomorphism lgraph_of_graph)
  *)
 
 
@@ -32,14 +62,6 @@ Notation "'Σ' x .. y , p" :=
 
 Notation IO := [set input; output].
 
-
-Lemma option_bij_case A B (f: bij (option A) (option B)):
-  (Σ f' : bij A B, f =1 option_bij f') +
-  (Σ (A' B' : Type) (a : bij A (option A')) (ab : bij A' B') (b : bij (option B') B),
-   f =1 bij_comp (option_bij a) (bij_comp (option2x_bij ab) (option_bij b))).
-Proof. 
-  case_eq (f None)=>[b|] E.
-Admitted.
 
 Definition S_option A: bij (unit+A) (option A).
 Proof.
@@ -110,110 +132,6 @@ Lemma liso_ebij (G: lgraph) (E: finType) (h: bij (edge G) E):
               input output).
 Proof. apply (iso_liso (iso_ebij h)). Qed.
 
-
-
-
-(** Other Lemmas - really needed / best format ? *)
-
-Lemma add_edge_liso G G' (I: liso G G') x x' (X: I x = x') y y' (Y: I y = y') u u' (U: u ≡ u'):
-  liso (add_edge G x y u) (add_edge G' x' y' u').
-Admitted.
-
-Lemma add_test_liso G G' (I: liso G G') x x' (X: I x = x') (a a': test) (A: a ≡ a'):
-  liso (add_test G x a) (add_test G' x' a').
-Proof.
-  apply: liso_comp (liso_add_test I x a ) _. rewrite X.
-  (* congruence lemma? *)
-Admitted.
-
-
-(** Inversion lemmas *)
-
-(** We need a number of inversion lemmas analysing isomorphisms
-between graphs with added edges or vertives (e.g., to analyse 
-[l : liso (G ∔ [x, u, v]) (G ∔ a)]. *)
-
-Definition liso_eq (G H : lgraph) (i j : liso G H) : Type :=
-  (i =1 j) * (i.e =1 j.e) * (i.d =1 i.d).
-
-Notation "i =iso j" := (liso_eq i j)  (at level 30).
-Notation "i ∘ j" := (liso_comp i j) (at level 15,right associativity).
-
-Lemma invert_vertex_vertex G a H b (l: liso (add_vertex G a) (add_vertex H b)):
- (Σ (l' : liso G H) (e : a ≡ b), l =iso add_vertex_liso l' e) +
- (Σ (F : lgraph) (l' : liso G (add_vertex F b)) (l'' : liso (add_vertex F a) H),
-  l =iso liso_comp (add_vertex_liso l' (weq_refl a))
-                (liso_comp (add_vertexC F a b) (add_vertex_liso l'' (weq_refl b)))).
-Proof.
-Admitted.
-
-(* incomplete version used below *)
-(* Proved as an example to use the composition-conditions *)
-Lemma invert_vertex_vertex' G a H b (l: liso (add_vertex G a) (add_vertex H b)):
-  (liso G H) * (a ≡ b) * (l None = None)
-+ (Σ F, liso G (add_vertex F b) * liso H (add_vertex F a) * (l None <> None)).
-Proof.
-  case: (invert_vertex_vertex l) => [[h] [e] El|[F] [g] [h] El].
-  - left. repeat split => //. by rewrite El add_vertex_lisoE. 
-  - right. exists F. repeat split => //. exact: liso_sym. by rewrite El /= !add_vertex_lisoE. 
-Qed.
-
-Definition strip (A B : Type) (x0 : B) (f : A -> option B) x := 
-  if f x is Some z then z else x0.
-(* Lemma stripE (A B : Type) (f : A -> option B) (x0 : B) (forall x, f x) x :  *)
-(*   strip f x  *)
-
-Lemma add_vertex_edge G a H x y u (l: liso (add_vertex G a) (add_edge H x y u)):
-  Σ (F : lgraph) (x' y' : F) (h : liso H (add_vertex F a)),
-  (liso G (add_edge F x' y' u) * (h x = Some x') * (h y = Some y')).
-Proof.
-  move/liso_sym in l.
-  (* pose e0 := liso_e l None. *)
-  (* pose F := del_edge G e0.  *)
-  (* have [x' Ex'] : { x' | l x = Some x'}. admit. *)
-  (* have [y' Ey'] : { y' | l y = Some y'}. admit. *)
-  (* exists F. exists x'. exists y'. rewrite /F. rewrite -> liso_del_add_edge. *)
-  (* What's a good choice of F here? 
-     G without the edge added in H or the vertices of G and the edges of H? *)
-
-  pose s := strip input (fun e : edge H => l (@source' (add_edge H x y u) (liso_dir l (Some e)) (Some e))). 
-  pose t := strip input (fun e : edge H => l (@target' (add_edge H x y u) (liso_dir l (Some e)) (Some e))). 
-  pose F := @mkLGraph G (edge H) s t (@vlabel _ _ G) (@elabel _ _ H) input output.
-  exists F. 
-  have @h : liso H (add_vertex F a).
-  { rewrite /F. 
-Admitted.
-
-Lemma add_vertex_edge' G w H x y u (l: liso (add_vertex G w) (add_edge H x y u)):
-  Σ (F : lgraph) (x' y' : F) (h : liso H (add_vertex F w)) (g : liso G (add_edge F x' y' u)),
-  (forall x, l (Some x) = h^-1 (Some (g x))) * 
-  (l None = h^-1 None) *
-  (h x = Some x') * (h y = Some y').
-Admitted.
-
-(* Definition same_edge (G G' : lgraph) (l : liso G G') (d : bool) (e : G * term * G) (e' : G' * term * G') := *)
-(*   if b then  *)
-(* (* if b then [/\  *) *)
-
-(* Definition add_edge_liso' (G G' : lgraph) (l : liso G G') (d : bool) (x : G) (x' : G') (y : G) (y' : G') u u' : *)
-(*   same_edge d (x,u,y) (x',u',y') -> *)
-(*   liso (G ∔ [x, u, y]) (G' ∔ [x', u', y']). *)
-(* Admitted. *)
-
-(* TODO: there is a third case with [u ≡ u'°] *)
-(* Lemma invert_edge_edge G H x y a b u w (i : liso (add_edge G x y u) (add_edge H a b w)) : *)
-(*   (Σ (h : liso G H), (u ≡[i.d None] w) * (i =iso add_edge_liso h )) *)
-(* + (Σ F a' b' x' y' (g : liso G (add_edge F a' b' w)) (h : liso H (add_edge F x' y' u)),  *)
-(*    (g x = x') * (g y = y') * (h a = a') * (h b = b')). (* what else? *) *)
-(* Admitted. *)
-
-(* TODO: there is a third case with [u ≡ u'°] *)
-Lemma add_edge_edge G H x y a b u w (i : liso (add_edge G x y u) (add_edge H a b w)) :
-  (Σ (h : liso G H), (u ≡ w) * (i =1 h) * (i.e =1 option_bij h.e))
-+ (Σ F a' b' x' y' (g : liso G (add_edge F a' b' w)) (h : liso H (add_edge F x' y' u)), 
-   (g x = x') * (g y = y') * (h a = a') * (h b = b')). (* what else? *)
-Admitted.
-
 Universe S.
 Inductive step: lgraph -> lgraph -> Type@{S} :=
   | step_v0: forall G alpha,
@@ -270,13 +188,13 @@ Definition step_order G H (s: step G H): nat :=
 
 (* Lemmas for manual chaining *)
 Lemma steps_lisoL G G' H : steps G' H -> liso G G' -> steps G H.
-Admitted.
+Proof. intros. etransitivity; eauto using liso_step. Qed.
 
 Lemma steps_stepL G G' H : steps G' H -> step G G' -> steps G H.
-Admitted.
+Proof. intros. eapply cons_step. reflexivity. eassumption. assumption. Qed.
 
 Lemma steps_comp F G H : steps F G -> steps G H -> steps F H.
-Admitted.
+Proof. etransitivity; eassumption. Qed.
 
 
 Instance steps_proper : Proper (liso ==> liso ==> iffT) steps.
@@ -298,75 +216,7 @@ Tactic Notation "liso_step" uconstr(h) :=
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> liso G H -> 
     {F & steps G' F * steps H' F}%type.
-Proof.
-  intros S S'. wlog: G G' H H' S S' / step_order S <= step_order S'.
-  { move => L I. case/orb_sum: (leq_total (step_order S) (step_order S')) => SS. 
-    - exact: L SS I. 
-    - case: (L _ _ _ _ S' S SS (liso_sym I)) => F [F1 F2]. exists F. by split. }
-  move:G H S S'=>G0 H0. 
-  case=>[G alpha|G x u alpha|G x y u alpha v|G x u|G x y u v];
-  case=>[H gamma|H i w gamma|H i j w gamma t|H i w|H i j w t]//_ h.
-  - destruct (invert_vertex_vertex' h) as [[[GH E] _]|[F [[HF GF] _]]].
-    exists G. split=>//. apply liso_step. by symmetry.
-    exists F. split.
-     liso_step HF. apply one_step, step_v0.
-     liso_step GF. apply one_step, step_v0.
-  - apply add_vertex_edge in h as [F[x[y[HF[[GF X] Y]]]]].
-    destruct (invert_vertex_vertex' HF) as [[[HF' E] HFN]|[F' [[HF' FF'] _]]]. congruence.
-    (* exists (add_test F' (HF' i) [dom(w·gamma)]).  *)
-    admit.
-  - admit.
-  - admit.
-  - admit.
-  - (* pendant rule + pendant rule *)
-    case (option_bij_case h).
-    * (* exact same instance *)
-      move=>[h' E]. eexists. split. reflexivity. apply liso_step.
-      case (option_bij_case (liso_e h))=>[[he' E']|].
-      symmetry. unshelve eapply add_test_liso.
-      liso h' he' (fun e => liso_dir h (Some e)); intros.
-        by rewrite -(vlabel_liso h (Some v)) (E (Some v)).
-        generalize (elabel_liso h (Some e)). by rewrite (E' (Some e)).
-        generalize (source_liso h (Some e)). rewrite (E' (Some e)) (E (Some (source e)))=>/=.
-        unfold source'. simpl. by case liso_dir; injection 1. 
-        generalize (target_liso h (Some e)). rewrite (E' (Some e)) (E (Some (target e)))=>/=.
-        unfold source'. simpl. by case liso_dir; injection 1.
-        generalize (liso_input h)=>/=. rewrite E/=. congruence.
-        generalize (liso_output h)=>/=. rewrite E/=. congruence.
-        simpl. generalize (source_liso h None). simpl. unfold source'. simpl.
-        case liso_dir; rewrite E' E/=; congruence.
-        apply dom_weq, dot_weq.
-        generalize (elabel_liso h None). generalize (source_liso h None).
-        case liso_dir; rewrite E' E //=. by symmetry. 
-        generalize (vlabel_liso h None). rewrite E. by symmetry.
-      move=>[A'[B'[a[ab[b U]]]]]. exfalso.
-      generalize (target_liso h None). rewrite E U/=. by case liso_dir.
-    * (* distinct target vertices being "pulled in" *)
-      intros (G''&H''&bg&bgh&bh&E). eexists. split. admit. admit.
-      (* what about the completely independent case? *)
-  - (* pendant rule + chain rule *)
-    rewrite /=. 
-    admit.
-  - (* pendant rule + loop rule *)
-    case: (add_edge_edge h) => [[g] [[A B] C]|].
-    + (* contradiction: identical edges *) exfalso. 
-      move: (source_liso h None) (target_liso h None). rewrite !B !C /=. 
-      case: (liso_dir _ _) => /= ->; by move/(@bij_injective _ _ g).
-    + (* distinct edges *)
-      move => [F] [a'] [b'] [x'] [y'] [f] [g] [[[A B] C] D].
-      move: (add_vertex_edge' f) => [F'] [a''] [b''] [f'] [g'] [[[H1 H2] H3] H4].
-      have E: a'' = b'' by congruence. subst b''.
-      exists (add_test (add_test F' (g' x) (tst_dom (u·alpha))) a'' [1∥w]). split.
-      * subst. 
-        rewrite -> (liso_add_test g' x (tst_dom (u·alpha))).
-        rewrite -> (liso_add_test_edge _ _).
-        exact: steps_stepL (step_e0 _ _). 
-      * rewrite -> (liso_add_test g).  
-        rewrite -> (liso_add_test (liso_add_edge f' x' y' u)) => /=.
-        rewrite -> liso_add_test_edge. subst. rewrite C H3 [(f (Some x))]H1 H2 !bijK'. 
-        rewrite -> (liso_add_edge (@liso_add_test_vertex F' alpha [1∥w] (a''))) => /=.
-        apply: steps_stepL (step_v1 _ _ _). by rewrite -> add_testC. 
-Admitted.
+Admitted.                       (* through open confluence *)
 
 Definition measure (G: lgraph) := #|vertex G| + #|edge G|.
 
@@ -465,6 +315,10 @@ Qed.
 *)
 
 Lemma dot_liso: Proper (liso ==> liso ==> liso) ldot.
+Proof.
+  move => F F' FF G G' GG. rewrite /ldot.
+  (* setoid_rewrite (iso_liso (merge_iso (union_iso FF GG))). *)
+  (* cannot work: we would need a coercion from liso to iso, which is not true *)
 Admitted.
 
 Lemma par_liso: Proper (liso ==> liso ==> liso) lpar.
@@ -628,13 +482,14 @@ Proof.
     + by rewrite /replace_ioL/= eqxx. 
 Qed.
 
-(* This should follow with [dot_steps_l and cnv_steps] *)
+Lemma ldotcnv G H: liso (ldot G H) (lcnv (ldot (lcnv H) (lcnv G))).
+Admitted.
+
 Lemma dot_steps_r G G' H: steps G G' -> steps (ldot H G) (ldot H G').
 Proof.
-  apply step_to_steps; first by apply dot_liso. 
-  move => {G G'} G G' step_G_G'. 
-  etransitivity. apply liso_step, (liso_sym (lcnvC _)).  
-Admitted.
+  move => GG'. setoid_rewrite ldotcnv.
+  by apply cnv_steps, dot_steps_l, cnv_steps.
+Qed.
 
 Instance dot_steps: Proper (steps ==> steps ==> steps) ldot.
 Proof.
@@ -664,12 +519,35 @@ Proof.
   by apply par_steps_l. 
 Qed.
 
-
 Instance par_steps: Proper (steps ==> steps ==> steps) lpar.
 Proof.
   repeat intro. by etransitivity; [apply par_steps_l | apply par_steps_r].
 Qed.
 
+
+Lemma ldotunit G a: liso (ldot G (point (unit_graph a) tt tt)) (add_test G output a).
+Admitted.
+
+Lemma lunitdot G a: liso (ldot (point (unit_graph a) tt tt) G) (add_test G input a).
+Admitted.
+
+Lemma lparunitunit a b:
+  liso (lpar (point (unit_graph a) tt tt) (point (unit_graph b) tt tt))
+       (point (unit_graph [a·b]) tt tt).
+Admitted.
+
+Lemma lparedgeunit a u b c:
+  liso (lpar (point (edge_graph a u b) false true) (point (unit_graph c) tt tt))
+       (point (unit_graph [c∥a·u·b]) tt tt).
+Admitted.
+       
+Lemma add_test_point a c: liso (point (unit_graph a) tt tt [tst tt <- c]) (point (unit_graph [a·c]) tt tt).
+Admitted.                       (* could be inlined for now *)
+
+Lemma add_test_edge (x: bool) a u b c:
+  liso (point (edge_graph a u b) false true [tst x <- c])
+       (point (edge_graph (if x then a else [c·a]) u (if x then [b·c] else b)) false true).
+Admitted.
 
 Proposition reduce (u: term): steps (lgraph_of_term u) (lgraph_of_nf_term (nf u)).
 Proof.
@@ -678,12 +556,14 @@ Proof.
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
     * apply liso_step.
-      rewrite /ldot/=.
-      admit.
+      setoid_rewrite ldotunit. simpl.
+      apply add_test_point. 
     * apply liso_step.
-      admit. 
+      setoid_rewrite lunitdot. simpl.
+      apply add_test_edge. 
     * apply liso_step.
-      admit.
+      setoid_rewrite ldotunit. simpl.
+      apply add_test_edge. 
     * rewrite /ldot/=.
       etransitivity. apply liso_step.
       2: etransitivity.
@@ -703,12 +583,9 @@ Proof.
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
-    * apply liso_step.
-      admit.
-    * apply liso_step.
-      admit. 
-    * apply liso_step.
-      admit.
+    * apply liso_step. apply lparunitunit.
+    * apply liso_step. setoid_rewrite lparC. apply lparedgeunit.
+    * apply liso_step. apply lparedgeunit.
     * rewrite /lpar/=.
       etransitivity. apply liso_step.
       2: etransitivity.
@@ -745,19 +622,22 @@ Proof.
     by intros; apply E. 
   destruct 1 as [G H I|G' G H H' I S _ _]=>//L.
   - exfalso. apply (liso_comp (liso_sym I)) in L. clear -S L. generalize (card_bij (liso_e L)).
-    destruct s; destruct S; simpl in *; try by rewrite !card_option ?card_unit ?card_void.
-    * admit.                    (* because input must be there in G *)
-    * move=>_.
-      generalize (liso_input L). generalize (liso_output L). simpl.
+    destruct s; destruct S; simpl in *; (try by rewrite !card_option ?card_unit ?card_void); move=>_.
+    * generalize (card_bij (liso_v L)). rewrite card_unit card_option.
+      have H: 0 < #|G|. apply /card_gt0P. by exists input.
+      revert H. case #|G|; discriminate.
+    * generalize (liso_input L). generalize (liso_output L). simpl.
       suff E: input=output :>G by congruence.
       apply (card_le1 (D:=predT))=>//. 
       apply liso_v, card_bij in L. rewrite card_option card_bool in L.
         by injection L=>->.
-    * admit.
-    * move=>_.
-      generalize (source_liso L None). generalize (target_liso L None).
+    * have E: forall y, L None <> L (Some y) by intros y H; generalize (bij_injective (f:=L) H). 
+      case_eq (L None).
+       generalize (liso_output L) (E output). simpl. congruence. 
+       generalize (liso_input L) (E input). simpl. congruence. 
+    * generalize (source_liso L None). generalize (target_liso L None).
       case liso_dir; simpl; congruence.
-Admitted.
+Qed.
 
 Lemma liso_nf (s t: nf_term):
   liso (lgraph_of_nf_term s) (lgraph_of_nf_term t) ->
