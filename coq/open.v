@@ -954,14 +954,14 @@ Proof.
     + move => v. by rewrite (vlabel_liso h').
     + case => /= e He. case/fset1UE : (He) => [E|[E1 E2]].
       * subst e. by rewrite fsetU1_funE1 /= !updateE. 
-      * 
+      * admit.
 
-    apply: liso_comp. apply: close_add_edge.
-    apply: liso_comp. 2: apply: liso_sym. 2: apply: close_add_edge.
-    have C z : z \in vset G -> close_v (vfun_body h' z) = h' (@close_v G isG z).
-    { move => zG. unlock vfun_body. 
-    rewrite !C. 
-    apply: liso_add_edge_congr.
+    (* apply: liso_comp. apply: close_add_edge. *)
+    (* apply: liso_comp. 2: apply: liso_sym. 2: apply: close_add_edge. *)
+    (* have C z : z \in vset G -> close_v (vfun_body h' z) = h' (@close_v G isG z). *)
+    (* { move => zG. unlock vfun_body.  *)
+    (* rewrite !C.  *)
+    (* apply: liso_add_edge_congr. *)
 Admitted.
 
 (** * Open Step relation  *)
