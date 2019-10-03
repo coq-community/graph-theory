@@ -7,6 +7,22 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(*
+ 
+TO DISCUSS
+ - graph.endpoint (should we do the same for input/output?)
+ - graph.iso potentially swapping edges
+ - iso in Type / iso2 in Prop
+ - also use '≡' for isomorphisms (just by declaring them as setoids)?
+
+TO DO
+ - ptt algebra on graph2 rather than just pttdom algebra
+ - packed classes? (does not seem to be problematic for now)
+   but we should at least understand the current hack for setoid_of_bisetoid
+
+ *)
+
+
 
 (* setoids *)
 Structure setoid :=
@@ -19,7 +35,10 @@ Arguments eqv {_}.
 Infix "≡" := eqv (at level 79).
 Existing Instance Eqv.
 
-(* setoids with an involution *)
+(* setoids with an second notion of equality: 
+   - eqv' x y = eqv x y° (when we have an involution _°)
+   - eqv' _ _ = False    (otherwise)
+ *)
 Structure bisetoid :=
   BiSetoid {
       setoid_of_bisetoid:> setoid;
@@ -31,6 +50,8 @@ Structure bisetoid :=
     }.
 Arguments eqv' {_}.
 Infix "≡'" := eqv' (at level 79).
+
+(* switch between [≡] and [≡'] based on a Boolean (useful for defining potentially edge swapping homomorphisms) *)
 Definition eqv_ (X: bisetoid) (b: bool) (x y: X) := if b then x ≡' y else x ≡ y.
 Notation "x ≡[ b ] y" := (eqv_ b x y) (at level 79).
 Instance eqv_sym {X: bisetoid} {b}: Symmetric (@eqv_ X b).
@@ -40,7 +61,9 @@ Program Definition flat_bisetoid (X: Type) := {| setoid_of_bisetoid := {| eqv :=
 Next Obligation. eauto with typeclass_instances. Qed.
 Next Obligation. tauto. Qed.
 
-(* (commutative) monoids *)
+(* (commutative) monoids 
+   for labelling graph vertices
+ *)
 Structure monoid :=
   Monoid {
       setoid_of_monoid:> setoid;
@@ -59,6 +82,7 @@ Arguments mon2 {_}.
 (* the algebraic structure 2pdom *)
 Module pttdom.
 
+(* operations are put apart so that the can get notations for them before stating/proving the laws  *)
 Structure ops_ :=
   { setoid_of_ops:> setoid;
     dot: setoid_of_ops -> setoid_of_ops -> setoid_of_ops;
@@ -69,12 +93,12 @@ Structure ops_ :=
 
 Bind Scope pttdom_ops with setoid_of_ops.
 Delimit Scope pttdom_ops with t.
+Open Scope pttdom_ops.
 Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): pttdom_ops.
 Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): pttdom_ops.
 Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): pttdom_ops.
 Notation "1"  := (one _): pttdom_ops.
 
-Local Open Scope pttdom_ops.
 Structure pttdom :=
   { ops:> ops_;
     dot_eqv: Proper (eqv ==> eqv ==> eqv) (@dot ops);
@@ -117,6 +141,7 @@ Section derived.
  Lemma dotcnv (x y: X): x·y ≡ (y°·x°)°.
  Proof. apply cnv_inj. by rewrite cnvdot cnvI. Qed.
 
+ (* dualised equality (to get a bisetoid) *)
  Definition eqv' (x y: X) := x ≡ y°.
  Arguments eqv' _ _ /.
  Lemma eqv'_sym: Symmetric eqv'.
@@ -129,6 +154,7 @@ Section derived.
  Proof. move=> /= -> ->. apply cnvI. Qed.
  Definition pttdom_bisetoid := BiSetoid eqv'_sym eqv10 eqv01 eqv11. 
 
+ (* tests *)
  Definition is_test (x: X) := dom x ≡ x.
  Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
  Lemma one_test: is_test 1.
@@ -146,9 +172,11 @@ Section derived.
  Lemma cnv_test (a: test): is_test (a°).
  Admitted.
  Canonical Structure tst_cnv a := Test (cnv_test a).
+ (* automatised inference of tests *)
  Definition infer_test x y (e: elem_of y = x) := y.
  Notation "[ x ]" := (@infer_test x _ erefl).
 
+ (* commutative monoid of  tests *)
  Definition eqv_test (a b: test) := a ≡ b.
  Arguments eqv_test _ _ /.
  Lemma eqv_test_equiv: Equivalence eqv_test.
@@ -191,6 +219,9 @@ Section terms.
    | tm_var a => f a
    end.
  End e.
+ (* axiomatic equality on terms (we do not prove it, but this
+    impredicative encoding is equivalent to the inductive defining
+    equational reasoning in pttdom) *)
  Definition tm_eqv (u v: term): Prop :=
    forall (X: pttdom) (f: A -> X), eval f u ≡ eval f v.
  Hint Unfold tm_eqv.
@@ -208,6 +239,7 @@ Section terms.
       cnv := tm_cnv;
       dom := tm_dom;
       one := tm_one |}.
+ (* quotiented terms indeed form a pttdom *)
  Program Definition tm_pttdom: pttdom := {| ops := tm_ops_ |}.
  Next Obligation. repeat intro; simpl. by apply dot_eqv. Qed.
  Next Obligation. repeat intro; simpl. by apply par_eqv. Qed.
@@ -226,17 +258,9 @@ Section terms.
  Next Obligation. repeat intro; simpl. by apply A14. Qed.
  Canonical tm_pttdom. 
  
- (* Fixpoint is_test (u: term) := *)
- (*   match u with *)
- (*   | tm_dot u v => is_test u && is_test v *)
- (*   | tm_par u v => is_test u || is_test v *)
- (*   | tm_cnv u => is_test u *)
- (*   | tm_dom _ | tm_one => true *)
- (*   | tm_var _ => false *)
- (*   end. *)
-
  Notation test := (test tm_pttdom).
- 
+
+ (* normal forms for terms *)
  Inductive nf_term :=
  | nf_test: test -> nf_term
  | nf_conn: test -> term -> test -> nf_term.
@@ -246,7 +270,8 @@ Section terms.
    | nf_test alpha => elem_of alpha (* why do we need to insert the coercion??? *)
    | nf_conn alpha u gamma => alpha · u · gamma
    end.                                         
- 
+
+ (* pttdom algebra on normal forms *)
  Definition nf_one := nf_test [1].
  Definition nf_var a := nf_conn [1] (tm_var a) [1].
  Definition nf_cnv u :=
@@ -273,6 +298,8 @@ Section terms.
    | nf_conn a u b, nf_test c => nf_test [c ∥ a·u·b]
    | nf_conn a u b, nf_conn c v d => nf_conn [a·c] (u ∥ v) [b·d]
    end.
+
+ (* normalisation function (could also be defined as an [eval])*)
  Fixpoint nf (u: term): nf_term :=
    match u with
    | tm_dot u v => nf_dot (nf u) (nf v)
@@ -312,7 +339,7 @@ Section terms.
 End terms.
 End pttdom.
 
-(* labelled multigraphs (not pointed) *)
+(* labelled multigraphs *)
 Module mgraph.
 
 Section s.
@@ -335,11 +362,13 @@ Section s.
   *)
     
 Variables Lv Le: Type.
+
+(* labelled multigraphs (not pointed) *)
 Record graph: Type :=
   Graph {
       vertex:> finType;
       edge: finType;
-      endpoint: bool -> edge -> vertex;
+      endpoint: bool -> edge -> vertex; (* source and target functions *)
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
 Notation source := (endpoint false).
@@ -348,9 +377,9 @@ Notation target := (endpoint true).
 (* two pointed graphs (related operations are defined only later) *)
 Record graph2 :=
   Graph2 {
-      graph_of :> graph;
-      input : vertex graph_of;
-      output : vertex graph_of }.
+      graph_of:> graph;
+      input: vertex graph_of;
+      output: vertex graph_of }.
 Arguments input [_].
 Arguments output [_].
 Notation point G := (@Graph2 G).
@@ -432,6 +461,7 @@ Definition merge (Lv: monoid) Le (G : graph Lv Le) (r : equiv_rel G) :=
 Arguments merge [_ _] _ _.
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
+(* xor operation on Booleans, such that [xor false b] is convertible to [b] *)
 Definition xor b c := if b then negb c else c.
 Lemma xorI a : xor a a = false.
 Proof. by case a. Qed.
@@ -440,7 +470,6 @@ Proof. by case a; case b. Qed.
 Lemma xorA a b c : xor a (xor b c) = xor (xor a b) c.
 Proof. by case a; case b; case c. Qed.
 
-
 Section i.
 Variable Lv: setoid.
 Variable Le: bisetoid.
@@ -448,7 +477,6 @@ Notation graph := (graph Lv Le).
 Notation graph2 := (graph2 Lv Le).
 
 (* homomorphisms *)
-
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
   { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (xor (hd e) b) e);
     vlabel_hom: forall v, vlabel (hv v) ≡ vlabel v;
@@ -819,6 +847,7 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
+
 (* two pointed graphs operations *)
 
 Definition g2_par (F G: graph2) :=
@@ -859,6 +888,7 @@ Canonical Structure g2_ops: ops_ :=
      dom := g2_dom;
      one := g2_one |}.
 Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
+(* TODO: import all isomorphisms... *)
 Admit Obligations.
 Canonical g2_pttdom.
 
@@ -890,8 +920,9 @@ Canonical Structure tm_bisetoid :=
 (* Canonical Structure tm_bisetoid := Eval hnf in pttdom_bisetoid (tm_pttdom A). *)
 Check erefl: tm_setoid A = setoid_of_bisetoid _. 
 
+(* rewriting system *)
+
 (* Universe S. *)
-(* TODO: improve notation scopes *)
 Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
   | step_v0: forall G alpha,
       step
@@ -900,19 +931,19 @@ Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
   | step_v1: forall (G: graph2) x u alpha,
       step
         (G ∔ alpha ∔ [Some x, u, None])
-        (G [tst x <- [dom (u·alpha)]%t])
+        (G [tst x <- [dom (u·alpha)]])
   | step_v2: forall G x y u alpha v,
       step
         (G ∔ alpha ∔ [Some x, u, None] ∔ [None, v, Some y])
-        (G ∔ [x, (u·alpha·v)%t, y])
+        (G ∔ [x, u·alpha·v, y])
   | step_e0: forall G x u,
       step
         (G ∔ [x, u, x])
-        (G [tst x <- [1∥u]%t])
+        (G [tst x <- [1∥u]])
   | step_e2: forall G x y u v,
       step
         (G ∔ [x, u, y] ∔ [x, v, y])
-        (G ∔ [x, (u∥v)%t, y]).
+        (G ∔ [x, u∥v, y]).
 
 Inductive steps: relation graph2 :=
   | iso_step: subrelation iso2 steps
@@ -967,6 +998,8 @@ Proof.
      rewrite /Wf_nat.ltof -(iso_stagnates FF1). apply /ltP. by apply step_decreases.
      exists R. split=>//. by transitivity L.
 Qed.
+
+(* algebraic operations preserve rewriting steps *)
 
 Lemma step_to_steps f:
   Proper (iso2 ==> iso2) f -> Proper (step ==> steps) f -> Proper (steps ==> steps) f.
@@ -1045,6 +1078,7 @@ Proof.
 Qed.
 
 
+(* graphs of terms and normal forms *)
 Definition graph_of_term: term -> graph2 := eval (fun a => g2_var _ (tm_var a)). 
 
 Definition graph_of_nf_term (t: nf_term A): graph2 :=
@@ -1086,7 +1120,7 @@ Lemma add_test_edge (x: bool) (u: term) (a b c: test):
     (point (edge_graph (if x then a else [c·a]) u (if x then [b·c] else b))%t false true).
 Admitted.
 
-
+(* reduction lemma *)
 Proposition reduce (u: term): steps (graph_of_term u) (graph_of_nf_term (nf u)).
 Proof.
   induction u=>//=.
@@ -1151,6 +1185,7 @@ Proof.
     (* apply dotC.  *)
 Admitted.
 
+(* graphs of normal forms are in normal form (i.e., can't reduce) *)
 Lemma nf_steps s: forall H, steps (graph_of_nf_term s) H -> graph_of_nf_term s ≃2 H.
 Proof.
   suff E: forall G H, steps G H -> G ≃2 graph_of_nf_term s -> G ≃2 H.
@@ -1174,6 +1209,7 @@ Proof.
       case iso_d; simpl; congruence.
 Qed.
 
+(* isomorphisms on graphs of normal forms give back equations *)
 Lemma iso_nf (s t: nf_term A):
   graph_of_nf_term s ≃2 graph_of_nf_term t ->
   term_of_nf s ≡ term_of_nf t.
@@ -1197,6 +1233,7 @@ Proof.
     intros. symmetry. apply dot_eqv=>//. apply dot_eqv=>//. 
 Qed.
 
+(* main completeness theorem *)
 Theorem completeness (u v: term): graph_of_term u ≃2 graph_of_term v -> u ≡ v.
 Proof.
   move=>h.
