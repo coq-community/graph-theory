@@ -1,8 +1,9 @@
 -R . graphs
 edone.v
-set_tac.v
 bounded.v
 preliminaries.v
+set_tac.v
+bij.v
 finite_quotient.v
 digraph.v
 sgraph.v
@@ -12,21 +13,23 @@ separators.v
 checkpoint.v
 cp_minor.v
 equiv.v
-multigraph.v
-ptt_algebra.v
-ptt_graph.v
+
+## soundness and completeness for 2pdom 
+structures.v
+pttdom.v
+mgraph.v
+rewriting.v
+reduction.v
+# Christian's open confluence files here
+completeness.v
+
+## extraction (first three files obsolete, following ones to be ported)
+multigraph_bak.v
+ptt_algebra_bak.v
+ptt_graph_bak.v
 skeleton.v
 subalgebra.v
 extraction_def.v
 extraction_iso.v
 extraction_top.v
 corollaries.v
-
-# rewriting.v
-
-multigraph_new.v
-bij.v
-pttdom.v
-liso.v
-confluence.v
-open.v

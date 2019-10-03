@@ -2,7 +2,7 @@ Require Import Setoid CMorphisms.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient bij preliminaries digraph sgraph minor checkpoint.
-Require Import multigraph ptt_graph.
+Require Import multigraph_bak ptt_graph_bak.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

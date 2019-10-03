@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij set_tac.
 Require Import digraph sgraph minor checkpoint.
-Require Import multigraph ptt_algebra equiv ptt_graph skeleton.
+Require Import multigraph_bak ptt_algebra_bak equiv ptt_graph_bak skeleton.
 Require Import bounded extraction_def.
 
 Set Implicit Arguments.

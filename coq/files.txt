@@ -1,0 +1,32 @@
+structures: setoids, bisetoids, monoids
+pttdom: pttdom algebras, algebras of terms, tests ...
+mgraph: labelled multigraphs, pointed multigraphs, pttdom algebra of such graphs
+rewriting: definition of the rewriting system
+reduction: rewriting system powerful enough to reach normal forms
+???,???: open graphs, confluence proof
+completeness: wrapping up everything into a completeness proof
+
+
+
+with the following dependencies:
+
+              structures
+                pttdom            
+	        mgraph       
+              rewriting
+                       ???
+       reduction	  ???
+	     completeness
+
+
+Note: one could break the dependency on mgraph->pttdom if [pttdom.pttdom] was defined in structures.v (would make sense actually)
+
+
+files ending in _bak.v are supposed to disappear once
+- their interesting content has been imported elsewhere
+- the modules built on top of them have been ported to the new files
+(some files in attic/ could also be removed)
+
+
+status of files open.v and confluence.v remains to be checked
+
