@@ -2,7 +2,7 @@ Require Import Setoid CMorphisms Morphisms.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone set_tac finite_quotient preliminaries bij equiv.
-Require Import multigraph_new liso.
+Require Import pttdom mgraph rewriting.
 
 Require Import mathcomp.finmap.finmap.
 
@@ -181,10 +181,10 @@ Lemma eqv_update (aT : eqType) (rT : Type) (f g : aT -> rT) (E : relation rT) z 
   (forall x, E (f x) (g x)) -> E u v -> forall x, E (f[upd z := u] x) (g[upd z := v] x).
 Proof. move => H Euv k. case: (altP (k =P z)) => [->|?]; by rewrite !updateE. Qed.
 
-Require Import confluence pttdom.
+(* Require Import confluence pttdom. *)
 
 
-Notation "G ≅ H" := (liso G H) (at level 45).
+(* Notation "G ≅ H" := (liso G H) (at level 45). *)
 
 (** TOTHINK: is this useful? remove?
 
@@ -233,12 +233,16 @@ End inject.
 
 Hint Resolve inj_v_inj inj_e_inj.
 
+Section OpenGraphs.
+Variable (Lv Le : Type).
+
+(* TODO: turn src and tgt into a function from [bool] *)
 Record pre_graph := { vset : {fset VT};
                       eset : {fset ET};
                       src : ET -> VT;
                       tgt : ET -> VT;
-                      lv : VT -> test;
-                      le : ET -> term;
+                      lv : VT -> Lv;
+                      le : ET -> Le;
                       p_in : VT;
                       p_out : VT }.
 
@@ -248,13 +252,20 @@ Class is_graph (G : pre_graph) :=
     p_inP : p_in G \in vset G;
     p_outP : p_out G \in vset G}.
 
+End OpenGraphs.
+
+
+
 Bind Scope open_scope with pre_graph.
 Delimit Scope open_scope with O.
 
 (** ** Opening and closing of type-based graphs *)
 
+Class inh_type (A : Type) := { default : A }.
+
 Section Open.
-Variable (G : lgraph).
+Variables (Lv Le : Type) (le0 : Le) (G : graph2 Lv Le).
+Context `{inh_type Le}.
 
 (** G may be edgeless, so there is no way to avoid the option type here *)
 Definition proj_e (e : ET) : option (edge G) := 
@@ -278,13 +289,20 @@ Proof.
   case: insubP => [k _ /ord_inj -> /=|]; by rewrite ?P ?enum_rankK.
 Qed.
 
-Definition open : pre_graph := 
+(** In order to totalize the edge labeling, we need a default edge label. This
+is necessary since an edgeless [G] may use an empty type for labeling
+edges... *)
+
+
+
+
+Definition open : pre_graph Lv Le := 
   {| vset := [fset inj_v x | x in G];
      eset := [fset inj_e x | x in edge G];
      src (e:ET) := if proj_e e is Some e' then inj_v (source e') else v0;
      tgt (e:ET) := if proj_e e is Some e' then inj_v (target e') else v0;
      lv v := vlabel (proj_v v);
-     le e := if proj_e e is Some e' then elabel e' else one;
+     le e := if proj_e e is Some e' then elabel e' else default;
      p_in := inj_v (input : G);
      p_out := inj_v (output : G) |}.
 
@@ -300,7 +318,7 @@ Qed.
 End Open.
 
 Section Close.
-Variable (G : pre_graph).
+Variable (Lv Le : Type) (G : pre_graph Lv Le).
 Context {graph_G : is_graph G}.
 
 Lemma source_proof (e : eset G) : src G (val e) \in vset G.
@@ -309,19 +327,32 @@ Proof. exact: (srcP (valP e)). Qed.
 Lemma target_proof (e : eset G) : tgt G (val e) \in vset G.
 Proof. exact: (tgtP (valP e)). Qed.
 
-Definition close' : graph test_setoid term_setoid := Eval simpl in 
+Definition close' : graph Lv Le := Eval simpl in 
   {| vertex := [finType of vset G];
      edge := [finType of eset G];
-     source e := Sub (src G (val e)) (source_proof e);
-     target e := Sub (tgt G (val e)) (target_proof e);
+     endpoint b e := if b 
+                      then Sub (tgt G (val e)) (target_proof e)
+                      else Sub (src G (val e)) (source_proof e);
      vlabel v := lv G (val v);
      elabel e := le G (val e) |}.
 
+Arguments Graph2 [Lv Le] graph_of _ _.
+
 Definition close := Eval hnf in
-  @LGraph close' (Sub (p_in G) p_inP) (Sub (p_out G) p_outP).
+  point close' (Sub (p_in G) (@p_inP _ _ _ _)) (Sub (p_out G) (@p_outP _ _ _ _)).
 
 End Close.
-Arguments close G [_].
+Arguments close [Lv Le] G [_].
+
+Section OpenCloseFacts.
+Variables (Lv : setoid) (Le : bisetoid).
+Context {inh_Le : inh_type Le}.
+
+
+Notation pre_graph := (pre_graph Lv Le).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
+
 
 (** tracing vertices through the closing operation *)
 Definition close_v (G : pre_graph) (graph_G : is_graph G) (x : VT) : close G :=
@@ -337,20 +368,26 @@ Proof. move => xG. rewrite /close_v. by case: {-}_ /idP. Qed.
 Arguments close_v [G graph_G] _. 
 Arguments close_v : simpl never.
 
+Lemma iso2_intro (G H : graph2) (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
+  is_hom hv he hd -> hv input = input -> hv output = output -> G ≃2 H.
+Proof. move => hom_h. by exists (Iso hom_h). Qed.
 
-Lemma openK (G : lgraph) : G ≅ close (open G). 
-liso (imfset_bij (@inj_v_inj G)) 
+Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) := 
+  match goal with |- ?G ≃2 ?H => apply (@iso2_intro G H hv he hd) end.
+
+Lemma openK (G : graph2) : G ≃2 close (open G).
+Proof.
+iso2 (imfset_bij (@inj_v_inj G)) 
      (imfset_bij (@inj_e_inj (edge G)))
      (fun => false) => /=.
-- move => v. by rewrite inj_vK.
-- move => e. by rewrite inj_eK.
-- move => e. apply: val_inj => /=. by rewrite inj_eK.
-- move => e. apply: val_inj => /=. by rewrite inj_eK.
-- exact: val_inj.
-- exact: val_inj.
+2-3: exact: val_inj.
+split. 
+- move => e [|]; apply: val_inj => /=;by rewrite !inj_eK.
+- move => v /=. by rewrite inj_vK. 
+- move => e /=. by rewrite inj_eK.
 Defined.
 
-Lemma openKE (G : lgraph) (x : G) :
+Lemma openKE (G : graph2) (x : G) :
   openK G x = close_v (inj_v x) :> close (open G).
 Proof. 
   rewrite /close_v /=. case: {-}_ /idP => [p|np]; first exact: val_inj.

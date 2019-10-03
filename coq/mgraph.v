@@ -46,8 +46,6 @@ Record graph: Type :=
       endpoint: bool -> edge -> vertex; (* source and target functions *)
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
-Notation source := (endpoint false).
-Notation target := (endpoint true).
 
 (* two pointed graphs (related operations are defined only later) *)
 Record graph2 :=
@@ -101,6 +99,9 @@ Definition unl {G H: graph} (x: G): union G H := inl x.
 Definition unr {G H: graph} (x: H): union G H := inr x.
 
 End s.
+
+Notation source := (endpoint false).
+Notation target := (endpoint true).
 
 Bind Scope graph_scope with graph.
 Delimit Scope graph_scope with G.
