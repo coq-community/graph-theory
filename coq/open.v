@@ -19,6 +19,9 @@ Notation "'Σ' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p%type)) ..))
   (at level 200, x binder, y binder, right associativity).
 
+Definition iso_of_iso2 (Lv : setoid) (Le : bisetoid) (F G : graph2 Lv Le) (f : F ≃2 G) : F ≃ G := projT1 f.
+Coercion iso_of_iso2 : iso2 >-> iso.
+
 Lemma valK' (T : Type) (P : pred T) (sT : subType P) (x : sT) (p : P (val x)) : 
   Sub (val x) p = x.
 Proof. apply: val_inj. by rewrite SubK. Qed.
@@ -342,7 +345,7 @@ Definition close := Eval hnf in
   point close' (Sub (p_in G) (@p_inP _ _ _ _)) (Sub (p_out G) (@p_outP _ _ _ _)).
 
 End Close.
-Arguments close [Lv Le] G [_].
+Arguments close [Lv Le] G [_] , [Lv Le] G graph_G.
 
 Section OpenCloseFacts.
 Variables (Lv : setoid) (Le : bisetoid).
@@ -370,10 +373,11 @@ Arguments close_v : simpl never.
 
 Lemma iso2_intro (G H : graph2) (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
   is_hom hv he hd -> hv input = input -> hv output = output -> G ≃2 H.
-Proof. move => hom_h. by exists (Iso hom_h). Qed.
+Proof. move => hom_h. by exists (Iso hom_h). Defined.
 
 Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) := 
   match goal with |- ?G ≃2 ?H => apply (@iso2_intro G H hv he hd) end.
+
 
 Lemma openK (G : graph2) : G ≃2 close (open G).
 Proof.
@@ -387,65 +391,71 @@ split.
 - move => e /=. by rewrite inj_eK.
 Defined.
 
+(* Lemma iso2_introE (F G : graph2) hv he hd Hh Hi Ho (x : F) :  *)
+(*   (@iso2_intro F G hv he hd Hh Hi Ho x) = hv x. *)
+(* Proof. done. Qed. *)
+
 Lemma openKE (G : graph2) (x : G) :
   openK G x = close_v (inj_v x) :> close (open G).
 Proof. 
-  rewrite /close_v /=. case: {-}_ /idP => [p|np]; first exact: val_inj.
-  by rewrite in_imfsetT in np.
+  rewrite /close_v /=. case: {-}_ /idP => [p|np].
+  - by apply: val_inj => /=. 
+  - by rewrite in_imfsetT in np.
 Qed.
-
 
 (** We define isomorphisms via closing *)
 
-Definition oliso (G H : pre_graph) :=
-  Σ (graph_G : is_graph G) (graph_H : is_graph H), close G ≅ close H.
 
-Notation "G ⩭ H" := (oliso G H) (at level 45).
+Definition oiso2 (G H : pre_graph) :=
+  Σ (graph_G : is_graph G) (graph_H : is_graph H), close G ≃2 close H.
+
+Notation "G ⩭2 H" := (oiso2 G H) (at level 45).
 
 Lemma closeK (G : pre_graph) (graph_G : is_graph G) : 
-  G ⩭ open (close G).
-Proof. rewrite /oliso. do 2 eexists. exact: openK. Defined.
+  G ⩭2 open (close G).
+Proof. rewrite /oiso2. do 2 eexists. exact: openK. Defined.
 
 Lemma close_irrelevance (G : pre_graph) (graph_G graph_G' : is_graph G) : 
-  @close G graph_G ≅ @close G graph_G'.
+  close G graph_G ≃2 close G graph_G'.
 Proof.
-  liso bij_id bij_id (fun _ => false) => //= [e|e||]; exact: val_inj.
+  iso2 bij_id bij_id xpred0; try exact: val_inj.
+  split => // e [|]; exact: val_inj.
 Qed.
   
 Lemma liso_of_oliso (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) : 
-  G ⩭ H -> close G ≅ close H.
+  G ⩭2 H -> close G ≃2 close H.
 Proof. 
   case => graph_G' [graph_H'] I. rewrite -> (close_irrelevance graph_H graph_H'). 
-  apply: liso_comp I. exact: close_irrelevance.
+  etransitivity; last exact: I. exact: close_irrelevance.
 Qed.
 
 
-Lemma oliso_trans : CRelationClasses.Transitive oliso.
+Lemma oiso2_trans : CRelationClasses.Transitive oiso2.
 Proof. 
   move => F G H [isF [isG FG]] [isG' [isH GH]]. do 2 eexists. 
-  apply: liso_comp GH. by rewrite -> (close_irrelevance isG' isG).
+  apply: iso2_comp GH. by rewrite -> (close_irrelevance isG' isG).
 Qed.
 
-Lemma oliso_sym : CRelationClasses.Symmetric oliso.
-Proof. move => F G [isF [isG]] /liso_sym => ?. by do 2 eexists. Qed.
+Lemma oiso2_sym : CRelationClasses.Symmetric oiso2.
+Proof. move => F G [isF [isG]] /iso2_sym => ?. by do 2 eexists. Qed.
 
-Instance oliso_Equivalence : CRelationClasses.PER oliso.
-Proof. exact: (CRelationClasses.Build_PER _ oliso_sym oliso_trans). Qed.
+Instance oiso2_Equivalence : CRelationClasses.PER oiso2.
+Proof. exact: (CRelationClasses.Build_PER _ oiso2_sym oiso2_trans). Qed.
 
 
-Definition vfun_body (G H : pre_graph) 
-  (graph_G : is_graph G) (graph_H : is_graph H) (h : bij (close G) (close H)) (x : VT) : VT := 
+Definition vfun_body (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) 
+  (h : bij (close G) (close H)) (x : VT) : VT := 
   locked (match @idP (x \in vset G) with
           | ReflectT p => val (h (Sub x p))
           | ReflectF _ => x
           end).
 
-Definition vfun_of (G H : pre_graph) (h : G ⩭ H) := 
+Definition vfun_of (G H : pre_graph) (h : G ⩭2 H) := 
   let: existT GG (existT GH h) := h in vfun_body h.
 
 Arguments vfun_of [G H] h x.
 
-Coercion vfun_of : oliso >-> Funclass.
+Coercion vfun_of : oiso2 >-> Funclass.
 
 (** In open graphs, we have an equivalence of graphs that have the
 same underlying structure with different, but equivalent, labels *)
@@ -490,14 +500,16 @@ Qed.
 End BijCast.
 
 Definition weqG_oliso (G H : pre_graph) : 
-  is_graph G -> is_graph H -> G ≡G H -> G ⩭ H.
+  is_graph G -> is_graph H -> G ≡G H -> G ⩭2 H.
 Proof.
   move => isG isH [EV EE Es Et Elv Ele]. do 2 eexists. 
-  liso (bij_cast EV) (bij_cast EE) (fun _ => false).
-  - move => [v p]. by rewrite bij_castE /= Elv.
-  - move => [e p]. by rewrite bij_castE /= Ele.
-  - move => [e p]. rewrite !bij_castE /=. apply: val_inj => /=. by rewrite Es.
-  - move => [e p]. rewrite !bij_castE /=. apply: val_inj => /=. by rewrite Et.
+  iso2 (bij_cast EV) (bij_cast EE) (fun _ => false).
+  - split.
+    + move => [e p] [|] /=. 
+      * apply: val_inj => /=. by rewrite !bij_castE /= ?Es ?Et. 
+      * apply: val_inj => /=. by rewrite !bij_castE /= ?Es ?Et. 
+    + move => [v p]. by rewrite bij_castE /= Elv.
+    + move => [e p]. by rewrite bij_castE /= Ele.
   - rewrite bij_castE. exact: val_inj.
   - rewrite bij_castE. exact: val_inj.
 Qed.
@@ -538,8 +550,8 @@ explicitly mentioning this assumption in the step relation. Moreover,
 it avoids spurious lemmas such as [oarc G e x u y -> oarc (G \ z) e x u y] *)
 Definition oarc e x u y := 
   e \in eset G /\ 
-  ([/\ src G e = x, tgt G e = y & le G e ≡ u] \/
-   [/\ tgt G e = x, src G e = y & le G e ≡ u°]).
+  ([/\ src G e = x, tgt G e = y & le G e ≡  u] \/
+   [/\ tgt G e = x, src G e = y & le G e ≡' u]).
 
 End PreGraphTheory.
 
@@ -557,7 +569,8 @@ Definition del_vertex (G : pre_graph) (x : VT) :=
 
 Notation "G \ x" := (del_vertex G x) (at level 29,left associativity) : open_scope.
 
-Global Instance del_vertex_graph (G : pre_graph) `{graph_G : is_graph G} (x : VT) `{Hx : box (x \notin pIO G)} : 
+Global Instance del_vertex_graph (G : pre_graph) 
+  {graph_G : is_graph G} (x : VT) {Hx : box (x \notin pIO G)} : 
   is_graph (del_vertex G x).
 Proof.
   rewrite /del_vertex; split => //=. 
@@ -579,7 +592,7 @@ Definition add_vertex (G : pre_graph) (x : VT) a :=
 
 Notation "G  ∔  [ x , a ]" := (add_vertex G x a) (at level 20) : open_scope.
 
-Global Instance add_vertex_graph (G : pre_graph) `{graph_G : is_graph G} (x : VT) a : 
+Global Instance add_vertex_graph (G : pre_graph) {graph_G : is_graph G} (x : VT) a : 
   is_graph (add_vertex G x a).
 Proof. 
   split => //=. 
@@ -599,7 +612,7 @@ Definition del_edges (G : pre_graph) (E : {fset ET}) :=
 
 Notation "G - E" := (del_edges G E) : open_scope.
 
-Global Instance del_edges_graph (G : pre_graph) `{graph_G : is_graph G} (E : {fset ET}) :
+Global Instance del_edges_graph (G : pre_graph) {graph_G : is_graph G} (E : {fset ET}) :
   is_graph (del_edges G E).
 Proof. 
   split; try by apply graph_G. 
