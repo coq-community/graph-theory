@@ -8,13 +8,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(* labelled multigraphs and their operations
-   two pointed labelled multigraphs and their operations
-
-TO DO
- - input/output as a function from [bool]?
-
- *)
+(* labelled multigraphs and their operations *)
 
 Section s.
   (* note on sectionning
@@ -30,8 +24,8 @@ Section s.
       (operations needing the monoid structure)
 
      we might want
-     - to put everything in [m] in the end, for the sake of simplicity (in this case, graph2 related things could all be moved to the end) 
-     - to be even more general, e.g., by not assuming setoids for operations like dot/par on graph2, which just need mon0 and mon2
+     - to put everything in [m] in the end, for the sake of simplicity  
+     - to be even more general at a few places
 
   *)
     
@@ -48,16 +42,6 @@ Record graph: Type :=
 Notation source := (endpoint false).
 Notation target := (endpoint true).
 
-(* two pointed graphs (related operations are defined only later) *)
-Record graph2 :=
-  Graph2 {
-      graph_of:> graph;
-      input: vertex graph_of;
-      output: vertex graph_of }.
-Arguments input [_].
-Arguments output [_].
-Notation point G := (@Graph2 G).
-
 
 (* basic graphs and operations *)
 Definition unit_graph a := @Graph [finType of unit] _ (fun _ => vfun) (fun _ => a) vfun.
@@ -70,17 +54,11 @@ Definition add_vertex (G: graph) (l: Lv): graph :=
          (fun v => match v with Some v => vlabel v | None => l end)
          (@elabel G).
 
-Definition add_vertex2 (G: graph2) (l: Lv): graph2 :=
-  point (add_vertex G l) (Some input) (Some output).
-
 Definition add_edge (G: graph) (x y: G) (l: Le): graph :=
   @Graph (vertex G) [finType of option (edge G)]
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
          (@vlabel G)
          (fun e => match e with Some e => elabel e | None => l end).
-
-Definition add_edge2 (G: graph2) (x y: G) (u: Le): graph2 :=
-  point (add_edge x y u) input output.
 
 Definition upd_vlabel (G: graph) (x: G) (l: Lv -> Lv): graph :=
   @Graph (vertex G) (edge G)
@@ -114,18 +92,6 @@ Notation "G ∔ [ x , u , y ]" :=
 Notation "G ∔ a" := 
   (add_vertex G a) (at level 20, left associativity) : graph_scope.
 
-Bind Scope graph2_scope with graph2.
-Delimit Scope graph2_scope with G2.
-
-Arguments input {_ _ _}.
-Arguments output {_ _ _}.
-Notation point G := (@Graph2 _ _ G).
-
-Notation "G ∔ [ x , u , y ]" := 
-  (@add_edge2 _ _ G x y u) (at level 20, left associativity) : graph2_scope.
-Notation "G ∔ a" := 
-  (add_vertex2 G a) (at level 20, left associativity) : graph2_scope.
-
 Definition merge (Lv: monoid) Le (G : graph Lv Le) (r : equiv_rel G) :=
   {| vertex := quot r;
      edge := (edge G);
@@ -148,7 +114,6 @@ Section i.
 Variable Lv: setoid.
 Variable Le: bisetoid.
 Notation graph := (graph Lv Le).
-Notation graph2 := (graph2 Lv Le).
 
 (* homomorphisms *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
@@ -204,13 +169,6 @@ Notation "h '.e'" := (iso_e h) (at level 2, left associativity).
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
 Global Existing Instance iso_hom.
 
-Record iso2 (F G: graph2): Type :=
-  Iso2 { iso2_iso:> F ≃ G;
-         iso2_input: iso2_iso input = input;
-         iso2_output: iso2_iso output = output }.
-Infix "≃2" := iso2 (at level 79).
-Definition iso2' (F G: graph2) := inhabited (F ≃2 G). 
-
 Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (xor (h.d e) b) e).
 Proof. apply endpoint_hom. Qed.
 
@@ -240,23 +198,6 @@ Import CMorphisms.
 
 Global Instance iso_Equivalence: Equivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
-
-Global Instance iso2_Equivalence: Equivalence iso2.
-Proof.
-  split.
-  - intro G. by exists iso_id.
-  - intros F G h. exists (iso_sym h). 
-    by rewrite /= -(bijK h input) iso2_input. 
-    by rewrite /= -(bijK h output) iso2_output. 
-  - intros F G H h k. exists (iso_comp h k); by rewrite /= ?iso2_input ?iso2_output.
-Qed.
-Global Instance iso2'_Equivalence: RelationClasses.Equivalence iso2'.
-Proof.
-  split.
-  - by constructor.
-  - intros G H [f]. constructor. by symmetry.
-  - intros F G H [h] [k]. constructor. etransitivity; eassumption.
-Qed.
     
 
 Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (xor (h.d (h.e^-1 e)) b) e).
@@ -275,6 +216,7 @@ Definition Iso' (F G: graph)
   cancel fe fe' -> cancel fe' fe ->
   is_hom fv fe fd -> F ≃ G.
 Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2) fd. apply E. Defined.
+
 
 
 (** isomorphisms about union and merge *)
@@ -301,21 +243,20 @@ Proof.
   abstract by split; case=>[|[|]].
 Defined.
 
+
 End i.
 Arguments iso {Lv Le}.
 Arguments merge {Lv Le}.
 Infix "≃" := iso (at level 79).
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
-Arguments iso2 {Lv Le}.
-Infix "≃2" := iso2 (at level 79).
+Hint Resolve iso_id.         (* so that [by] gets it... *)
 
 
 Section m.
 Variable Lv: monoid.
 Variable Le: bisetoid.
 Notation graph := (graph Lv Le).
-Notation graph2 := (graph2 Lv Le).
 
 Section h_merge_nothing'.
  Variables (F: graph) (r: equiv_rel F).
@@ -527,50 +468,4 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
-
-(* two pointed graphs operations *)
-
-Definition g2_par (F G: graph2) :=
-  point (merge_seq (F ⊎ G) [::(unl input,unr input); (unl output,unr output)])
-        (\pi (unl input)) (\pi (unr output)).
-
-Definition g2_dot (F G: graph2) :=
-  point (merge_seq (F ⊎ G) [::(unl output,unr input)])
-        (\pi (unl input)) (\pi (unr output)).
-
-Definition g2_cnv (F: graph2) :=
-  point F output input.
-
-Definition g2_dom (F: graph2) :=
-  point F input input.
-
-Definition g2_one: graph2 :=
-  point (unit_graph _ mon0) tt tt.
-
-Definition g2_top: graph2 :=
-  point (two_graph _ mon0 mon0) false true.
-
-Definition g2_var a: graph2 :=
-  point (edge_graph mon0 a mon0) false true.
-
-Definition add_test (G: graph2) (x: G) (a: Lv): graph2 :=
-  point (upd_vlabel x (mon2 a)) input output.
-
-(* Note: maybe nicer to prove that this is a ptt algebra (with top)
-  and deduce automatically that this is a pttdom (as we did in the previous version) *)
-Canonical Structure g2_setoid: setoid := Setoid (iso2'_Equivalence Lv Le). 
-Canonical Structure g2_ops: ptt_ops :=
-  {| dot := g2_dot;
-     par := g2_par;
-     cnv := g2_cnv;
-     dom := g2_dom;
-     one := g2_one;
-     top := g2_top |}.
-Program Definition g2_ptt: ptt.laws := {| ptt.ops := g2_ops |}.
-(* TODO: import all isomorphisms... *)
-Admit Obligations.
-Canonical g2_ptt.
-
 End m. 
-Notation "G [tst x <- a ]" := 
-  (@add_test _ _ G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]") : graph2_scope.

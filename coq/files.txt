@@ -1,6 +1,7 @@
 structures: setoids, bisetoids, monoids
 pttdom: pttdom algebras, algebras of terms, tests ...
-mgraph: labelled multigraphs, pointed multigraphs, pttdom algebra of such graphs
+mgraph: labelled multigraphs
+mgraph2: pointed multigraphs, pttdom algebra of such graphs
 rewriting: definition of the rewriting system
 reduction: rewriting system powerful enough to reach normal forms
 ???,???: open graphs, confluence proof
@@ -12,8 +13,9 @@ with the following dependencies:
 
               structures
                 pttdom            
-	        mgraph       
-              rewriting
+	        mgraph
+	        mgraph2
+               rewriting
                        ???
        reduction	  ???
 	     completeness

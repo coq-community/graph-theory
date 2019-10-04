@@ -31,9 +31,9 @@ Structure bisetoid :=
       setoid_of_bisetoid:> setoid;
       eqv': relation setoid_of_bisetoid;
       Eqv'_sym: Symmetric eqv';
-      Eqv10: forall x y z, eqv' x y -> eqv  y z -> eqv' x z;
-      Eqv01: forall x y z, eqv  x y -> eqv' y z -> eqv' x z;
-      Eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z;
+      eqv10: forall x y z, eqv' x y -> eqv  y z -> eqv' x z;
+      eqv01: forall x y z, eqv  x y -> eqv' y z -> eqv' x z;
+      eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z;
     }.
 Arguments eqv' {_}.
 Infix "≡'" := eqv' (at level 79).
