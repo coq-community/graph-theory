@@ -58,6 +58,16 @@ Notation graph2 := (graph2 Lv Le).
 
 Import CMorphisms.
 
+(* TODO: via sigma types again?
+
+Notation "'Σ' x .. y , p" :=
+  (sigT (fun x => .. (sigT (fun y => p%type)) ..))
+  (at level 200, x binder, y binder, right associativity).
+
+Definition iso2 (F G: graph2): Type :=
+   Σ f: iso F G, f input = input /\ f output = output. 
+
+ *)
 Record iso2 (F G: graph2): Type :=
   Iso2 { iso2_iso:> F ≃ G;
          iso2_input: iso2_iso input = input;
@@ -171,7 +181,7 @@ Canonical Structure g2_ops: pttdom.ops_ :=
      dom := g2_dom;
      one := g2_one;
      (* top := g2_top *) |}.
-
+Notation top := g2_top.         (* TEMPORARY *)
 
 (* laws about low level operations (union/merge) *)
 
@@ -337,16 +347,45 @@ Proof.
   eqv. eqv. 
 Qed.
 
-Lemma par2top (F: graph2): F ∥ g2_top ≃2 F. (* TODO fix notation *)
+Lemma par2top (F: graph2): F ∥ top ≃2 F. 
 Proof.
   rewrite /=/g2_par.
-  irewrite (merge_union_K_lr (K:=g2_top) _ _ (k:=fun b => if b then output else input)).
+  irewrite (merge_union_K_lr (K:=top) _ _ (k:=fun b => if b then output else input)).
   irewrite merge_nothing. by case F. 
   repeat (constructor =>//=).
   by case. 
   by [].
   intros [|]; apply /eqquotP; eqv. 
 Qed.
+
+Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≃2 (F ∥ G) ∥ H.
+Proof.
+  rewrite /=/g2_par.
+  irewrite (merge_iso2 (union_merge_r _ _))=>/=.
+  (* next step super long, following fails... *)
+  (*
+  rewrite 2!union_merge_rEl 2!union_merge_rEr.
+  irewrite (merge_merge (G:=union F (union G H))
+                        (k:=[::(unl input,unr (unl input)); (unl output,unr (unl output))]))=>//=.
+  irewrite' (merge_iso2 (union_merge_l _ _))=>/=.
+  rewrite 2!union_merge_lEl 2!union_merge_lEr.
+  irewrite' (merge_merge (G:=union (union F G) H)
+                              (k:=[::(unl (unl input),unr input); (unl (unl output),unr output)]))=>//=.
+  irewrite (merge_iso2 (union_A _ _ _))=>/=.
+  apply merge_seq_same'.
+  apply eqv_clot_eq.
+   constructor. apply eqv_clot_trans with (unl (unl (input))); eqv. 
+   constructor. apply eqv_clot_trans with (unl (unl (output))); eqv.
+   leqv.
+
+   constructor. eqv. 
+   constructor. eqv. 
+   constructor. apply eqv_clot_trans with (unl (unr input)); eqv. 
+   constructor. apply eqv_clot_trans with (unl (unr output)); eqv. 
+   leqv.
+Qed.
+   *)
+Admitted.
 
 
 

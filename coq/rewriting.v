@@ -57,13 +57,10 @@ Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
 Inductive steps: relation graph2 :=
   | iso_step F G: iso2 F G -> steps F G
   | cons_step F G H H': iso2 F G -> step G H -> steps H H' -> steps F H'.
-(* Global Existing Instance iso_step. *)
 
-
-(* TODO: let reflexivity belong to // again (should work in the two proofs below) *)
 Global Instance PreOrder_steps: PreOrder steps.
 Proof.
-  split. intro. apply iso_step. reflexivity. 
+  split. intro. by apply iso_step. 
   intros F G H S S'. induction S as [F G I|F G G' G'' I S _ IH].
   - destruct S' as [F' G' I'|F' G' G'' G''' I' S'].
     apply iso_step. etransitivity; eassumption.
@@ -71,7 +68,14 @@ Proof.
   - apply cons_step with G G'=>//. by apply IH. 
 Qed.
 
+Global Instance isop_step: subrelation iso2prop steps.
+Proof. intros F G [H]. by apply iso_step. Qed. 
+
 Global Instance one_step: subrelation step steps.
 Proof. intros F G S. now apply cons_step with F G. Qed.
 
+Lemma steps_refl G: steps G G.
+Proof. reflexivity. Qed.
+
 End s.
+Hint Resolve steps_refl.        (* in order [by] to get it *)
