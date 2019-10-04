@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Export pttdom.
+Require Export structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -13,7 +13,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 TO DO
  - input/output as a function from [bool]?
- - ptt algebra on graph2 rather than just pttdom algebra
 
  *)
 
@@ -177,9 +176,9 @@ Proof.
   generalize (@elabel_hom _ _ _ _ _ E e). 
   generalize (@elabel_hom _ _ _ _ _ E' (he e)).
   case (hd e); case (kd (he e)); simpl.
-  - apply Eqv11. 
-  - apply Eqv01. 
-  - apply Eqv10.
+  - apply eqv11. 
+  - apply eqv01. 
+  - apply eqv10.
   - apply transitivity. 
 Qed.
 
@@ -196,25 +195,22 @@ Qed.
 (* isomorphisms *)
 
 Record iso (F G: graph): Type :=
-  Iso
-    { iso_v:> bij F G;
-      iso_e: bij (edge F) (edge G);
-      iso_d: edge F -> bool;
-      iso_hom: is_hom iso_v iso_e iso_d }.
+  Iso { iso_v:> bij F G;
+        iso_e: bij (edge F) (edge G);
+        iso_d: edge F -> bool;
+        iso_hom: is_hom iso_v iso_e iso_d }.
 Infix "≃" := iso (at level 79).
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
 Global Existing Instance iso_hom.
 
-(* DAMIEN: I did put [iso2] back in Prop (as well as pttdom equality
-   proofs]): I think being in Type is only useful for [iso] (given our
-   application, this would no longer be true if we where to build yet
-   another notion on top of [iso2] where we would need access to the
-   functions) *)
-Definition iso2 (F G: graph2): Prop :=
-  exists f: iso F G, f input = input /\ f output = output. 
+Record iso2 (F G: graph2): Type :=
+  Iso2 { iso2_iso:> F ≃ G;
+         iso2_input: iso2_iso input = input;
+         iso2_output: iso2_iso output = output }.
 Infix "≃2" := iso2 (at level 79).
-    
+Definition iso2' (F G: graph2) := inhabited (F ≃2 G). 
+
 Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (xor (h.d e) b) e).
 Proof. apply endpoint_hom. Qed.
 
@@ -245,14 +241,23 @@ Import CMorphisms.
 Global Instance iso_Equivalence: Equivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
-Global Instance iso2_Equivalence: RelationClasses.Equivalence iso2.
+Global Instance iso2_Equivalence: Equivalence iso2.
 Proof.
   split.
   - intro G. by exists iso_id.
-  - intros F G (f&fi&fo). exists (iso_sym f). by rewrite /= -fi -fo 2!bijK.
-  - intros F G H (f&fi&fo) (g&gi&go). exists (iso_comp f g). 
-    by rewrite /= fi fo gi go.
+  - intros F G h. exists (iso_sym h). 
+    by rewrite /= -(bijK h input) iso2_input. 
+    by rewrite /= -(bijK h output) iso2_output. 
+  - intros F G H h k. exists (iso_comp h k); by rewrite /= ?iso2_input ?iso2_output.
 Qed.
+Global Instance iso2'_Equivalence: RelationClasses.Equivalence iso2'.
+Proof.
+  split.
+  - by constructor.
+  - intros G H [f]. constructor. by symmetry.
+  - intros F G H [h] [k]. constructor. etransitivity; eassumption.
+Qed.
+    
 
 Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (xor (h.d (h.e^-1 e)) b) e).
 Proof. apply (endpoint_iso (iso_sym h)). Qed.
@@ -415,9 +420,9 @@ Proof.
   rewrite /union_equiv_l/=/union_equiv_l_rel. move => [x|x] [y|y].
   + rewrite (@eqv_clot_map _ _  _ _ _ (@inl A B)) //. exact: inl_inj.
   + by rewrite eqv_clot_map_lr.
-  + admit.               (* by rewrite equiv_sym eqv_clot_map_lr.  *) (* STRANGE: was working before *)
+  + by rewrite equiv_sym eqv_clot_map_lr.
   + by rewrite eqv_clot_map_eq ?sum_eqE // inr_codom_inl.
-Admitted.
+Qed.
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
@@ -553,17 +558,18 @@ Definition add_test (G: graph2) (x: G) (a: Lv): graph2 :=
 
 (* Note: maybe nicer to prove that this is a ptt algebra (with top)
   and deduce automatically that this is a pttdom (as we did in the previous version) *)
-Canonical Structure g2_setoid: setoid := Setoid (iso2_Equivalence Lv Le). 
-Canonical Structure g2_ops: ops_ :=
+Canonical Structure g2_setoid: setoid := Setoid (iso2'_Equivalence Lv Le). 
+Canonical Structure g2_ops: ptt_ops :=
   {| dot := g2_dot;
      par := g2_par;
      cnv := g2_cnv;
      dom := g2_dom;
-     one := g2_one |}.
-Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
+     one := g2_one;
+     top := g2_top |}.
+Program Definition g2_ptt: ptt.laws := {| ptt.ops := g2_ops |}.
 (* TODO: import all isomorphisms... *)
 Admit Obligations.
-Canonical g2_pttdom.
+Canonical g2_ptt.
 
 End m. 
 Notation "G [tst x <- a ]" := 
