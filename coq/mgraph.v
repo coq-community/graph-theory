@@ -39,8 +39,6 @@ Record graph: Type :=
       endpoint: bool -> edge -> vertex; (* source and target functions *)
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
-Notation source := (endpoint false).
-Notation target := (endpoint true).
 
 
 (* basic graphs and operations *)
@@ -78,6 +76,9 @@ Definition unl {G H: graph} (x: G): union G H := inl x.
 Definition unr {G H: graph} (x: H): union G H := inr x.
 
 End s.
+
+Notation source := (endpoint false).
+Notation target := (endpoint true).
 
 Bind Scope graph_scope with graph.
 Delimit Scope graph_scope with G.
@@ -198,7 +199,6 @@ Import CMorphisms.
 
 Global Instance iso_Equivalence: Equivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
-    
 
 Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (xor (h.d (h.e^-1 e)) b) e).
 Proof. apply (endpoint_iso (iso_sym h)). Qed.

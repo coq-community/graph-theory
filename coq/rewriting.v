@@ -56,7 +56,7 @@ Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
 
 Inductive steps: relation graph2 :=
   | iso_step F G: iso2 F G -> steps F G
-  | cons_step: forall F G H H', iso2 F G -> step G H -> steps H H' -> steps F H'.
+  | cons_step F G H H': iso2 F G -> step G H -> steps H H' -> steps F H'.
 (* Global Existing Instance iso_step. *)
 
 
