@@ -212,8 +212,13 @@ Global Existing Instance iso_hom.
    application, this would no longer be true if we where to build yet
    another notion on top of [iso2] where we would need access to the
    functions) *)
-Definition iso2 (F G: graph2): Prop :=
-  exists f: iso F G, f input = input /\ f output = output. 
+
+Notation "'Σ' x .. y , p" :=
+  (sigT (fun x => .. (sigT (fun y => p%type)) ..))
+  (at level 200, x binder, y binder, right associativity).
+
+Definition iso2 (F G: graph2): Type :=
+   Σ f: iso F G, f input = input /\ f output = output. 
 Infix "≃2" := iso2 (at level 79).
     
 Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (xor (h.d e) b) e).
@@ -246,14 +251,27 @@ Import CMorphisms.
 Global Instance iso_Equivalence: Equivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
-Global Instance iso2_Equivalence: RelationClasses.Equivalence iso2.
+Definition iso2_id (F : graph2) : F ≃2 F. by exists iso_id. Defined.
+
+Definition iso2_sym (F G : graph2) : F ≃2 G -> G ≃2 F. 
 Proof.
-  split.
-  - intro G. by exists iso_id.
-  - intros F G (f&fi&fo). exists (iso_sym f). by rewrite /= -fi -fo 2!bijK.
-  - intros F G H (f&fi&fo) (g&gi&go). exists (iso_comp f g). 
-    by rewrite /= fi fo gi go.
+  intros  (f&fi&fo). exists (iso_sym f). by rewrite /= -fi -fo 2!bijK.
+Defined.
+
+Definition iso2_comp (F G H : graph2) : F ≃2 G -> G ≃2 H -> F ≃2 H.
+Proof. 
+  intros (f&fi&fo) (g&gi&go). exists (iso_comp f g). 
+  by rewrite /= fi fo gi go.
 Qed.
+
+Definition iso2p F G := inhabited (F ≃2 G).
+
+Global Instance iso2_CEquivalence: Equivalence iso2.
+Proof. constructor. exact: iso2_id. exact: iso2_sym. exact: iso2_comp. Qed.
+
+Global Instance iso2p_Equivalence: RelationClasses.Equivalence iso2p.
+Proof.
+Admitted.
 
 Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (xor (h.d (h.e^-1 e)) b) e).
 Proof. apply (endpoint_iso (iso_sym h)). Qed.
@@ -304,6 +322,7 @@ Infix "≃" := iso (at level 79).
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
 Arguments iso2 {Lv Le}.
+Arguments iso2p {Lv Le}.
 Infix "≃2" := iso2 (at level 79).
 
 
@@ -554,7 +573,8 @@ Definition add_test (G: graph2) (x: G) (a: Lv): graph2 :=
 
 (* Note: maybe nicer to prove that this is a ptt algebra (with top)
   and deduce automatically that this is a pttdom (as we did in the previous version) *)
-Canonical Structure g2_setoid: setoid := Setoid (iso2_Equivalence Lv Le). 
+Canonical Structure g2_setoid: setoid := 
+  Eval hnf in Setoid (iso2p_Equivalence Lv Le). 
 Canonical Structure g2_ops: ops_ :=
   {| dot := g2_dot;
      par := g2_par;
