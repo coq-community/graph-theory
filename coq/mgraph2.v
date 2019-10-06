@@ -34,7 +34,7 @@ Definition unit_graph2 a := point (unit_graph _ a) tt tt.
 Definition two_graph2 a b := point (two_graph _ a b) false true. 
 Definition edge_graph2 a u b := point (edge_graph a u b) false true. 
 Definition add_vertex2 (G: graph2) l := point (add_vertex G l) (Some input) (Some output).
-Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge x y u) input output.
+Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge G x y u) input output.
 
 End s.
 Bind Scope graph2_scope with graph2.
@@ -55,8 +55,6 @@ Variable Lv: setoid.
 Variable Le: bisetoid.
 Notation graph := (graph Lv Le).
 Notation graph2 := (graph2 Lv Le).
-
-Import CMorphisms.
 
 (* TODO: via sigma types again?
 
@@ -90,12 +88,12 @@ Proof.
   exists (iso_comp f g); by rewrite /= ?iso2_input ?iso2_output.
 Defined.
 
-Global Instance iso2_Equivalence: Equivalence iso2.
+Global Instance iso2_Equivalence: CEquivalence iso2.
 Proof. split. exact iso2_id. exact iso2_sym. exact iso2_comp. Qed.
 
 (* Prop version *)
 Definition iso2prop (F G: graph2) := inhabited (F ≃2 G). 
-Global Instance iso2prop_Equivalence: RelationClasses.Equivalence iso2prop.
+Global Instance iso2prop_Equivalence: Equivalence iso2prop.
 Proof.
   split.
   - by constructor.

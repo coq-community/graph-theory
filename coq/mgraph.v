@@ -1,4 +1,5 @@
-Require Import Setoid Morphisms.
+Require Import Morphisms RelationClasses.
+Require CMorphisms CRelationClasses. (* To be used explicitly *)
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
 Require Export structures.
@@ -7,6 +8,15 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
+
+Notation CEquivalence := CRelationClasses.Equivalence.
+Notation CProper := CMorphisms.Proper.
+
+
+Delimit Scope csignature with C.
+Notation "A ==> B" := (@CMorphisms.respectful _ _ (A%C) (B%C)) : csignature.
+(* Arguments CMorphisms.respectful [A B] _ _%C. *)
+Arguments CMorphisms.Proper [A] _%C _.
 
 (* labelled multigraphs and their operations *)
 
@@ -88,6 +98,8 @@ Infix "⊎" := union (at level 50, left associativity) : graph_scope.
 Arguments unl {_ _ _ _}.
 Arguments unr {_ _ _ _}.
 
+Arguments add_edge {Lv Le} G x y l.
+Arguments add_vertex {Lv Le} G l.
 Notation "G ∔ [ x , u , y ]" := 
   (add_edge G x y u) (at level 20, left associativity) : graph_scope.
 Notation "G ∔ a" := 
@@ -145,7 +157,7 @@ Proof.
   - apply eqv11. 
   - apply eqv01. 
   - apply eqv10.
-  - apply transitivity. 
+  - apply RelationClasses.transitivity. 
 Qed.
 
 Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
@@ -155,7 +167,7 @@ Proof.
   intro H. split.
   move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK xorA xorI. 
   move=>x/=. by rewrite -{2}(bijK' hv x) vlabel_hom.
-  move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). rewrite -{3}(bijK' he e) bijK'. apply symmetry. 
+  move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). rewrite -{3}(bijK' he e) bijK'. by symmetry. 
 Qed.
 
 (* isomorphisms *)
@@ -195,9 +207,7 @@ Proof.
   apply hom_comp. apply f. apply g.
 Defined.
 
-Import CMorphisms.
-
-Global Instance iso_Equivalence: Equivalence iso.
+Global Instance iso_Equivalence: CEquivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
 Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (xor (h.d (h.e^-1 e)) b) e).
@@ -221,7 +231,8 @@ Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2) fd. apply E.
 
 (** isomorphisms about union and merge *)
 
-Global Instance union_iso: Proper (iso ==> iso ==> iso) union.
+(* TODO CProper? *)
+Global Instance union_iso: CProper (iso ==> iso ==> iso) union.
 Proof.
   intros F F' f G G' g.
   exists (sum_bij f g) (sum_bij f.e g.e) (fun e => match e with inl e => f.d e | inr e => g.d e end).

@@ -1,4 +1,4 @@
-Require Import Setoid Morphisms.
+Require Import RelationClasses Morphisms Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
