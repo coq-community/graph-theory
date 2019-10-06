@@ -18,6 +18,7 @@ equiv.v
 structures.v
 pttdom.v
 mgraph.v
+mgraph2.v
 rewriting.v
 reduction.v
 # Christian's open confluence files here
