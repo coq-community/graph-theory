@@ -22,6 +22,12 @@ Ltac contrab :=
 
 Hint Extern 0 (injective Some) => exact: @Some_inj.
 
+(** *** Notations *) 
+
+Notation "'Σ' x .. y , p" :=
+  (sigT (fun x => .. (sigT (fun y => p%type)) ..))
+  (at level 200, x binder, y binder, right associativity).
+
 (** *** Generic Trivialities *)
 
 Lemma contraTnot b (P : Prop) : (P -> ~~ b) -> (b -> ~ P).
@@ -29,6 +35,15 @@ Proof. by case: b => //= H _ /H. Qed.
 
 Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
 Proof. rewrite -{1}[b]negbK. exact: contraTnot. Qed.
+
+Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).
+Proof. case: b => //=. by move/(_ isT) => H /H. Qed.
+
+Lemma contraPneq (T:eqType) (a b : T) (P : Prop) : (a = b -> ~ P) -> (P -> a != b).
+Proof. move => A. by apply: contraPN => /eqP. Qed.
+
+Lemma contraPeq (T:eqType) (a b : T) (P : Prop) : (a != b -> ~ P) -> (P -> a = b).
+Proof. move => H HP. by apply: contraTeq isT => /H /(_ HP). Qed.
 
 Lemma existsPn {T : finType} {P : pred T} : 
   reflect (forall x, ~~ P x) (~~ [exists x, P x]).
@@ -76,9 +91,14 @@ Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) 
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
 
-Lemma valK' (T : eqType) (P : pred T) (u : sig_subType P) (Px : val u \in P) : 
+(** TODO: this should be subsumed by valK' below *)
+Lemma valK'' (T : eqType) (P : pred T) (u : sig_subType P) (Px : val u \in P) : 
   Sub (val u) Px = u.
 Proof. exact: val_inj. Qed.
+
+Lemma valK' (T : Type) (P : pred T) (sT : subType P) (x : sT) (p : P (val x)) : 
+  Sub (val x) p = x.
+Proof. apply: val_inj. by rewrite SubK. Qed.
 
 Lemma Some_eqE (T : eqType) (x y : T) : 
   (Some x == Some y) = (x == y).
@@ -305,6 +325,20 @@ Lemma above_largest (T : finType) P (U V : {set T}) :
   largest P U -> #|V| > #|U| -> ~ P V.
 Proof. move => [_ large_U] U_leq_V P_V. by rewrite leqNgt ltnS large_U in U_leq_V. Qed.
 
+Inductive maxn_cases n m : nat -> Type := 
+| MaxnR of n <= m : maxn_cases n m m
+| MaxnL of m < n : maxn_cases n m n.
+
+Lemma maxnP n m : maxn_cases n m (maxn n m).
+Proof. 
+  case: (leqP n m) => H.
+  - rewrite (maxn_idPr H). by constructor.
+  - rewrite (maxn_idPl _); [by constructor|exact: ltnW].
+Qed.
+
+Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
+Proof. case: maxnP; by rewrite !eqxx. Qed.
+
 (** TOTHINK: It would suffice if { y | m y <= m x} were enumerable for every [x] *) 
 Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
   p x0 -> exists2 x, p x & forall y, p y -> m x <= m y.
@@ -495,6 +529,25 @@ Notation "[ 'disjoint3' A & B & C ]" :=
   (format "[ 'disjoint3'  A  &  B  &  C ]" ).
 
 
+(** *** Function Update *)
+
+Section update.
+Variables (aT : eqType) (rT : Type) (f : aT -> rT).
+Definition update x a := fun z => if z == x then a else f z.
+
+Lemma update_neq x z a : x != z -> update z a x = f x.
+Proof. rewrite /update. by case: ifP. Qed.
+
+Lemma update_eq z a : update z a z = a.
+Proof. by rewrite /update eqxx. Qed.
+
+End update.
+Definition updateE := (update_eq,update_neq).
+Notation "f [upd x := y ]" := (update f x y) (at level 2, left associativity, format "f [upd  x  :=  y ]").
+
+Lemma update_same (aT : eqType) (rT : Type) (f : aT -> rT) x a b : 
+  f[upd x := a][upd x := b] =1 f[upd x := b].
+Proof. rewrite /update => z. by case: (z == x). Qed.
 
 (** *** Sequences and Paths *)
 

@@ -4,7 +4,8 @@ From mathcomp Require Import all_ssreflect.
 Require Import edone set_tac finite_quotient preliminaries bij equiv.
 Require Import pttdom mgraph mgraph2 rewriting.
 
-Require Import mathcomp.finmap.finmap.
+Require Import finmap_plus.
+Open Scope fset_scope.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -12,6 +13,8 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 (** ** Preliminaries *)
+
+(** *** Graphs *)
 
 Axiom admitted_case : False.
 Ltac admit := case admitted_case.
@@ -28,14 +31,12 @@ Implicit Types (x y : G).
 Definition incident x e := x \in [set source e; target e].
 Definition edges_at x := [set e | incident x e].
 
-Definition edges_in (V : {set G}) := \bigcup_(x in V) edges_at x.
+Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
 
 End m.
 Arguments edges_at [Lv Le G] x, [Lv Le] G x.
 End mplus.
 Import mplus.
-
-
 
 
 Section G.
@@ -79,21 +80,15 @@ End G.
 
 Lemma add_vertex2_cong (Lv : setoid) (Le : bisetoid) : 
   CProper (@iso2 Lv Le ==> @eqv Lv ==> @iso2 Lv Le)%C (@add_vertex2 Lv Le).
+Proof.
+  move => F G FG u v uv.
 Admitted.
-
-Open Scope fset_scope.
-
 
 Arguments eqv : simpl never.
 Opaque tm_pttdom. (* make this an unlockable def.? *)
 
-Notation "'Σ' x .. y , p" :=
-  (sigT (fun x => .. (sigT (fun y => p%type)) ..))
-  (at level 200, x binder, y binder, right associativity).
 
-Lemma valK' (T : Type) (P : pred T) (sT : subType P) (x : sT) (p : P (val x)) : 
-  Sub (val x) p = x.
-Proof. apply: val_inj. by rewrite SubK. Qed.
+(** Picking fresh vertices/edges *)
 
 Definition fresh (E : {fset nat}) : nat := (\max_(e : E) val e).+1.
 
@@ -104,175 +99,8 @@ Proof.
   apply/negP => /S. by rewrite ltnn.
 Qed.   
 
-Lemma fsval_eqF (T:choiceType) (E : {fset T}) (e : E) x : x \notin E -> val e == x = false.
-Proof. apply: contraNF => /eqP <-. exact: fsvalP. Qed.
-
 Lemma fresh_eqF (E : {fset nat}) (x : E) : val x == fresh E = false.
 Proof. by rewrite fsval_eqF // freshP. Qed.
-
-Lemma fsetDDD (T : choiceType) (A B C : {fset T}) : A `\` B `\` (C `\` B) = A `\` (B `|` C).
-Proof. apply/fsetP => z. rewrite !inE. by case (z \in B). Qed.
-
-Lemma in_imfsetT (aT : finType) (rT : choiceType) (f : aT -> rT) (x : aT) : 
-  f x \in [fset f x | x in aT].
-Proof. by rewrite in_imfset. Qed.
-
-Lemma imfset_inv (aT : finType) (rT : choiceType) (f : aT -> rT) (y : [fset f x | x in aT]) : 
-  Σ x : aT, f x = val y.
-Proof. 
-  suff E : exists x, f x == val y by exists (xchoose E); rewrite (eqP (xchooseP E)).
-  case/imfsetP : (valP y) => /= x _ ->. by exists x.
-Qed.
-
-(*
-Lemma imfset1E (key : unit) (aT rT : choiceType) (f : aT -> rT) (x : aT) (A : finmempred aT) :
-  A =1 pred1 x -> imfset key f A = [fset f x].
-Admitted.
-Arguments imfset1E [key aT rT f] x [A].
-
-Lemma imfset_set1 (aT : finType) (rT : choiceType) (f : aT -> rT) (x : aT) : 
-  [fset f z | z in [set x]] = [fset f x].
-rewrite (imfset1E x) => //= z. by rewrite !inE. Qed.
-*)
-
-Lemma fsetDEl (T : choiceType) (A B : {fset T}) (x : A `\` B) : val x \in A.
-Proof. by case/fsetDP : (valP x). Qed.
-
-
-Arguments fset1Ur [K x a B].
-Arguments fset1U1 [K x B].
-Arguments fset1U1 [K x B].
-
-(** TOTHINK: how to have simpl keep the [h/h^-1] notation unless the functions actually reduce? *)
-
-Section Bij.
-Variable (G : finType) (T : choiceType) (g : G -> T).
-Hypothesis g_inj : injective g.
-Let vset := [fset g x | x in G].
-Definition imfset_bij_fwd (x : G) : vset := Sub (g x) (in_imfsetT g x).
-Definition imfset_bij_bwd (x : vset) : G := tag (imfset_inv x).
-
-Lemma can_vset : cancel imfset_bij_fwd imfset_bij_bwd.
-Proof. 
-  move => x. rewrite /imfset_bij_fwd /imfset_bij_bwd /=. set S := Sub _ _. 
-  apply: g_inj. by rewrite (tagged (imfset_inv S)).
-Qed.
-
-Lemma can_vset' : cancel imfset_bij_bwd imfset_bij_fwd.
-Proof.
-  move => [x Hx]. rewrite /imfset_bij_fwd /imfset_bij_bwd. apply: val_inj => /=.
-  by rewrite (tagged (imfset_inv [` Hx])).
-Qed.
-
-Definition imfset_bij := Bij can_vset can_vset'.
-
-Lemma imfset_bij_bwdE x p : imfset_bij_bwd (Sub (g x) p) = x.
-Proof. 
-  rewrite /imfset_bij_bwd. set t := imfset_inv _. 
-  by move/g_inj : (tagged t).
-Qed.
-
-End Bij.
-
-Lemma fresh_bij (T : finType) (E : {fset nat}) (f : bij T E) e (He : e \notin E) : 
-  bij (option T) (e |` E).
-Proof.
-  pose g (x : option T) :  e |` E := 
-    if x is Some z then Sub (val (f z)) (fset1Ur (valP (f z))) else Sub e fset1U1.
-  pose g_inv  (x : e |` E) : option T := 
-    match fsetULVR (valP x) with inl _ => None | inr p => Some (f^-1 (Sub (val x) p)) end.
-  have can_g : cancel g g_inv.
-  { move => [x|]; rewrite /g/g_inv/=; case: (fsetULVR _) => [|p] //=. 
-    - by rewrite inE fsval_eqF.
-    - by rewrite valK' bijK.
-    -  exfalso. by rewrite p in He. }
-  have can_g_inv : cancel g_inv g.
-  { move => [x Hx]; rewrite /g/g_inv/=. case: (fsetULVR _) => [|p] //=. 
-    - rewrite !inE => A. apply: val_inj => /=. by rewrite (eqP A).
-    - apply: val_inj => //=. by rewrite bijK'. }
-  apply: (Bij can_g can_g_inv).
-Defined.
-
-Lemma fresh_bijE (T : finType) (E : {fset nat}) (f : bij T E) x (Hx : x \notin E) : 
-  (forall x, fresh_bij f Hx (Some x) = Sub (val (f x)) (fset1Ur (valP (f x))))*
-  (fresh_bij f Hx None = Sub x fset1U1).
-Proof. done. Qed.
-
-
-Definition bij_setD (aT : finType) (C : choiceType) (rT : {fset C}) (A : {set aT}) (f : bij aT rT) : 
-  bij { x | x \in ~: A} (rT `\` [fset val (f x) | x in A]).
-Proof.
-  set aT' := ({ x | _ }). set rT' := _ `\` _.
-  have g_proof (x : aT') : val (f (val x)) \in rT'.
-  { rewrite !inE (valP (f (val x))) andbT. apply: contraTN (valP x).
-    case/imfsetP => /= x0 inA /val_inj /(@bij_injective _ _ f) ->. by rewrite inE negbK. }
-  pose g (x : aT') : rT' := Sub (val (f (val x))) (g_proof x).
-  have g_inv_proof (x : rT') :  f^-1 (Sub (fsval x) (fsetDEl x)) \in ~: A.
-  { rewrite inE. case/fsetDP: (valP x) => ?. apply: contraNN => X. apply/imfsetP.
-    exists (f^-1 (Sub (fsval x) (fsetDEl x))) => //. by rewrite bijK'. }
-  pose g_inv (x : rT') : aT' := Sub (f^-1 (Sub (val x) (fsetDEl x))) (g_inv_proof x). 
-  have can1 : cancel g g_inv.
-  { move => [x Hx]. rewrite /g/g_inv. apply: val_inj => /=. apply: (@bij_injective _ _ f).
-    rewrite bijK'. exact: val_inj. }
-  have can2 : cancel g_inv g.
-  { move => [x Hx]. rewrite /g/g_inv. apply: val_inj => /=. by rewrite bijK'. }
-  apply: Bij can1 can2.
-Defined.
-
-
-
-
-Section update.
-Variables (aT : eqType) (rT : Type) (f : aT -> rT).
-Definition update x a := fun z => if z == x then a else f z.
-
-Lemma update_neq x z a : x != z -> update z a x = f x.
-Proof. rewrite /update. by case: ifP. Qed.
-
-Lemma update_eq z a : update z a z = a.
-Proof. by rewrite /update eqxx. Qed.
-
-End update.
-Definition updateE := (update_eq,update_neq).
-Notation "f [upd x := y ]" := (update f x y) (at level 2, left associativity, format "f [upd  x  :=  y ]").
-
-Lemma update_same (aT : eqType) (rT : Type) (f : aT -> rT) x a b : 
-  f[upd x := a][upd x := b] =1 f[upd x := b].
-Proof. rewrite /update => z. by case: (z == x). Qed.
-
-Lemma in_eqv_update (aT : choiceType) (rT : Type) (f g : aT -> rT) (E : relation rT) 
-  (z : aT) (u v : rT) (A : {fset aT}) : 
-  {in A, forall x : aT, E (f x) (g x)} -> E u v -> 
-  {in z |` A, forall x : aT, E (f[upd z := u] x) (g[upd z := v] x)}.
-Proof.
-  move => H Euv k. rewrite !inE. 
-  case: (altP (k =P z)) => [-> _|? /= inA]; rewrite !updateE //. exact: H.
-Qed.
-
-Lemma eqv_update (aT : eqType) (rT : Type) (f g : aT -> rT) (E : relation rT) z u v : 
-  (forall x, E (f x) (g x)) -> E u v -> forall x, E (f[upd z := u] x) (g[upd z := v] x).
-Proof. move => H Euv k. case: (altP (k =P z)) => [->|?]; by rewrite !updateE. Qed.
-
-(* Require Import confluence pttdom. *)
-
-
-(* Notation "G ≅ H" := (liso G H) (at level 45). *)
-
-(** TOTHINK: is this useful? remove?
-
-Definition split_edge (G : lgraph) (e : edge G) : 
-  del_edge G e ∔ [source e, elabel e, target e] ≅ G.
-Admitted.
-
-Lemma split_edgeE (G : lgraph) (e : edge G) (x : G) : 
-  (split_edge e x = x) * ((split_edge e).e None = e).
-Admitted.
-
-Lemma split_vertex (G : lgraph) (z : G) (Hz : z \notin IO) :  
-  edges_at G z = set0 -> G \ [z,Hz] ∔ vlabel z ≅ G. 
-Admitted.
- *)
-
 
 (** * Open Graphs *)
 
@@ -283,7 +111,6 @@ of the element in the enumeration (i.e., [enum_rank]) *)
 
 Definition VT := nat.
 Definition ET := nat.
-
 
 Canonical ET_eqType := [eqType of ET].
 Canonical ET_choiceType := [choiceType of ET].
@@ -364,9 +191,6 @@ Qed.
 (** In order to totalize the edge labeling, we need a default edge label. This
 is necessary since an edgeless [G] may use an empty type for labeling
 edges... *)
-
-
-
 
 Definition open : pre_graph Lv Le := 
   {| vset := [fset inj_v x | x in G];
@@ -560,19 +384,6 @@ Proof.
     all: try rewrite S1; try apply W2. all: rewrite -?S1 //.
 Qed.
 
-Section BijCast.
-Variables (T : choiceType) (A A' : {fset T}) (eqA : A = A').
-Definition bij_cast : bij A A'.
-Proof. case eqA. exact bij_id. Defined.
-
-Lemma cast_proof x : x \in A -> x \in A'. case eqA. exact id. Qed.
-
-Lemma bij_castE x (Hx : x \in A) : bij_cast [` Hx] = [` cast_proof Hx].
-Proof. 
-  rewrite /bij_cast. move: (cast_proof _). case eqA => Hx'. exact: val_inj.
-Qed.
-End BijCast.
-
 Definition weqG_oliso (G H : pre_graph) : 
   is_graph G -> is_graph H -> G ≡G H -> G ⩭2 H.
 Proof.
@@ -714,9 +525,7 @@ some external hints *)
 (** Note that we do not require [e] to be fresh, adding an alreay
 existing edge merely overwrites that edge *)
 
-Lemma fset1UE (T : choiceType) (x a : T) (A : {fset T}) : 
- x \in a |` A ->  (x = a) + (x != a) * (x \in A).
-Proof. rewrite !inE. case: (altP (x =P a)) => /=; [by left|by right;split]. Qed.
+
 
 Lemma add_edge_graph' (G : pre_graph) (graph_G : is_graph G) e x y u :
   x \in vset G -> y \in vset G -> is_graph (G ∔ [e,x, u, y]).
@@ -1199,12 +1008,6 @@ Lemma oarc_del_vertex (G : pre_graph) z e x y u :
 Proof. move => Iz [edge_e H]. apply: conj H. by rewrite inE Iz. Qed.
 
 
-Lemma fsetUDU (T : choiceType) (A B C : {fset T}) : 
-  [disjoint A & B] -> (A `|` B) `\` (A `|` C) = B `\` C.
-Proof. 
-  move => disAC. apply/fsetP => x. rewrite !inE. case Hx : (x \in A) => //=. 
-  by rewrite -[x \in B]negbK (fdisjointP disAC).
-Qed.
 
 (* Note that the assumption [e \notin eset G] is necessary since [G ∔ [e,x,u,y]] 
 may otherwise turn an already existing edge not adjacent to [y] into one 
@@ -1267,14 +1070,6 @@ Lemma no_flower (G : pre_graph) (isG : is_graph G) x :
   (forall e, e \in edges_at G x -> src G e = tgt G e) -> x \notin pIO G -> ~ oconnected G.
 Admitted.
   
-Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).
-Proof. case: b => //=. by move/(_ isT) => H /H. Qed.
-
-Lemma contraPneq (T:eqType) (a b : T) (P : Prop) : (a = b -> ~ P) -> (P -> a != b).
-Proof. move => A. by apply: contraPN => /eqP. Qed.
-
-Lemma contraPeq (T:eqType) (a b : T) (P : Prop) : (a != b -> ~ P) -> (P -> a = b).
-Proof. move => H HP. by apply: contraTeq isT => /H /(_ HP). Qed.
 
 Lemma oarc_uniqeR (G : pre_graph) e e' x y u : 
   edges_at G y = [fset e] -> oarc G e' x u y -> e' = e.
@@ -1405,60 +1200,6 @@ Lemma close_same_step (Gl Gr : pre_graph) (isGl : is_graph Gl) (isGr : is_graph 
   Gl ≡G Gr -> Σ Gl' Gr' : pre_graph, osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr').
 Proof. move => E. do 2 eexists; split;[split|]; by try exact: osteps_refl. Qed.
 
-Lemma cardsDsub (T : choiceType) (A B : {fset T}) : 
-  #|` A `\` B | == 0 -> A `<=` B.
-Proof. by rewrite -fsetD_eq0 cardfs_eq0. Qed.
-
-Lemma cardsIsub (T : choiceType) (A B : {fset T}) :
-  #|`A `&` B| = #|`B| -> B `<=` A.
-Proof. move => H. by rewrite cardsDsub // cardfsD fsetIC H subnn. Qed.
-
-Lemma fset2_cases (T : choiceType) (x y x' y' : T) : x != y -> x' != y' ->
-  let A := [fset x;y] in 
-  let B := [fset x';y'] in 
-  (A = B) + [disjoint A & B] + (Σ z : T, A `&` B = [fset z]).
-Proof.
-  move => D D' A B.
-  have [CA CB] : #|` A| = 2 /\ #|` B| = 2. 
-  { by  rewrite !cardfs2 ?(negbTE D) ?(negbTE D'). }
-  move C : (#|` A `&` B|) => n. case: n C => [|[|[|]]] => C.
-  - left;right. by rewrite -fsetI_eq0 (cardfs0_eq C).
-  - right.
-    have E : exists z : T, A `&` B == [fset z].
-    { setoid_rewrite <- (rwP eqP). apply/cardfs1P. exact/eqP. }
-    exists (xchoose E). apply/eqP. exact: (xchooseP E). 
-  - left;left. apply/eqP. 
-    by rewrite eqEfsubset !cardsIsub // ?CA ?CB ?[_ `&` A]fsetIC.
-  - move/eqP. rewrite eqn_leq [C.+3 <= _]negbTE ?andbF // -leqNgt -addn2.
-    apply: leq_trans (leq_addl _ _). rewrite -CA. 
-    apply: fsubset_leq_card. exact: fsubsetIl.
-Qed.
-
-Inductive maxn_cases n m : nat -> Type := 
-| MaxnR of n <= m : maxn_cases n m m
-| MaxnL of m < n : maxn_cases n m n.
-
-Lemma maxnP n m : maxn_cases n m (maxn n m).
-Proof. 
-  case: (leqP n m) => H.
-  - rewrite (maxn_idPr H). by constructor.
-  - rewrite (maxn_idPl _); [by constructor|exact: ltnW].
-Qed.
-
-Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
-Proof. case: maxnP; by rewrite !eqxx. Qed.
-
-Lemma mem_maxn n m (A : {fset nat}) : n \notin A -> m \notin A -> maxn n m \notin A.
-Proof. by case: maxnP. Qed.
-
-Lemma maxn_fset2 n m : maxn n m \in [fset n; m].
-Proof. case: maxnP; by rewrite !in_fset2 eqxx. Qed.
-  
-Lemma maxn_fsetD n m (A : {fset nat}) : maxn n m \notin A `\` [fset n; m]. 
-Proof. by rewrite inE negb_and negbK maxn_fset2. Qed.
-
-Lemma fset2_maxn_neq n m x : x \notin [fset n; m] -> x != maxn n m.
-Proof. apply: contraNneq => ->. exact: maxn_fset2. Qed.
 
 Lemma incident_flip_edge G e x u y : incident (G ∔ [e, x, u, y]) =2 incident (G ∔ [e, y, u°, x]).
 Proof. 
@@ -2102,9 +1843,6 @@ Admitted.
 Lemma del_vertexK (G : pre_graph) (isG : is_graph G) z : 
   add_vertex (G \ z) z (lv G z) ≡G del_edges G (edges_at G z).
 Admitted.
-
-Lemma fsvalK (T : choiceType) (A : {fset T}) (x : A) (p : fsval x \in A) : Sub (fsval x) p = x.
-Proof. exact: val_inj. Qed.
 
 
 Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : is_graph (G ∔ [e,x, u, y])) :
