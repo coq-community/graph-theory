@@ -124,13 +124,8 @@ Arguments merge [_ _] _ _.
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
 (* xor operation on Booleans, such that [xor false b] is convertible to [b] *)
-Definition xor b c := if b then negb c else c.
-Lemma xorI a : xor a a = false.
-Proof. by case a. Qed.
-Lemma xorC a b : xor a b = xor b a.
-Proof. by case a; case b. Qed.
-Lemma xorA a b c : xor a (xor b c) = xor (xor a b) c.
-Proof. by case a; case b; case c. Qed.
+Lemma addbxx x : x (+) x = false. 
+Proof. by rewrite -negb_eqb eqxx. Qed.
 
 Section i.
 Variable Lv: setoid.
@@ -139,7 +134,7 @@ Notation graph := (graph Lv Le).
 
 (* homomorphisms *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
-  { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (xor (hd e) b) e);
+  { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
     vlabel_hom: forall v, vlabel (hv v) ≡ vlabel v;
     elabel_hom: forall e, elabel (he e) ≡[hd e] elabel e;
   }.
@@ -154,10 +149,10 @@ Lemma hom_id G: @is_hom G G id id xpred0.
 Proof. by split. Qed.
 
 Lemma hom_comp F G H hv he hd kv ke kd :
-  @is_hom F G hv he hd -> @is_hom G H kv ke kd -> is_hom (kv \o hv) (ke \o he) (fun e => xor (hd e) (kd (he e))).
+  @is_hom F G hv he hd -> @is_hom G H kv ke kd -> is_hom (kv \o hv) (ke \o he) (fun e => hd e (+) kd (he e)).
 Proof.
   intros E E'. split.
-  move=>e b=>/=. by rewrite 2!endpoint_hom xorA.
+  move=>e b=>/=. by rewrite 2!endpoint_hom addbA.
   move=>x/=. by rewrite 2!vlabel_hom. 
   move=>e/=.
   generalize (@elabel_hom _ _ _ _ _ E e). 
@@ -174,7 +169,7 @@ Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
   is_hom hv^-1 he^-1 (hd \o he^-1).
 Proof.
   intro H. split.
-  move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK xorA xorI. 
+  move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK addbA addbxx. 
   move=>x/=. by rewrite -{2}(bijK' hv x) vlabel_hom.
   move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). rewrite -{3}(bijK' he e) bijK'. by symmetry. 
 Qed.
@@ -191,7 +186,7 @@ Notation "h '.e'" := (iso_e h) (at level 2, left associativity).
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
 Global Existing Instance iso_hom.
 
-Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (xor (h.d e) b) e).
+Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (h.d e (+) b) e).
 Proof. apply endpoint_hom. Qed.
 
 Lemma vlabel_iso F G (h: iso F G) v: vlabel (h v) ≡ vlabel v.
@@ -219,7 +214,7 @@ Defined.
 Global Instance iso_Equivalence: CEquivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
-Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (xor (h.d (h.e^-1 e)) b) e).
+Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (h.d (h.e^-1 e) (+) b) e).
 Proof. apply (endpoint_iso (iso_sym h)). Qed.
 
 Lemma vlabel_iso' F G (h: iso F G) v: vlabel (h^-1 v) ≡ vlabel v.
