@@ -44,6 +44,11 @@ Notation "x ≡[ b ] y" := (eqv_ b x y) (at level 79).
 Global Instance eqv_sym {X: bisetoid} {b}: Symmetric (@eqv_ X b).
 Proof. case b=> x y/=. apply Eqv'_sym. by symmetry. Qed.
 
+Global Instance eqv_morphim (s : bisetoid) : 
+  Proper (eq ==> eqv ==> eqv ==> iff) (@eqv_ s).
+Proof. move => b ? <- x x' X y y' Y. Admitted.
+
+
 Program Definition trivial_bisetoid (X: Type) := {| setoid_of_bisetoid := {| eqv := @eq X |}; eqv' (_ _: X) := False |}.
 Next Obligation. eauto with typeclass_instances. Qed.
 Next Obligation. tauto. Qed.

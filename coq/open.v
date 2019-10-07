@@ -14,17 +14,25 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** Preliminaries *)
 
-(** *** Graphs *)
-
 Axiom admitted_case : False.
 Ltac admit := case admitted_case.
 
 Lemma testC X (a b : test X) : a·b ≡ b·a. 
 Admitted.
 
+(** Christian: The follwing should hold (and typecheck) for all 2pdom algebras *)
+
+Lemma eqv_negb (A:Type) (u v : tm_pttdom A) b : u ≡[~~b] v <-> u ≡[b] v°.
+Admitted.
+
+(** *** Graphs *)
+
+(** Incident Edges *)
 Module mplus.
-Section m.
+Section L.
 Variables (Lv : setoid) (Le : bisetoid).
+
+Section Defs.
 Variables (G : graph Lv Le).
 Implicit Types (x y : G).
 
@@ -33,38 +41,15 @@ Definition edges_at x := [set e | incident x e].
 
 Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
 
-End m.
-Arguments edges_at [Lv Le G] x, [Lv Le] G x.
-End mplus.
-Import mplus.
+Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
+Proof. by rewrite /edges_in big_set1. Qed.
+End Defs.
 
+Arguments edges_at [G] x, G x.
 
-Section G.
-Variables (car : Type).
-Notation Le := (tm_pttdom car).
-Notation Lv := (test Le).
-
-Definition arc (G : graph Lv Le) (e : edge G) x u y := 
-  [/\ source e = x, target e = y & elabel e ≡  u] \/
-  [/\ source e = y, target e = x & elabel e ≡' u].
-
-
+Section Theory.
 Variables (G : graph Lv Le).
-
-Implicit Types (x y : G) (u : Le).
-
-Lemma arcC (e : edge G) x y u : 
-  arc e x u y <-> arc e y u° x.
-Proof. 
-  rewrite /arc; split; move => [[-> -> A]|[-> -> A]].
-Admitted.
-
-Lemma add_edge_arc x y u : @arc (G ∔ [x,u,y])%G None x u y.
-Admitted.
-
-Lemma add_edge_arc' x y x' y' u u' e : 
-  @arc G e x u y -> @arc (G ∔ [x', u', y'])%G (Some e) x u y.
-Admitted.
+Implicit Types (x y : G).
 
 Lemma edges_at_add_edgeT x u y z: z \in [set x;y] -> 
   edges_at (G ∔ [x,u,y])%G z = None |: Some @: edges_at z.
@@ -74,8 +59,54 @@ Lemma edges_at_add_edgeN x u y z: z \notin [set x;y] ->
   edges_at (G ∔ [x,u,y])%G z = Some @: edges_at z.
 Admitted.
 
-Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
-Proof. by rewrite /edges_in big_set1. Qed.
+End Theory.
+End L.
+
+Arguments edges_at [Lv Le G] x, [Lv Le] G x.
+End mplus.
+Import mplus.
+
+(** Arcs *)
+
+(** TODO: This requires interactions between the [u ≡[b] v] and [u°],
+which is so far only supported on the term algebra *)
+
+Section G.
+Variables (car : Type).
+Notation Le := (tm_pttdom car).
+Notation Lv := (test Le).
+
+Definition arc (G : graph Lv Le) (e : edge G) x u y :=
+  exists b, [/\ endpoint b e = x, endpoint (~~b) e = y & elabel e ≡[b] u].
+
+Global Instance arc_morphism G : Proper (eq ==> eq ==> eqv ==> eq ==> iff) (@arc G).
+Proof. 
+  move => e e' E x x' X u u' U y y' Y. subst e' x' y'. 
+  wlog suff S : u u' U /  arc e x u y -> arc e x u' y.
+  { split; apply: S => //. by symmetry. }
+  case => b [A B C]. exists b. split => //. by rewrite <- U.
+Qed.
+
+Variables (G : graph Lv Le).
+Implicit Types (x y : G) (u : Le).
+
+Lemma arcC (e : edge G) x y u : 
+  arc e x u y <-> arc e y u° x.
+Proof. 
+  wlog suff S : x y u /  arc e x u y -> arc e y u° x.
+  { split; first exact: S. move/S. by rewrite cnvI. }
+  case => b [A B C]. exists (~~b). split => //.
+  - by rewrite ?negbK.
+  - by rewrite eqv_negb cnvI.
+Qed.
+
+Lemma add_edge_arc x y u : @arc (G ∔ [x,u,y])%G None x u y.
+Proof. by exists false. Qed.
+
+Lemma add_edge_arc' x y x' y' u u' e : 
+  @arc G e x u y -> @arc (G ∔ [x', u', y'])%G (Some e) x u y.
+Proof. case => b [*]. by exists b. Qed.
+
 End G.
 
 Lemma add_vertex2_cong (Lv : setoid) (Le : bisetoid) : 
