@@ -9,13 +9,22 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** Note on Equivalences and Morphisms: This development mixes both
+rewriting in Prop (e.g., 2pdom algebras) and rewriting in Type (e.g.,
+iso). To facilitate this, we import the Prop versions and introduce
+notations for the Type versions. This leads to the follwing usage
+patterns: 
+
+- Morphisms and Relation classes should be imported as needed.
+- CMorhisms and CRelationClasses should be Required but never imported.
+- There are notations CEquivalence and CProper that refer to the Type versions.
+- The "_ ==> ..." argumentof CProper is parsed using the respectful from CMorphisms.
+*)
+
 Notation CEquivalence := CRelationClasses.Equivalence.
 Notation CProper := CMorphisms.Proper.
-
-
 Delimit Scope csignature with C.
 Notation "A ==> B" := (@CMorphisms.respectful _ _ (A%C) (B%C)) : csignature.
-(* Arguments CMorphisms.respectful [A B] _ _%C. *)
 Arguments CMorphisms.Proper [A] _%C _.
 
 (* labelled multigraphs and their operations *)
