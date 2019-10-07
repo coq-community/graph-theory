@@ -19,6 +19,7 @@ Ltac contrab :=
   match goal with 
     [H1 : is_true ?b, H2 : is_true (~~ ?b) |- _] => by rewrite H1 in H2
   end.
+Tactic Notation "existsb" uconstr(x) := apply/existsP;exists x.
 
 Hint Extern 0 (injective Some) => exact: @Some_inj.
 
@@ -60,6 +61,13 @@ Proof. rewrite negb_exists_in. exact: forall_inP. Qed.
 Lemma forall_inPn {T : finType} {A P : pred T} : 
   reflect (exists2 x, x \in A & ~~ P x) (~~ [forall x in A, P x]).
 Proof. rewrite negb_forall_in. exact: exists_inP. Qed.
+
+Lemma existsb_eq (T : finType) (P Q : pred T) : 
+  (forall b, P b = Q b) -> [exists b, P b] = [exists b, Q b].
+Proof. move => E. apply/existsP/existsP; case => b Hb; exists b; congruence. Qed.
+
+Lemma existsb_case (P : pred bool) : [exists b, P b] = P true || P false.
+Proof. apply/existsP/idP => [[[|] -> //]|/orP[H|H]]; eexists; exact H. Qed.
 
 Lemma all_cons (T : eqType) (P : T -> Prop) a (s : seq T) : 
   (forall x, x \in a :: s -> P x) <-> (P a) /\ (forall x, x \in s -> P x).
