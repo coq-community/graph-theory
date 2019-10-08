@@ -338,8 +338,12 @@ Qed.
 
 Lemma par2C (F G: graph2): F ∥ G ≃2 G ∥ F.
 Proof.
+  (* Set Printing All.  *)
   rewrite /=/g2_par.
+  (* set cLv := car (setoid_of_monoid Lv).  *)
+  (* set cLe := car (setoid_of_bisetoid Le).  *)
   irewrite (merge_iso2 (union_C F G)) =>/=.
+  (* rewrite -/cLe -/cLv. *)
   apply merge_seq_same.
   apply eqv_clot_eq. leqv. leqv. 
   eqv. eqv. 
@@ -358,33 +362,28 @@ Qed.
 
 Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≃2 (F ∥ G) ∥ H.
 Proof.
-  rewrite /=/g2_par.
-  irewrite (merge_iso2 (union_merge_r _ _))=>/=.
-  (* next step super long, following fails... *)
-  (*
-  rewrite 2!union_merge_rEl 2!union_merge_rEr.
+  irewrite (merge_iso2 (union_merge_r _ _)).
+  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr/fst/snd.
   irewrite (merge_merge (G:=union F (union G H))
-                        (k:=[::(unl input,unr (unl input)); (unl output,unr (unl output))]))=>//=.
-  irewrite' (merge_iso2 (union_merge_l _ _))=>/=.
-  rewrite 2!union_merge_lEl 2!union_merge_lEr.
+                        (k:=[::(unl input,unr (unl input)); (unl output,unr (unr output))]))=>//.
+  irewrite' (merge_iso2 (union_merge_l _ _)).
+  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr/fst/snd.
   irewrite' (merge_merge (G:=union (union F G) H)
-                              (k:=[::(unl (unl input),unr input); (unl (unl output),unr output)]))=>//=.
-  irewrite (merge_iso2 (union_A _ _ _))=>/=.
-  apply merge_seq_same'.
-  apply eqv_clot_eq.
+                              (k:=[::(unl (unl input),unr input); (unl (unr output),unr output)]))=>//.
+  irewrite (merge_iso2 (union_A _ _ _)).
+  apply merge_seq_same'=>/=.
+  apply eqv_clot_eq=>/=.
    constructor. apply eqv_clot_trans with (unl (unl (input))); eqv. 
-   constructor. apply eqv_clot_trans with (unl (unl (output))); eqv.
-   leqv.
+   constructor. apply eqv_clot_trans with (unl (unr (output))); eqv.
+   constructor. eqv.
+   constructor. apply eqv_clot_trans with (unl (unr (output))); eqv.
+   leqv. 
 
    constructor. eqv. 
-   constructor. eqv. 
+   constructor. apply eqv_clot_trans with (inr output); eqv. 
    constructor. apply eqv_clot_trans with (unl (unr input)); eqv. 
-   constructor. apply eqv_clot_trans with (unl (unr output)); eqv. 
-   leqv.
-Qed.
-   *)
-Admitted.
-
+   leqv. 
+Qed.   
 
 
 
