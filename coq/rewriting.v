@@ -8,26 +8,11 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 Section s.
-Variable A: Type.
-Notation test := (test (tm_pttdom A)). 
-Notation term := (term A).
-Notation graph := (graph test term).
-Notation graph2 := (graph2 test term).
-
-(* HACK: unluckily, declaring [pttdom_bisetoid] as canonical
-   does not make it possible to solve [tm_setoid A = setoid_of_bisetoid _]
-   which is needed at a few places.
-   we solve this by declaring the following instance as canonical *)
-Canonical Structure tm_bisetoid :=
-  @BiSetoid (tm_setoid A) (@eqv' (tm_pttdom A))
-            (@eqv'_sym (tm_pttdom A))
-            (@eqv10 (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
-(* we would be happier with the following declaration, but Eval hnf does not simplify enough... *)
-(* Canonical Structure tm_bisetoid := Eval hnf in pttdom_bisetoid (tm_pttdom A). *)
-
-(* following command should work 
-   Check erefl: tm_setoid A = setoid_of_bisetoid _.  
- *)
+Variable X: pttdom.
+Canonical pttdom_bisetoid.
+Notation test := (test X).
+Notation graph := (graph test (car (setoid_of_ops (ops X)))).
+Notation graph2 := (graph2 test (car (setoid_of_ops (ops X)))).
 
 (* rewriting system *)
 

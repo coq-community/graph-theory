@@ -33,7 +33,7 @@ Proof. rewrite /infer_test. by subst. Qed.
 
 (** Christian: The follwing should hold (and typecheck) for all 2pdom algebras *)
 
-Lemma eqv_negb (A:Type) (u v : tm_pttdom A) b : u ≡[~~b] v <-> u ≡[b] v°.
+Lemma eqv_negb (X: pttdom) (u v : X) b : u ≡[~~b] v <-> u ≡[b] v°.
 Admitted.
 
 (** *** Graphs *)
@@ -79,12 +79,8 @@ Import mplus.
 
 (** Arcs *)
 
-(** TODO: This requires interactions between the [u ≡[b] v] and [u°],
-which is so far only supported on the term algebra *)
-
 Section G.
-Variables (car : Type).
-Notation Le := (tm_pttdom car).
+Variable Le : pttdom.
 Notation Lv := (test Le).
 
 Definition arc (G : graph Lv Le) (e : edge G) x u y :=
@@ -127,7 +123,6 @@ Proof.
 Admitted.
 
 Arguments eqv : simpl never.
-Opaque tm_pttdom. (* make this an unlockable def.? *)
 
 
 (** Picking fresh vertices/edges *)
@@ -275,17 +270,16 @@ End Close.
 Arguments close [Lv Le] G [_] , [Lv Le] G graph_G.
 
 Section OpenCloseFacts.
-Variable car : Type.
-Notation tm := (tm_pttdom car).
+Variable tm : pttdom.           (* TODO: rename *)
 Notation test := (test tm).
 
 Global Instance tm_inh_type : inh_type tm. 
 exact: Build_inh_type (1%ptt).
 Defined.
 
-Notation pre_graph := (pre_graph test tm).
-Notation graph := (graph test tm).
-Notation graph2 := (graph2 test tm).
+Notation pre_graph := (pre_graph test (car (setoid_of_ops (ops tm)))).
+Notation graph := (graph test (car (setoid_of_ops (ops tm)))).
+Notation graph2 := (graph2 test (car (setoid_of_ops (ops tm)))).
 
 (** tracing vertices through the closing operation *)
 Definition close_v (G : pre_graph) (graph_G : is_graph G) (x : VT) : close G :=

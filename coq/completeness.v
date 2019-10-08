@@ -9,18 +9,19 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable A: Type.
+Notation term := (term A).  
+Notation nf_term := (nf_term A).  
 Notation test := (test (tm_pttdom A)). 
-Notation term := (term A).
 Notation graph := (graph test term).
 Notation graph2 := (graph2 test term).
-Notation step := (@step A).
-Notation steps := (@steps A).
+Notation step := (@step (tm_pttdom A)).
+Notation steps := (@steps (tm_pttdom A)).
 
 
 (* /begin 
  left here for the record, but should disappear since confluence is proved directly via open graphs *)
 Proposition local_confluence G G' H H':
-    step G G' -> step H H' -> G ≃2 H -> 
+    step G G' -> step H H' -> G ≃2p H -> 
     exists F, steps G' F /\ steps H' F.
 Admitted.                       (* through open confluence *)
 Definition measure (G: graph2) := #|vertex G| + #|edge G|.
@@ -29,33 +30,34 @@ Proof.
   rewrite /measure.
   case; intros=>/=; by rewrite !card_option ?addSnnS ?addnS.
 Qed.
-Lemma iso_stagnates G H: G ≃2 H -> measure H = measure G.
-Proof. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
+Lemma iso_stagnates G H: G ≃2p H -> measure H = measure G.
+Proof. case. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
 Proposition confluence F: forall G H, steps F G -> steps F H -> exists F', steps G F' /\ steps H F'.
 Proof.
   induction F as [F_ IH] using (well_founded_induction_type (Wf_nat.well_founded_ltof _ measure)).
   move=> G H S.
   move: G H S IH => _ H [F G FG|F__ F0 G' G FF0 FG GG] IH FH.
-  - exists H; split=>//. by rewrite -FG. 
+  - exists H; split=>//. by rewrite -(inhabits FG: _ ≃2p _). 
   - move: H FH IH FF0=> _ [F H FH|F F1 H' H FF1 FH HH] IH FF0. 
-      exists G; split=>//. rewrite -FH. eauto using cons_step.
-    destruct (local_confluence FG FH) as [M[GM HM]]. by rewrite -FF0. 
+      exists G; split=>//. rewrite -(inhabits FH: _ ≃2p _).  eauto using cons_step.
+    destruct (local_confluence FG FH) as [M[GM HM]]. by rewrite -(inhabits FF0: _ ≃2p _).
     destruct (fun D => IH G' D _ _ GG GM) as [L[GL ML]].
-     rewrite /Wf_nat.ltof -(iso_stagnates FF0). apply /ltP. by apply step_decreases.
+     rewrite /Wf_nat.ltof -(iso_stagnates (inhabits FF0)). apply /ltP. by apply step_decreases.
     have HL: steps H' L by transitivity M. 
     destruct (fun D => IH H' D _ _ HL HH) as [R[LR HR]].
-     rewrite /Wf_nat.ltof -(iso_stagnates FF1). apply /ltP. by apply step_decreases.
+     rewrite /Wf_nat.ltof -(iso_stagnates (inhabits FF1)). apply /ltP. by apply step_decreases.
      exists R. split=>//. by transitivity L.
 Qed.
 (* /end  *)
 
 (* graphs of normal forms are in normal form (i.e., can't reduce) *)
-Lemma nf_steps s: forall H, steps (graph_of_nf_term s) H -> graph_of_nf_term s ≃2 H.
+Lemma nf_steps s: forall H, steps (graph_of_nf_term s) H -> graph_of_nf_term s ≃2p H.
 Proof.
-  suff E: forall G H, steps G H -> G ≃2 graph_of_nf_term s -> G ≃2 H.
+  suff E: forall G H, steps G H -> G ≃2p graph_of_nf_term s -> G ≃2p H.
     by intros; apply E=>//; reflexivity. 
   destruct 1 as [G H I|G' G H H' I S _]=>//L.
-  - exfalso. setoid_rewrite I in L. clear -S L. destruct L as [L [Li Lo]]. generalize (card_bij (iso_e L)).
+  - exfalso. setoid_rewrite (inhabits I: _ ≃2p _) in L.
+    clear -S L. destruct L as [[L Li Lo]]. generalize (card_bij (iso_e L)).
     destruct s; destruct S; simpl in *; (try by rewrite !card_option ?card_unit ?card_void); move=>_.
     * generalize (card_bij (iso_v L)). rewrite card_unit card_option.
       have H: 0 < #|G|. apply /card_gt0P. by exists input.
@@ -74,13 +76,13 @@ Proof.
 Qed.
 
 (* isomorphisms on graphs of normal forms give back equations *)
-Lemma iso_nf (s t: nf_term A):
-  graph_of_nf_term s ≃2 graph_of_nf_term t ->
+Lemma iso_nf (s t: nf_term):
+  graph_of_nf_term s ≃2p graph_of_nf_term t ->
   term_of_nf s ≡ term_of_nf t.
 Proof.
   case s=>[a|a u b];
-  case t=>[c|c v d]=>/=; move=> [h [hi ho]].
-  - symmetry. exact (vlabel_iso h tt).
+  case t=>[c|c v d]=>/=; move=> [[h hi ho]].
+  - symmetry. by apply (vlabel_iso h tt).
   - exfalso.
     generalize (bijK' h false). generalize (bijK' h true).
     case (h^-1 true). case (h^-1 false). congruence. 
@@ -98,7 +100,7 @@ Proof.
 Qed.
 
 (* main completeness theorem *)
-Theorem completeness (u v: term): graph_of_term u ≃2 graph_of_term v -> u ≡ v.
+Theorem completeness (u v: term): graph_of_term u ≃2p graph_of_term v -> u ≡ v.
 Proof.
   move=>h.
   pose proof (reduce u) as H.

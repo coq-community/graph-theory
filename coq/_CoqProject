@@ -21,9 +21,9 @@ pttdom.v
 mgraph.v
 mgraph2.v
 rewriting.v
-# reduction.v (currently broken)
+reduction.v
 open.v
-# completeness.v
+completeness.v
 
 ## extraction (first three files obsolete, following ones to be ported)
 multigraph_bak.v

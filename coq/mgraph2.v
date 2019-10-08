@@ -388,10 +388,10 @@ Admitted.
 
 
 
-(* Program Definition g2_ptt: ptt.laws := {| ptt.ops := g2_ops |}. *)
-(* (* TODO: import all isomorphisms... *) *)
-(* Admit Obligations. *)
-(* Canonical g2_ptt. *)
+Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
+(* TODO: import all isomorphisms... *)
+Admit Obligations.
+Canonical g2_pttdom.
 
 End m. 
 Notation "G [tst x <- a ]" := 
