@@ -733,13 +733,14 @@ Proof.
   move => eG.
   apply: iso2_sym. 
   iso2 (bij_id) (fresh_bij bij_id eG) (fun => false) => //. 
-  (* 4-5: exact: val_inj. *)
-  (* - move => [e'|]; by rewrite fresh_bijE /= updateE ?fsval_eqF.  *)
-  (* - move => [e'|] /=; apply: val_inj; rewrite /= updateE ?fsval_eqF //. *)
-  (*   by rewrite close_vK // add_edgeV. *)
-  (* - move => [e'|] /=; apply: val_inj; rewrite /= updateE ?fsval_eqF //.  *)
-  (*   by rewrite close_vK // add_edgeV. *)
-Admitted.
+  2-3: exact: val_inj. 
+  split => //.
+  - move => [e'|] b; apply: val_inj => //.
+    + by rewrite fresh_bijE /= updateE ?fsval_eqF.  
+    + rewrite fresh_bijE /= updateE. 
+      by case: b; rewrite close_vK // ?fsval_eqF add_edgeV.
+  - by move => [e'|] /=; rewrite updateE // fsval_eqF.
+Defined.
 
 Lemma close_add_edge (G : pre_graph) (x y : VT) u (isG : is_graph G) (isG' : is_graph (G ∔ [x, u, y])) : 
   close (G ∔ [x, u, y]) ≃2 close G ∔ [close_v x, u, close_v y].
@@ -750,8 +751,10 @@ Definition close_add_vertex (G : pre_graph) (graph_G : is_graph G) x a : x \noti
 Proof.
   move => xG. apply: iso2_sym. 
   iso2 (fresh_bij bij_id xG) bij_id (fun => false) => //. 2-3: move => *; exact: val_inj.
-  (* move => [v|] => //=; by rewrite /= updateE // fsval_eqF. *)
-Admitted.
+  split => //.
+  + move => e b. exact: val_inj.
+  + by move => [v|] /=; rewrite updateE // fsval_eqF.
+Defined.
 
 (* Lemma vfunE (G H : lgraph) (h : bij (close (open G)) (close (open H))) (x : G) : *)
 (*   vfun_body h (inj_v x) = inj_v (h (openK _ x)). *)
@@ -836,10 +839,15 @@ Defined.
 
 Lemma oarc_open (x y : G) (e : edge G) u : 
   arc e x u y -> oarc (open G) (inj_e e) (inj_v x) u (inj_v y).
+Proof.
 Admitted.
 
 Definition open_add_test (x : G) a : 
   open (G[tst x <- a]) ⩭2 (open G)[adt inj_v x <- a].
+Proof.
+  do 2 eexists. 
+  apply: iso2_comp (iso2_sym (openK _)) _.
+  (* ??? *)
 Admitted.
 
 End Transfer. 
