@@ -944,6 +944,8 @@ Implicit Types (x y z : VT) (e : ET).
 (** We turn the first argument into a parameter, this keeps
 case/destruct from introducing a new name for G *)
 Variant ostep (G : pre_graph) : pre_graph -> Type := 
+| ostep_v0 z : 
+    edges_at G z = fset0 -> z \notin pIO G -> ostep G (G \ z)
 | ostep_v1 x z e u : 
     edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
     ostep G (add_test G  x [dom(u·lv G z)] \ z)
@@ -1083,6 +1085,7 @@ Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. d
 
 Definition step_order G H (s: ostep G H): nat :=
   match s with
+  | ostep_v0 _ _ _ => 0
   | ostep_v1 _ _ _ _ _ _ _ _ => 1
   | ostep_v2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ => 2
   | ostep_e0 _ _ _ _ => 3
@@ -1351,27 +1354,57 @@ Lemma oarcxx_le G e x u : oarc G e x u x -> 1∥le G e ≡ 1∥u.
 (* Proof. by case => _ [[_ _ A]|[_ _ A]]; rewrite A ?par_tst_cnv. Qed. *)
 Admitted.
 
+Lemma fset10 (T : choiceType) (e : T) : [fset e] != fset0. Admitted. 
+
 
 Proposition local_confluence (G : pre_graph) (isG : is_graph G) Gl Gr : 
-  oconnected G ->
   ostep G Gl -> ostep G Gr -> Σ Gl' Gr', osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr'). 
 Proof with eauto with typeclass_instances.
-  move => conn_G S1 S2.
+  have conn_G : oconnected G by admit. (* fixme: this should be removed *)
+  move => S1 S2.
   wlog : Gl Gr S1 S2 / step_order S1 <= step_order S2.
   { move => W. case/orb_sum: (leq_total (step_order S1) (step_order S2)) => SS.
     - exact: W SS.
     - case: (W _ _ _ _ SS) => H' [G'] [[stpG stpH] E]. 
       do 2 eexists; split; first split. 1-2:eassumption. by symmetry. }
   (* naming convention: primes on the second/right rule *)
-  destruct S1 as [x  z  e  u  Iz  zIO  arc_e  xDz |
+  destruct S1 as [z Iz zIO|
+                  x  z  e  u  Iz  zIO  arc_e  xDz |
                   x y z e1 e2 u v Iz e1De2 zIO xDz yDz arc_e1 arc_e2|
                   x e u arc_e |
                   x y e1 e2 u v e1De2 arc_e1 arc_e2];
-  destruct S2 as [x' z' e' u' Iz' zIO' arc_e' xDz'|
+  destruct S2 as [z' Iz' zIO'|
+                  x' z' e' u' Iz' zIO' arc_e' xDz'|
                   x' y' z' e1' e2' u' v' Iz' e1De2' zIO' xDz' yDz' arc_e1' arc_e2'|
                   x' e' u' arc_e' |
                   x' y' e1' e2' u' v' e1De2' arc_e1' arc_e2'];
   rewrite //=; move => CASE_TAG.
+  - (* V0 / V0 *)
+    case: (altP (z =P z')) => [?|D].
+    + subst z'. do 2 exists ((G \ z)%O). split => //. split => //; exact: osteps_refl.
+    + exists (G \ z \ z')%O. exists (G \ z' \ z)%O. rewrite {2}del_vertexC. split => //.
+      split; apply ostep_step,ostep_v0 => //; by rewrite edges_at_del Iz Iz' fsetD0.
+  - (* V0 / V1 *) 
+    (* have Hz : z \notin [fset z'; x']. - not actually needed *) 
+    e2split.
+    + eapply ostep_step,ostep_v1. 3: eapply oarc_del_vertex,arc_e'. all: try done.
+      * by rewrite edges_at_del Iz Iz' fsetD0.
+      * by rewrite Iz inE.
+    + eapply ostep_step,(ostep_v0 (z := z)). 2:done.
+      by rewrite edges_at_del edges_at_test Iz fset0D.
+    + by rewrite del_vertexC del_vertex_add_test.
+  - (* V0 / V2 *) 
+    have [? ?] : z != x' /\ z != y'. admit.
+    e2split.
+    + eapply ostep_step,ostep_v2. 
+      6-7: apply: oarc_del_vertex. 7: apply arc_e1'. 8: apply: arc_e2'.
+      all: try done.
+      all: by rewrite ?edges_at_del ?Iz ?Iz' ?fsetD0 ?inE.
+    + eapply ostep_step,(ostep_v0 (z := z)). 2:done.
+      admit.
+    + by rewrite -del_vertex_add_edge 1?del_vertexC //= Iz' maxn_fsetD.
+  - (* V0 / E1 *) admit.
+  - (* V0 / E2 *) admit.
   - (* V1 / V1 *) 
     case: (altP (z =P z')) => [E|D]. 
     + (* same instance *)
@@ -1851,7 +1884,15 @@ Proof. by rewrite /= !inE. Qed.
 Lemma osteps_of (G H : graph2) : step G H -> osteps (open G) (open H).
 Proof with eauto with typeclass_instances.
   case => {G H}.
-  - admit. (* do we really want the v0 rule? *)
+  - (* V0 *) 
+    move => G a. apply: oliso_stepL (open_add_vertex _ _ ) _.
+    apply: ostep_stepL. apply: (ostep_v0 (z := fresh (vset (open G)))).
+    + by rewrite edges_at_add_vertex // freshP.
+    + by rewrite pIO_add_vertex pIO_fresh // freshP.
+    + apply: oliso_step. apply weqG_oliso... 
+      * eapply del_vertex_graph... constructor. 
+        by rewrite pIO_add_vertex pIO_fresh // freshP.
+      * apply: add_vertexK. exact: freshP.
   - (* V1 *) move => G x u a.
     (* test *)
     apply: oliso_stepL (open_add_edge _ _ _) _.
@@ -2003,6 +2044,34 @@ Proof.
   liso (@bij_delv G z) B (fun _ => false).
 Admitted.
 *)
+
+Lemma ostep_graph (F G : pre_graph) (isG : is_graph G) : ostep F G -> is_graph G.
+Admitted.
+
+Proposition open_confluence (F G H : pre_graph) (isF : is_graph F) : 
+  osteps F G -> osteps F H -> Σ F', is_graph F' * (osteps G F') * (osteps H F').
+Admitted.
+
+Lemma osteps_graph (F G : pre_graph) (isG : is_graph G) : osteps F G -> is_graph G.
+Admitted.
+
+Lemma osteps_of_steps (G H : graph2) : steps G H -> osteps (open G) (open H).
+Admitted.
+
+Lemma steps_of_osteps (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) :
+  osteps G H -> steps (close G) (close H).
+Admitted.
+
+
+Theorem confluence (F G H : graph2) : 
+  steps F G -> steps F H -> exists F', steps G F' /\ steps H F'.
+Proof.
+  move => /osteps_of_steps S1 /osteps_of_steps S2.
+  case: (open_confluence _ S1 S2) => F' [[isF' /steps_of_osteps S1'] /steps_of_osteps S2']. 
+  exists (close F'). split. 
+  + transitivity (close (open G)) => //. apply: iso_step. exact: openK.
+  + transitivity (close (open H)) => //. apply: iso_step. exact: openK.
+Qed.
 
 End ostep.
 End OpenCloseFacts.
