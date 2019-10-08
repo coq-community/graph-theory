@@ -12,6 +12,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 TO DO
  - input/output as a function from [bool]?
+ - recheck status of [unr/unl]
 
  *)
 
@@ -90,6 +91,21 @@ Proof.
   - intros F G H [h] [k]. constructor. etransitivity; eassumption.
 Qed.
 Canonical Structure g2_setoid: setoid := Setoid iso2prop_Equivalence. 
+Section CProper.
+Variables A B C: Type.
+Notation i R := (fun x y => inhabited (R x y)). 
+Variable R: A -> A -> Type.
+Variable S: B -> B -> Type.
+Variable T: C -> C -> Type.
+Variable f: A -> B.
+Hypothesis Hf: CProper (R ==> S) f.
+Lemma CProper1: Proper (i R ==> i S) f.
+Proof. intros x y [H]. exists. by apply Hf. Qed.
+Variable g: A -> B -> C.
+Hypothesis Hg: CProper (R ==> S ==> T) g.
+Lemma CProper2: Proper (i R ==> i S ==> i T) g.
+Proof. intros x y [E] u v [F]. exists. by apply Hg. Qed.
+End CProper.
 
 Lemma iso_iso2 (F G: graph) (h: F ≃ G) (i o: F):
   point F i o ≃2 point G (h i) (h o).
@@ -524,8 +540,21 @@ Lemma dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
 Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
-(* TODO: import all isomorphisms... *)
-Admit Obligations.
+Next Obligation. apply CProper2, dot_iso2. Qed.
+Next Obligation. apply CProper2, par_iso2. Qed.
+Next Obligation. apply CProper1, cnv_iso2. Qed.
+Next Obligation. apply CProper1, dom_iso2. Qed.
+Next Obligation. exists. apply par2A. Qed.
+Next Obligation. exists. apply par2C. Qed.
+Next Obligation. exists. apply dot2A. Qed.
+Next Obligation. exists. apply dot2one. Qed.
+Next Obligation. exists. apply cnv2I. Qed.
+Next Obligation. exists. apply cnv2par. Qed.
+Next Obligation. exists. apply cnv2dot. Qed.
+Next Obligation. exists. apply par2oneone. Qed.
+Next Obligation. exists. apply A10. Qed.
+Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
+Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Canonical g2_pttdom.
 
 End s. 
