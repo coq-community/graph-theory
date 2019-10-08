@@ -197,11 +197,29 @@ Definition Iso' (F G: graph)
   is_hom fv fe fd -> F ≃ G.
 Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2) fd. apply E. Defined.
 
+(* isomorphisms on concrete graphs *)
+
+Lemma iso_two_graph a b: two_graph a b ≃ unit_graph a ⊎ unit_graph b.
+Proof.
+  apply Iso' with
+      (fun x: bool => if x then inr tt else inl tt)
+      (fun x => match x with inr _ => true | _ => false end)
+      (vfun)
+      (fun x => match x with inr x | inl x => x end)
+      xpred0=>/=.
+  all: abstract (repeat first [case|split|reflexivity]).
+Defined.
+
+Lemma iso_two_swap a b: two_graph a b ≃ two_graph b a.
+Proof.
+  apply Iso' with
+      negb negb (fun e: void => match e with end) (fun e: void => match e with end) xpred0.
+all: abstract by (repeat split; case). 
+Defined.
 
 
-(** isomorphisms about union and merge *)
+(* isomorphisms about [union] *)
 
-(* TODO CProper? *)
 Global Instance union_iso: CProper (iso ==> iso ==> iso) union.
 Proof.
   intros F F' f G G' g.
@@ -224,6 +242,8 @@ Proof.
   abstract by split; case=>[|[|]].
 Defined.
 
+
+(* isomorphisms about [merge] *)
 
 Section h_merge_nothing'.
  Variables (F: graph) (r: equiv_rel F).
@@ -331,6 +351,8 @@ Proof.
   + by rewrite equiv_sym eqv_clot_map_lr.
   + by rewrite eqv_clot_map_eq ?sum_eqE // inr_codom_inl.
 Qed.
+
+(* isomorphisms about [union] and [merge] *)
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
