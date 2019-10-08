@@ -12,8 +12,8 @@ Variable A: Type.
 Notation term := (term A).  
 Notation nf_term := (nf_term A).  
 Notation test := (test (tm_pttdom A)). 
-Notation graph := (graph test term).
-Notation graph2 := (graph2 test term).
+Notation graph := (graph (pttdom_labels (tm_pttdom A))).
+Notation graph2 := (graph2 (pttdom_labels (tm_pttdom A))).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 

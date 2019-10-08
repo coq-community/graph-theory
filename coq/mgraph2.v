@@ -17,44 +17,31 @@ TO DO
 
 Section s.
     
-Variables Lv Le: Type.
+Variable L: labels.
+Notation Lv := (lv L).  
+Notation Le := (le L).
+Notation graph := (graph L). 
 
 Record graph2 :=
   Graph2 {
-      graph_of:> graph Lv Le;
-      input: vertex graph_of;
-      output: vertex graph_of }.
-Arguments input [_].
-Arguments output [_].
+      graph_of:> graph;
+      input: graph_of;
+      output: graph_of }.
+Arguments input {_}.
+Arguments output {_}.
 Notation point G := (@Graph2 G).
 
-
 (* basic graphs and operations *)
-Definition unit_graph2 a := point (unit_graph _ a) tt tt.
-Definition two_graph2 a b := point (two_graph _ a b) false true. 
+Definition unit_graph2 a := point (unit_graph a) tt tt.
+Definition two_graph2 a b := point (two_graph a b) false true. 
 Definition edge_graph2 a u b := point (edge_graph a u b) false true. 
 Definition add_vertex2 (G: graph2) l := point (add_vertex G l) (Some input) (Some output).
 Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge G x y u) input output.
 
-End s.
-Bind Scope graph2_scope with graph2.
-Delimit Scope graph2_scope with G2.
-
-Arguments input {_ _ _}.
-Arguments output {_ _ _}.
-Notation point G := (@Graph2 _ _ G).
-
 Notation "G ∔ [ x , u , y ]" := 
-  (@add_edge2 _ _ G x y u) (at level 20, left associativity) : graph2_scope.
+  (@add_edge2 G x y u) (at level 20, left associativity).
 Notation "G ∔ a" := 
-  (add_vertex2 G a) (at level 20, left associativity) : graph2_scope.
-
-
-Section i.
-Variable Lv: setoid.
-Variable Le: bisetoid.
-Notation graph := (graph Lv Le).
-Notation graph2 := (graph2 Lv Le).
+  (add_vertex2 G a) (at level 20, left associativity).
 
 (* TODO: via sigma types again?
 
@@ -73,7 +60,8 @@ Record iso2 (F G: graph2): Type :=
 Infix "≃2" := iso2 (at level 79).
 
 Definition iso2_id (G: graph2): G ≃2 G.
-Proof. by exists (@iso_id _ _ _). Defined.
+Proof. by exists (@iso_id _ _). Defined.
+Hint Resolve iso2_id.         (* so that [by] gets it... *)
 
 Definition iso2_sym F G: F ≃2 G -> G ≃2 F.
 Proof.
@@ -93,6 +81,7 @@ Proof. split. exact iso2_id. exact iso2_sym. exact iso2_comp. Qed.
 
 (* Prop version *)
 Definition iso2prop (F G: graph2) := inhabited (F ≃2 G). 
+Infix "≃2p" := iso2prop (at level 79).
 Global Instance iso2prop_Equivalence: Equivalence iso2prop.
 Proof.
   split.
@@ -122,24 +111,11 @@ Lemma union_A2' (F G H: graph) (i o: (F+G)+H):
   point (union (union F G) H) i o ≃2 point (union F (union G H)) (sumA' i) (sumA' o).
 Proof. apply (iso_iso2 (iso_sym (union_A _ _ _))). Qed.
 
-End i.
-Arguments iso2 {Lv Le}.
-Arguments iso2prop {Lv Le}.
-Infix "≃2p" := iso2prop (at level 79).
-Infix "≃2" := iso2 (at level 79).
-Hint Resolve iso2_id.         (* so that [by] gets it... *)
 
 (* simple tactics for rewriting with isomorphisms at toplevel, in the lhs or in the rhs
    (used in place of setoid_rewrite or rewrite->, which are pretty slow) *)
 Tactic Notation "irewrite" uconstr(L) := (eapply iso2_comp;[apply L|]); last 1 first.
 Tactic Notation "irewrite'" uconstr(L) := eapply iso2_comp;[|apply iso2_sym, L].
-
-
-Section m.
-Variable Lv: monoid.
-Variable Le: bisetoid.
-Notation graph := (graph Lv Le).
-Notation graph2 := (graph2 Lv Le).
 
 
 (* two pointed graphs operations *)
@@ -159,10 +135,10 @@ Definition g2_dom (F: graph2) :=
   point F input input.
 
 Definition g2_one: graph2 :=
-  point (unit_graph _ mon0) tt tt.
+  point (unit_graph mon0) tt tt.
 
 Definition g2_top: graph2 :=
-  point (two_graph _ mon0 mon0) false true.
+  point (two_graph mon0 mon0) false true.
 
 Definition g2_var a: graph2 :=
   point (edge_graph mon0 a mon0) false true.
@@ -338,12 +314,8 @@ Qed.
 
 Lemma par2C (F G: graph2): F ∥ G ≃2 G ∥ F.
 Proof.
-  (* Set Printing All.  *)
   rewrite /=/g2_par.
-  (* set cLv := car (setoid_of_monoid Lv).  *)
-  (* set cLe := car (setoid_of_bisetoid Le).  *)
   irewrite (merge_iso2 (union_C F G)) =>/=.
-  (* rewrite -/cLe -/cLv. *)
   apply merge_seq_same.
   apply eqv_clot_eq. leqv. leqv. 
   eqv. eqv. 
@@ -363,35 +335,53 @@ Qed.
 Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≃2 (F ∥ G) ∥ H.
 Proof.
   irewrite (merge_iso2 (union_merge_r _ _)).
-  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr/fst/snd.
+  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /fst/snd.
   irewrite (merge_merge (G:=union F (union G H))
                         (k:=[::(unl input,unr (unl input)); (unl output,unr (unr output))]))=>//.
   irewrite' (merge_iso2 (union_merge_l _ _)).
-  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr/fst/snd.
+  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
   irewrite' (merge_merge (G:=union (union F G) H)
                               (k:=[::(unl (unl input),unr input); (unl (unr output),unr output)]))=>//.
   irewrite (merge_iso2 (union_A _ _ _)).
-  apply merge_seq_same'=>/=.
-  apply eqv_clot_eq=>/=.
-   constructor. apply eqv_clot_trans with (unl (unl (input))); eqv. 
-   constructor. apply eqv_clot_trans with (unl (unr (output))); eqv.
+  apply merge_seq_same'. rewrite /unl/unr/=.
+  set a := inl _. set (b := inl _). set (c := inl _). set (d := inl _). set (e := inr _). set (f := inr _).
+  apply eqv_clot_eq=>/=.  
+   constructor. apply eqv_clot_trans with c; eqv. 
+   constructor. apply eqv_clot_trans with b; eqv.
    constructor. eqv.
-   constructor. apply eqv_clot_trans with (unl (unr (output))); eqv.
-   leqv. 
+   constructor. apply eqv_clot_trans with b; eqv.
+   leqv.
 
    constructor. eqv. 
-   constructor. apply eqv_clot_trans with (inr output); eqv. 
-   constructor. apply eqv_clot_trans with (unl (unr input)); eqv. 
+   constructor. apply eqv_clot_trans with f; eqv. 
+   constructor. apply eqv_clot_trans with a; eqv. 
    leqv. 
-Qed.   
-
-
+Qed.
 
 Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
 (* TODO: import all isomorphisms... *)
 Admit Obligations.
 Canonical g2_pttdom.
 
-End m. 
+End s. 
+
+Bind Scope graph2_scope with graph2.
+Delimit Scope graph2_scope with G2.
+
+Arguments input {_ _}.
+Arguments output {_ _}.
+Notation point G := (@Graph2 _ G).
+
+Notation "G ∔ [ x , u , y ]" := 
+  (@add_edge2 _ G x y u) (at level 20, left associativity) : graph2_scope.
+Notation "G ∔ a" := 
+  (add_vertex2 G a) (at level 20, left associativity) : graph2_scope.
 Notation "G [tst x <- a ]" := 
-  (@add_test _ _ G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]") : graph2_scope.
+  (@add_test _ G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]") : graph2_scope.
+
+Arguments iso2 {_}.
+Arguments iso2prop {_}.
+
+Infix "≃2" := iso2 (at level 79).
+Infix "≃2p" := iso2prop (at level 79).
+Hint Resolve iso2_id.         (* so that [by] gets it... *)

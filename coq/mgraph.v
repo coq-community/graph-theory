@@ -30,25 +30,10 @@ Arguments CMorphisms.Proper [A] _%C _.
 (* labelled multigraphs and their operations *)
 
 Section s.
-  (* note on sectionning
-
-     for now we have three sections in order to assume the least
-     requirements for the various operations/concepts:
-
-     Section s: Lv: Type, Le: Type 
-      (basic defs operations not needing anything) 
-     Section i: Lv: setoid. Le: bisetoid 
-      (notions of homomorphism, isomorphism...)  
-     Section m: Lv: comm_monoid. Le: bisetoid 
-      (operations needing the monoid structure)
-
-     we might want
-     - to put everything in [m] in the end, for the sake of simplicity  
-     - to be even more general at a few places
-
-  *)
     
-Variables Lv Le: Type.
+Variable L: labels.
+Notation Lv := (lv L).  
+Notation Le := (le L).  
 
 (* labelled multigraphs (not pointed) *)
 Record graph: Type :=
@@ -58,7 +43,6 @@ Record graph: Type :=
       endpoint: bool -> edge -> vertex; (* source and target functions *)
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
-
 
 (* basic graphs and operations *)
 Definition unit_graph a := @Graph [finType of unit] _ (fun _ => vfun) (fun _ => a) vfun.
@@ -70,67 +54,48 @@ Definition add_vertex (G: graph) (l: Lv): graph :=
          (fun b e => Some (endpoint b e))
          (fun v => match v with Some v => vlabel v | None => l end)
          (@elabel G).
+Notation "G ∔ a" := 
+  (add_vertex G a) (at level 20, left associativity).
 
 Definition add_edge (G: graph) (x y: G) (l: Le): graph :=
   @Graph (vertex G) [finType of option (edge G)]
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
          (@vlabel G)
          (fun e => match e with Some e => elabel e | None => l end).
+Notation "G ∔ [ x , u , y ]" := 
+  (@add_edge G x y u) (at level 20, left associativity).
 
+(* TODO: could do add_vlabel directly with the new interface *)
 Definition upd_vlabel (G: graph) (x: G) (l: Lv -> Lv): graph :=
   @Graph (vertex G) (edge G)
          (@endpoint G)
          (fun v => if v==x then l (vlabel v) else vlabel v)
          (@elabel G).
 
-Definition union (G1 G2 : graph) : graph :=
-  {| vertex := [finType of G1 + G2];
-     edge := [finType of edge G1 + edge G2];
-     endpoint b := sumf (@endpoint G1 b) (@endpoint G2 b);
+Definition union (F G : graph) : graph :=
+  {| vertex := [finType of F + G];
+     edge := [finType of edge F + edge G];
+     endpoint b := sumf (@endpoint F b) (@endpoint G b);
      vlabel e := match e with inl e => vlabel e | inr e => vlabel e end;
      elabel e := match e with inl e => elabel e | inr e => elabel e end;
   |}.
+Infix "⊎" := union (at level 50, left associativity).
 
 Definition unl {G H: graph} (x: G): union G H := inl x.
 Definition unr {G H: graph} (x: H): union G H := inr x.
 
-End s.
-
-Notation source := (endpoint false).
-Notation target := (endpoint true).
-
-Bind Scope graph_scope with graph.
-Delimit Scope graph_scope with G.
-
-Arguments union {Lv Le} _ _.
-Infix "⊎" := union (at level 50, left associativity) : graph_scope.
-Arguments unl {_ _ _ _}.
-Arguments unr {_ _ _ _}.
-
-Arguments add_edge {Lv Le} G x y l.
-Arguments add_vertex {Lv Le} G l.
-Notation "G ∔ [ x , u , y ]" := 
-  (add_edge G x y u) (at level 20, left associativity) : graph_scope.
-Notation "G ∔ a" := 
-  (add_vertex G a) (at level 20, left associativity) : graph_scope.
-
-Definition merge (Lv: monoid) Le (G : graph Lv Le) (r : equiv_rel G) :=
+Definition merge (G: graph) (r : equiv_rel G) :=
   {| vertex := quot r;
      edge := (edge G);
      endpoint b e := \pi (endpoint b e);
      vlabel c := \big[mon2/mon0]_(w | \pi w == c) vlabel w;
      elabel e := elabel e |}.
-Arguments merge [_ _] _ _.
+Arguments merge _ _: clear implicits. 
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
 (* xor operation on Booleans, such that [xor false b] is convertible to [b] *)
 Lemma addbxx x : x (+) x = false. 
 Proof. by rewrite -negb_eqb eqxx. Qed.
-
-Section i.
-Variable Lv: setoid.
-Variable Le: bisetoid.
-Notation graph := (graph Lv Le).
 
 (* homomorphisms *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
@@ -161,7 +126,7 @@ Proof.
   - apply eqv11. 
   - apply eqv01. 
   - apply eqv10.
-  - apply RelationClasses.transitivity. 
+  - apply transitivity. 
 Qed.
 
 Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
@@ -196,6 +161,7 @@ Lemma elabel_iso F G (h: iso F G) e: elabel (h.e e) ≡[h.d e] elabel e.
 Proof. apply elabel_hom. Qed.
 
 Definition iso_id {G}: G ≃ G := @Iso _ _ bij_id bij_id _ (hom_id G). 
+Hint Resolve iso_id.         (* so that [by] gets it... *)
 
 Definition iso_sym F G: F ≃ G -> G ≃ F.
 Proof.
@@ -258,20 +224,6 @@ Proof.
   abstract by split; case=>[|[|]].
 Defined.
 
-
-End i.
-Arguments iso {Lv Le}.
-Arguments merge {Lv Le}.
-Infix "≃" := iso (at level 79).
-Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
-Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
-Hint Resolve iso_id.         (* so that [by] gets it... *)
-
-
-Section m.
-Variable Lv: monoid.
-Variable Le: bisetoid.
-Notation graph := (graph Lv Le).
 
 Section h_merge_nothing'.
  Variables (F: graph) (r: equiv_rel F).
@@ -382,7 +334,7 @@ Qed.
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
-  Definition h_union_merge_l: bij (merge_seq F l ⊎ G)%G (merge_seq (F ⊎ G) (map_pairs unl l))%G.
+  Definition h_union_merge_l: bij (merge_seq F l ⊎ G) (merge_seq (F ⊎ G) (map_pairs unl l)).
   Proof. eapply bij_comp. apply union_quot_l. apply quot_same. apply union_equiv_l_eqv_clot. Defined.
   Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id xpred0.
   Proof.
@@ -483,4 +435,32 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
-End m. 
+End s. 
+
+Notation source := (endpoint false).
+Notation target := (endpoint true).
+
+Bind Scope graph_scope with graph.
+Delimit Scope graph_scope with G.
+
+Arguments union {L} F G.
+Infix "⊎" := union (at level 50, left associativity) : graph_scope.
+Arguments unl {L G H}.
+Arguments unr {L G H}.
+
+Arguments add_edge {L} G x y l.
+Arguments add_vertex {L} G l.
+Notation "G ∔ [ x , u , y ]" := 
+  (add_edge G x y u) (at level 20, left associativity) : graph_scope.
+Notation "G ∔ a" := 
+  (add_vertex G a) (at level 20, left associativity) : graph_scope.
+
+Arguments merge {L} _ _.
+Notation merge_seq G l := (merge G (eqv_clot l)).
+
+Arguments iso {L}.
+Infix "≃" := iso (at level 79).
+Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
+Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
+
+Global Hint Resolve iso_id.         (* so that [by] gets it... *)

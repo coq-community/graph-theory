@@ -41,10 +41,11 @@ Admitted.
 (** Incident Edges *)
 Module mplus.
 Section L.
-Variables (Lv : setoid) (Le : bisetoid).
+Variable (L: labels).
+  
 
 Section Defs.
-Variables (G : graph Lv Le).
+Variables (G : graph L).
 Implicit Types (x y : G).
 
 Definition incident x e := x \in [set source e; target e].
@@ -59,7 +60,7 @@ End Defs.
 Arguments edges_at [G] x, G x.
 
 Section Theory.
-Variables (G : graph Lv Le).
+Variables (G : graph L).
 Implicit Types (x y : G).
 
 Lemma edges_at_add_edgeT x u y z: z \in [set x;y] -> 
@@ -73,17 +74,21 @@ Admitted.
 End Theory.
 End L.
 
-Arguments edges_at [Lv Le G] x, [Lv Le] G x.
+Arguments edges_at [L G] x, [L] G x.
 End mplus.
 Import mplus.
 
 (** Arcs *)
 
 Section G.
-Variable Le : pttdom.
-Notation Lv := (test Le).
+Variable L: pttdom.
+Notation test := (test L).
+Notation Lv := test.
+Notation Le := L.
+Notation graph := (graph (pttdom_labels L)).
+Notation graph2 := (graph2 (pttdom_labels L)).
 
-Definition arc (G : graph Lv Le) (e : edge G) x u y :=
+Definition arc (G : graph) (e : edge G) x u y :=
   exists b, [/\ endpoint b e = x, endpoint (~~b) e = y & elabel e ≡[b] u].
 
 Global Instance arc_morphism G : Proper (eq ==> eq ==> eqv ==> eq ==> iff) (@arc G).
@@ -94,7 +99,7 @@ Proof.
   case => b [A B C]. exists b. split => //. by rewrite <- U.
 Qed.
 
-Variables (G : graph Lv Le).
+Variables (G : graph).
 Implicit Types (x y : G) (u : Le).
 
 Lemma arcC (e : edge G) x y u : 
@@ -116,8 +121,8 @@ Proof. case => b [*]. by exists b. Qed.
 
 End G.
 
-Lemma add_vertex2_cong (Lv : setoid) (Le : bisetoid) : 
-  CProper (@iso2 Lv Le ==> @eqv Lv ==> @iso2 Lv Le)%C (@add_vertex2 Lv Le).
+Lemma add_vertex2_cong (L: labels) : 
+  CProper (@iso2 L ==> eqv ==> @iso2 L)%C (@add_vertex2 L).
 Proof.
   move => F G FG u v uv.
 Admitted.
@@ -196,7 +201,12 @@ Delimit Scope open_scope with O.
 Class inh_type (A : Type) := { default : A }.
 
 Section Open.
-Variables (Lv Le : Type) (le0 : Le) (G : graph2 Lv Le).
+Variable L: labels.
+Notation Le := (structures.le L).                
+Notation Lv := (structures.lv L).
+Notation graph := (graph L).
+Notation graph2 := (graph2 L).
+Variables (le0 : Le) (G : graph2).
 Context `{inh_type Le}.
 
 (** G may be edgeless, so there is no way to avoid the option type here *)
@@ -245,7 +255,12 @@ Qed.
 End Open.
 
 Section Close.
-Variable (Lv Le : Type) (G : pre_graph Lv Le).
+Variable L: labels.
+Notation Le := (structures.le L).                
+Notation Lv := (structures.lv L).
+Notation graph := (graph L).
+Notation graph2 := (graph2 L).
+Variable (G : pre_graph Lv Le).
 Context {graph_G : is_graph G}.
 
 Lemma endpt_proof b (e : eset G) : endpt G b (val e) \in vset G.
@@ -254,20 +269,20 @@ Proof. exact: (endptP b (valP e)). Qed.
 (* Lemma target_proof (e : eset G) : tgt G (val e) \in vset G. *)
 (* Proof. exact: (tgtP (valP e)). Qed. *)
 
-Definition close' : graph Lv Le := Eval simpl in 
+Definition close' : graph := Eval simpl in 
   {| vertex := [finType of vset G];
      edge := [finType of eset G];
      endpoint b e := Sub (endpt G b (val e)) (endpt_proof b e);
      vlabel v := lv G (val v);
      elabel e := le G (val e) |}.
 
-Arguments Graph2 [Lv Le] graph_of _ _.
+Arguments Graph2 [_] graph_of _ _.
 
 Definition close := Eval hnf in
   point close' (Sub (p_in G) (@p_inP _ _ _ _)) (Sub (p_out G) (@p_outP _ _ _ _)).
 
 End Close.
-Arguments close [Lv Le] G [_] , [Lv Le] G graph_G.
+Arguments close [_] G [_] , [_] G graph_G.
 
 Section OpenCloseFacts.
 Variable tm : pttdom.           (* TODO: rename *)
@@ -278,8 +293,8 @@ exact: Build_inh_type (1%ptt).
 Defined.
 
 Notation pre_graph := (pre_graph test (car (setoid_of_ops (ops tm)))).
-Notation graph := (graph test (car (setoid_of_ops (ops tm)))).
-Notation graph2 := (graph2 test (car (setoid_of_ops (ops tm)))).
+Notation graph := (graph (pttdom_labels tm)).
+Notation graph2 := (graph2 (pttdom_labels tm)).
 
 (** tracing vertices through the closing operation *)
 Definition close_v (G : pre_graph) (graph_G : is_graph G) (x : VT) : close G :=

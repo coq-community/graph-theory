@@ -9,10 +9,9 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable X: pttdom.
-Canonical pttdom_bisetoid.
 Notation test := (test X).
-Notation graph := (graph test (car (setoid_of_ops (ops X)))).
-Notation graph2 := (graph2 test (car (setoid_of_ops (ops X)))).
+Notation graph := (graph (pttdom_labels X)).
+Notation graph2 := (graph2 (pttdom_labels X)).
 
 (* rewriting system *)
 
