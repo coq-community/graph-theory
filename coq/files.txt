@@ -11,9 +11,8 @@ completeness: wrapping up everything into a completeness proof
 
 with the following dependencies:
 
-              structures
-                pttdom            
-	        mgraph
+              structures                            
+	     mgraph  pttdom
 	        mgraph2
                rewriting
                        ???

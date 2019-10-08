@@ -71,19 +71,6 @@ Section derived.
  Lemma dotcnv (x y: X): x·y ≡ (y°·x°)°.
  Proof. apply cnv_inj. by rewrite cnvdot cnvI. Qed.
 
- (* dualised equality (to get a bisetoid) *)
- Definition eqv' (x y: X) := x ≡ y°.
- Arguments eqv' _ _ /.
- Lemma eqv'_sym: Symmetric eqv'.
- Proof. move=> x y /= H. apply cnv_inj. by rewrite cnvI H. Qed.
- Lemma eqv10 x y z: eqv' x y -> y ≡ z -> eqv' x z.
- Proof. by move=> /= H <-. Qed.
- Lemma eqv01 x y z: x ≡ y -> eqv' y z -> eqv' x z.
- Proof. by move=> /= ->. Qed.
- Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
- Proof. move=> /= -> ->. apply cnvI. Qed.
- Definition pttdom_bisetoid := BiSetoid eqv'_sym eqv10 eqv01 eqv11. 
-
  (* tests *)
  Definition is_test (x: X) := dom x ≡ x.
  Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
@@ -120,9 +107,26 @@ Section derived.
  Admitted.
  Lemma tst_dotU: forall a: test, [a·1] ≡ a.
  Proof. intros [a]. apply dotx1. Qed.
- Canonical Structure pttdom_test_monoid := Monoid tst_dot_eqv tst_dotA tst_dotC tst_dotU.
+
+ (* dualised equality (to get the [labels] structure below) *)
+ Definition eqv' (x y: X) := x ≡ y°.
+ Arguments eqv' _ _ /.
+ Lemma eqv'_sym: Symmetric eqv'.
+ Proof. move=> x y /= H. apply cnv_inj. by rewrite cnvI H. Qed.
+ Lemma eqv10 x y z: eqv' x y -> y ≡ z -> eqv' x z.
+ Proof. by move=> /= H <-. Qed.
+ Lemma eqv01 x y z: x ≡ y -> eqv' y z -> eqv' x z.
+ Proof. by move=> /= ->. Qed.
+ Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
+ Proof. move=> /= -> ->. apply cnvI. Qed.
+ 
+ Canonical Structure pttdom_labels: labels :=
+   Labels
+     tst_dot_eqv tst_dotA tst_dotC tst_dotU
+     eqv'_sym eqv10 eqv01 eqv11.
  
 End derived.
+Coercion pttdom_labels: pttdom >-> labels. 
 Notation "[ x ]" := (@infer_test _ x _ erefl): pttdom_ops.
 
 
@@ -164,7 +168,8 @@ Section terms.
  Qed.
  Canonical Structure tm_setoid := Setoid tm_eqv_equivalence. 
  Canonical Structure tm_ops_ :=
-   {| dot := tm_dot;
+   {| setoid_of_ops := tm_setoid;
+      dot := tm_dot;
       par := tm_par;
       cnv := tm_cnv;
       dom := tm_dom;

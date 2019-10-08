@@ -11,8 +11,8 @@ Set Bullet Behavior "Strict Subproofs".
 Section s.
 Variable X: pttdom.
 Notation test := (test X). 
-Notation graph := (graph test (car (setoid_of_ops (ops X)))).
-Notation graph2 := (graph2 test (car (setoid_of_ops (ops X)))).
+Notation graph := (graph (pttdom_labels X)).
+Notation graph2 := (graph2 (pttdom_labels X)).
 Notation step := (@step X).
 Notation steps := (@steps X).
 
@@ -103,54 +103,53 @@ Variable A: Type.
 Notation term := (term A).  
 Notation nf_term := (nf_term A).  
 Notation test := (test (tm_pttdom A)). 
-Notation graph := (graph test term).
-Notation graph2 := (graph2 test term).
+Notation graph := (graph (pttdom_labels (tm_pttdom A))).
+Notation graph2 := (graph2 (pttdom_labels (tm_pttdom A))).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
 
 (* TODO: get rid of this hack... *)
-Canonical Structure tm_bisetoid :=
-  @BiSetoid (tm_setoid A) (@eqv' (tm_pttdom A))
-            (@eqv'_sym (tm_pttdom A))
-            (@eqv10 (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
-(* we would be slightly happier with the following declaration, but Eval hnf does not simplify enough... *)
-(* Canonical Structure tm_bisetoid := Eval hnf in pttdom_bisetoid (tm_pttdom A). *)
-(* following command should work 
-   Check erefl: tm_setoid A = setoid_of_bisetoid _.  
- *)
+Canonical Structure tm_labels :=
+  @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
+         (@tst_dot_eqv (tm_pttdom A)) (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A))
+         (@tst_dotU (tm_pttdom A)) (tm_setoid A) (@eqv' (tm_pttdom A))
+         (@eqv'_sym (tm_pttdom A)) (@eqv10 (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
+(* Eval hnf in pttdom_labels (tm_pttdom A). *)
+(* Check erefl: tm_setoid A = le _. *)
+(* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
 
 (* graphs of terms and normal forms *)
-Definition graph_of_term: term -> graph2 := eval (fun a => g2_var _ (tm_var a)). 
+Definition graph_of_term: term -> graph2 := eval (fun a: A => g2_var (tm_var a)). 
 
 Definition graph_of_nf_term (t: nf_term): graph2 :=
   match t with
-  | nf_test a => point (unit_graph _ a) tt tt
+  | nf_test a => point (unit_graph a) tt tt
   | nf_conn a u b => point (edge_graph a u b) false true
   end.
 
 
 (* Some of these isomorphism lemma could be slight generalisations of lemmas
    used to get the pttdom laws on graph2 *)
-Lemma ldotunit (G: graph2) a: G · point (unit_graph _ a) tt tt ≃2p G [tst output <- a].
+Lemma ldotunit (G: graph2) a: G · point (unit_graph a) tt tt ≃2p G [tst output <- a].
 Admitted.
 
-Lemma lunitdot (G: graph2) a: point (unit_graph _ a) tt tt · G ≃2p G [tst input <- a].
+Lemma lunitdot (G: graph2) a: point (unit_graph a) tt tt · G ≃2p G [tst input <- a].
 Admitted.
 
 Lemma lparunitunit (a b: test):
-  point (unit_graph term a) tt tt ∥ point (unit_graph _ b) tt tt
-  ≃2p point (unit_graph _ [a·b]) tt tt.
+  point (unit_graph a) tt tt ∥ point (unit_graph b) tt tt
+  ≃2p point (unit_graph [a·b]) tt tt.
 Admitted.
 
 Lemma lparedgeunit (u: term) (a b c: test):
-  point (edge_graph a u b) false true ∥ point (unit_graph _ c) tt tt
-  ≃2p point (unit_graph _ [c∥a·u·b]) tt tt.
+  point (edge_graph a u b) false true ∥ point (unit_graph c) tt tt
+  ≃2p point (unit_graph [c∥a·u·b]) tt tt.
 Admitted.
        
 Lemma add_test_point (a c: test):
-  point (unit_graph term a) tt tt [tst tt <- c]
-  ≃2p point (unit_graph _ [a·c]) tt tt.
+  point (unit_graph a) tt tt [tst tt <- c]
+  ≃2p point (unit_graph [a·c]) tt tt.
 Admitted.                       (* could be inlined for now *)
 
 Lemma add_test_edge (x: bool) (u: term) (a b c: test):
@@ -176,7 +175,7 @@ Proof.
       apply add_test_edge. 
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_v2 (G:=point (two_graph _ a d) false true) false true u [b·c] v).
+      2: apply one_step, (step_v2 (G:=point (two_graph a d) false true) false true u [b·c] v).
       2: apply isop_step.
       (* 2: liso_step (bij_sym unit_option_void)=>/=. *)
       (* 2: liso bij_id bij_id (fun _ => false)=>//= _; by rewrite !dotA. *)
@@ -196,7 +195,7 @@ Proof.
     * apply isop_step. apply lparedgeunit.
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_e2 (G:=point (two_graph _ [a·c] [b·d]) false true) false true u v).
+      2: apply one_step, (step_e2 (G:=point (two_graph [a·c] [b·d]) false true) false true u v).
       admit.
       apply isop_step.
       (* liso_step (bij_sym unit_option_void)=>/=.  *)
@@ -214,7 +213,7 @@ Proof.
   - etransitivity. apply dom_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
     etransitivity. apply iso_step.
-    2: etransitivity. 2: apply one_step, (@step_v1 _ (point (unit_graph _ a) tt tt) tt v b).
+    2: etransitivity. 2: apply one_step, (@step_v1 _ (point (unit_graph a) tt tt) tt v b).
     (* liso_step bool_option_unit=>/=.  *)
     (* liso_step unit_option_void=>/=. *)
     (* liso bij_id bij_id (fun _ => false)=>//=; case=>//. *)
