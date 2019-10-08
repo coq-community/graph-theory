@@ -1357,7 +1357,7 @@ Admitted.
 Lemma fset10 (T : choiceType) (e : T) : [fset e] != fset0. Admitted. 
 
 
-Proposition local_confluence (G : pre_graph) (isG : is_graph G) Gl Gr : 
+Lemma local_confluence_aux (G : pre_graph) (isG : is_graph G) Gl Gr : 
   ostep G Gl -> ostep G Gr -> Σ Gl' Gr', osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr'). 
 Proof with eauto with typeclass_instances.
   have conn_G : oconnected G by admit. (* fixme: this should be removed *)
@@ -1872,6 +1872,42 @@ Proof with eauto with typeclass_instances.
         by rewrite fsetUC.
 Qed.
 
+Lemma ostep_graph (F G : pre_graph) (isG : is_graph F) : ostep F G -> is_graph G.
+Admitted.
+
+Lemma osteps_graph (F G : pre_graph) (isG : is_graph F) : osteps F G -> is_graph G.
+Admitted.
+
+Proposition local_confluence (F G1 G2 : pre_graph) (isF : is_graph F) : 
+  ostep F G1 -> ostep F G2 -> Σ H, osteps G1 H * osteps G2 H.
+Proof.
+  move => S1 S2.
+  move: (local_confluence_aux isF S1 S2) => [H1] [H2] [[S1' S2'] I].
+  exists H2. split => //. apply: osteps_trans (S1') _. apply: oliso_step. 
+  suff [isH1 isH2] : is_graph H1 /\ is_graph H2 by apply: weqG_oliso I.
+  split. 
+  - unshelve eapply (osteps_graph _ S1'). apply: ostep_graph S1.
+  - unshelve eapply (osteps_graph _ S2'). apply: ostep_graph S2.
+Qed.
+
+Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (i : F ⩭2 G) : 
+  z \notin pIO F -> F \ z ⩭2 G \ i z.
+Proof.   
+Admitted.
+
+Lemma osteps_iso (F G H : pre_graph) : 
+  ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
+Proof.
+  case => {G}.
+  - move => z Iz zIO i. exists (H \ i z)%O. split.
+    + apply ostep_v0. admit. admit.
+    + exact: oiso2_del_vertex. 
+  - admit.
+  - admit.
+  - admit.
+Admitted.
+
+
 Lemma inj_v_fresh (G : graph2) (x : G) (z : VT) : z \notin vset (open G) -> inj_v x != z.
 Proof. apply: contraNneq => <-. exact: inj_v_open. Qed.
 
@@ -1933,6 +1969,8 @@ Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : i
   e \notin eset G -> x' = close_v x :> close G -> y' = close_v y :> close G -> 
   close (G ∔ [e,x, u, y]) ≃2 close G ∔ [x', u,y'].
 Admitted.
+
+
       
 Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
   ostep G H -> steps (close G) (close H).
@@ -1999,60 +2037,38 @@ Proof with eauto with typeclass_instances.
 *)
 Admitted.
 
+Definition measure (G : pre_graph) := (#|` vset G| + #|` eset G|)%N.
 
-
-(* Lemma ostep_of (G H : lgraph) : *)
-(*   step G H -> Σ H' : pre_graph, ostep (open G) H' * (H' ⩭ open H). *)
-(* Proof. *)
-(*   case => {G H}. *)
-(*   - move => G x z e Hz xDz u arc_e at_z. eexists; split. *)
-(*     + apply: ostep_v1. 3: apply: oarc_open arc_e.   *)
-(*       admit. admit. admit. *)
-(*     +  *)
-(* Admitted. *)
-
-(* TOTHINK: It appears that the "additive" variant of the step
-relation (i.e., the one that never deletes anything) is more
-convienient in the rest of the proofs. How reasonable is it to go
-directtly to the open removal variant, or do we want the removal
-variant on type-based graphs as intermediate representation? *)
-
-
-
-(* 
-(* TODO: use generic construction above *)
-Definition bij_delv (T : finType) (z : T) :  
-  bij { x:T | x \in [set~ z]} ([fset inj_v x | x in T] `\ inj_v z).
-Proof.
-  set A := ({ x | _ }). set B := _ `\ _.
-  have f_proof (x : A) : inj_v (val x) \in [fset inj_v x | x in T] `\ inj_v z by admit.
-  pose f (x : A) : B := Sub (inj_v (val x)) (f_proof x).
-  have f_inv_proof1 (x : B) : val x \in [seq inj_v z | z in [set~ z] ]. admit.
-  have f_inv_proof2 (x : B) : iinv (f_inv_proof1 x) \in [set~ z]. admit.
-  pose f_inv (x : B) := Sub (iinv (f_inv_proof1 x)) (f_inv_proof2 x) : A. simpl in *.
-  apply: (@Bij _ _ f f_inv).
-  - move => [x Hx]. rewrite /f_inv/f. apply: val_inj => /=. 
-    move: (f_inv_proof1 _) => /= H. rewrite in_iinv_f //. apply: in2W. exact: inj_v_inj.
-  - move => [x Hx]. rewrite /f_inv/f. apply: val_inj => /=. 
+Lemma step_decreases (F G : pre_graph) : ostep F G -> measure G < measure F.
 Admitted.
 
-Lemma open_del_vertex (G : lgraph) (z : G) (Hz : z \notin IO) (Hz' : inj_v z \notin pIO (open G)) :
-  open (G \ [z, Hz]) ⩭ open G \ inj_v z.
-Proof.
-  do 2 eexists. rewrite <- openK.
-  have B : bij (edge (confluence.del_vertex G z Hz)) (edge (close (open G \ inj_v z))) by admit.
-  liso (@bij_delv G z) B (fun _ => false).
+Lemma iso2_stagnates (F G : pre_graph) : F ⩭2 G -> measure G = measure F.
 Admitted.
-*)
 
-Lemma ostep_graph (F G : pre_graph) (isG : is_graph G) : ostep F G -> is_graph G.
+
+Inductive osteps1L : pre_graph -> pre_graph -> Prop := 
+| Osteps1L_iso F G : F ⩭2 G -> osteps1L F G
+| Osteps1L_ostep F G H : ostep F G -> osteps1L G H -> osteps1L F H.
+
+Lemma osteps1L_refl G : osteps1L G G. Admitted.
+
+Lemma osteps1L_trans : Transitive osteps1L.
+Proof. 
+  (* requires well-founded induction to push isomorphims down *)
 Admitted.
+      
+Lemma osteps1LP F G : osteps F G -> osteps1L F G.
+Proof. 
+  elim => {F G}. 
+  - move => F G. exact: Osteps1L_iso.
+  - move => F G S. apply: Osteps1L_ostep S _. exact: osteps1L_refl.
+  - move => F G H ? S1 ?. exact: osteps1L_trans.
+Qed.
 
 Proposition open_confluence (F G H : pre_graph) (isF : is_graph F) : 
-  osteps F G -> osteps F H -> Σ F', is_graph F' * (osteps G F') * (osteps H F').
-Admitted.
-
-Lemma osteps_graph (F G : pre_graph) (isG : is_graph G) : osteps F G -> is_graph G.
+  osteps F G -> osteps F H -> exists F', is_graph F' /\ (osteps G F') /\ (osteps H F').
+Proof.
+  induction F as [F_ IH] using (well_founded_induction_type (Wf_nat.well_founded_ltof _ measure)).
 Admitted.
 
 Lemma osteps_of_steps (G H : graph2) : steps G H -> osteps (open G) (open H).
@@ -2067,7 +2083,7 @@ Theorem confluence (F G H : graph2) :
   steps F G -> steps F H -> exists F', steps G F' /\ steps H F'.
 Proof.
   move => /osteps_of_steps S1 /osteps_of_steps S2.
-  case: (open_confluence _ S1 S2) => F' [[isF' /steps_of_osteps S1'] /steps_of_osteps S2']. 
+  case: (open_confluence _ S1 S2) => F' [isF' [/steps_of_osteps S1' /steps_of_osteps S2']]. 
   exists (close F'). split. 
   + transitivity (close (open G)) => //. apply: iso_step. exact: openK.
   + transitivity (close (open H)) => //. apply: iso_step. exact: openK.
