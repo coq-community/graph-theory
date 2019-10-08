@@ -43,6 +43,9 @@ Lemma cardsIsub (T : choiceType) (A B : {fset T}) :
   #|`A `&` B| = #|`B| -> B `<=` A.
 Proof. move => H. by rewrite cardsDsub // cardfsD fsetIC H subnn. Qed.
 
+Lemma fset1U0 (T : choiceType) (x : T) (A : {fset T}) : x |` A != fset0.
+Proof. apply: contraFneq (in_fset0 x) => <-. by rewrite !inE eqxx. Qed.
+
 
 Arguments fset1Ur [K x a B].
 Arguments fset1U1 [K x B].

@@ -121,12 +121,6 @@ Proof. case => b [*]. by exists b. Qed.
 
 End G.
 
-Lemma add_vertex2_cong (L: labels) : 
-  CProper (@iso2 L ==> eqv ==> @iso2 L)%C (@add_vertex2 L).
-Proof.
-  move => F G FG u v uv.
-Admitted.
-
 Arguments eqv : simpl never.
 
 
@@ -791,9 +785,22 @@ Lemma vfun_bodyEinj (G : graph2) (H : pre_graph) (graph_H : is_graph H)
   vfun_body h (inj_v x) = val (h (Sub (inj_v x) (inj_v_open x))).
 Proof. by rewrite vfun_bodyE. (* why is the side conition resolved automatically? *) Qed.
 
+Lemma close_fsval (G : pre_graph) (isG : is_graph G) (v : vset G) : close_v (fsval v) = v.
+Proof. apply: val_inj => //=. by rewrite close_vK ?fsvalP. Qed.
+
+
 Definition close_add_test (G : pre_graph) (isG : is_graph G) x (Hx : x \in vset G) a :
   (close G)[tst close_v x <- a] ≃2 close (G[adt x <- a]).
-Admitted.
+Proof.
+  iso2 bij_id bij_id xpred0; try exact: val_inj.
+  split => //.
+  - move => e b. exact: val_inj.
+  - move => v. rewrite /= /update. (* simpl should not expose tst_dot *)
+    case: (altP (v =P close_v x)) => [->|D]. 
+    + rewrite close_vK // eqxx /=. admit. (* never want to see this ! *)
+    + suff -> : (fsval v == x = false) by []. 
+      apply: contra_neqF D => /eqP<-. by rewrite close_fsval.
+Defined.
 
 Section Transfer.
 Variable (G : graph2).
@@ -808,7 +815,7 @@ Lemma fresh_imfsetF (T : finType) (f : T -> ET) (e : T) :
    f e == fresh [fset f x | x in T] = false.
 Admitted. 
 
-
+(* TOTHINK: could replace [fresh _] with an arbitrary fresh edge *)
 Definition open_add_vertex a : 
   open (G ∔ a) ⩭2 (open G) ∔ [fresh (vset (open G)), a].
 Proof. 
@@ -817,8 +824,6 @@ Proof.
   apply: iso2_comp (iso2_sym _). 2: apply: close_add_vertex freshP. 
   apply: add_vertex2_cong => //. exact: openK.
 Defined.
-
-Set Nested Proofs Allowed.
 
 Lemma open_add_vertexE : 
   ((forall a, open_add_vertex a (@inj_v (G ∔ a)%G2 None) = fresh (vset (open G)))
@@ -1369,7 +1374,6 @@ Lemma oarcxx_le G e x u : oarc G e x u x -> 1∥le G e ≡ 1∥u.
 (* Proof. by case => _ [[_ _ A]|[_ _ A]]; rewrite A ?par_tst_cnv. Qed. *)
 Admitted.
 
-Lemma fset10 (T : choiceType) (e : T) : [fset e] != fset0. Admitted. 
 
 
 Lemma local_confluence_aux (G : pre_graph) (isG : is_graph G) Gl Gr : 
@@ -1409,15 +1413,21 @@ Proof with eauto with typeclass_instances.
       by rewrite edges_at_del edges_at_test Iz fset0D.
     + by rewrite del_vertexC del_vertex_add_test.
   - (* V0 / V2 *) 
-    have [? ?] : z != x' /\ z != y'. admit.
+    have ? : z != z'. { apply: contra_eq_neq Iz' => <-. by rewrite Iz eq_sym fset1U0. }
+    have [? ?] : x' != z /\ y' != z. 
+    { split. 
+      - apply: contra_eq_neq Iz => <-. apply/fset0Pn; exists e1'. exact: oarc_edge_atL arc_e1'.
+      - apply: contra_eq_neq Iz => <-. apply/fset0Pn; exists e2'. exact: oarc_edge_atR arc_e2'. }
     e2split.
     + eapply ostep_step,ostep_v2. 
       6-7: apply: oarc_del_vertex. 7: apply arc_e1'. 8: apply: arc_e2'.
       all: try done.
       all: by rewrite ?edges_at_del ?Iz ?Iz' ?fsetD0 ?inE.
     + eapply ostep_step,(ostep_v0 (z := z)). 2:done.
-      admit.
-    + by rewrite -del_vertex_add_edge 1?del_vertexC //= Iz' maxn_fsetD.
+      rewrite @edges_at_add_edge' //=. 
+      * by rewrite edges_at_del Iz fset0D.
+      * by rewrite Iz' maxn_fsetD.
+    + by rewrite -del_vertex_add_edge 1?eq_sym 1?del_vertexC //= Iz' maxn_fsetD.
   - (* V0 / E1 *) admit.
   - (* V0 / E2 *) admit.
   - (* V1 / V1 *) 

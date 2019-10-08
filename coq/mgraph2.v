@@ -44,6 +44,7 @@ Notation "G ∔ [ x , u , y ]" :=
 Notation "G ∔ a" := 
   (add_vertex2 G a) (at level 20, left associativity).
 
+
 (* TODO: via sigma types again?
 
 Notation "'Σ' x .. y , p" :=
@@ -556,6 +557,22 @@ Next Obligation. exists. apply A10. Qed.
 Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Canonical g2_pttdom.
+
+
+(* this should follow via a corresponding add_vertex lemma ... *)
+Lemma add_vertex2_cong : 
+  CProper (@iso2 ==> eqv ==> @iso2)%C add_vertex2.
+Proof.
+  move => F G FG u v uv.
+Admitted.
+
+Lemma add_edge2_cong G : 
+  CProper (eq ==> eq ==> eqv ==> @iso2)%C (@add_edge2 G).
+Proof.
+Admitted.
+
+
+
 
 End s. 
 
