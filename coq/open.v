@@ -2019,10 +2019,13 @@ Proof.
   rewrite /close_v. case: {-}_ / idP => [p|]; [exact: val_inj|by rewrite Vz].
 Qed.
 
-
-Lemma imfset1 (aT rT : choiceType) (f : aT -> rT) (z : aT) : [fset f x | x in [fset z]] = [fset f z].
+Lemma imfset1 (aT rT : choiceType) (f : aT -> rT) (z : aT) : 
+  [fset f x | x in [fset z]] =  [fset f z].
 Admitted.
 
+Lemma imfset1U (aT rT : choiceType) (f : aT -> rT) (z : aT) (A : {fset aT}) : 
+  [fset f x | x in z |` A] =  f z |` [fset f x | x in A].
+Admitted.
 
 Lemma Sub_endpt (G : pre_graph) (isG : is_graph G) (e : ET) (He : e \in eset G) b (p : endpt G b e \in vset G) :
   Sub (endpt G b e) p = @endpoint _ (close G) b (Sub e He).
@@ -2052,8 +2055,38 @@ Lemma oiso2_edges_at  (F G : pre_graph) (i : F ⩭2 G) z :
   edges_at G (i z) = [fset (efun_of i) x | x in edges_at F z].
 Proof.
   rewrite /edges_at. apply/fsetP => k. apply/imfsetP/imfsetP => /=.
-  - case => e. rewrite !inE /=.
-Admitted.  
+  - case => e. rewrite !inE /= => /andP[A B ?]; subst k. admit.
+  - 
+Admitted. 
+
+Lemma oiso2_lv (F G : pre_graph) (i : F ⩭2 G) x : 
+  x \in vset F -> lv G (i x) ≡ lv F x.
+Proof. 
+  case: i => isF isG i Ee /=. rewrite vfun_bodyE /=. 
+  exact: (vlabel_hom (is_hom := (iso_hom i))). (* this needs a bit of help ? *)
+Qed.
+
+Lemma oiso2_le (F G : pre_graph) (i : F ⩭2 G) e : e \in eset F ->
+  le G (efun_of i e) ≡[edir_of i e] le F e.
+Proof.
+  case: i => isF isG i Ee /=. rewrite efun_bodyE edir_bodyE. 
+  exact: elabel_hom. (* this doesn't ? *)
+Qed.
+
+
+Lemma oiso2_oarc (F G : pre_graph) (i : F ⩭2 G) e x y u : 
+  oarc F e x u y -> oarc G (efun_of i e) (i x) u (i y).
+Proof.
+  case => Ee [b] [A B C]. split.
+  - admit.
+  - exists (edir_of i e (+) b). 
+    rewrite !oiso2_endpoint // -addbN !addbA !addbxx !addFb A B. split => //.
+    (* should follow with C and oiso2_le ...  *)
+Admitted.
+
+Lemma oiso2_add_test (F G : pre_graph) (i : F ⩭2 G) x y a b :
+  y = i x -> a ≡ b -> F[adt x <- a] ⩭2 G[adt y <- b].
+Admitted.
 
 Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
@@ -2069,10 +2102,18 @@ Proof.
   rewrite /vfun_of vfun_bodyE /=. by rewrite close_fsval close_vE.
 Qed.
 
+(** Variant of the above with a linear pattern in the conclusion *)
+Lemma oiso2_del_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) : 
+  z \in vset F -> z \notin pIO F -> z' = j z ->
+  F \ z ⩭2 G \ z'.
+Proof. move => ? ? ->. exact: oiso2_del_vertex. Qed.
+
+
+Hint Resolve oarc_vsetL oarc_vsetR : vset.
 
 Lemma osteps_iso (F G H : pre_graph) : 
   ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
-Proof.
+Proof with eauto with vset.
   case => {G}.
   - move => z Vz Iz zIO i. exists (H \ i z)%O. split.
     + apply ostep_v0. 
@@ -2081,9 +2122,19 @@ Proof.
       * by rewrite -oiso2_pIO.
     + exact: oiso2_del_vertex. 
   - move => x z e u Iz IOz arc_e xDz i.
+    have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     exists (H[adt i x <- [dom (u·lv H (i z))]] \ i z)%O. split.
-    + apply: (ostep_v1 (e := e)). all:admit.
-    + admit.
+    + apply: (ostep_v1 (e := efun_of i e)). 
+      * by rewrite oiso2_edges_at Iz imfset1. 
+      * rewrite -oiso2_pIO //. exact: oarc_vsetR arc_e.
+      * exact: oiso2_oarc arc_e.
+      * apply: contra_neq xDz. apply: vfun_of_inj...
+    + unshelve apply: oiso2_del_vertex_. apply: (oiso2_add_test (i := i)) => //.
+      * (* rewrite infer_testE. Fail rewrite (oiso2_lv i z). -- why does this fail? *)
+        abstract admit.
+      * admit.
+      * admit.
+      * admit. (* should simplify once oiso2_add_test is defined *)
   - admit.
   - admit.
 Admitted.
