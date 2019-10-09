@@ -173,6 +173,30 @@ Lemma fresh_bijE (T : finType) (E : {fset nat}) (f : bij T E) x (Hx : x \notin E
   (fresh_bij f Hx None = Sub x fset1U1).
 Proof. done. Qed.
 
+Lemma fresh_bij' (T : finType) (E : {fset nat}) (f : bij T E) e (He : e \notin E) : 
+  bij (T + unit) (e |` E).
+Proof.
+  pose g (x : T + unit) :  e |` E := 
+    if x is inl z then Sub (val (f z)) (fset1Ur (valP (f z))) else Sub e fset1U1.
+  pose g_inv  (x : e |` E) : T + unit := 
+    match fsetULVR (valP x) with inl _ => inr tt | inr p => inl (f^-1 (Sub (val x) p)) end.
+  have can_g : cancel g g_inv.
+  { move => [x|[]]; rewrite /g/g_inv/=; case: (fsetULVR _) => [|p] //=. 
+    - by rewrite inE fsval_eqF.
+    - by rewrite valK' bijK.
+    -  exfalso. by rewrite p in He. }
+  have can_g_inv : cancel g_inv g.
+  { move => [x Hx]; rewrite /g/g_inv/=. case: (fsetULVR _) => [|p] //=. 
+    - rewrite !inE => A. apply: val_inj => /=. by rewrite (eqP A).
+    - apply: val_inj => //=. by rewrite bijK'. }
+  apply: (Bij can_g can_g_inv).
+Defined.
+
+Lemma fresh_bijE' (T : finType) (E : {fset nat}) (f : bij T E) x (Hx : x \notin E) : 
+  (forall x, fresh_bij' f Hx (inl x) = Sub (val (f x)) (fset1Ur (valP (f x))))*
+  (fresh_bij' f Hx (inr tt) = Sub x fset1U1).
+Proof. done. Qed.
+
 (** not acutally used *)
 Definition bij_setD (aT : finType) (C : choiceType) (rT : {fset C}) (A : {set aT}) (f : bij aT rT) : 
   bij { x | x \in ~: A} (rT `\` [fset val (f x) | x in A]).

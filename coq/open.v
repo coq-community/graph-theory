@@ -797,10 +797,11 @@ Definition close_add_vertex (G : pre_graph) (graph_G : is_graph G) x a : x \noti
   close (G ∔ [x, a]) ≃2 (close G) ∔ a.
 Proof.
   move => xG. apply: iso2_sym. 
-  iso2 (fresh_bij bij_id xG) bij_id (fun => false) => //. 2-3: move => *; exact: val_inj.
+  iso2 (fresh_bij' bij_id xG) sumxU (fun => false) => //. 2-3: move => *; exact: val_inj.
   split => //.
-  + move => e b. exact: val_inj.
+  + move => [e|[]] b. exact: val_inj.
   + by move => [v|] /=; rewrite updateE // fsval_eqF.
+  + by move => [e|[]]. 
 Defined.
 
 (* Lemma vfunE (G H : lgraph) (h : bij (close (open G)) (close (open H))) (x : G) : *)
@@ -864,8 +865,8 @@ Proof.
 Defined.
 
 Lemma open_add_vertexE : 
-  ((forall a, open_add_vertex a (@inj_v (G ∔ a)%G2 None) = fresh (vset (open G)))
-  *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%G2 (Some x)) = @inj_v G x))%type. 
+  ((forall a, open_add_vertex a (@inj_v (G ∔ a)%G2 (inr tt)) = fresh (vset (open G)))
+  *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%G2 (inl x)) = @inj_v G x))%type. 
 Proof. 
   split => *. 
   (* all: by rewrite imfset_bij_bwdE. - fixme add_vertex2_cong *) 
