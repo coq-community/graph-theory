@@ -503,7 +503,7 @@ Global Opaque union_merge_r.
 
 Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
-  Definition union_K_pairs := map_pairs (fun x => match x with inl x => x | inr x => k x end) h.
+  Definition union_K_pairs := map_pairs (sum_left k) h.
 
   Hypothesis kv: forall x: K, vlabel x = mon0.
   Hypothesis kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)].
@@ -512,11 +512,10 @@ Section merge_union_K.
   Proof.
     move=> x y. rewrite /union_K_equiv map_equivE. 
     rewrite !eqv_clotE. set e1 := rel_of_pairs _. set e2 := rel_of_pairs _. 
-    pose j := (fun x => match x with inl x => x | inr x => k x end).
     apply/idP/idP. 
-    - suff S u v : equiv_of e1 u v -> equiv_of e2 (j u) (j v) by apply: S. 
+    - suff S u v : equiv_of e1 u v -> equiv_of e2 (sum_left k u) (sum_left k v) by apply: S. 
       apply: equiv_ofE => {u v} [[u|u] [u'|u']] /= H. 
-      all: rewrite /e2 /j; apply: sub_equiv_of; apply/mapP. 
+      all: rewrite /e2 /sum_left; apply: sub_equiv_of; apply/mapP. 
       + by exists (unl u,unl u').
       + by exists (unl u,unr u').
       + by exists (unr u,unl u').
@@ -552,10 +551,8 @@ Section merge_union_K.
 
   Definition merge_union_K: merge_seq (F ⊎ K) h ≃ merge_seq F union_K_pairs :=
     Iso hom_merge_union_K.
-  Lemma merge_union_KEl (x: F): merge_union_K (\pi (unl x)) = \pi x.
-  Proof. by rewrite /=quot_union_KEl quot_sameE. Qed.
-  Lemma merge_union_KEr (x: K): merge_union_K (\pi (unr x)) = \pi k x.
-  Proof. by rewrite /=quot_union_KEr quot_sameE. Qed.
+  Lemma merge_union_KE (x: F+K): merge_union_K (\pi x) = \pi (sum_left k x).
+  Proof. by rewrite /=quot_union_KE quot_sameE. Qed.
 End merge_union_K.
 Global Opaque merge_union_K.
 
