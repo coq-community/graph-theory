@@ -124,37 +124,30 @@ Definition graph_of_term: term -> graph2 := eval (fun a: A => g2_var (tm_var a))
 
 Definition graph_of_nf_term (t: nf_term): graph2 :=
   match t with
-  | nf_test a => point (unit_graph a) tt tt
-  | nf_conn a u b => point (edge_graph a u b) false true
+  | nf_test a => unit_graph2 a
+  | nf_conn a u b => edge_graph2 a u b
   end.
 
 
 (* Some of these isomorphism lemma could be slight generalisations of lemmas
    used to get the pttdom laws on graph2 *)
-Lemma ldotunit (G: graph2) a: G · point (unit_graph a) tt tt ≃2p G [tst output <- a].
+Lemma ldotunit (G: graph2) a: G · unit_graph2 a ≃2p G [tst output <- a].
 Admitted.
 
-Lemma lunitdot (G: graph2) a: point (unit_graph a) tt tt · G ≃2p G [tst input <- a].
+Lemma lunitdot (G: graph2) a: unit_graph2 a · G ≃2p G [tst input <- a].
 Admitted.
 
-Lemma lparunitunit (a b: test):
-  point (unit_graph a) tt tt ∥ point (unit_graph b) tt tt
-  ≃2p point (unit_graph [a·b]) tt tt.
+Lemma lparunitunit (a b: test): unit_graph2 a ∥ unit_graph2 b ≃2p unit_graph2 [a·b].
 Admitted.
 
-Lemma lparedgeunit (u: term) (a b c: test):
-  point (edge_graph a u b) false true ∥ point (unit_graph c) tt tt
-  ≃2p point (unit_graph [c∥a·u·b]) tt tt.
+Lemma lparedgeunit (u: term) (a b c: test): edge_graph2 a u b ∥ unit_graph2 c ≃2p unit_graph2 [c∥a·u·b].
 Admitted.
        
-Lemma add_test_point (a c: test):
-  (point (unit_graph a) tt tt)[tst tt <- c]
-  ≃2p point (unit_graph [a·c]) tt tt.
+Lemma add_test_point (a c: test) (x: unit): unit_graph2 a [tst x <- c] ≃2p unit_graph2 [a·c].
 Admitted.                       (* could be inlined for now *)
 
-Lemma add_test_edge (x: bool) (u: term) (a b c: test):
-  (point (edge_graph a u b) false true)[tst x <- c]
-  ≃2p point (edge_graph (if x then a else [c·a]) u (if x then [b·c] else b)) false true.
+Lemma add_test_edge (u: term) (a b c: test) (x: unit+unit):
+  edge_graph2 a u b [tst x <- c] ≃2p edge_graph2 (if x then [c·a] else a) u (if x then b else [b·c]).
 Admitted.
 
 (* reduction lemma *)
@@ -175,11 +168,10 @@ Proof.
       apply add_test_edge. 
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_v2 (G:=point (two_graph a d) false true) false true u [b·c] v).
+      2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [b·c] v).
       2: apply isop_step.
       exists.
-      rewrite /g2_dot/=.
-      etransitivity. apply (merge_iso2 (union_iso (iso_edge_graph _ _ _) (iso_edge_graph _ _ _))).
+      rewrite /g2_dot.
       etransitivity. apply (merge_iso2 (union_add_edge_l _ _ _ _)).
       etransitivity. apply (merge_iso2 (add_edge_iso (union_add_edge_r _ _ _ _) _ _ _)).
       etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)).
@@ -201,7 +193,7 @@ Proof.
     * apply isop_step. apply lparedgeunit.
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_e2 (G:=point (two_graph [a·c] [b·d]) false true) false true u v).
+      2: apply one_step, (step_e2 (G:=two_graph2 [a·c] [b·d]) (inl tt) (inr tt) u v).
       admit.
       apply isop_step.
       (* liso_step (bij_sym unit_option_void)=>/=.  *)
@@ -219,7 +211,7 @@ Proof.
   - etransitivity. apply dom_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
     etransitivity. apply iso_step.
-    2: etransitivity. 2: apply one_step, (@step_v1 _ (point (unit_graph a) tt tt) tt v b).
+    2: etransitivity. 2: apply one_step, (@step_v1 _ (unit_graph2 a) tt v b).
     (* liso_step bool_option_unit=>/=.  *)
     (* liso_step unit_option_void=>/=. *)
     (* liso bij_id bij_id (fun _ => false)=>//=; case=>//. *)

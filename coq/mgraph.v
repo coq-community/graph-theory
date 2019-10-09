@@ -44,34 +44,29 @@ Record graph: Type :=
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
 
+(* empty graph *)
+Definition void_graph := Graph (fun _ => vfun) vfun vfun.
+
 (* graph with a single vertex *)
-Definition unit_graph a := @Graph [finType of unit] _ (fun _ => vfun) (fun _ => a) vfun.
+Definition unit_graph a := Graph (fun _ => vfun) (fun _: unit => a) vfun.
 
-Definition two_graph a b := @Graph [finType of bool] _ (fun _ => vfun) (fun v => if v then b else a) vfun.
-Definition edge_graph a u b := Graph (fun b (_: unit) => b) (fun v => if v then b else a) (fun _ => u).                           
-
-Definition add_vertex (G: graph) (l: Lv): graph :=
-  @Graph [finType of option G] (edge G)
-         (fun b e => Some (endpoint b e))
-         (fun v => match v with Some v => vlabel v | None => l end)
-         (@elabel G).
-Notation "G ∔ a" :=
-  (add_vertex G a) (at level 20, left associativity).
-
-Definition add_edge (G: graph) (x y: G) (l: Le): graph :=
+(* adding an edge to a graph *)
+Definition add_edge (G: graph) (x y: G) (u: Le): graph :=
   @Graph (vertex G) [finType of option (edge G)]
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
          (@vlabel G)
-         (fun e => match e with Some e => elabel e | None => l end).
-Notation "G ∔ [ x , u , y ]" := 
-  (@add_edge G x y u) (at level 20, left associativity).
+         (fun e => match e with Some e => elabel e | None => u end).
+Notation "G ∔ [ x , u , y ]" := (@add_edge G x y u) (at level 20, left associativity).
 
-Definition add_vlabel (G: graph) (x: G) (l: Lv): graph :=
+(* adding a label to a vertex (cumulative w.r.t existing label) *)
+Definition add_vlabel (G: graph) (x: G) (a: Lv): graph :=
   @Graph (vertex G) (edge G)
          (@endpoint G)
-         (fun v => if v==x then mon2 l (vlabel v) else vlabel v)
+         (fun v => if v==x then mon2 a (vlabel v) else vlabel v)
          (@elabel G).
+Notation "G [tst  x <- a ]" := (@add_vlabel G x a) (at level 20, left associativity).
 
+(* disjoint union of two graphs *)
 Definition union (F G : graph) : graph :=
   {| vertex := [finType of F + G];
      edge := [finType of edge F + edge G];
@@ -84,7 +79,7 @@ Infix "⊎" := union (at level 50, left associativity).
 Definition unl {G H: graph} (x: G): G ⊎ H := inl x.
 Definition unr {G H: graph} (x: H): G ⊎ H := inr x.
 
-
+(* merging vertices according to an equivalence relation *)
 Definition merge (G: graph) (r : equiv_rel G) :=
   {| vertex := quot r;
      edge := (edge G);
@@ -93,6 +88,13 @@ Definition merge (G: graph) (r : equiv_rel G) :=
      elabel e := elabel e |}.
 Arguments merge _ _: clear implicits. 
 Notation merge_seq G l := (merge G (eqv_clot l)).
+
+(* derived operations *)
+Definition two_graph a b := unit_graph a ⊎ unit_graph b.
+Definition edge_graph a u b := two_graph a b ∔ [inl tt, u, inr tt].                           
+Definition add_vertex G a := G ⊎ unit_graph a.
+Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
+
 
 (* xor operation on Booleans, such that [xor false b] is convertible to [b] *)
 Lemma addbxx x : x (+) x = false. 
@@ -201,49 +203,66 @@ Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2) fd. apply E.
 Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
   match goal with |- ?F ≃ ?G => apply (@Iso F G f g h) end.
 
-(* isomorphisms on concrete graphs *)
 
-(* could be the def *)
-Lemma iso_two_graph a b: two_graph a b ≃ unit_graph a ⊎ unit_graph b.
-Proof.
-  exists bool_two (bij_sym sumUx) xpred0. 
-  abstract (split; by repeat case).
-Defined.
+(* isomorphisms about [unit_graph] *)
 
-Lemma iso_two_swap a b: two_graph a b ≃ two_graph b a.
+Lemma unit_graph_eqv a b: a ≡ b -> unit_graph a ≃ unit_graph b.
 Proof.
-  Iso bool_swap bij_id xpred0. 
-  abstract (split; by repeat case).
-Defined.
-
-(* could be the def *)
-Lemma iso_edge_graph a u b: edge_graph a u b ≃ two_graph a b ∔ [ false , u , true ].
-Proof.
-  Iso bij_id (bij_sym option_void) xpred0.
-  abstract (split; by repeat case).
-Defined.
-
-(* could be the def *)
-Lemma iso_add_vertex G a : G ∔ a ≃ G ⊎ unit_graph a.
-Proof.
-  Iso option_sum_unit (bij_comp (bij_sym sumUx) bij_sumC) xpred0.
-  abstract (split; by repeat case).
+  intro. Iso bij_id bij_id xpred0.
+  abstract by split=>//=;symmetry.
 Defined.
 
 
 (* isomorphisms about [add_edge] *)
 
-Lemma add_edge_iso F G (h: F ≃ G) x u y: F ∔ [x, u, y] ≃ G ∔ [h x, u, h y].
+Lemma add_edge_iso' F G (h: F ≃ G) x u v y (e: u ≡ v): F ∔ [x, u, y] ≃ G ∔ [h x, v, h y].
 Proof.
   Iso (iso_v h) (option_bij (h.e)) (fun e => match e with Some e => h.d e | None => false end).
-  abstract (split; by repeat first [apply h|case]).
+  abstract by split; repeat first [apply h|symmetry; apply e|case].
 Defined.
+
+Lemma add_edge_iso F G (h: F ≃ G) x u y: F ∔ [x, u, y] ≃ G ∔ [h x, u, h y].
+Proof. by apply add_edge_iso'. Defined.
 
 Lemma add_edge_C F x u y z v t: F ∔ [x, u, y] ∔ [z, v, t] ≃ F ∔ [z, v, t] ∔ [x, u, y].
 Proof.
   Iso bij_id option2_swap xpred0.
-  abstract (split; by repeat case).
+  abstract by split; repeat case.
 Defined.
+
+Lemma add_edge_rev F x u v y (e: u ≡' v): F ∔ [x, u, y] ≃ F ∔ [y, v, x].
+Proof.
+  Iso bij_id bij_id (fun x => match x with Some _ => false | None => true end).
+  abstract (split; (repeat case)=>//=; by apply Eqv'_sym). 
+Defined.
+
+
+(* isomorphisms about [add_vlabel] *)
+
+Lemma add_vlabel_iso' F G (h: F ≃ G) x a b (e: a ≡ b): F [tst x <- a] ≃ G [tst h x <- b].
+Proof.
+  Iso h h.e h.d.
+  split; try apply h.
+  move=>v/=. rewrite inj_eq=>/=. 2: by apply bij_injective.
+  by case eq_op; rewrite ?e vlabel_iso. 
+Defined.
+
+Lemma add_vlabel_iso F G (h: F ≃ G) x a: F [tst x <- a] ≃ G [tst h x <- a].
+Proof. by apply add_vlabel_iso'. Defined.
+
+Lemma add_vlabel_C F x a y b: F [tst x <- a] [tst y <- b] ≃ F [tst y <- b] [tst x <- a].
+Proof.
+  Iso bij_id bij_id xpred0.
+  split=>//=. move=>v.
+  case eq_op; case eq_op=>//.
+  by rewrite 2!monA (monC a b).
+Defined.
+
+Lemma add_vlabel_edge F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃ F ∔ [y, u, z] [tst x <- a].
+Proof. reflexivity. Defined.
+
+Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 b a).
+Proof. reflexivity. Defined.
 
 
 (* isomorphisms about [union] *)
@@ -269,7 +288,7 @@ Proof.
   exists bij_sumA bij_sumA xpred0.
   abstract by split; repeat case. 
 Defined.
-         
+ 
 Lemma union_add_edge_l F G x u y: F ∔ [x, u, y] ⊎ G ≃ (F ⊎ G) ∔ [inl x, u, inl y].
 Proof.
   Iso bij_id (@sum_option_l _ _) xpred0.
@@ -281,6 +300,20 @@ Proof.
   etransitivity. apply union_C. 
   etransitivity. apply union_add_edge_l.
   etransitivity. apply (add_edge_iso (union_C _ _)).
+  reflexivity.
+Defined.
+
+Lemma union_add_vlabel_l F G x a: F [tst x <- a] ⊎ G ≃ (F ⊎ G) [tst inl x <- a].
+Proof. 
+  Iso bij_id bij_id xpred0.
+  abstract by split; repeat case.
+Defined.
+
+Lemma union_add_vlabel_r F G x a: F ⊎ G [tst x <- a] ≃ (F ⊎ G) [tst inr x <- a].
+Proof.
+  etransitivity. apply union_C. 
+  etransitivity. apply union_add_vlabel_l.
+  etransitivity. apply (add_vlabel_iso (union_C _ _)).
   reflexivity.
 Defined.
 
@@ -414,6 +447,12 @@ Admitted.
 Lemma merge_add_edgeE (G: graph) (r: equiv_rel G) x u y (z: G): @merge_add_edge G r x u y (\pi z) = \pi z.
 Admitted.
 
+Lemma merge_add_vlabel (G: graph) (r: equiv_rel G) x a: merge (G [tst x <- a]) r ≃ merge G r [tst \pi x <- a].
+Admitted.
+Lemma merge_add_vlabelE (G: graph) (r: equiv_rel G) x a (z: G): @merge_add_vlabel G r x a (\pi z) = \pi z.
+Admitted.
+
+
 
 (* isomorphisms about [union] and [merge] *)
 
@@ -525,6 +564,12 @@ Admitted.
 Lemma merge_twoE a b x: merge_two a b x = tt.
 Admitted.  
 
+(* other isomorphisms on concrete graphs *)
+
+Lemma two_graph_swap a b: two_graph a b ≃ two_graph b a.
+Proof. apply union_C. Defined.
+
+
 End s. 
 
 Notation source := (endpoint false).
@@ -538,12 +583,15 @@ Infix "⊎" := union (at level 50, left associativity) : graph_scope.
 Arguments unl {L G H}.
 Arguments unr {L G H}.
 
-Arguments add_edge {L} G x y l.
-Arguments add_vertex {L} G l.
+Arguments add_edge {L} G x y u.
+Arguments add_vertex {L} G a.
+Arguments add_vlabel {L} G x a.
 Notation "G ∔ [ x , u , y ]" := 
   (add_edge G x y u) (at level 20, left associativity) : graph_scope.
 Notation "G ∔ a" := 
   (add_vertex G a) (at level 20, left associativity) : graph_scope.
+Notation "G [tst  x <- a ]" :=
+  (add_vlabel G x a) (at level 20, left associativity) : graph_scope.
 
 Arguments merge {L} _ _.
 Notation merge_seq G l := (merge G (eqv_clot l)).
