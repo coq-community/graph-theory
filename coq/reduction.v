@@ -177,6 +177,12 @@ Proof.
       2: etransitivity.
       2: apply one_step, (step_v2 (G:=point (two_graph a d) false true) false true u [b·c] v).
       2: apply isop_step.
+      exists.
+      rewrite /g2_dot/=.
+      etransitivity. apply (merge_iso2 (union_iso (iso_edge_graph _ _ _) (iso_edge_graph _ _ _))).
+      etransitivity. apply (merge_iso2 (union_add_edge_l _ _ _ _)).
+      etransitivity. apply (merge_iso2 (add_edge_iso (union_add_edge_r _ _ _ _) _ _ _)).
+      etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)).
       (* 2: liso_step (bij_sym unit_option_void)=>/=. *)
       (* 2: liso bij_id bij_id (fun _ => false)=>//= _; by rewrite !dotA. *)
       (* liso_step merge43=>/=.  *)

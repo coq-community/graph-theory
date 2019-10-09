@@ -161,7 +161,7 @@ Definition g2_var a: graph2 :=
   point (edge_graph mon0 a mon0) false true.
 
 Definition add_test (G: graph2) (x: G) (a: Lv): graph2 :=
-  point (upd_vlabel x (mon2 a)) input output.
+  point (add_vlabel x a) input output.
 
 (* Note: maybe nicer to prove that this is a ptt algebra (with top)
   and deduce automatically that this is a pttdom (as we did in the previous version) *)
@@ -326,6 +326,7 @@ Lemma merge_union_K_rr (F K: graph) (i o: K) (h: pairs (F+K)) (k: K -> F)
 Proof.
   apply (iso_iso2' (h:=merge_union_K kv kh ke)); by rewrite /=merge_union_KEr.
 Qed.
+
 
 (** ** 2p-graphs form a 2p-algebra *)
 
