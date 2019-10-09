@@ -52,55 +52,104 @@ Proof.
 Defined.
 
 Instance bij_Equivalence: Equivalence bij.
-constructor. exact @bij_id. exact @bij_sym. exact @bij_comp. Defined.
+Proof. constructor. exact @bij_id. exact @bij_sym. exact @bij_comp. Defined.
+
+
+(* bijections about [sum] *)
 
 Definition sumf {A B C D} (f: A -> B) (g: C -> D) (x: A+C): B+D :=
   match x with inl a => inl (f a) | inr c => inr (g c) end. 
 
 Instance sum_bij: Proper (bij ==> bij ==> bij) sum.
+Proof.
   intros A A' f B B' g.
   exists (sumf f g) (sumf f^-1 g^-1); abstract (by move=>[a|b] /=; rewrite ?bijK ?bijK').
 Defined.
 
 Definition sumC {A B} (x: A + B): B + A := match x with inl x => inr x | inr x => inl x end.
 Lemma bij_sumC {A B}: bij (A+B) (B+A).
-  exists sumC sumC; abstract (by move=>[|]). 
-Defined.
+Proof. exists sumC sumC; abstract by repeat case. Defined.
 
 Definition sumA {A B C} (x: A + (B + C)): (A + B) + C :=
   match x with inl x => inl (inl x) | inr (inl x) => inl (inr x) | inr (inr x) => inr x end.
 Definition sumA' {A B C} (x: (A + B) + C): A + (B + C) :=
   match x with inr x => inr (inr x) | inl (inr x) => inr (inl x) | inl (inl x) => inl x end.
 Lemma bij_sumA {A B C}: bij (A+(B+C)) ((A+B)+C).
-  exists sumA sumA'.
-  abstract (by move=>[|[|]]). 
-  abstract (by move=>[[|]|]). 
+Proof. exists sumA sumA'; abstract by repeat case. Defined.
+
+Lemma sumUx {A}: bij (void + A) A.
+Proof.
+  exists
+    (fun x => match x with inl x => vfun x | inr a => a end)
+    (fun x => inr x);
+  abstract by repeat case.
 Defined.
+Lemma sumxU {A}: bij (A + void) A.
+Proof. etransitivity. apply bij_sumC. apply sumUx. Defined.
 
 
-Definition bool_swap: bij bool bool.
-  exists negb negb; by case.
-Defined.
-
-Definition bool_option_unit: bij bool (option unit).
-  exists (fun b => if b then None else  Some tt)
-    (fun o => if o is None then true else false); case=>//; by case.
-Defined.
-
-Definition unit_option_void: bij unit (option void).
-  exists (fun _ => None) (fun _ => tt); by case.
-Defined.
+(* bijections for [option] types *)
 
 Definition option_bij (A B : Type) (f : bij A B) : bij (option A) (option B).
-exists (option_map f) (option_map f^-1); abstract (case => //= x; by rewrite ?bijK ?bijK'). 
+Proof.
+  exists (option_map f) (option_map f^-1); abstract (case => //= x; by rewrite ?bijK ?bijK'). 
+Defined.
+
+Lemma option_sum_unit {A}: bij (option A) (A+unit).
+Proof.
+  exists
+    (fun x => match x with Some a => inl a | None => inr tt end)
+    (fun x => match x with inl a => Some a | inr _ => None end).
+  all: abstract (repeat case=>//).
+Defined.
+
+(* the definitions below also follow from [option_sum_unit] and the bijections about [sum] *)
+Definition option_void: bij (option void) unit.
+Proof. exists (fun _ => tt) (fun _ => None); by case. Defined.
+
+Lemma sum_option_l {A B}: bij ((option A) + B) (option (A + B)).
+Proof.
+  exists
+    (fun x => match x with inl (Some a) => Some (inl a) | inl None => None | inr b => Some (inr b) end)
+    (fun x => match x with Some (inl a) => inl (Some a) | None => inl None | Some (inr b) => inr b end).
+  all: abstract (repeat case=>//).
+Defined.
+
+Lemma sum_option_r {A B}: bij (A + option B) (option (A + B)).
+Proof.
+  etransitivity. apply bij_sumC. 
+  etransitivity. apply sum_option_l.
+  apply option_bij, bij_sumC.
+Defined. 
+
+Definition option2x {A}: option (option A) -> option (option A) :=
+  fun x => match x with Some (Some a) => Some (Some a) | Some None => None | None => Some None end.
+Definition option2_swap {A}: bij (option (option A)) (option (option A)).
+  exists option2x option2x; abstract by repeat case. 
 Defined.
 
 
-Definition option2x {A B} (f: A -> B): option (option A) -> option (option B) :=
-  fun x => match x with Some (Some a) => Some (Some (f a)) | Some None => None | None => Some None end.
-Definition option2x_bij A B (f: bij A B): bij (option (option A)) (option (option B)).
-  exists (option2x f) (option2x f^-1); move=>[[e|]|]=>//=; do 2 congr Some; apply f.
+(* bijections for [bool] *)
+
+Definition bool_swap: bij bool bool.
+Proof. exists negb negb; by case. Defined.
+
+Lemma bool_two: bij bool (unit+unit).
+Proof.
+  exists
+    (fun b => if b then inr tt else inl tt)
+    (fun x => match x with inl _ => false | inr _ => true end).
+  all: abstract by repeat case.
+Defined.  
+
+Definition bool_option_unit: bij bool (option unit).
+Proof.
+  exists
+    (fun b => if b then None else  Some tt)
+    (fun o => if o is None then true else false);
+    abstract by repeat case. 
 Defined.
+
 
 (** Useful to obtain bijections with good simplification properties *)
 Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :

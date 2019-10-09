@@ -28,7 +28,7 @@ Definition measure (G: graph2) := #|vertex G| + #|edge G|.
 Lemma step_decreases G H: step G H -> measure H < measure G.
 Proof.
   rewrite /measure.
-  case; intros=>/=; by rewrite !card_option ?addSnnS ?addnS.
+  case; intros=>/=; by rewrite ?card_option ?card_sum ?card_unit ?card_void ?addSnnS ?addnS ?addn0.
 Qed.
 Lemma iso_stagnates G H: G ≃2p H -> measure H = measure G.
 Proof. case. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
@@ -58,21 +58,22 @@ Proof.
   destruct 1 as [G H I|G' G H H' I S _]=>//L.
   - exfalso. setoid_rewrite (inhabits I: _ ≃2p _) in L.
     clear -S L. destruct L as [[L Li Lo]]. generalize (card_bij (iso_e L)).
-    destruct s; destruct S; simpl in *; (try by rewrite !card_option ?card_unit ?card_void); move=>_.
-    * generalize (card_bij (iso_v L)). rewrite card_unit card_option.
+    destruct s; destruct S; simpl in *; (try by rewrite !card_option ?card_sum ?card_unit ?card_void); move=>_.
+    * generalize (card_bij (iso_v L)). rewrite card_sum !card_unit addnC.
       have H: 0 < #|G|. apply /card_gt0P. by exists input.
       revert H. case #|G|; discriminate.
     * revert Li Lo. 
       suff E: input=output :>G by congruence.
       apply (card_le1 (D:=predT))=>//. 
-      apply iso_v, card_bij in L. rewrite card_option card_bool in L.
+      apply iso_v, card_bij in L. rewrite !card_sum !card_unit addnC in L.
         by injection L=>->.
-    * have E: forall y, L None <> L (Some y) by intros y H; generalize (bij_injective (f:=L) H). 
-      case_eq (L None).
-       generalize (E output). simpl. congruence. 
+    * have E: forall y, L (inr tt) <> L (inl y) by intros y H; generalize (bij_injective (f:=L) H). 
+      case_eq (L (inr tt)); case.
        generalize (E input). simpl. congruence. 
+       generalize (E output). simpl. congruence.
     * generalize (endpoint_iso L false None). generalize (endpoint_iso L true None).
-      case iso_d; simpl; congruence.
+      have H: L.e None = None by case (L.e None)=>//; repeat case.
+      rewrite H. case L.d; simpl; congruence.
 Qed.
 
 (* isomorphisms on graphs of normal forms give back equations *)
@@ -84,18 +85,19 @@ Proof.
   case t=>[c|c v d]=>/=; move=> [[h hi ho]].
   - symmetry. by apply (vlabel_iso h tt).
   - exfalso.
-    generalize (bijK' h false). generalize (bijK' h true).
-    case (h^-1 true). case (h^-1 false). congruence. 
+    generalize (bijK' h (inl tt)). generalize (bijK' h (inr tt)).
+    case (h^-1 (inr tt)). case (h^-1 (inl tt)). congruence. 
   - exfalso.
-    generalize (bijK h false). generalize (bijK h true).
-    case (h true). case (h false). congruence.
-  - generalize (vlabel_iso h false).
-    generalize (vlabel_iso h true).
+    generalize (bijK h (inl tt)). generalize (bijK h (inr tt)).
+    case (h (inr tt)). case (h (inl tt)). congruence.
+  - generalize (vlabel_iso h (inl tt)).
+    generalize (vlabel_iso h (inr tt)).
     simpl in *. 
     rewrite hi ho /=. 
-    generalize (elabel_iso h tt).
-    generalize (endpoint_iso h (h.d tt) tt).
-    case (iso_d h tt)=>/=. by rewrite hi.
+    generalize (elabel_iso h None).
+    generalize (endpoint_iso h (h.d None) None).
+    have H: h.e None = None by case (h.e None)=>//; repeat case. rewrite H. 
+    case (iso_d h None)=>/=. by rewrite hi.
     intros. symmetry. apply dot_eqv=>//. apply dot_eqv=>//. 
 Qed.
 

@@ -247,6 +247,8 @@ Section union_quot_r.
 End union_quot_r.
 Global Opaque union_quot_r.
 
+Definition sum_left {A B} (k: B -> A): A+B -> A :=
+  fun x => match x with inl x => x | inr x => k x end.
 Section quot_union_K.
   Variables (S K: finType) (e: equiv_rel (S+K)) (k: K -> S).
   Hypothesis kh: forall x: K, inr x = inl (k x) %[mod e].
@@ -254,7 +256,7 @@ Section quot_union_K.
   Definition quot_union_K: bij (quot e) (quot union_K_equiv).
   Proof.
     exists
-      (fun x => \pi match repr x with inl x => x | inr x => k x end)
+      (fun x => \pi (sum_left k (repr x)))
       (fun x => \pi inl (repr x)).
     - move=>x.
       rewrite -{2}(reprK x).
@@ -281,6 +283,9 @@ Section quot_union_K.
     case (repr (pi e (inr x))) => y H//=; apply /eqquotP; rewrite /=map_equivE; apply /eqquotP;
     rewrite -!kh; by apply /eqquotP.
   Qed.
+  (* TODO: inline two previous lemmas? *)
+  Lemma quot_union_KE (x: S+K): quot_union_K (\pi x) = \pi (sum_left k x).
+  Proof. case x. apply quot_union_KEl. apply quot_union_KEr. Qed.
 End quot_union_K.
 Global Opaque quot_union_K.
 
