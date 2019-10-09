@@ -147,8 +147,8 @@ Record iso (F G: graph): Type :=
         iso_d: edge F -> bool;
         iso_hom: is_hom iso_v iso_e iso_d }.
 Infix "≃" := iso (at level 79).
-Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
-Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
+Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'"). 
+Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
 Global Existing Instance iso_hom.
 
 Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (h.d e (+) b) e).
@@ -482,7 +482,7 @@ Notation merge_seq G l := (merge G (eqv_clot l)).
 
 Arguments iso {L}.
 Infix "≃" := iso (at level 79).
-Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
-Notation "h '.d'" := (iso_d h) (at level 2, left associativity). 
+Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'").
+Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
 
 Global Hint Resolve iso_id.         (* so that [by] gets it... *)

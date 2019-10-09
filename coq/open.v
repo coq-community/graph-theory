@@ -392,10 +392,46 @@ Definition vfun_body (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_grap
           end).
 
 Definition vfun_of (G H : pre_graph) (h : G ⩭2 H) := vfun_body (oiso2_iso h).
-
 Arguments vfun_of [G H] h x.
-
 Coercion vfun_of : oiso2 >-> Funclass.
+
+Definition efun_body (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) 
+  (he : bij (edge (close G)) (edge (close H))) (e : ET) : ET := 
+  locked (match @idP (e \in eset G) with
+          | ReflectT p => val (he (Sub e p))
+          | ReflectF _ => e
+          end).
+
+Definition efun_of (G H : pre_graph) (h : G ⩭2 H) := efun_body (oiso2_iso h).e.
+
+Definition edir_body (G : pre_graph) (graph_G : is_graph G)  
+  (hd : edge (close G) -> bool) (e : ET) : bool := 
+  locked (match @idP (e \in eset G) with
+          | ReflectT p => hd (Sub e p)
+          | ReflectF _ => false
+          end).
+
+Definition edir_of (G H : pre_graph) (h : G ⩭2 H) := edir_body (oiso2_iso h).d.
+
+Arguments efun_of [G H] h e /.
+Arguments edir_of [G H] h e /.
+
+Lemma efun_bodyE (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) 
+  (he : bij (edge (close G)) (edge (close H))) e (He : e \in eset G) : 
+  efun_body he e = val (he (Sub e He)).
+Proof. 
+  unlock efun_body. case: {-}_ / idP => [p|]; last by rewrite He. 
+  by rewrite (bool_irrelevance He p).
+Qed.
+
+Lemma edir_bodyE (G : pre_graph) (isG : is_graph G) 
+  (hd : (edge (close G)) -> bool) e (He : e \in eset G) : 
+  edir_body hd e = hd (Sub e He).
+Proof. 
+  unlock edir_body. case: {-}_ / idP => [p|]; last by rewrite He. 
+  by rewrite (bool_irrelevance He p).
+Qed.
+
 
 (** In open graphs, we have an equivalence of graphs that have the
 same underlying structure with different, but equivalent, labels *)
@@ -1982,9 +2018,41 @@ Proof.
   rewrite /close_v. case: {-}_ / idP => [p|]; [exact: val_inj|by rewrite Vz].
 Qed.
 
-Lemma iso2_edges_at  (F G : pre_graph) (i : F ⩭2 G) z : 
-  edges_at G (i z) = [fset i x | x in edges_at F z].
+
+Lemma imfset1 (aT rT : choiceType) (f : aT -> rT) (z : aT) : [fset f x | x in [fset z]] = [fset f z].
 Admitted.
+
+
+Lemma Sub_endpt (G : pre_graph) (isG : is_graph G) (e : ET) (He : e \in eset G) b (p : endpt G b e \in vset G) :
+  Sub (endpt G b e) p = @endpoint _ (close G) b (Sub e He).
+Proof. exact: val_inj. Qed.
+
+Lemma oiso2_endpoint (F G : pre_graph) (i : F ⩭2 G) (e : ET) b :
+  e \in eset F -> endpt G b (efun_of i e) = i (endpt F (edir_of i e (+) b) e).
+Proof.
+  case: i => isF isG i Ee /=. 
+  rewrite edir_bodyE efun_bodyE vfun_bodyE ?endptP // => p.
+  by rewrite Sub_endpt -endpoint_hom /=.
+Qed.
+
+Lemma oiso2_incident (F G : pre_graph) (i : F ⩭2 G) (x : VT) (e : ET) :
+  x \in vset F -> e \in eset F ->
+  incident F x e = incident G (i x) (efun_of i e).
+Proof.
+  move => Vx Ee. rewrite /incident. apply/existsP/existsP. 
+  - move => [b] e_x. exists (edir_of i e (+) b). rewrite oiso2_endpoint //.
+    by rewrite addbA addbxx [addb _ _]/= (eqP e_x).
+  - move => [b] e_ix. exists (edir_of i e (+) b).
+    rewrite oiso2_endpoint // in e_ix. move/eqP : e_ix. move/vfun_of_inj => -> //.
+    rewrite -> endptP => //. exact: oiso2_graphL i.
+Qed.
+
+Lemma oiso2_edges_at  (F G : pre_graph) (i : F ⩭2 G) z : 
+  edges_at G (i z) = [fset (efun_of i) x | x in edges_at F z].
+Proof.
+  rewrite /edges_at. apply/fsetP => k. apply/imfsetP/imfsetP => /=.
+  - case => e. rewrite !inE /=.
+Admitted.  
 
 Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
@@ -2000,9 +2068,6 @@ Proof.
   rewrite /vfun_of vfun_bodyE /=. by rewrite close_fsval close_vE.
 Qed.
 
-Lemma imfset0 (aT rT : choiceType) (f : aT -> rT) : [fset f x | x in fset0] = fset0.
-Proof. apply/fsetP => z. rewrite inE. 
-Admitted.
 
 Lemma osteps_iso (F G H : pre_graph) : 
   ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
@@ -2011,10 +2076,13 @@ Proof.
   - move => z Vz Iz zIO i. exists (H \ i z)%O. split.
     + apply ostep_v0. 
       * exact: iso2_vset.
-      * by rewrite iso2_edges_at Iz imfset0.
+      * by rewrite oiso2_edges_at Iz imfset0.
       * by rewrite -oiso2_pIO.
     + exact: oiso2_del_vertex. 
-  - admit.
+  - move => x z e u Iz IOz arc_e xDz i.
+    exists (H[adt i x <- [dom (u·lv H (i z))]] \ i z)%O. split.
+    + apply: (ostep_v1 (e := e)). all:admit.
+    + admit.
   - admit.
   - admit.
 Admitted.
