@@ -148,12 +148,12 @@ Lemma lparedgeunit (u: term) (a b c: test):
 Admitted.
        
 Lemma add_test_point (a c: test):
-  point (unit_graph a) tt tt [tst tt <- c]
+  (point (unit_graph a) tt tt)[tst tt <- c]
   ≃2p point (unit_graph [a·c]) tt tt.
 Admitted.                       (* could be inlined for now *)
 
 Lemma add_test_edge (x: bool) (u: term) (a b c: test):
-  point (edge_graph a u b) false true [tst x <- c]
+  (point (edge_graph a u b) false true)[tst x <- c]
   ≃2p point (edge_graph (if x then a else [c·a]) u (if x then [b·c] else b)) false true.
 Admitted.
 

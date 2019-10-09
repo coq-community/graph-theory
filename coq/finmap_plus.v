@@ -46,6 +46,8 @@ Proof. move => H. by rewrite cardsDsub // cardfsD fsetIC H subnn. Qed.
 Lemma fset1U0 (T : choiceType) (x : T) (A : {fset T}) : x |` A != fset0.
 Proof. apply: contraFneq (in_fset0 x) => <-. by rewrite !inE eqxx. Qed.
 
+Lemma imfset0 (aT rT : choiceType) (f : aT -> rT) : [fset f x | x in fset0] = fset0.
+Proof. apply/fsetP => z. rewrite inE. apply: contraTF isT. by case/imfsetP. Qed.
 
 Arguments fset1Ur [K x a B].
 Arguments fset1U1 [K x B].

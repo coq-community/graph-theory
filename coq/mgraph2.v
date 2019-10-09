@@ -566,13 +566,28 @@ Proof.
   move => F G FG u v uv.
 Admitted.
 
+(* this is not yet used *)
 Lemma add_edge2_cong G : 
   CProper (eq ==> eq ==> eqv ==> @iso2)%C (@add_edge2 G).
 Proof.
 Admitted.
 
+(* not CProper instance due to the dependency on [i] *)
+Lemma add_test_cong (F G : graph2) (i : F ≃2 G) x a b : 
+  a ≡ b -> add_test x a ≃2 add_test (i x) b.
+Admitted.
 
+Notation IO := [set input;output].
 
+Parameter del_vertex2 : 
+  forall (G : graph2) (z : G) (Hz : z \notin IO), graph2.
+
+Arguments del_vertex2 : clear implicits.
+
+Lemma del_vertex_cong (F G : graph2) (i : F ≃2 G) 
+  (z : F) (z' : G) (Hz : z \notin IO) (Hiz : z' \notin IO) :
+  z' = i z -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
+Admitted.
 
 End s. 
 
@@ -583,12 +598,13 @@ Arguments input {_ _}.
 Arguments output {_ _}.
 Notation point G := (@Graph2 _ G).
 
+Notation IO := [set input;output].
 Notation "G ∔ [ x , u , y ]" := 
   (@add_edge2 _ G x y u) (at level 20, left associativity) : graph2_scope.
 Notation "G ∔ a" := 
   (add_vertex2 G a) (at level 20, left associativity) : graph2_scope.
 Notation "G [tst x <- a ]" := 
-  (@add_test _ G x a) (at level 20, left associativity, format "G [tst  x  <-  a ]") : graph2_scope.
+  (@add_test _ G x a) (at level 2, left associativity, format "G [tst  x  <-  a ]") : graph2_scope.
 
 Arguments iso2 {_}.
 Arguments iso2prop {_}.
