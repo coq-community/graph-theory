@@ -150,6 +150,29 @@ Lemma add_test_edge (u: term) (a b c: test) (x: unit+unit):
   edge_graph2 a u b [tst x <- c] ≃2p edge_graph2 (if x then [c·a] else a) u (if x then b else [b·c]).
 Admitted.
 
+Lemma merge43 (a b c d: test):
+  merge_seq (two_graph a b ⊎ two_graph c d) [:: (inl (inr tt), inr (inl tt))] ≃ two_graph2 a d ∔ mon2 b c.
+Proof.
+  etransitivity. refine (merge_iso (iso_sym (union_A _ _ _)) _).
+  etransitivity. refine (merge_iso (union_iso (@iso_id _ _) (union_A _ _ _)) _). 
+  etransitivity. refine (merge_iso (union_iso (@iso_id _ _) (union_C _ _)) _). 
+  etransitivity. refine (merge_iso (union_A _ _ _) _).
+  etransitivity. symmetry. refine (union_merge_r _ (G:=two_graph b c) [:: (inl tt, inr tt)]).
+  apply union_iso. reflexivity. apply merge_two.
+Defined.
+Lemma merge43E a b c d x:
+  merge43 a b c d (\pi x) =
+  (match x with
+   | inl (inl _) => inl (inl tt)
+   | inr (inl _) => inr tt
+   | inl (inr _) => inr tt
+   | inr (inr _) => inl (inr tt)
+   end).
+Proof.
+  (* case x; case; case=>/=. *)
+Admitted.
+Opaque merge43.
+
 (* reduction lemma *)
 Proposition reduce (u: term): steps (graph_of_term u) (graph_of_nf_term (nf u)).
 Proof.
@@ -170,21 +193,21 @@ Proof.
       2: etransitivity.
       2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [b·c] v).
       2: apply isop_step.
-      exists.
-      rewrite /g2_dot.
-      etransitivity. apply (merge_iso2 (union_add_edge_l _ _ _ _)).
+
+      exists. rewrite /g2_dot.
+      etransitivity. apply (merge_iso2 (union_add_edge_l _ _ _ _)). 
       etransitivity. apply (merge_iso2 (add_edge_iso (union_add_edge_r _ _ _ _) _ _ _)).
-      etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)).
-      (* 2: liso_step (bij_sym unit_option_void)=>/=. *)
-      (* 2: liso bij_id bij_id (fun _ => false)=>//= _; by rewrite !dotA. *)
-      (* liso_step merge43=>/=.  *)
-      (* liso_step two_option_option_void=>/=. *)
-      (* liso bij_id bij_id (fun _ => false)=>//=; *)
-      (*      (repeat case)=>//=; *)
-      (*      rewrite ?merge43E ?merge43E' //=. *)
-      admit.
-      admit.
-      
+      etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
+      etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
+      etransitivity. apply (iso_iso2 (add_edge_C _ _ _)). simpl.
+      etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge43 _ _ _ _) _ _ _) _ _ _)).
+      rewrite /= !merge43E.
+      reflexivity. 
+
+      exists.
+      apply (add_edge2_iso' (@iso2_id _ _)).
+      apply dot_eqv=>//. rewrite dotA. apply dot_eqv=>//. 
+
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
@@ -194,30 +217,27 @@ Proof.
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_e2 (G:=two_graph2 [a·c] [b·d]) (inl tt) (inr tt) u v).
+      2: apply isop_step.
+
+      exists. rewrite /g2_par.
       admit.
-      apply isop_step.
-      (* liso_step (bij_sym unit_option_void)=>/=.  *)
-      (* liso bij_id bij_id (fun _ => false)=>//. *)
-      admit.
+
+      exists. reflexivity. 
       
   - etransitivity. apply cnv_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
-    apply isop_step.
-    (* rewrite /lcnv/=. liso bool_swap bij_id (fun _ => true)=>//=. *)
-    (*   by case. *)
-    (*   move=>_. apply cnvI. *)
-    admit.
+    apply isop_step. exists.
+    etransitivity. refine (iso_iso2 (add_edge_rev _ _ _) _ _).
+    simpl. rewrite /eqv'/=. symmetry. apply cnvI.
+    simpl. symmetry. etransitivity. apply (add_edge2_iso (iso_iso2 (union_C _ _) _ _)).
+    reflexivity. 
       
   - etransitivity. apply dom_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
-    etransitivity. apply iso_step.
-    2: etransitivity. 2: apply one_step, (@step_v1 _ (unit_graph2 a) tt v b).
-    (* liso_step bool_option_unit=>/=.  *)
-    (* liso_step unit_option_void=>/=. *)
-    (* liso bij_id bij_id (fun _ => false)=>//=; case=>//. *)
-    (* apply liso_step. *)
-    (* liso bij_id bij_id (fun _ => false)=>//=; case=>//. *)
-    (* apply dotC.  *)
+    etransitivity. apply one_step, (@step_v1 _ (unit_graph2 a) tt v b).
+    apply isop_step. exists. 
+    etransitivity. apply add_vlabel2_unit. apply unit_graph2_eqv.
+    simpl. admit. 
 Admitted.
 
 End s'.
