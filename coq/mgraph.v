@@ -215,11 +215,15 @@ Defined.
 
 (* isomorphisms about [add_edge] *)
 
-Lemma add_edge_iso' F G (h: F ≃ G) x u v y (e: u ≡ v): F ∔ [x, u, y] ≃ G ∔ [h x, v, h y].
+Lemma add_edge_iso'' F G (h: F ≃ G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
+  F ∔ [x, u, y] ≃ G ∔ [h x, v, h y].
 Proof.
   Iso (iso_v h) (option_bij (h.e)) (fun e => match e with Some e => h.d e | None => false end).
-  abstract by split; repeat first [apply h|symmetry; apply e|case].
+  abstract by split; rewrite -?ex -?ey; repeat first [apply h|symmetry; apply e|case].
 Defined.
+
+Lemma add_edge_iso' F G (h: F ≃ G) x u v y (e: u ≡ v): F ∔ [x, u, y] ≃ G ∔ [h x, v, h y].
+Proof. by eapply add_edge_iso''. Defined.
 
 Lemma add_edge_iso F G (h: F ≃ G) x u y: F ∔ [x, u, y] ≃ G ∔ [h x, u, h y].
 Proof. by apply add_edge_iso'. Defined.
@@ -239,13 +243,16 @@ Defined.
 
 (* isomorphisms about [add_vlabel] *)
 
-Lemma add_vlabel_iso' F G (h: F ≃ G) x a b (e: a ≡ b): F [tst x <- a] ≃ G [tst h x <- b].
+Lemma add_vlabel_iso'' F G (h: F ≃ G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃ G [tst y <- b].
 Proof.
   Iso h h.e h.d.
   split; try apply h.
-  move=>v/=. rewrite inj_eq=>/=. 2: by apply bij_injective.
+  move=>v/=. rewrite -ex inj_eq=>/=. 2: by apply bij_injective.
   by case eq_op; rewrite ?e vlabel_iso. 
 Defined.
+
+Lemma add_vlabel_iso' F G (h: F ≃ G) x a b (e: a ≡ b): F [tst x <- a] ≃ G [tst h x <- b].
+Proof. by eapply add_vlabel_iso''. Defined.
 
 Lemma add_vlabel_iso F G (h: F ≃ G) x a: F [tst x <- a] ≃ G [tst h x <- a].
 Proof. by apply add_vlabel_iso'. Defined.

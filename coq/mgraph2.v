@@ -121,8 +121,8 @@ Lemma iso_iso2 (F G: graph) (h: F ≃ G) (i o: F):
 Proof. now exists h. Defined.
 
 Lemma iso_iso2' (F G: graph) (h: F ≃ G) (i o: F) (i' o': G):
-  i' = h i -> o' = h o -> point F i o ≃2 point G i' o'.
-Proof. intros -> ->. by apply iso_iso2. Defined.
+  h i = i' -> h o = o' -> point F i o ≃2 point G i' o'.
+Proof. intros I O. exact (@Iso2 (point F i o) (point G i' o') h I O). Defined.
 
 
 (* simple tactics for rewriting with isomorphisms at toplevel, in the lhs or in the rhs
@@ -176,29 +176,30 @@ Proof. intro e. apply (iso_iso2 (unit_graph_eqv e)). Qed.
 
 (* isomorphisms about [add_edge2] *)
 
+Lemma add_edge2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
+  F ∔ [x, u, y] ≃2 G ∔ [h x, v, h y].
+Proof. apply (iso_iso2' (h:=add_edge_iso'' ex ey e)); apply h. Defined.
+
 Lemma add_edge2_iso' F G (h: F ≃2 G) x u v y (e: u ≡ v): F ∔ [x, u, y] ≃2 G ∔ [h x, v, h y].
-Proof.
-  irewrite (iso_iso2 (add_edge_iso' h x y e))=>/=.
-  by rewrite iso2_input iso2_output. 
-Qed.
+Proof. by eapply add_edge2_iso''. Defined.
 
 Lemma add_edge2_iso F G (h: F ≃2 G) x u y: F ∔ [x, u, y] ≃2 G ∔ [h x, u, h y].
-Proof. by apply add_edge2_iso'. Qed.
+Proof. by apply add_edge2_iso'. Defined.
 
 Lemma add_edge2_C F x u y z v t: F ∔ [x, u, y] ∔ [z, v, t] ≃2 F ∔ [z, v, t] ∔ [x, u, y].
-Proof. apply (iso_iso2 (add_edge_C _ _ _)). Qed.
+Proof. apply (iso_iso2 (add_edge_C _ _ _)). Defined.
 
 Lemma add_edge2_rev F x u v y (e: u ≡' v): F ∔ [x, u, y] ≃2 F ∔ [y, v, x].
-Proof. apply (iso_iso2 (add_edge_rev _ _ e)). Qed.
+Proof. apply (iso_iso2 (add_edge_rev _ _ e)). Defined.
 
 
 (* isomorphisms about [add_vlabel2] *)
 
+Lemma add_vlabel2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst y <- b].
+Proof. apply (iso_iso2' (h:=add_vlabel_iso'' ex e)); apply h. Defined.
+
 Lemma add_vlabel2_iso' F G (h: F ≃2 G) x a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst h x <- b].
-Proof.
-  irewrite (iso_iso2 (add_vlabel_iso' h x e))=>/=.
-  by rewrite iso2_input iso2_output. 
-Defined.
+Proof. by eapply add_vlabel2_iso''. Defined.
 
 Lemma add_vlabel2_iso F G (h: F ≃2 G) x a: F [tst x <- a] ≃2 G [tst h x <- a].
 Proof. by apply add_vlabel2_iso'. Defined.
@@ -255,7 +256,7 @@ Proof.
   intros H Hi Ho.
   apply (iso_iso2' (h:=merge_same' H));
     rewrite merge_same'E =>//;
-    symmetry; apply /eqquotP; by rewrite <- H. 
+    apply /eqquotP; by rewrite <- H. 
 Qed.
 
 Lemma merge_same' (F : graph) (h k: equiv_rel F) (i o: F):
