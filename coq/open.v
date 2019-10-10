@@ -2160,6 +2160,18 @@ Lemma oiso2_del_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) :
   F \ z ⩭2 G \ z'.
 Proof. move => ? ? ->. exact: oiso2_del_vertex. Qed.
 
+Lemma oiso2_add_edge (F G : pre_graph) (i : F ⩭2 G) e1 e2 x y u : 
+  e1 \notin eset F -> e2 \notin eset G -> x \in vset F -> y \in vset F ->
+  F ∔ [e1,x,u,y] ⩭2 G ∔ [e2,i x,u,i y].
+Admitted.
+
+Lemma oiso2_del_edges (F G : pre_graph) (i : F ⩭2 G) E E':
+  E' = [fset efun_of i e | e in E] -> (F - E) ⩭2 (G - E').
+Admitted.
+
+Lemma oiso2_del_edgesE (F G : pre_graph) (i : F ⩭2 G) E E' EE' :
+  @oiso2_del_edges F G i E E' EE' =1 i.
+Admitted.
 
 Hint Resolve oarc_vsetL oarc_vsetR : vset.
 
@@ -2188,9 +2200,42 @@ Proof with eauto with vset.
       * done.
       * done.
       * by rewrite oiso2_add_testE. 
-  - admit.
-  - admit.
-Admitted.
+  - move => x y z e1 e2 u v Iz e1De2 IOz xDz yDz arc_e1 arc_e2 i.
+    have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
+    have Vz : z \in vset F...
+    set e : ET := maxn (efun_of i e1) (efun_of i e2).
+    exists ((H \ i z) ∔ [e, i x, u·lv H (i z)·v,i y])%O. split.
+    + apply: (ostep_v2).
+      * by rewrite oiso2_edges_at // Iz imfset1U imfset1.
+      * apply: contra_neq e1De2. apply: efun_of_inj... admit. admit.
+      * by rewrite -oiso2_pIO.
+      * apply: contra_neq xDz. apply: vfun_of_inj...
+      * apply: contra_neq yDz. apply: vfun_of_inj...
+      * exact: oiso2_oarc arc_e1.
+      * exact: oiso2_oarc arc_e2.
+    + admit.
+  - move => x e u arc_e i.
+    have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
+    exists ((H - [fset efun_of i e])[adt i x <- [1 ∥ le H (efun_of i e)]])%O. split.
+    + apply: (ostep_e0 (e := efun_of i e)). exact: oiso2_oarc arc_e.
+    + admit.
+  - move => x y e1 e2 u v e1De2 arc_e1 arc_e2 i.
+    have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
+    set e : ET := maxn (efun_of i e1) (efun_of i e2).
+    exists ((H - [fset efun_of i e1; efun_of i e2]) ∔ [e,i x, u∥v,i y])%O. split.
+    + apply: (ostep_e2). 
+      * apply: contra_neq e1De2. apply: efun_of_inj... admit. admit.
+      * exact: oiso2_oarc arc_e1.
+      * exact: oiso2_oarc arc_e2.
+    + have @j : (F - [fset e1; e2]) ⩭2 (H - [fset efun_of i e1; efun_of i e2]). 
+      { apply: (oiso2_del_edges (i := i)). abstract (by rewrite imfset1U imfset1). }
+      have jE : j =1 i. { exact: oiso2_del_edgesE. }
+      rewrite -!jE. apply: oiso2_add_edge. 
+      * admit.
+      * admit.
+      * admit.
+      * admit.
+Qed.
 
 
 Lemma inj_v_fresh (G : graph2) (x : G) (z : VT) : z \notin vset (open G) -> inj_v x != z.
