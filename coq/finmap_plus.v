@@ -1,3 +1,4 @@
+
 From mathcomp Require Import all_ssreflect.
 Require Export mathcomp.finmap.finmap.
 
@@ -48,6 +49,40 @@ Proof. apply: contraFneq (in_fset0 x) => <-. by rewrite !inE eqxx. Qed.
 
 Lemma imfset0 (aT rT : choiceType) (f : aT -> rT) : [fset f x | x in fset0] = fset0.
 Proof. apply/fsetP => z. rewrite inE. apply: contraTF isT. by case/imfsetP. Qed.
+
+Lemma imfset_sep (T1 T2 : choiceType) (f : T1 -> T2) (A : {fset T1}) (P : pred T1) : 
+  [fset f x | x in [fset x | x in A & P x]] = [fset f x | x in A & P x].
+Admitted.
+
+Lemma imfset_comp (T1 T2 T3 : choiceType) (f : T1 -> T2) (g : T2 -> T3) (A : {fset T1}) : 
+  [fset (g \o f) x | x in A] = [fset g x | x in [fset f x | x in A]].
+Admitted.
+
+Lemma in_fsep (T : choiceType) (A : {fset T}) (P : pred T) (y : T) : 
+  y \in [fset x | x in A & P x] = (y \in A) && (P y).
+Admitted.
+
+Lemma imfset1 (aT rT : choiceType) (f : aT -> rT) (z : aT) : 
+  [fset f x | x in [fset z]] =  [fset f z].
+Proof.
+  apply/fsetP => x. rewrite inE. apply/imfsetP/eqP.
+  - case => x0 /=. by rewrite inE => /eqP->.
+  - move => ->. exists z => //. by rewrite inE.
+Qed.
+
+Lemma imfsetU (aT rT : choiceType) (f : aT -> rT) (A B : {fset aT}) : 
+  [fset f x | x in A `|` B] =  [fset f x | x in A] `|` [fset f x | x in B].
+Proof.
+  apply/fsetP => z. rewrite inE. apply/imfsetP/idP.
+  - case => x0. rewrite !inE. case/orP => H ->; first by rewrite in_imfset.
+    by rewrite [X in _ || X]in_imfset // orbT.
+  - case/orP. all:case/imfsetP => z0 /= H ->; exists z0 => //. all: by rewrite !inE H ?orbT.
+Qed.
+  
+Lemma imfset1U (aT rT : choiceType) (f : aT -> rT) (z : aT) (A : {fset aT}) : 
+  [fset f x | x in z |` A] =  f z |` [fset f x | x in A].
+Proof. by rewrite imfsetU imfset1. Qed.
+
 
 Arguments fset1Ur [K x a B].
 Arguments fset1U1 [K x B].
@@ -230,3 +265,55 @@ Proof.
   rewrite /bij_cast. move: (cast_proof _). case eqA => Hx'. exact: val_inj.
 Qed.
 End BijCast.
+
+
+(* This construction is not actually used *)
+
+Section FsetU1Fun.
+Variables (T : choiceType) (A B : {fset T}) (f : A -> B) (x y : T).
+
+Definition fsetU1_fun  (a : (x |` A)) : (y |`B) :=
+  match fset1UE (fsvalP a) with
+  | inl _ => Sub y fset1U1
+  | inr (_,p) => Sub (val (f [` p])) (fset1Ur (valP (f [` p])))
+  end.
+
+(* Use below *)
+Lemma fsetU1_funE1 (p : x \in x |` A) : fsetU1_fun [`p] = Sub y fset1U1.
+Admitted.
+
+Lemma fsetU1_funE2 z (p : z \in x |` A) (p' : z \in A) :                                        
+    fsetU1_fun [`p] = Sub (val (f [` p'])) (fset1Ur (valP (f [` p']))).
+Admitted.
+
+
+End FsetU1Fun.
+Arguments fsetU1_fun [T A B] f x y a.
+
+Lemma fsetU1_fun_can (T : choiceType) (A B : {fset T}) (x y : T) (f : A -> B) (g : B -> A) : 
+  x \notin A -> y \notin B -> cancel f g -> cancel (fsetU1_fun f x y) (fsetU1_fun g y x).
+Proof.
+  move => Hx Hy can_f a. 
+  rewrite {2}/fsetU1_fun. case: fset1UE => [/=|[D Ha]].
+  - rewrite /fsetU1_fun. case: fset1UE => //=. 
+    + move => _ E. apply: val_inj => /=. by rewrite E.
+    + rewrite eqxx. by case.
+  - rewrite /fsetU1_fun /=. case: fset1UE.
+    + move => E. by rewrite -E (fsvalP _) in Hy. 
+    + case => A1 A2. apply: val_inj => //=. 
+      rewrite (_ : [`A2] = (f.[Ha])%fmap) ?can_f //. exact: val_inj.
+Qed.
+
+Section Fresh2Bij.
+Variables (T : choiceType) (A B : {fset T}) (x y : T) (f : bij A B) (Hx : x \notin A) (Hy : y \notin B).
+
+Definition fresh2_bij : bij (x |` A) (y |`B).
+Proof.
+  pose fwd := fsetU1_fun f x y.
+  pose bwd := fsetU1_fun f^-1 y x.
+  exists fwd bwd. 
+  - abstract (apply: fsetU1_fun_can => //; exact: bijK).
+  - abstract (apply: fsetU1_fun_can => //; exact: bijK').
+Defined.
+
+End Fresh2Bij.

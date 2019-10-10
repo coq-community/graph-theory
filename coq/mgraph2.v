@@ -629,19 +629,11 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
 Admitted.
 
 (* lemmas needed in open.v *)
-Lemma add_vertex2_cong : 
+Lemma add_vertex2_iso : 
   CProper (@iso2 ==> eqv ==> @iso2)%C add_vertex2.
 Proof.
   move => F G FG u v uv.
   Iso2 (union_iso FG (unit_graph_eqv uv))=>/=; f_equal; apply FG.
-Defined.
-
-(* this is not yet used *)
-Lemma add_edge2_cong G : 
-  CProper (eq ==> eq ==> eqv ==> @iso2)%C (@add_edge2 G).
-Proof.
-  move => x ? <- y ? <- u v uv.
-  apply (add_edge2_iso' (@iso2_id _) _ _ uv).
 Defined.
 
 Notation IO := [set input;output].
@@ -655,6 +647,18 @@ Lemma del_vertex_cong (F G : graph2) (i : F ≃2 G)
   (z : F) (z' : G) (Hz : z \notin IO) (Hiz : z' \notin IO) :
   z' = i z -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
 Admitted.
+
+Parameter del_edges2 : 
+  forall (G : graph2) (E : {set edge G}), graph2.
+
+Lemma iso2_del_edges2 (F G : graph2) (i : F ≃2 G) 
+  (EF : {set edge F}) (EG : {set edge G}) : 
+  EG = [set i.e e | e in EF] -> del_edges2 EF ≃2 del_edges2 EG.
+Admitted.
+
+(* requires definition to type check *)
+(* Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :  *)
+(*   @iso2_del_edges2 F G i EF EG h =1 i. *)
 
 End s. 
 
