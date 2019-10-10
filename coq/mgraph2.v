@@ -198,19 +198,19 @@ Lemma add_vlabel2_iso' F G (h: F ≃2 G) x a b (e: a ≡ b): F [tst x <- a] ≃2
 Proof.
   irewrite (iso_iso2 (add_vlabel_iso' h x e))=>/=.
   by rewrite iso2_input iso2_output. 
-Qed.
+Defined.
 
 Lemma add_vlabel2_iso F G (h: F ≃2 G) x a: F [tst x <- a] ≃2 G [tst h x <- a].
-Proof. by apply add_vlabel2_iso'. Qed.
+Proof. by apply add_vlabel2_iso'. Defined.
 
 Lemma add_vlabel2_C F x a y b: F [tst x <- a] [tst y <- b] ≃2 F [tst y <- b] [tst x <- a].
-Proof. apply (iso_iso2 (add_vlabel_C _ _)). Qed.
+Proof. apply (iso_iso2 (add_vlabel_C _ _)). Defined.
 
 Lemma add_vlabel2_edge F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃2 F ∔ [y, u, z] [tst x <- a].
-Proof. apply (iso_iso2 (add_vlabel_edge _ _ _)). Qed.
+Proof. apply (iso_iso2 (add_vlabel_edge _ _ _)). Defined.
 
 Lemma add_vlabel2_unit a x b: unit_graph2 a [tst x <- b] ≃2 unit_graph2 (mon2 b a).
-Proof. apply (iso_iso2 (add_vlabel_unit _ _)). Qed.
+Proof. apply (iso_iso2 (add_vlabel_unit _ _)). Defined.
 
 (* isomorphisms about [union] (with designated inputs/outputs) *)
 
