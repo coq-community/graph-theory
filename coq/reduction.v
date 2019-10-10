@@ -209,6 +209,105 @@ Proof.
   apply add_edge_C.
 Defined.
 
+Definition two_option_void: bij (option (void+void) + option (void+void)) (option (option ((void+void)+void))).
+Proof.
+  etransitivity. apply sum_option_r. apply option_bij.
+  etransitivity. apply sum_bij. reflexivity. apply sumxU.
+  etransitivity. apply sumxU. apply option_bij.
+  symmetry. apply sumxU. 
+Defined.
+
+Lemma dot_edges (a b c d: test) (u v: term):
+  point (merge_seq (edge_graph a u b ⊎ edge_graph c v d) [:: (inl (inr tt), inr (inl tt))])
+        (\pi inl (inl tt)) (\pi (inr (inr tt)))
+≃2 two_graph2 a d ∔ ([b·c]) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
+Proof.
+  unshelve eapply
+           (iso_iso2' (h:=merge_surj
+                            (G:=edge_graph a u b ⊎ edge_graph c v d)
+                            _
+                            (H:=two_graph2 a d ∔ ([b·c]) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)])
+                            (fv:=fun x =>
+                                   match x with
+                                   | inl (inl _) => inl (inl tt)
+                                   | inr (inr _) => inl (inr tt)
+                                   | _ => inr tt
+                                   end)
+                            (fe:=two_option_void)
+                            _ _ _ _
+                      ) _ _).
+  5,6: apply merge_surjE. 
+  repeat case. by exists (inl (inl tt)). by exists (inr (inr tt)). by exists (inl (inr tt)).
+  by repeat case.
+  by repeat case.
+  hnf. case; [case; case | case].
+  (* how to let the bigops just compute? *)
+Admitted.
+
+(* same as [dot_edge], but with a compositional/convoluted proof 
+   looks appealing, but the complexity is hidden in [merge43] and I still don't know how to prove [merge43E]
+ *)
+Lemma dot_edges' (a b c d: test) (u v: term):
+  point (merge_seq (edge_graph a u b ⊎ edge_graph c v d) [:: (inl (inr tt), inr (inl tt))])
+        (\pi inl (inl tt)) (\pi (inr (inr tt)))
+≃2 two_graph2 a d ∔ ([b·c]) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
+Proof.
+  etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
+  etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
+  etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
+  etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge43 _ _ _ _) _ _ _) _ _ _)).
+  by rewrite /= !merge43E.
+Qed.    
+
+
+Definition two_option_void': bij (option (void+void) + option (void+void)) (option (option (void+void))).
+Proof.
+  etransitivity. apply sum_option_r. apply option_bij.
+  etransitivity. apply sum_bij. reflexivity. apply sumxU.
+  apply sumxU. 
+Defined.
+
+Lemma par_edges (a b c d: test) (u v: term):
+  point (merge_seq (edge_graph a u b ⊎ edge_graph c v d)
+                   [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))])
+        (\pi inl (inl tt)) (\pi (inr (inr tt)))
+≃2 two_graph2 [a·c] [b·d] ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
+Proof.
+  unshelve eapply
+           (iso_iso2' (h:=merge_surj
+                            (G:=edge_graph a u b ⊎ edge_graph c v d)
+                            _
+                            (H:=two_graph2 [a·c] [b·d] ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt])
+                            (fv:=fun x =>
+                                   match x with
+                                   | inl y => y
+                                   | inr y => y
+                                   end)
+                            (fe:=two_option_void')
+                            _ _ _ _
+                      ) _ _).
+  5,6: apply merge_surjE. 
+  repeat case. by exists (inl (inl tt)). by exists (inl (inr tt)). 
+  by repeat case.
+  by repeat case.
+  hnf. case; case. 
+  (* how to let the bigops just compute? *)
+Admitted.
+
+(* idem: same as [par_edges] with a compositional/convoluted proof *)
+Lemma par_edges' (a b c d: test) (u v: term):
+  point (merge_seq (edge_graph a u b ⊎ edge_graph c v d)
+                   [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))])
+        (\pi inl (inl tt)) (\pi (inr (inr tt)))
+≃2 two_graph2 [a·c] [b·d] ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
+Proof.
+  etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
+  etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
+  etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
+  etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge42 _ _ _ _) _ _ _) _ _ _)).
+  by rewrite /= !merge42E.
+Qed.
+  
 (* reduction lemma *)
 Proposition reduce (u: term): steps (graph_of_term u) (graph_of_nf_term (nf u)).
 Proof.
@@ -229,14 +328,7 @@ Proof.
       2: etransitivity.
       2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [b·c] v).
       2: apply isop_step.
-
-      exists. rewrite /g2_dot.
-      etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
-      etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
-      etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
-      etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge43 _ _ _ _) _ _ _) _ _ _)).
-      by rewrite /= !merge43E.
-
+      exists. apply dot_edges. 
       exists.
       apply (add_edge2_iso' (@iso2_id _ _)).
       apply dot_eqv=>//. rewrite dotA. apply dot_eqv=>//. 
@@ -251,13 +343,7 @@ Proof.
       2: etransitivity.
       2: apply one_step, (step_e2 (G:=two_graph2 [a·c] [b·d]) (inl tt) (inr tt) u v).
       2: reflexivity. 
-
-      exists. rewrite /g2_par.
-      etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
-      etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
-      etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
-      etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge42 _ _ _ _) _ _ _) _ _ _)).
-      by rewrite /= !merge42E.
+      exists. apply par_edges. 
       
   - etransitivity. apply cnv_steps, IHu. 
     case (nf u)=>[a|a v b]=>//=.
