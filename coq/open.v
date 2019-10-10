@@ -630,13 +630,14 @@ Proof.
   apply/fsetP => k. by rewrite !(edges_atE,inE) !incident_delv !andbA.
 Qed.
 
+
 Lemma edges_at_add_edge (G : pre_graph) x y e u : 
-  edges_at (add_edge' G e x u y) y = e |` edges_at G y.
+  edges_at (G ∔ [e, x, u, y]) y = e |` edges_at G y.
 Proof.
   apply/fsetP => e0. rewrite inE !edges_atE /= !inE. 
   case: (altP (e0 =P e)) => //= [->|e0De].
   - rewrite /incident/=. existsb true. by rewrite !update_eq. 
-  - rewrite /incident/=. admit.
+  - rewrite /incident/=. by rewrite !existsb_case !updateE.
 Qed.
 
 Lemma edges_at_add_edge' G e x y z u : 
@@ -645,10 +646,8 @@ Lemma edges_at_add_edge' G e x y z u :
 Proof.
   move => eGN xDz yDz. apply/fsetP => e0; rewrite !edges_atE /= !inE.
   case: (altP (e0 =P e)) => //= [->|e0De].
-  (* - by rewrite (negbTE eGN) /incident /= !updateE (negbTE xDz) (negbTE yDz). *)
-  (* - by rewrite /incident/= !update_neq. *)
-  - admit.
-  - admit.
+  - by rewrite (negbTE eGN) /incident /= existsb_case !updateE (negbTE xDz) (negbTE yDz).
+  - by rewrite /incident/= !existsb_case !update_neq.
 Qed.
 
 (* TODO: how to get parentheses around complex G to display? *)
@@ -835,6 +834,7 @@ Defined.
 Section Transfer.
 Variable (G : graph2).
 
+(* not used? *)
 Lemma edges_at_open (x : G) (E : {set edge G}) :  
   mgraph.edges_at G x = E ->
   edges_at (open G) (inj_v x) = [fset inj_e e | e in E].
@@ -845,24 +845,28 @@ Lemma fresh_imfsetF (T : finType) (f : T -> ET) (e : T) :
    f e == fresh [fset f x | x in T] = false.
 Admitted. 
 
-(* TOTHINK: could replace [fresh _] with an arbitrary fresh edge *)
+(* TOTHINK: could replace [fresh _] with an arbitrary fresh  *)
 Definition open_add_vertex a : 
   open (G ∔ a) ⩭2 (open G) ∔ [fresh (vset (open G)), a].
 Proof. 
   econstructor.
   apply: iso2_comp (iso2_sym _) _. apply: openK.
   apply: iso2_comp (iso2_sym _). 2: apply: close_add_vertex freshP. 
-  apply: add_vertex2_cong => //. exact: openK.
+  apply: add_vertex2_iso => //. exact: openK.
 Defined.
 
 Lemma open_add_vertexE : 
   ((forall a, open_add_vertex a (@inj_v (G ∔ a)%G2 (inr tt)) = fresh (vset (open G)))
   *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%G2 (inl x)) = @inj_v G x))%type. 
 Proof. 
-  split => *. 
-  (* all: by rewrite imfset_bij_bwdE. - fixme add_vertex2_cong *) 
-Admitted.
+  split => [a|a x]. 
+  - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
+    move => H /=. rewrite imfset_bij_bwdE //=. exact: inj_v_inj.
+  - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
+    move => H /=. rewrite imfset_bij_bwdE //=. exact: inj_v_inj.
+Qed.
 
+(* This follows the same pattern as open_add_vertex. Lemma? *)
 Lemma open_add_edge (x y : G) u : 
   open (G ∔ [x, u, y]) ⩭2 open G ∔ [inj_v x, u, inj_v y].
 Proof. 
@@ -870,21 +874,9 @@ Proof.
   { exact: add_edge_graph. }
   econstructor.
   apply: iso2_comp (iso2_sym _) _. apply: openK.
-  (* (* Variant using close_add_edge *) *)
-  (* apply: iso2_comp (iso2_sym (close_add_edge _ _)).   *)
-  (* TODO: use close_add_edge *)
-  iso2 (imfset_bij (@inj_v_inj G)) 
-       (fresh_bij (imfset_bij (@inj_e_inj (edge G))) freshP)
-       (fun => false). 2-3: exact: val_inj.
-  admit.
-  (* - move => v /=. by rewrite inj_vK. *)
-  (* - case => [e|] //=.  *)
-  (*   + rewrite /update ifF ?inj_eK //. exact: fresh_imfsetF. *)
-  (*   + by rewrite /update ifT. *)
-  (* - move => [e|]; apply: val_inj => /=;by rewrite /update /= ?fresh_imfsetF ?inj_eK // ifT. *)
-  (* - move => [e|]; apply: val_inj => /=;by rewrite /update /= ?fresh_imfsetF ?inj_eK // ifT. *)
+  apply: iso2_comp _ (iso2_sym _). 2: apply close_add_edge.
+  apply: (add_edge2_iso'' (h := (openK _))) => //; exact: openKE.
 Defined.
-
 
 Lemma oarc_open (x y : G) (e : edge G) u : 
   arc e x u y -> oarc (open G) (inj_e e) (inj_v x) u (inj_v y).
@@ -911,7 +903,7 @@ Lemma oliso_is_graphL (G H : pre_graph) (h : G ⩭2 H) : is_graph G.
 Proof. by case: h. Qed.
 
 Lemma oliso_is_graphR (G H : pre_graph) (h : G ⩭2 H) : is_graph H.
-Proof. by case: h => [? []]. Qed.
+Proof. by case: h. Qed.
 
 
 (* TOTHINK: the converse does NOT hold since [h] is the identity on
@@ -919,77 +911,6 @@ vertices outside of [G]. This could be made to hold by taking [fresh (vset H)]
 as value outside of [G] *)
 Lemma vfun_of_vset (G H : pre_graph) (h : G ⩭2 H) x : x \in vset G -> h x \in vset H.
 Proof. case: h => /= isG isH h /= xG. rewrite /vfun_of vfun_bodyE. exact: valP. Qed.
-
-Section FsetU1Fun.
-Variables (T : choiceType) (A B : {fset T}) (f : A -> B) (x y : T).
-
-Definition fsetU1_fun  (a : (x |` A)) : (y |`B) :=
-  match fset1UE (fsvalP a) with
-  | inl _ => Sub y fset1U1
-  | inr (_,p) => Sub (val (f [` p])) (fset1Ur (valP (f [` p])))
-  end.
-
-(* Use below *)
-Lemma fsetU1_funE1 (p : x \in x |` A) : fsetU1_fun [`p] = Sub y fset1U1.
-Admitted.
-
-Lemma fsetU1_funE2 z (p : z \in x |` A) (p' : z \in A) :                                        
-    fsetU1_fun [`p] = Sub (val (f [` p'])) (fset1Ur (valP (f [` p']))).
-Admitted.
-
-
-End FsetU1Fun.
-Arguments fsetU1_fun [T A B] f x y a.
-
-Lemma fsetU1_fun_can (T : choiceType) (A B : {fset T}) (x y : T) (f : A -> B) (g : B -> A) : 
-  x \notin A -> y \notin B -> cancel f g -> cancel (fsetU1_fun f x y) (fsetU1_fun g y x).
-Proof.
-  move => Hx Hy can_f a. 
-  rewrite {2}/fsetU1_fun. case: fset1UE => [/=|[D Ha]].
-  - rewrite /fsetU1_fun. case: fset1UE => //=. 
-    + move => _ E. apply: val_inj => /=. by rewrite E.
-    + rewrite eqxx. by case.
-  - rewrite /fsetU1_fun /=. case: fset1UE.
-    + move => E. by rewrite -E (fsvalP _) in Hy. 
-    + case => A1 A2. apply: val_inj => //=. 
-      rewrite (_ : [`A2] = (f.[Ha])%fmap) ?can_f //. exact: val_inj.
-Qed.
-
-Section Fresh2Bij.
-Variables (T : choiceType) (A B : {fset T}) (x y : T) (f : bij A B) (Hx : x \notin A) (Hy : y \notin B).
-
-Definition fresh2_bij : bij (x |` A) (y |`B).
-Proof.
-  pose fwd := fsetU1_fun f x y.
-  pose bwd := fsetU1_fun f^-1 y x.
-  exists fwd bwd. 
-  - abstract (apply: fsetU1_fun_can => //; exact: bijK).
-  - abstract (apply: fsetU1_fun_can => //; exact: bijK').
-Defined.
-
-End Fresh2Bij.
-
-Definition add_edge_cong (G H : pre_graph) (h : G ⩭2 H) x u y : 
-  x \in vset G -> y \in vset G -> G ∔ [x,u,y] ⩭2 H ∔ [h x,u,h y].
-Proof.
-  move => xG yG. case: (h) => [isG isH h'] /=.
-  unshelve (econstructor).
-  - exact: add_edge_graph.
-  - rewrite /vfun_of /=. unshelve apply: add_edge_graph. all:by rewrite vfun_bodyE; exact: valP.
-  - iso2 h' (fresh2_bij h'.e freshP freshP) (fun => false) => //.
-    
-    (* + move => v. by rewrite (vlabel_liso h'). *)
-    (* + case => /= e He. case/fset1UE : (He) => [E|[E1 E2]]. *)
-    (*   * subst e. by rewrite fsetU1_funE1 /= !updateE.  *)
-    (*   * admit. *)
-
-    (* apply: liso_comp. apply: close_add_edge. *)
-    (* apply: liso_comp. 2: apply: liso_sym. 2: apply: close_add_edge. *)
-    (* have C z : z \in vset G -> close_v (vfun_body h' z) = h' (@close_v G isG z). *)
-    (* { move => zG. unlock vfun_body.  *)
-    (* rewrite !C.  *)
-    (* apply: liso_add_edge_congr. *)
-Admitted.
 
 (** * Open Step relation  *)
 
@@ -1182,27 +1103,29 @@ Proof.
   by destruct b; destruct b'.
 Qed.
 
+Lemma eqb_negR (b1 b2 : bool) : (b1 == ~~ b2) = (b1 != b2).
+Proof. by case: b1; case: b2. Qed.
+
 Lemma oarc_weq (G : pre_graph) e x y u u' : 
   x != y -> oarc G e x u y -> oarc G e x u' y -> u ≡ u'.
 Proof. 
   move => xDy [[E] [b] [A B C]] [[_] [b'] [A' B' C']].
-
-  (* move => xDy [E A1] [_ A2].  *)
-  (* case: A1 => [[S1 T1 E1]|[S1 T1 E1]]; case: A2 => [[S2 T2 E2]|[S2 T2 E2]]; subst. *)
-  (* - by rewrite -?E1 -?E2 //.  *)
-  (* - by rewrite S2 eqxx in xDy. *)
-  (* - by rewrite S2 eqxx in xDy. *)
-  (* - by rewrite -[u]cnvI -E1 E2 cnvI. *)
-Admitted.
+  have ? : b' = b. 
+  { apply: contra_neq_eq xDy. rewrite -eqb_negR => /eqbP ?; subst.
+    by symmetry. }
+  subst b'. change (u ≡[false] u'). rewrite -(addbxx b). 
+  apply: eqv_trans. symmetry. exact: C. done.
+Qed.
 
 Lemma oarc_loop G e x y x' u u' : oarc G e x u y -> oarc G e x' u' x' -> x = y.
-Admitted.
-(* Proof. move => [E [[? ? ?]|[? ? ?]]] [_ [[? ? ?]|[? ? ?]]]; by subst. Qed. *)
+Proof. case => Ee [[|]] [? ? ?]; case => _ [[|]] [? ? ?]; by subst. Qed.
 
+(* FIXME: A priory, this is not actually decidable ... *)
 Lemma same_oarc G e x y x' y' u u' : oarc G e x u y -> oarc G e x' u' y' ->
   [/\ x = x', y = y' & u ≡ u'] + [/\ x = y', y = x' & u ≡ u'°].
-
-Admitted.   
+Proof.
+  Fail case => Ee [b] [A B C].
+Admitted.
     
 
 Lemma osteps_refl (G : pre_graph) (isG : is_graph G) : osteps G G.
@@ -1210,6 +1133,8 @@ Proof. apply: oliso_step. econstructor. exact: iso2_id. Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
+
+(** lift from mgraph2 *)
 Lemma iso2_edge_flip (G : graph2) (x y : G) u : G ∔ [x,u,y] ≃2 G ∔ [y,u°,x].
 Proof.
   pose dir (e : edge (G ∔ [x,u,y])%G2) := ~~ e.
@@ -2253,8 +2178,11 @@ Proof with eauto with typeclass_instances.
   - (* V1 *) move => G x u a.
     (* test *)
     apply: oliso_stepL (open_add_edge _ _ _) _.
-    apply: oliso_stepL. apply: add_edge_cong. apply open_add_vertex. 
+    apply: oliso_stepL. apply: oiso2_add_edge. apply open_add_vertex. 
+      exact: freshP.
+      exact: freshP.
       1-2: exact: inj_v_open.
+      reflexivity.
     rewrite !open_add_vertexE. 
     apply: oliso_stepR. apply open_add_test. 
     rewrite /add_edge. set z := fresh (vset _). set e := fresh (eset _). 

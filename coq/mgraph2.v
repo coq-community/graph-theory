@@ -533,19 +533,17 @@ Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Canonical g2_pttdom.
 
+Arguments iso_iso2' [F G] h.
+Arguments iso_iso2 [F G] h.
 
 (* this should follow via a corresponding add_vertex lemma ... *)
-Lemma add_vertex2_cong : 
+Lemma add_vertex2_iso : 
   CProper (@iso2 ==> eqv ==> @iso2)%C add_vertex2.
 Proof.
-  move => F G FG u v uv.
-Admitted.
-
-(* this is not yet used *)
-Lemma add_edge2_cong G : 
-  CProper (eq ==> eq ==> eqv ==> @iso2)%C (@add_edge2 G).
-Proof.
-Admitted.
+  move => F G FG u v uv. apply: (iso_iso2' (add_vertex_iso FG uv)); 
+   abstract (by rewrite /= ?iso2_input ?iso2_output).
+Defined.
+                        
 
 (* not CProper instance due to the dependency on [i] *)
 Lemma add_test_cong (F G : graph2) (i : F ≃2 G) x a b : 

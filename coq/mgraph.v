@@ -284,8 +284,6 @@ Proof.
 Defined.
 
 
-(* isomorphisms about [add_vlabel] *)
-
 Lemma add_vlabel_iso'' F G (h: F ≃ G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃ G [tst x' <- b].
 Proof.
   Iso h h.e h.d.
@@ -313,7 +311,6 @@ Proof. reflexivity. Defined.
 
 Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 b a).
 Proof. reflexivity. Defined.
-
 
 (* isomorphisms about subgraphs *)
 
@@ -636,6 +633,14 @@ Admitted.
 
 Lemma two_graph_swap a b: two_graph a b ≃ two_graph b a.
 Proof. apply union_C. Defined.
+
+
+Global Instance add_vertex_iso : CProper (iso ==> eqv ==> iso) add_vertex.
+Proof.
+  move => F G h a b ab. rewrite /add_vertex.
+  apply: union_iso. apply: h. apply: unit_graph_eqv ab.
+Defined.
+
 
 
 End s. 
