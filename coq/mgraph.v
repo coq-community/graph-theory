@@ -216,7 +216,7 @@ Defined.
 (* isomorphisms about [add_edge] *)
 
 Lemma add_edge_iso'' F G (h: F ≃ G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
-  F ∔ [x, u, y] ≃ G ∔ [h x, v, h y].
+  F ∔ [x, u, y] ≃ G ∔ [x', v, y'].
 Proof.
   Iso (iso_v h) (option_bij (h.e)) (fun e => match e with Some e => h.d e | None => false end).
   abstract by split; rewrite -?ex -?ey; repeat first [apply h|symmetry; apply e|case].
@@ -243,7 +243,7 @@ Defined.
 
 (* isomorphisms about [add_vlabel] *)
 
-Lemma add_vlabel_iso'' F G (h: F ≃ G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃ G [tst y <- b].
+Lemma add_vlabel_iso'' F G (h: F ≃ G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃ G [tst x' <- b].
 Proof.
   Iso h h.e h.d.
   split; try apply h.

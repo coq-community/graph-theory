@@ -177,7 +177,7 @@ Proof. intro e. apply (iso_iso2 (unit_graph_eqv e)). Qed.
 (* isomorphisms about [add_edge2] *)
 
 Lemma add_edge2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
-  F ∔ [x, u, y] ≃2 G ∔ [h x, v, h y].
+  F ∔ [x, u, y] ≃2 G ∔ [x', v, y'].
 Proof. apply (iso_iso2' (h:=add_edge_iso'' ex ey e)); apply h. Defined.
 
 Lemma add_edge2_iso' F G (h: F ≃2 G) x u v y (e: u ≡ v): F ∔ [x, u, y] ≃2 G ∔ [h x, v, h y].
@@ -195,7 +195,7 @@ Proof. apply (iso_iso2 (add_edge_rev _ _ e)). Defined.
 
 (* isomorphisms about [add_vlabel2] *)
 
-Lemma add_vlabel2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst y <- b].
+Lemma add_vlabel2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst x' <- b].
 Proof. apply (iso_iso2' (h:=add_vlabel_iso'' ex e)); apply h. Defined.
 
 Lemma add_vlabel2_iso' F G (h: F ≃2 G) x a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst h x <- b].
