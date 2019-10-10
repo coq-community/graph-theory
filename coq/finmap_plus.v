@@ -49,6 +49,27 @@ Proof. apply: contraFneq (in_fset0 x) => <-. by rewrite !inE eqxx. Qed.
 Lemma imfset0 (aT rT : choiceType) (f : aT -> rT) : [fset f x | x in fset0] = fset0.
 Proof. apply/fsetP => z. rewrite inE. apply: contraTF isT. by case/imfsetP. Qed.
 
+Lemma imfset_sep (T1 T2 : choiceType) (f : T1 -> T2) (A : {fset T1}) (P : pred T1) : 
+  [fset f x | x in [fset x | x in A & P x]] = [fset f x | x in A & P x].
+Admitted.
+
+Lemma imfset_comp (T1 T2 T3 : choiceType) (f : T1 -> T2) (g : T2 -> T3) (A : {fset T1}) : 
+  [fset (g \o f) x | x in A] = [fset g x | x in [fset f x | x in A]].
+Admitted.
+
+Lemma in_fsep (T : choiceType) (A : {fset T}) (P : pred T) (y : T) : 
+  y \in [fset x | x in A & P x] = (y \in A) && (P y).
+Admitted.
+
+Lemma imfset1 (aT rT : choiceType) (f : aT -> rT) (z : aT) : 
+  [fset f x | x in [fset z]] =  [fset f z].
+Admitted.
+
+Lemma imfset1U (aT rT : choiceType) (f : aT -> rT) (z : aT) (A : {fset aT}) : 
+  [fset f x | x in z |` A] =  f z |` [fset f x | x in A].
+Admitted.
+
+
 Arguments fset1Ur [K x a B].
 Arguments fset1U1 [K x B].
 Arguments fset1U1 [K x B].

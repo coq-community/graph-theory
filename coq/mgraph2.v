@@ -589,6 +589,18 @@ Lemma del_vertex_cong (F G : graph2) (i : F ≃2 G)
   z' = i z -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
 Admitted.
 
+Parameter del_edges2 : 
+  forall (G : graph2) (E : {set edge G}), graph2.
+
+Lemma iso2_del_edges2 (F G : graph2) (i : F ≃2 G) 
+  (EF : {set edge F}) (EG : {set edge G}) : 
+  EG = [set i.e e | e in EF] -> del_edges2 EF ≃2 del_edges2 EG.
+Admitted.
+
+(* requires definition to type check *)
+(* Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :  *)
+(*   @iso2_del_edges2 F G i EF EG h =1 i. *)
+
 End s. 
 
 Bind Scope graph2_scope with graph2.

@@ -14,8 +14,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** Preliminaries *)
 
-Axiom admitted_case : False.
-Ltac admit := case admitted_case.
 
 Lemma existsb_eq (P Q : pred bool) : (forall b, P b = Q b) -> [exists b, P b] = [exists b, Q b].
 Proof. move => E. apply/existsP/existsP; case => b Hb; exists b; congruence. Qed.
@@ -33,8 +31,15 @@ Proof. rewrite /infer_test. by subst. Qed.
 
 (** Christian: The follwing should hold (and typecheck) for all 2pdom algebras *)
 
+(** whats a reasonable name for [u ≡[b] v] and the associated lemmas? *)
 Lemma eqv_negb (X: pttdom) (u v : X) b : u ≡[~~b] v <-> u ≡[b] v°.
 Admitted.
+
+Lemma eqv_trans (X : pttdom) (u v w : X) (b1 b2 : bool) : 
+  u ≡[b1] v -> v ≡[b2] w -> u ≡[b1 (+) b2] w.
+Proof.
+Admitted.
+
 
 (** *** Graphs *)
 
@@ -44,20 +49,6 @@ Section L.
 Variable (L: labels).
   
 
-Section Defs.
-Variables (G : graph L).
-Implicit Types (x y : G).
-
-Definition incident x e := x \in [set source e; target e].
-Definition edges_at x := [set e | incident x e].
-
-Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
-
-Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
-Proof. by rewrite /edges_in big_set1. Qed.
-End Defs.
-
-Arguments edges_at [G] x, G x.
 
 
 Section Theory.
@@ -845,7 +836,7 @@ Section Transfer.
 Variable (G : graph2).
 
 Lemma edges_at_open (x : G) (E : {set edge G}) :  
-  mplus.edges_at G x = E ->
+  mgraph.edges_at G x = E ->
   edges_at (open G) (inj_v x) = [fset inj_e e | e in E].
 Admitted.
 
@@ -2019,14 +2010,6 @@ Proof.
   rewrite /close_v. case: {-}_ / idP => [p|]; [exact: val_inj|by rewrite Vz].
 Qed.
 
-Lemma imfset1 (aT rT : choiceType) (f : aT -> rT) (z : aT) : 
-  [fset f x | x in [fset z]] =  [fset f z].
-Admitted.
-
-Lemma imfset1U (aT rT : choiceType) (f : aT -> rT) (z : aT) (A : {fset aT}) : 
-  [fset f x | x in z |` A] =  f z |` [fset f x | x in A].
-Admitted.
-
 Lemma Sub_endpt (G : pre_graph) (isG : is_graph G) (e : ET) (He : e \in eset G) b (p : endpt G b e \in vset G) :
   Sub (endpt G b e) p = @endpoint _ (close G) b (Sub e He).
 Proof. exact: val_inj. Qed.
@@ -2051,17 +2034,6 @@ Proof.
     rewrite -> endptP => //. exact: oiso2_graphL i.
 Qed.
 
-Lemma imfset_sep (T1 T2 : choiceType) (f : T1 -> T2) (A : {fset T1}) (P : pred T1) : 
-  [fset f x | x in [fset x | x in A & P x]] = [fset f x | x in A & P x].
-Admitted.
-
-Lemma imfset_comp (T1 T2 T3 : choiceType) (f : T1 -> T2) (g : T2 -> T3) (A : {fset T1}) : 
-  [fset (g \o f) x | x in A] = [fset g x | x in [fset f x | x in A]].
-Admitted.
-
-Lemma in_fsep (T : choiceType) (A : {fset T}) (P : pred T) (y : T) : 
-  y \in [fset x | x in A & P x] = (y \in A) && (P y).
-Admitted.
 
 Lemma im_efun_of (F G : pre_graph) (i : F ⩭2 G) : {in eset F, forall e, efun_of i e \in eset G}.
 Proof. move => e eF. rewrite /= efun_bodyE. exact: valP. Qed.
@@ -2105,10 +2077,6 @@ Proof.
   exact: elabel_hom. (* this doesn't ? *)
 Qed.
 
-Lemma eqvb_trans (X : pttdom) (u v w : X) (b1 b2 : bool) : 
-  u ≡[b1] v -> v ≡[b2] w -> u ≡[b1 (+) b2] w.
-Proof.
-Admitted.
 
 Lemma oiso2_oarc (F G : pre_graph) (i : F ⩭2 G) e x y u : 
   oarc F e x u y -> oarc G (efun_of i e) (i x) u (i y).
@@ -2116,7 +2084,7 @@ Proof.
   case => Ee [b] [A B C]. split; first exact: im_efun_of.
   exists (edir_of i e (+) b). 
   rewrite !oiso2_endpoint // -addbN !addbA !addbxx !addFb A B. split => //.
-  exact: eqvb_trans (oiso2_le _ _ ) _.
+  exact: eqv_trans (oiso2_le _ _ ) _.
 Qed.
 
 Lemma oiso2_add_test (F G : pre_graph) (i : F ⩭2 G) x a b :
@@ -2132,15 +2100,13 @@ Proof.
   by rewrite /= vfun_bodyE /= close_fsval close_vE. 
 Defined.
 
-(* does not compute ... *)
 Lemma oiso2_add_testE (F G : pre_graph) (i : F ⩭2 G) x a b Vx ab z : 
   z \in vset F ->
   @oiso2_add_test F G i x a b Vx ab z = i z.
 Proof.
   move => Vz. rewrite /= !vfun_bodyE //=. rewrite /oiso2_add_test/=.
-  case: i => isF isG i /=.
-  (* much better :) *)
-Admitted.
+  case: i => isF isG i /=. by rewrite vfun_bodyE. 
+Qed.
 
 Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
@@ -2154,7 +2120,13 @@ Proof.
   apply: iso2_comp (iso2_sym _). 2: apply: close_del_vertex => //=.
   apply del_vertex_cong with i. 
   rewrite /vfun_of vfun_bodyE /=. by rewrite close_fsval close_vE.
-Qed.
+Defined.
+
+Lemma oiso2_del_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B : 
+  @oiso2_del_vertex F G z j A B =1 j.
+Proof.
+  rewrite /=. case: j => isF isG j /=. (* fixme *)
+Admitted.
 
 (** Variant of the above with a linear pattern in the conclusion *)
 Lemma oiso2_del_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) : 
@@ -2162,9 +2134,9 @@ Lemma oiso2_del_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) :
   F \ z ⩭2 G \ z'.
 Proof. move => ? ? ->. exact: oiso2_del_vertex. Qed.
 
-Lemma oiso2_add_edge (F G : pre_graph) (i : F ⩭2 G) e1 e2 x y u : 
-  e1 \notin eset F -> e2 \notin eset G -> x \in vset F -> y \in vset F ->
-  F ∔ [e1,x,u,y] ⩭2 G ∔ [e2,i x,u,i y].
+Lemma oiso2_add_edge (F G : pre_graph) (i : F ⩭2 G) e1 e2 x y u v : 
+  e1 \notin eset F -> e2 \notin eset G -> x \in vset F -> y \in vset F -> u ≡ v ->
+  F ∔ [e1,x,u,y] ⩭2 G ∔ [e2,i x,v,i y].
 Admitted.
 
 Lemma oiso2_del_edges (F G : pre_graph) (i : F ⩭2 G) E E':
@@ -2209,34 +2181,50 @@ Proof with eauto with vset.
     exists ((H \ i z) ∔ [e, i x, u·lv H (i z)·v,i y])%O. split.
     + apply: (ostep_v2).
       * by rewrite oiso2_edges_at // Iz imfset1U imfset1.
-      * apply: contra_neq e1De2. apply: efun_of_inj... admit. admit.
+      * apply: contra_neq e1De2. apply: efun_of_inj... 
+          by case: arc_e1. by case: arc_e2.
       * by rewrite -oiso2_pIO.
       * apply: contra_neq xDz. apply: vfun_of_inj...
       * apply: contra_neq yDz. apply: vfun_of_inj...
       * exact: oiso2_oarc arc_e1.
       * exact: oiso2_oarc arc_e2.
-    + admit.
+    + have @j : (F \ z)  ⩭2 (H \ i z). exact: oiso2_del_vertex.
+      have jE : j =1 i by exact: oiso2_del_vertexE.
+      rewrite -![i x]jE -![i y]jE. apply (oiso2_add_edge j).
+      * by rewrite /= Iz maxn_fsetD.
+      * rewrite in_fsetD negb_and negbK oiso2_edges_at //. 
+        by rewrite Iz imfset1U imfset1 maxn_fset2.
+      * rewrite in_fsetD1 xDz /=...
+      * rewrite in_fsetD1 yDz /=...
+      * move: (oiso2_lv i Vz) => X. Fail rewrite X. admit. (* why? *)
   - move => x e u arc_e i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     exists ((H - [fset efun_of i e])[adt i x <- [1 ∥ le H (efun_of i e)]])%O. split.
     + apply: (ostep_e0 (e := efun_of i e)). exact: oiso2_oarc arc_e.
-    + admit.
+    + have @j : (F - [fset e]) ⩭2 (H - [fset efun_of i e]). 
+      { apply: (oiso2_del_edges (i := i)). abstract (by rewrite imfset1). }
+      have jE : j =1 i. { exact: oiso2_del_edgesE. }
+      rewrite -!jE. apply: oiso2_add_test. 
+      * rewrite /=. exact: oarc_vsetL arc_e.
+      *  admit. (* OK *)
   - move => x y e1 e2 u v e1De2 arc_e1 arc_e2 i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     set e : ET := maxn (efun_of i e1) (efun_of i e2).
     exists ((H - [fset efun_of i e1; efun_of i e2]) ∔ [e,i x, u∥v,i y])%O. split.
     + apply: (ostep_e2). 
-      * apply: contra_neq e1De2. apply: efun_of_inj... admit. admit.
+      * apply: contra_neq e1De2. apply: efun_of_inj... 
+        by case: arc_e1. by case: arc_e2.
       * exact: oiso2_oarc arc_e1.
       * exact: oiso2_oarc arc_e2.
     + have @j : (F - [fset e1; e2]) ⩭2 (H - [fset efun_of i e1; efun_of i e2]). 
       { apply: (oiso2_del_edges (i := i)). abstract (by rewrite imfset1U imfset1). }
       have jE : j =1 i. { exact: oiso2_del_edgesE. }
       rewrite -!jE. apply: oiso2_add_edge. 
-      * admit.
-      * admit.
-      * admit.
-      * admit.
+      * by rewrite maxn_fsetD.
+      * by rewrite in_fsetD negb_and negbK maxn_fset2.
+      * rewrite /=...
+      * rewrite /=...
+      * done.
 Qed.
 
 

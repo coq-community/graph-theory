@@ -13,6 +13,9 @@ Unset Printing Implicit Defensive.
 
 (** *** Tactics *)
 
+Axiom admitted_case : False.
+Ltac admit := case admitted_case.
+
 Ltac reflect_eq := 
   repeat match goal with [H : is_true (_ == _) |- _] => move/eqP : H => H end.
 Ltac contrab := 

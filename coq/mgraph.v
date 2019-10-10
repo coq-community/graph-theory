@@ -66,6 +66,49 @@ Definition add_vlabel (G: graph) (x: G) (a: Lv): graph :=
          (@elabel G).
 Notation "G [tst  x <- a ]" := (@add_vlabel G x a) (at level 20, left associativity).
 
+(** ** Subgraphs and Induced Subgraphs *)
+
+Section Subgraphs.
+  Variables (G : graph) (V : {set G}) (E : {set edge G}).
+  Definition consistent := forall e b, e \in E -> endpoint b e \in V.
+  Hypothesis in_V : consistent.
+  
+  Definition sub_vertex := sig [eta mem V].
+  Definition sub_edge := sig [eta mem E].
+
+  Definition subgraph_for := 
+    {| vertex := [finType of sub_vertex];
+       edge := [finType of sub_edge];
+       endpoint b e := Sub (endpoint b (val e)) (in_V b (valP e)); 
+       vlabel x := vlabel (val x);
+       elabel e := elabel (val e);
+    |}.
+End Subgraphs.
+
+
+Section Defs.
+Variables (G : graph).
+Implicit Types (x y : G).
+
+Definition incident x e := [exists b, endpoint b e == x].
+Definition edges_at x := [set e | incident x e].
+
+Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
+
+Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
+Proof. by rewrite /edges_in big_set1. Qed.
+End Defs.
+
+Arguments edges_at [G] x, G x.
+
+Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
+Admitted.
+
+(* Commonly used subgraphs *)
+Definition del_vertex (G : graph) (z : G) : graph := 
+  subgraph_for (@consistent_del1 G z).
+
+
 (* disjoint union of two graphs *)
 Definition union (F G : graph) : graph :=
   {| vertex := [finType of F + G];
@@ -270,6 +313,27 @@ Proof. reflexivity. Defined.
 
 Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 b a).
 Proof. reflexivity. Defined.
+
+
+(* isomorphisms about subgraphs *)
+
+Lemma subgraph_for_iso' G H (h : G ≃ H) 
+  (VG :{set G}) (VH : {set H}) (EG : {set edge G}) (EH : {set edge H})
+  (con1 : consistent VG EG) (con2 : consistent VH EH) :
+  VH = h @: VG -> EH = h.e @: EG ->
+  subgraph_for con1 ≃ subgraph_for con2.
+Proof.
+  move => eq_V eq_E. 
+  eapply Iso. 
+Admitted.
+
+Lemma del_vertex_iso' F G (h : F ≃ G) (z : F) (z' : G) : 
+  h z = z' -> del_vertex z ≃ del_vertex z'.
+Proof.
+  move => h_z. apply: (subgraph_for_iso' (h := h)). 
+  admit.
+  admit.
+Qed.
 
 
 (* isomorphisms about [union] *)
@@ -606,3 +670,5 @@ Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'")
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
 
 Global Hint Resolve iso_id.         (* so that [by] gets it... *)
+
+Arguments edges_at [L G] x, [L] G x.
