@@ -2127,7 +2127,8 @@ Proof.
   econstructor. 
   apply: iso2_comp (iso2_sym _) _. by apply: close_add_test.
   apply: iso2_comp. 2: apply: close_add_test. 2: exact: (iso2_vset (OIso2 i)).
-  apply: iso2_comp. apply: add_vlabel2_iso'. exact: i. exact: ab. 
+  apply: iso2_comp. apply: add_vlabel2_iso'. exact: i. exact: ab.
+  apply (add_vlabel2_iso'' (h:=@iso2_id _ _))=>//.
   by rewrite /= vfun_bodyE /= close_fsval close_vE. 
 Defined.
 
@@ -2137,7 +2138,8 @@ Lemma oiso2_add_testE (F G : pre_graph) (i : F ⩭2 G) x a b Vx ab z :
   @oiso2_add_test F G i x a b Vx ab z = i z.
 Proof.
   move => Vz. rewrite /= !vfun_bodyE //=. rewrite /oiso2_add_test/=.
-  case: i => isF isG i /=. (* ??? *)
+  case: i => isF isG i /=.
+  (* much better :) *)
 Admitted.
 
 Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
