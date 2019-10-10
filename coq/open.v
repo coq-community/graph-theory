@@ -1106,6 +1106,14 @@ Qed.
 Lemma eqb_negR (b1 b2 : bool) : (b1 == ~~ b2) = (b1 != b2).
 Proof. by case: b1; case: b2. Qed.
 
+Lemma eqv_addb b (X : pttdom) (u v : X) : u ≡[b (+) b] v -> u ≡ v.
+Proof. by rewrite addbxx. Qed.
+Arguments eqv_addb b [X] u v _.
+
+Lemma eqv_addbN b (X : pttdom) (u v : X) : u ≡[b (+) ~~ b] v -> u ≡ v°.
+Proof. by rewrite addbN addbxx. Qed.
+Arguments eqv_addbN b [X] u v _.
+
 Lemma oarc_weq (G : pre_graph) e x y u u' : 
   x != y -> oarc G e x u y -> oarc G e x u' y -> u ≡ u'.
 Proof. 
@@ -1120,13 +1128,15 @@ Qed.
 Lemma oarc_loop G e x y x' u u' : oarc G e x u y -> oarc G e x' u' x' -> x = y.
 Proof. case => Ee [[|]] [? ? ?]; case => _ [[|]] [? ? ?]; by subst. Qed.
 
-(* FIXME: A priory, this is not actually decidable ... *)
 Lemma same_oarc G e x y x' y' u u' : oarc G e x u y -> oarc G e x' u' y' ->
-  [/\ x = x', y = y' & u ≡ u'] + [/\ x = y', y = x' & u ≡ u'°].
+  [/\ x = x', y = y' & u ≡ u'] \/ [/\ x = y', y = x' & u ≡ u'°].
 Proof.
-  Fail case => Ee [b] [A B C].
-Admitted.
-    
+  case => Ee [b] [A B C]. case => _ [b'] [A' B' C']. 
+  case: (altP (b =P b')) => [Eb|]. 
+  - subst. left. split => //. apply: (eqv_addb b'). apply: eqv_trans C'. by symmetry.
+  - rewrite -eqb_negR => /eqP ?; subst. right; split => //. by rewrite negbK.
+    apply: (eqv_addbN b'). rewrite addbC. apply: eqv_trans C'. by symmetry.
+Qed.
 
 Lemma osteps_refl (G : pre_graph) (isG : is_graph G) : osteps G G.
 Proof. apply: oliso_step. econstructor. exact: iso2_id. Qed.
@@ -1220,7 +1230,7 @@ Proof.
 Qed.
 
 Lemma close_same_step (Gl Gr : pre_graph) (isGl : is_graph Gl) (isGr : is_graph Gr) : 
-  Gl ≡G Gr -> Σ Gl' Gr' : pre_graph, osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr').
+  Gl ≡G Gr -> exists Gl' Gr' : pre_graph, (osteps Gl Gl' /\ osteps Gr Gr') /\ (Gl' ≡G Gr').
 Proof. move => E. do 2 eexists; split;[split|]; by try exact: osteps_refl. Qed.
 
 
@@ -1337,7 +1347,7 @@ Admitted.
 
 
 Lemma local_confluence_aux (G : pre_graph) (isG : is_graph G) Gl Gr : 
-  ostep G Gl -> ostep G Gr -> Σ Gl' Gr', osteps Gl Gl' * osteps Gr Gr' * (Gl' ≡G Gr'). 
+  ostep G Gl -> ostep G Gr -> exists Gl' Gr', (osteps Gl Gl' /\ osteps Gr Gr') /\ (Gl' ≡G Gr'). 
 Proof with eauto with typeclass_instances.
   have conn_G : oconnected G by admit. (* fixme: this should be removed *)
   move => S1 S2.
@@ -1774,7 +1784,7 @@ Proof with eauto with typeclass_instances.
         apply: add_edge_flip; eauto with vset. by rewrite cnvpar. }
       subst x' y'. 
       (* There are actually two cases here *)
-      have [Hv|[? Hv]]: ((v ≡ v') + (x = y /\ v ≡ v'°))%type.
+      have [Hv|[? Hv]]: ((v ≡ v') \/ (x = y /\ v ≡ v'°)).
       { case: (same_oarc arc_e2 arc_e2'); firstorder. }
       * apply close_same_step. 1-2: apply: add_edge_graph'; eauto with vset.
         by rewrite Hu Hv.
@@ -1868,7 +1878,7 @@ Lemma osteps_graph (F G : pre_graph) (isG : is_graph F) : osteps F G -> is_graph
 Admitted.
 
 Proposition local_confluence (F G1 G2 : pre_graph) (isF : is_graph F) : 
-  ostep F G1 -> ostep F G2 -> Σ H, osteps G1 H * osteps G2 H.
+  ostep F G1 -> ostep F G2 -> exists H, osteps G1 H /\ osteps G2 H.
 Proof.
   move => S1 S2.
   move: (local_confluence_aux isF S1 S2) => [H1] [H2] [[S1' S2'] I].
