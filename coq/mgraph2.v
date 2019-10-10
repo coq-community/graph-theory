@@ -117,7 +117,7 @@ Proof. intros x y [E] u v [F]. exists. by apply Hg. Qed.
 End CProper.
 
 Tactic Notation "Iso2" uconstr(f) :=
-  match goal with |- ?F ≃2 ?G => apply (@Iso2 F G f)=>// end.
+  match goal with |- ?F ≃2 ?G => refine (@Iso2 F G f _ _)=>// end.
 
 (* NOTE: used sparsely *)
 Lemma iso_iso2 (F G: graph) (h: F ≃ G) (i o: F):
@@ -176,8 +176,12 @@ Notation top := g2_top.         (* TEMPORARY *)
 (* isomorphisms about [unit_graph2] *)
 
 Lemma unit_graph2_eqv a b: a ≡ b -> unit_graph2 a ≃2 unit_graph2 b.
-Proof. intro e. Iso2 (unit_graph_eqv e). Qed.
+Proof. intro e. Iso2 (unit_graph_eqv e). Defined.
 
+(* isomorphisms about [two_graph2] *)
+
+Lemma two_graph2_eqv a b (ab: a ≡ b) c d (cd: c ≡ d): two_graph2 a c ≃2 two_graph2 b d.
+Proof. Iso2 (union_iso (unit_graph_eqv ab) (unit_graph_eqv cd)). Defined.
 
 (* isomorphisms about [add_edge2] *)
 
@@ -197,6 +201,13 @@ Proof. Iso2 (add_edge_C _ _ _). Defined.
 Lemma add_edge2_rev F x u v y (e: u ≡' v): F ∔ [x, u, y] ≃2 F ∔ [y, v, x].
 Proof. Iso2 (add_edge_rev _ _ e). Defined.
 
+Lemma add_edge2_vlabel F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃2 F ∔ [y, u, z] [tst x <- a].
+Proof. Iso2 (add_edge_vlabel _ _ _). Defined.
+
+(* isomorphisms about [edge_graph2] *)
+
+Lemma edge_graph2_eqv a b (ab: a ≡ b) c d (cd: c ≡ d) u v (uv: u ≡ v): edge_graph2 a u c ≃2 edge_graph2 b v d.
+Proof. refine (add_edge2_iso' (two_graph2_eqv ab cd) _ _ uv). Defined.
 
 (* isomorphisms about [add_vlabel2] *)
 
@@ -212,11 +223,23 @@ Proof. by apply add_vlabel2_iso'. Defined.
 Lemma add_vlabel2_C F x a y b: F [tst x <- a] [tst y <- b] ≃2 F [tst y <- b] [tst x <- a].
 Proof. Iso2 (add_vlabel_C _ _). Defined.
 
-Lemma add_vlabel2_edge F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃2 F ∔ [y, u, z] [tst x <- a].
-Proof. Iso2 (add_vlabel_edge _ _ _). Defined.
-
-Lemma add_vlabel2_unit a x b: unit_graph2 a [tst x <- b] ≃2 unit_graph2 (mon2 b a).
+Lemma add_vlabel2_unit a x b: unit_graph2 a [tst x <- b] ≃2 unit_graph2 (mon2 a b).
 Proof. Iso2 (add_vlabel_unit _ _). Defined.
+
+Lemma add_vlabel2_unit' x b: unit_graph2 b ≃2 unit_graph2 mon0 [tst x <- b].
+Proof. apply iso2_sym. irewrite add_vlabel2_unit. apply unit_graph2_eqv. by rewrite monC monU. Defined.
+
+Lemma add_vlabel2_two a b (x: unit+unit) c:
+  two_graph2 a b [tst x <- c] ≃2 two_graph2 (if x then mon2 a c else a) (if x then b else mon2 b c).
+Proof. Iso2 (add_vlabel_two _ _ _ _); by case x; case. Defined.
+
+Lemma add_vlabel2_edge a u b (x: unit+unit) c:
+  edge_graph2 a u b [tst x <- c] ≃2 edge_graph2 (if x then mon2 a c else a) u (if x then b else mon2 b c).
+Proof. Iso2 (add_vlabel_edge _ _ _ _ _); by case x; case. Defined.
+
+Lemma add_vlabel2_mon0 G x: G [tst x <- mon0] ≃2 G.
+Proof. Iso2 (add_vlabel_mon0 x). Defined.
+
 
 (* isomorphisms about [merge] *)
 
@@ -270,12 +293,12 @@ Proof. intro. by apply merge2_same. Qed.
 Lemma merge_nothing (F: graph) (h: pairs F) (i o: F):
   List.Forall (fun p => p.1 = p.2) h ->
   point (merge_seq F h) (\pi i) (\pi o) ≃2 point F i o.
-Proof. intros H. Iso2 (merge_nothing H); by rewrite merge_nothingE. Qed.
+Proof. intros H. Iso2 (merge_nothing H); by rewrite merge_nothingE. Defined.
 
 Lemma merge2_nothing (F: graph2) (h: pairs F):
   List.Forall (fun p => p.1 = p.2) h ->
   merge2_seq F h ≃2 F.
-Proof. destruct F. apply merge_nothing. Qed.
+Proof. destruct F. apply merge_nothing. Defined.
 
 
 (** merge_merge  *)
@@ -298,16 +321,16 @@ Lemma merge_union_K_l (F K: graph) (i o: F+K) (h: pairs (F+K)) (k: K -> F)
       (kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)]):
   point (merge_seq (F ⊎ K) h) (\pi i) (\pi o)
 ≃2 point (merge_seq F (union_K_pairs h k)) (\pi (sum_left k i)) (\pi (sum_left k o)).
-Proof. Iso2 (merge_union_K kv kh ke)=>/=; by rewrite ?merge_union_KE. Qed.
+Proof. Iso2 (merge_union_K kv kh ke)=>/=; by rewrite ?merge_union_KE. Defined.
 
 Lemma merge2_add_edge (G: graph2) (r: equiv_rel G) x u y: merge2 (G ∔ [x, u, y]) r ≃2 merge2 G r ∔ [\pi x, u, \pi y].
-Proof. Iso2 (merge_add_edge _ _ _ _); by rewrite merge_add_edgeE. Qed.
+Proof. Iso2 (merge_add_edge _ _ _ _); by rewrite merge_add_edgeE. Defined.
 
 Lemma merge2_add_vlabel (G: graph2) (r: equiv_rel G) x a: merge2 (G [tst x <- a]) r ≃2 merge2 G r [tst \pi x <- a].
-Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Qed.
+Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Defined.
 
 Lemma merge2_two a b: merge2_seq (two_graph2 a b) [:: (inl tt,inr tt)] ≃2 unit_graph2 (mon2 a b).
-Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Qed.
+Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Defined.
 
 
 (** ** 2p-graphs form a 2p-algebra *)
@@ -361,7 +384,46 @@ Proof.
    leqv. 
 Qed.
 
+Lemma dot2unit_r (G: graph2) a: G · unit_graph2 a ≃2 G [tst output <- a].
+Proof.
+  (* compositional proof *)
+  (* a bit messy because [merge_union_K] only allows us to kill mon0-labelled vertices
+     (a more general version of [merge_union_K] is possible, but requires updating the 
+     labels of several vertices at once *)
+  rewrite /=/g2_dot.
+  irewrite (merge_iso2 (union_iso iso_id (add_vlabel2_unit' output _)))=>/=.
+  etransitivity. refine (merge_iso2 (union_add_vlabel_r _ _ _) _ _ _). simpl.
+  etransitivity. refine (iso_iso2 (merge_add_vlabel _ _ _) _ _). simpl.
+  etransitivity. refine (iso_iso2 (add_vlabel_iso (merge_union_K_l (K:=g2_one) (inl input) (inl output) (k:=fun _ => output) _ _ _) _ _) _ _)=>//. 
+  case; apply /eqquotP; eqv.
+  rewrite /=!merge_union_KE !merge_add_vlabelE !merge_union_KE/=. 
+  etransitivity. refine (add_vlabel2_iso (merge2_nothing _) _ _).
+  repeat (constructor =>//=).
+  destruct G=>/=. by rewrite merge_nothingE. 
+Qed.
+
+Lemma dot2unit_r' (G: graph2) a: G · unit_graph2 a ≃2 G [tst output <- a].
+Proof.
+  (* global proof, via surjective homomorphism *)
+  unshelve Iso2
+   (@merge_surj _
+     (G ⊎ unit_graph2 a) _
+     (G [tst output <- a])
+     (fun x => match x with inl y => y | inr tt => output end)
+     sumxU _ _ _ _).
+  5,6: by rewrite merge_surjE. 
+  - move=>x. by exists (inl x).
+  - by move=>b [e|[]].
+  - by case. 
+  - move=>x/=. admit.           (* should be rather simple... *)
+Admitted.
+
+(* [dot2one] follows from [dot2unit_r] *)
 Lemma dot2one (F: graph2): F · 1 ≃2 F.
+Proof. etransitivity. apply dot2unit_r. apply add_vlabel2_mon0. Qed.
+
+(* ... but also has a reasonable direct proof *)
+Lemma dot2one' (F: graph2): F · 1 ≃2 F.
 Proof.
   rewrite /=/g2_dot.
   irewrite (merge_union_K_l (K:=g2_one) _ _ (k:=fun _ => output))=>//.
@@ -369,6 +431,7 @@ Proof.
   repeat (constructor =>//=).
   intros []; apply /eqquotP; eqv.
 Qed.
+
 
 (* half of associativity *)
 Lemma dot2Aflat (F G H: graph2):
@@ -414,14 +477,14 @@ Proof.
   apply merge_same'=>/=. apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma par2oneone: 1 ∥ 1 ≃2 g2_one.
+Lemma par2dot F G: @input F = output -> @input G = output -> F ∥ G ≃2 F · G.
 Proof.
-  rewrite /=/g2_par.
-  irewrite (merge_union_K_l (F:=unit_graph mon0) (K:=unit_graph mon0) _ _ (k:=fun _ => tt))=>//=.
-  apply merge_nothing.
-  repeat (constructor =>//=).
-  intros []; apply /eqquotP; eqv.
+  intros HF HG. apply merge2_same; rewrite !HF !HG //.
+  apply eqv_clot_eq; leqv.
 Qed.
+
+Lemma par2oneone: 1 ∥ 1 ≃2 1.
+Proof. etransitivity. apply par2dot=>//. apply dot2one. Qed.
 
 Lemma dom2E (F: graph2): dom F ≃2 1 ∥ (F · top).
 Proof.
@@ -533,24 +596,53 @@ Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Canonical g2_pttdom.
 
+(* additional lemmas needed in reduction.v *)
 
-(* this should follow via a corresponding add_vertex lemma ... *)
+Lemma dot2unit_l (G: graph2) a: unit_graph2 a · G ≃2 G [tst input <- a].
+Proof.
+  irewrite (iso2_sym (cnv2I _)). 
+  irewrite' (iso2_sym (cnv2I _)).
+  apply cnv_iso2.
+  irewrite cnv2dot. 
+  apply dot2unit_r.
+Qed.
+
+Lemma par2unitunit a b: unit_graph2 a ∥ unit_graph2 b ≃2 unit_graph2 (mon2 a b).
+Proof.
+  etransitivity. apply par2dot=>//.
+  etransitivity. apply dot2unit_r.
+  apply add_vlabel2_unit.
+Qed.
+
+Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (mon2 a (mon2 b c)) ∔ [tt, u, tt].
+  unshelve Iso2
+   (@merge_surj _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (mon2 a (mon2 b c)) ∔ [tt, u, tt])
+     (fun _ => tt)
+     (bij_comp sumxU (option_bij sumxU)) _ _ _ _).
+  5,6: by rewrite merge_surjE. 
+  - move=>x. by exists (inr tt).
+  - move=>d. repeat case=>//=. by case d. 
+  - by repeat case. 
+  - repeat case=>//=. rewrite eq_refl/=.
+    (* grr: again, how to let this compute? *)
+    admit.
+Admitted.
+
+(* lemmas needed in open.v *)
 Lemma add_vertex2_cong : 
   CProper (@iso2 ==> eqv ==> @iso2)%C add_vertex2.
 Proof.
   move => F G FG u v uv.
-Admitted.
+  Iso2 (union_iso FG (unit_graph_eqv uv))=>/=; f_equal; apply FG.
+Defined.
 
 (* this is not yet used *)
 Lemma add_edge2_cong G : 
   CProper (eq ==> eq ==> eqv ==> @iso2)%C (@add_edge2 G).
 Proof.
-Admitted.
-
-(* not CProper instance due to the dependency on [i] *)
-Lemma add_test_cong (F G : graph2) (i : F ≃2 G) x a b : 
-  a ≡ b -> F [tst x <- a] ≃2 G [tst i x <- b].
-Admitted.
+  move => x ? <- y ? <- u v uv.
+  apply (add_edge2_iso' (@iso2_id _) _ _ uv).
+Defined.
 
 Notation IO := [set input;output].
 
@@ -600,4 +692,5 @@ Tactic Notation "Iso2" uconstr(f) :=
 
 
 (* temporary *)
-Notation add_test := add_vlabel2.
+Notation add_test := add_vlabel2 (only parsing).
+Notation add_test_cong := add_vlabel2_iso' (only parsing).

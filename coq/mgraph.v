@@ -240,6 +240,9 @@ Proof.
   abstract (split; (repeat case)=>//=; by apply Eqv'_sym). 
 Defined.
 
+Lemma add_edge_vlabel F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃ F ∔ [y, u, z] [tst x <- a].
+Proof. reflexivity. Defined.
+
 
 (* isomorphisms about [add_vlabel] *)
 
@@ -265,11 +268,16 @@ Proof.
   by rewrite 2!monA (monC a b).
 Defined.
 
-Lemma add_vlabel_edge F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃ F ∔ [y, u, z] [tst x <- a].
-Proof. reflexivity. Defined.
+Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 a b).
+Proof. apply (unit_graph_eqv (monC b a)). Defined.
 
-Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 b a).
-Proof. reflexivity. Defined.
+Lemma add_vlabel_mon0 G x: G [tst x <- mon0] ≃ G.
+Proof.
+  Iso bij_id bij_id xpred0. 
+  split=>//=. move=>v.
+  case eq_op=>//. by rewrite monC monU.
+Defined.
+
 
 
 (* isomorphisms about [union] *)
@@ -322,6 +330,22 @@ Proof.
   etransitivity. apply union_add_vlabel_l.
   etransitivity. apply (add_vlabel_iso (union_C _ _)).
   reflexivity.
+Defined.
+
+Lemma add_vlabel_two a b (x: unit+unit) c:
+  two_graph a b [tst x <- c] ≃ two_graph (if x then mon2 a c else a) (if x then b else mon2 b c).
+Proof.
+  case x; case=>/=. 
+  etransitivity. apply iso_sym. apply union_add_vlabel_l. apply union_iso=>//. apply add_vlabel_unit. 
+  etransitivity. apply iso_sym. apply union_add_vlabel_r. apply union_iso=>//. apply add_vlabel_unit.
+Defined.  
+
+Lemma add_vlabel_edge a u b (x: unit+unit) c:
+  edge_graph a u b [tst x <- c] ≃ edge_graph (if x then mon2 a c else a) u (if x then b else mon2 b c).
+Proof.
+  etransitivity. apply iso_sym. apply add_edge_vlabel.
+  etransitivity. apply (add_edge_iso (add_vlabel_two a b x c)).
+  by case x; case.
 Defined.
 
 

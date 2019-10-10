@@ -129,26 +129,9 @@ Definition graph_of_nf_term (t: nf_term): graph2 :=
   end.
 
 
-(* Some of these isomorphism lemma could be slight generalisations of lemmas
-   used to get the pttdom laws on graph2 *)
-Lemma ldotunit (G: graph2) a: G · unit_graph2 a ≃2p G [tst output <- a].
-Admitted.
-
-Lemma lunitdot (G: graph2) a: unit_graph2 a · G ≃2p G [tst input <- a].
-Admitted.
-
-Lemma lparunitunit (a b: test): unit_graph2 a ∥ unit_graph2 b ≃2p unit_graph2 [a·b].
-Admitted.
-
-Lemma lparedgeunit (u: term) (a b c: test): edge_graph2 a u b ∥ unit_graph2 c ≃2p unit_graph2 [c∥a·u·b].
-Admitted.
-       
-Lemma add_test_point (a c: test) (x: unit): unit_graph2 a [tst x <- c] ≃2p unit_graph2 [a·c].
-Admitted.                       (* could be inlined for now *)
-
-Lemma add_test_edge (u: term) (a b c: test) (x: unit+unit):
-  edge_graph2 a u b [tst x <- c] ≃2p edge_graph2 (if x then [c·a] else a) u (if x then b else [b·c]).
-Admitted.
+(* the isomorphisms below hold with every [labels] structure 
+   -> could be moved to mgraph2, or to a section at the beginning of this file
+*)
 
 Lemma merge43 (a b c d: test):
   merge_seq (two_graph a b ⊎ two_graph c d) [:: (inl (inr tt), inr (inl tt))] ≃ two_graph2 a d ∔ mon2 b c.
@@ -303,7 +286,8 @@ Proof.
   etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge42 _ _ _ _) _ _ _) _ _ _)).
   by rewrite /= !merge42E.
 Qed.
-  
+
+
 (* reduction lemma *)
 Proposition reduce (u: term): steps (graph_of_term u) (graph_of_nf_term (nf u)).
 Proof.
@@ -311,30 +295,40 @@ Proof.
   - etransitivity. apply dot_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
-    * apply isop_step.
-      rewrite ldotunit. simpl.
-      apply add_test_point. 
-    * apply isop_step.
-      rewrite lunitdot. simpl.
-      apply add_test_edge. 
-    * apply isop_step.
-      rewrite ldotunit. simpl.
-      apply add_test_edge. 
+    * apply isop_step. exists.
+      etransitivity. apply dot2unit_r. apply add_vlabel2_unit. 
+    * apply isop_step. exists.
+      etransitivity. apply dot2unit_l.
+      etransitivity. apply add_vlabel2_edge.
+      apply edge_graph2_eqv=>//. apply monC.
+    * apply isop_step. exists. 
+      etransitivity. apply dot2unit_r. apply add_vlabel2_edge. 
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [b·c] v).
-      2: apply isop_step.
       exists. apply dot_edges. 
-      exists.
+      apply isop_step. exists.
       apply (add_edge2_iso' iso2_id).
       apply dot_eqv=>//. rewrite dotA. apply dot_eqv=>//. 
 
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
-    * apply isop_step. apply lparunitunit.
-    * apply isop_step. rewrite parC. apply lparedgeunit.
-    * apply isop_step. apply lparedgeunit.
+    * apply isop_step. exists. apply par2unitunit.
+    * etransitivity. apply isop_step.
+      2: etransitivity.
+      2: apply one_step, (step_e0 (G:=unit_graph2 [c·(d·a)]) tt v).
+      rewrite parC. exists. apply par2edgeunit.
+      apply isop_step. exists.
+      etransitivity. apply add_vlabel2_unit. apply unit_graph2_eqv.
+      admit.                    (* algebraic *)
+    * etransitivity. apply isop_step.
+      2: etransitivity.
+      2: apply one_step, (step_e0 (G:=unit_graph2 [a·(b·c)]) tt u).
+      exists. apply par2edgeunit.
+      apply isop_step. exists.
+      etransitivity. apply add_vlabel2_unit. apply unit_graph2_eqv.
+      admit.                    (* algebraic *)
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_e2 (G:=two_graph2 [a·c] [b·d]) (inl tt) (inr tt) u v).
@@ -354,7 +348,7 @@ Proof.
     etransitivity. apply one_step, (@step_v1 _ (unit_graph2 a) tt v b).
     apply isop_step. exists. 
     etransitivity. apply add_vlabel2_unit. apply unit_graph2_eqv.
-    simpl. admit.               (* algebraic *)
+    admit.               (* algebraic *)
 Admitted.
 
 End s'.
