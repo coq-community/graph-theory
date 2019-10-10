@@ -665,9 +665,13 @@ Arguments merge {L} _ _.
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
 Arguments iso {L}.
+Arguments iso_id {_ _}.
 Infix "≃" := iso (at level 79).
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'").
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
+
+Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
+  match goal with |- ?F ≃ ?G => refine (@Iso _ F G f g h _) end.
 
 Global Hint Resolve iso_id.         (* so that [by] gets it... *)
 
