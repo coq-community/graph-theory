@@ -151,6 +151,30 @@ Proof.
 Defined.
 
 
+Section SubsetBij.
+Variables (T1 T2 : finType) (f : bij T1 T2) (A : {set T1}) (B : {set T2}).
+Hypothesis def_B : B = f @: A.
+
+Lemma subset_bij_proof1 x : x \in A -> f x \in B. 
+Proof. rewrite def_B. apply: mem_imset. Qed.
+Lemma subset_bij_proof2 x : x \in B -> f^-1 x \in A. 
+Proof. rewrite def_B. case/imsetP => x0 xA ->. by rewrite bijK. Qed.
+
+Definition subset_bij_fwd (x : { x | x \in A}) : { x | x \in B } := 
+ let (x', xA) := x in Sub (f x') (subset_bij_proof1 xA).
+
+Definition subset_bij_bwd (y : { x | x \in B}) : {x | x \in A } :=
+  let (y', yB) := y in Sub (f^-1 y') (subset_bij_proof2 yB).
+
+Lemma subset_can_fwd : cancel subset_bij_fwd subset_bij_bwd.
+Admitted.
+Lemma subset_can_bwd : cancel subset_bij_bwd subset_bij_fwd.
+Admitted.
+
+Definition subset_bij := Bij subset_can_fwd subset_can_bwd.
+End SubsetBij.
+
+
 (** Useful to obtain bijections with good simplification properties *)
 Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
   f =1 i -> f_inv =1 i^-1 -> bij A B.
@@ -159,3 +183,5 @@ Proof.
   exists f f_inv; abstract (move => x; by rewrite Hf Hf' ?bijK ?bijK').
 Defined.
 Arguments bij_same [A B] f f_inv i _ _.
+
+

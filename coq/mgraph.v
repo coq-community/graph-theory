@@ -109,6 +109,8 @@ Definition del_vertex (G : graph) (z : G) : graph :=
   subgraph_for (@consistent_del1 G z).
 
 
+
+
 (* disjoint union of two graphs *)
 Definition union (F G : graph) : graph :=
   {| vertex := [finType of F + G];
@@ -327,18 +329,33 @@ Lemma subgraph_for_iso' G H (h : G ≃ H)
   (con1 : consistent VG EG) (con2 : consistent VH EH) :
   VH = h @: VG -> EH = h.e @: EG ->
   subgraph_for con1 ≃ subgraph_for con2.
-Proof.
+Proof. 
   move => eq_V eq_E. 
-  eapply Iso. 
-Admitted.
+  Iso (subset_bij eq_V) (subset_bij eq_E) (fun e => h.d (val e)).
+  split.
+  - case => e He b. apply: val_inj => /=. exact: endpoint_iso.
+  - case => v Hv /=. exact: vlabel_iso.
+  - case => e He /=. exact: elabel_iso.
+Defined.
+
+Lemma subgraph_for_isoE' G H (h : G ≃ H) 
+  (VG :{set G}) (VH : {set H}) (EG : {set edge G}) (EH : {set edge H})
+  (con1 : consistent VG EG) (con2 : consistent VH EH) 
+  (eq_V : VH = h @: VG) (eq_E : EH = h.e @: EG) x p q :
+  subgraph_for_iso' con1 con2 eq_V eq_E (Sub x p) = (Sub (h x) q).
+Proof. exact: val_inj. Qed.
 
 Lemma del_vertex_iso' F G (h : F ≃ G) (z : F) (z' : G) : 
   h z = z' -> del_vertex z ≃ del_vertex z'.
 Proof.
   move => h_z. apply: (subgraph_for_iso' (h := h)). 
-  admit.
-  admit.
-Qed.
+  - rewrite -h_z. (* follows with bijectiviy *) admit.
+  - admit.
+Defined.
+
+Lemma del_vertex_isoE' F G (h : F ≃ G) (z : F) (z' : G) E x p X : 
+  @del_vertex_iso' F G h z z' E (Sub x p) = Sub (h x) (X p).
+Proof. exact: val_inj. Qed.
 
 
 (* isomorphisms about [union] *)

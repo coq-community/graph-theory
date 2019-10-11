@@ -649,15 +649,25 @@ Admitted.
 
 Notation IO := [set input;output].
 
-Parameter del_vertex2 : 
-  forall (G : graph2) (z : G) (Hz : z \notin IO), graph2.
+Lemma del_vertex_proof1 (G : graph2) (z : G) (Hz : z \notin IO) : input \in [set~ z].
+Admitted.
+Lemma del_vertex_proof2 (G : graph2) (z : G) (Hz : z \notin IO) : output \in [set~ z].
+Admitted.
 
+Definition del_vertex2 (G : graph2) (z : G) (Hz : z \notin IO) := 
+  point (del_vertex z) (Sub input (del_vertex_proof1 Hz)) (Sub output (del_vertex_proof2 Hz)).
 Arguments del_vertex2 : clear implicits.
 
-Lemma del_vertex_cong (F G : graph2) (i : F ≃2 G) 
+Lemma del_vertex2_iso' (F G : graph2) (i : F ≃2 G) 
   (z : F) (z' : G) (Hz : z \notin IO) (Hiz : z' \notin IO) :
-  z' = i z -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
-Admitted.
+  i z = z' -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
+Proof.
+  move => E. apply (@iso_iso2' _ _ (del_vertex_iso' E)). 
+  - rewrite del_vertex_isoE'. admit.
+    move => p. apply: val_inj => /=. exact: iso2_input.
+  - rewrite del_vertex_isoE'. admit.
+    move => p. apply: val_inj => /=. exact: iso2_output.
+Defined.
 
 Parameter del_edges2 : 
   forall (G : graph2) (E : {set edge G}), graph2.

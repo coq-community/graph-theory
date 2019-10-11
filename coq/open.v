@@ -2079,14 +2079,14 @@ Proof.
   econstructor.
   apply: iso2_comp. apply: close_del_vertex => //. 
   apply: iso2_comp (iso2_sym _). 2: apply: close_del_vertex => //=.
-  apply del_vertex_cong with i. 
+  apply del_vertex2_iso' with i. 
   rewrite /vfun_of vfun_bodyE /=. by rewrite close_fsval close_vE.
 Defined.
 
 Lemma oiso2_del_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B : 
   @oiso2_del_vertex F G z j A B =1 j.
 Proof.
-  rewrite /=. case: j => isF isG j /=. (* fixme *)
+  rewrite /=. case: j => isF isG j /=. (* FIXME, does not compute ... *)
 Admitted.
 
 (** Variant of the above with a linear pattern in the conclusion *)
