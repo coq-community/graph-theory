@@ -113,9 +113,11 @@ Proof.
   - by repeat case. 
   - by repeat case.
   - by repeat case.
-  - case; [case; case | case].
-  (* Damien to Christian: how to let the bigops just compute? *)
-Admitted.
+  - case; [case; case | case];
+      rewrite -big_filter filter_index_enum /=; 
+      rewrite !enum_sum !enum_unit /= !big_cons big_nil;
+      by rewrite monU.
+Qed.
 
 (* same as [dot_edge], but with a compositional/convoluted proof 
    looks appealing, but the complexity is hidden in [merge43] and I still don't know how to prove [merge43E]
@@ -165,14 +167,11 @@ Proof.
   - by repeat case. 
   - by repeat case.
   - by repeat case.
-  - case; case. 
-    + rewrite -big_filter filter_index_enum /=. 
-    rewrite !enum_sum !enum_unit /= !big_cons big_nil.
-    (* now if only /= didn't destroy the [_·_] and [_ ≡ _] notations ... *) 
-    admit.
-    + rewrite -big_filter filter_index_enum /=. 
-      rewrite !enum_sum !enum_unit /= !big_cons big_nil.
-Admitted.
+  - case; case; 
+      rewrite -big_filter filter_index_enum /=; 
+      rewrite !enum_sum !enum_unit /= !big_cons big_nil;
+      by rewrite monU.
+Qed.
 
 (* idem: same as [par_edges] with a compositional/convoluted proof *)
 Lemma par_edges' (a b c d: Lv) (u v: Le):
