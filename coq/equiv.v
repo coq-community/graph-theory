@@ -126,15 +126,23 @@ Proof.
   - elim: s => // x s IH /all_cons [Px Ps]. by constructor; auto.
 Qed.
 
+Lemma eqv_clot_subrel (T: finType) (h k: pairs T):
+  List.Forall (fun p => eqv_clot k p.1 p.2) h ->
+  subrel (eqv_clot h) (eqv_clot k).
+Proof. rewrite ForallE=>H x y. rewrite eqv_clotE. apply equiv_of_sub'=> u v. exact (H (u,v)). Qed.
+
 (* Better formulation ? *)
 Lemma eqv_clot_eq (T: finType) (h k: pairs T):
   List.Forall (fun p => eqv_clot k p.1 p.2) h ->
   List.Forall (fun p => eqv_clot h p.1 p.2) k ->
   eqv_clot h =2 eqv_clot k.
-Proof.
-  rewrite !ForallE /= => A B x y. apply/idP/idP; rewrite eqv_clotE. 
-  all: apply: equiv_of_sub' => u v; solve [exact: (A (u,v))|exact:(B (u,v))].
-Qed.
+Proof. move=> A B x y. by apply/idP/idP; apply eqv_clot_subrel. Qed.
+
+Lemma kernel_eqv_clot {A: finType} {B} (l: pairs A) (f: A -> B):
+  List.Forall (fun p => f p.1 = f p.2) l ->
+  (forall x y, f x = f y -> eqv_clot l x y) ->
+  (forall x y, reflect (kernel f x y) (eqv_clot l x y)).
+Admitted.
 
 Lemma eq_equiv_class (T : eqType) : equiv_class_of (@eq_op T). 
 Proof. split => //. exact: eq_op_trans. Qed.

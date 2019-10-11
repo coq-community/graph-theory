@@ -412,16 +412,30 @@ Defined.
 
 (* isomorphisms about [merge] *)
 
+(* TOMOVE *)
+
+(* remove if no longer used below *)
+Lemma eq_eqv {X: setoid} (x y: X): x = y -> x ≡ y.
+Proof. by move=>->. Qed.
+
 Section merge_surj.
- (* this one seems nice, but check that we really need it first *)
  Variable (G: graph) (r: equiv_rel G).
- Variable (H: graph) (fv: G -> H).
+ Variable (H: graph) (fv: G -> H) (fv': H -> G).
  Variable (fe: bij (edge G) (edge H)).
- Hypothesis Hsurj: surjective fv.
+ Hypothesis Hr: forall x y, reflect (kernel fv x y) (r x y).
+ Hypothesis Hsurj: cancel fv' fv.
  Hypothesis Hendpoints: forall b e, fv (endpoint b e) = endpoint b (fe e).
  Hypothesis Helabel: forall e, elabel (fe e) ≡ elabel e.
  Hypothesis Hvlabel: forall y, vlabel y ≡ \big[mon2/mon0]_(x | fv x == y) vlabel x.
  Lemma merge_surj: merge G r ≃ H.
+ Proof.
+   Iso (quot_kernel Hr Hsurj) fe xpred0. split; intros=>/=.
+   - rewrite -Hendpoints=>/=. by rewrite surj_repr_pi. 
+   - rewrite Hvlabel. apply eq_eqv, eq_bigl=>x.
+     (* grr, what's the proper way of proceeding here? *)
+     apply Bool.eq_true_iff_eq; split; move=>/eqP E. admit.
+     rewrite -E surj_repr_pi=>//. admit. 
+   - apply Helabel.
  Admitted.
  Lemma merge_surjE (x: G): merge_surj (\pi x) = fv x.
  Admitted.
