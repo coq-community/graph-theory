@@ -166,7 +166,12 @@ Proof.
   - by repeat case.
   - by repeat case.
   - case; case. 
-  (* Damien to Christian: how to let the bigops just compute? *)
+    + rewrite -big_filter filter_index_enum /=. 
+    rewrite !enum_sum !enum_unit /= !big_cons big_nil.
+    (* now if only /= didn't destroy the [_·_] and [_ ≡ _] notations ... *) 
+    admit.
+    + rewrite -big_filter filter_index_enum /=. 
+      rewrite !enum_sum !enum_unit /= !big_cons big_nil.
 Admitted.
 
 (* idem: same as [par_edges] with a compositional/convoluted proof *)
