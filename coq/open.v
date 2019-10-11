@@ -1143,14 +1143,8 @@ Proof. apply: oliso_step. econstructor. exact: iso2_id. Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
-
-(** lift from mgraph2 *)
 Lemma iso2_edge_flip (G : graph2) (x y : G) u : G ∔ [x,u,y] ≃2 G ∔ [y,u°,x].
-Proof.
-  pose dir (e : edge (G ∔ [x,u,y])%G2) := ~~ e.
-  iso2 bij_id bij_id dir => //.
-  admit.
-Defined.
+Proof. apply add_edge2_rev. by apply Eqv'_sym. Defined.
 
 (* We prove this directly rather than going though [liso_edge_flip],
 because this way we can avoid the assumption [e \notin eset G] *)
