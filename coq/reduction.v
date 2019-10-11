@@ -199,6 +199,156 @@ Notation graph2 := (graph2 (pttdom_labels X)).
 Notation step := (@step X).
 Notation steps := (@steps X).
 
+Definition mentions (A: eqType) (l: pairs A) :=
+  flatten [seq [::x.1;x.2] | x <- l].
+
+Definition admissible_l (G: graph2) (H: eqType) (e : pairs (G+H)) := 
+  all (fun x => if x is inl z then z \in IO else true) (mentions e).
+
+Definition replace_ioL (G G': graph2) (H: eqType) (e : pairs (G+H)) : pairs (G'+H) := 
+  map_pairs (fun x =>
+               match x with 
+               | inl z => if z == output then inl output else inl input
+               | inr z => inr z
+               end) e.
+Arguments replace_ioL [G G' H].
+
+Lemma replace_ioE vT eT1 eT2 st1 st2 lv1 lv2 le1 le2 i1 i2 o1 o2 H e : admissible_l e -> 
+   i1 = i2 -> o1 = o2 ->                                                                      
+   @replace_ioL (point (@Graph _ vT eT1 st1 lv1 le1) i1 o1) 
+                (point (@Graph _ vT eT2 st2 lv2 le2) i2 o2) H e = e.
+Admitted.
+
+Lemma cons_iso_steps G G' H : steps G' H -> G ≃2 G' -> steps G H.
+Proof. intros E F. etransitivity. apply iso_step, F. assumption. Qed.
+
+Lemma cons_step_steps G G' H : steps G' H -> step G G' -> steps G H.
+Proof. intros E F. by setoid_rewrite F. Qed.
+
+Lemma merge_add_edgeL (G H : graph) x y u l i o : 
+   point (merge_seq (G ∔ [x,u,y] ⊎ H) l) (\pi i) (\pi o)
+≃2 point (merge_seq (G ⊎ H) l) (\pi i) (\pi o) ∔ [\pi inl x,u,\pi inl y].
+Proof.
+  eapply iso2_comp.
+  apply (iso_iso2' (h:=merge_iso (union_add_edge_l _ _ _ _) _)).
+  1,2: by rewrite merge_isoE.
+  eapply iso2_comp.
+  refine (iso_iso2' (h:=merge_add_edge _ _ _ _) _ _).
+  1,2: by rewrite merge_add_edgeE.
+  unshelve refine (iso_iso2' (h:=add_edge_iso'' (h:=mgraph.merge_same _) _ _ _) _ _)=>/=.
+  4: reflexivity. 
+  by rewrite map_pairs_id.
+  all: by rewrite merge_sameE. 
+Defined.
+Lemma merge_add_edgeLE G H x y u l i o z:
+  @merge_add_edgeL G H x y u l i o z = z.
+Proof.
+  rewrite /merge_add_edgeL. simpl.
+  rewrite merge_add_edgeE.
+  (* things are unfolded here while they shouldn't... *)
+  rewrite merge_sameE.
+Admitted.
+
+Section a.
+Variables (G H : graph2) (a: test) (l: pairs (add_vertex2 G a ⊎ H)%G).
+Hypothesis A: admissible_l l. 
+Lemma admissible_map  :
+  map_pairs sumA (map_pairs (sumf id sumC) (map_pairs sumA' l)) =
+  map_pairs inl (replace_ioL l).
+Proof.
+  rewrite 2!map_map_pairs. induction l as [|[a1 a2] q IH]=>//.
+  simpl. move: A =>/andP[/=A1 /andP[/=A2 Q]]. f_equal. f_equal.
+  destruct a1 as [[x|[]]|x]=>//=.
+  admit.                        (* ok *)
+  exfalso. clear -A1. admit.     (* ok *)
+  destruct a2 as [[x|[]]|x]=>//=.
+  admit.                        (* ok *)
+  exfalso. clear -A2. admit.     (* ok *)
+  apply IH, Q. 
+Admitted.
+
+Lemma merge_add_vertexL:
+   point (merge_seq (G ∔ a ⊎ H) l) (\pi (inl (inl input))) (\pi (unr output))
+≃2 point (merge_seq (G ⊎ H) (replace_ioL l)) (\pi (unl input)) (\pi (unr output)) ∔ a.
+Proof.
+  eapply iso2_comp.
+  apply (iso_iso2' (h:=merge_iso (iso_sym (union_A _ _ _)) _)).
+  1,2: rewrite merge_isoE//.
+  eapply iso2_comp.
+  refine (iso_iso2' (h:=merge_iso (union_iso iso_id (union_C _ _)) _) _ _).
+  1,2: rewrite merge_isoE//.
+  eapply iso2_comp.
+  refine (iso_iso2' (h:=merge_iso (union_A _ _ _) _) _ _).
+  1,2: rewrite merge_isoE//.
+  eapply iso2_sym.
+  eapply iso2_comp.
+  refine (iso_iso2' (h:=union_merge_l _ _) _ _).
+  1,2: rewrite union_merge_lEl//.
+  apply merge_same'.
+  by rewrite admissible_map.
+Defined.
+
+Lemma merge_add_vertexLE x:
+  merge_add_vertexL (\pi (inl x)) =
+  match x with inl x => inl (\pi inl x) | _ => inr tt end. 
+Proof.
+  (* case x=>[y|[]]=>/=. *)
+  (* rewrite (merge_isoE _ l).   *)
+Admitted.
+
+End a.
+
+Definition merge_add_vlabelL (G H: graph2) x a l i o : 
+   point (merge_seq (G[tst x <- a] ⊎ H) l) i o
+≃2 point (merge_seq (G ⊎ H) l) i o [tst \pi inl x <- a].
+Admitted.
+
+
+Lemma merge_step (G' G H: graph2) (l : pairs (G+H)) : 
+  admissible_l l -> step G G' -> 
+  steps (point (merge_seq (G ⊎ H) l) (\pi (unl input)) (\pi (unr output)))
+        (point (merge_seq (G' ⊎ H) (replace_ioL l)) (\pi (unl input)) (\pi (unr output))).
+Proof.
+  move => A B. destruct B. (* why does case fail? (DAMIEN: it no longer fails...) *)
+  - refine (cons_iso_steps _ (merge_add_vertexL A)).
+    apply (one_step (step_v0 _ _)).
+    
+  - refine (cons_iso_steps _ (merge_add_edgeL _ _ _)).
+    refine (cons_iso_steps _ (add_edge2_iso (merge_add_vertexL A) _ _ _)).
+    rewrite 2!merge_add_vertexLE.
+    refine (cons_step_steps _ (step_v1 _ _ _)).
+    apply iso_step.
+    symmetry. apply merge_add_vlabelL. 
+
+  - refine (cons_iso_steps _ (merge_add_edgeL _ _ _)).
+    refine (cons_iso_steps _ (add_edge2_iso (merge_add_edgeL _ _ _) _ _ _)).
+    rewrite !merge_add_edgeLE.
+    refine (cons_iso_steps _ (add_edge2_iso (add_edge2_iso (merge_add_vertexL A) _ _ _) _ _ _)).
+    rewrite {1 2}merge_add_vertexLE.
+    rewrite {1 2}merge_add_vertexLE.
+    rewrite merge_add_vertexLE.
+    refine (cons_step_steps _ (step_v2 _ _ _ _ _)).
+    apply iso_step.
+    symmetry. apply merge_add_edgeL. 
+
+  - refine (cons_iso_steps _ (merge_add_edgeL _ _ _)).
+    refine (cons_step_steps _ (step_e0 _ _)).
+    apply iso_step.
+    etransitivity. symmetry. apply merge_add_vlabelL.
+    by rewrite replace_ioE.
+      
+  - refine (cons_iso_steps _ (merge_add_edgeL _ _ _)).
+    refine (cons_iso_steps _ (add_edge2_iso (merge_add_edgeL _ _ _) _ _ _)).
+    rewrite !merge_add_edgeLE.
+    refine (cons_step_steps _ (step_e2 _ _ _ _)).
+    apply iso_step.
+    etransitivity. symmetry. apply (merge_add_edgeL (u:=u∥v)).
+    by rewrite replace_ioE.
+Qed.
+
+Lemma step_IO G G': step G G' -> (input == output :> G) = (input == output :> G').
+Proof. by case. Qed.
+
 Lemma step_to_steps f:
   Proper (iso2prop ==> iso2prop) f -> Proper (step ==> steps) f -> Proper (steps ==> steps) f.
 Proof.
@@ -235,10 +385,10 @@ Lemma dot_steps_l G G' H: steps G G' -> steps (G·H) (G'·H).
 Proof.
   apply (step_to_steps (f:=fun G => G·H)) => {G G'}.
   - move=> ?? E. apply dot_eqv=>//. 
-  - move => G G' GG'. etransitivity. (* apply: (@steps_merge G') => //=. *)
-    (* + rewrite /admissible_l/=. by rewrite !inE eqxx. *)
-    (* + by rewrite /replace_ioL/= eqxx.  *)
-Admitted.
+  - move => G G' GG'. etransitivity. apply (@merge_step G') => //=.
+    + rewrite /admissible_l/=. by rewrite !inE eqxx.
+    + by rewrite /replace_ioL/= eqxx.
+Qed.
 
 Lemma dot_steps_r G G' H: steps G G' -> steps (H·G) (H·G').
 Proof.
@@ -257,12 +407,12 @@ Proof.
   apply (step_to_steps (f:=fun G => (G∥H)))  => {G G'}. 
   - move => G G' I. apply par_eqv=>//. 
   - move => G G' step_G_G'. 
-    (* etransitivity. apply: (@steps_merge G') => //=. *)
-    (* + by rewrite /admissible_l/= !inE !eqxx. *)
-    (* + rewrite /replace_ioL/= !eqxx. case: ifP => [E|//]. *)
-    (*   rewrite (step_IO step_G_G') in E. *)
-    (*   by rewrite -[in (inl output,inr input)](eqP E).  *)
-Admitted.
+    etransitivity. apply: (@merge_step G') => //=.
+    + by rewrite /admissible_l/= !inE !eqxx.
+    + rewrite /replace_ioL/= !eqxx. case: ifP => [E|//].
+      rewrite (step_IO step_G_G') in E.
+      by rewrite -[in (inl output,inr input)](eqP E).
+Qed.
 
 Lemma par_steps_r G G' H: steps G G' -> steps (H∥G) (H∥G').
 Proof.
@@ -316,13 +466,13 @@ Proof.
   - etransitivity. apply dot_steps; [apply IHu1|apply IHu2].
     case (nf u1)=>[a|a u b];
     case (nf u2)=>[c|c v d]=>/=.
-    * apply isop_step. exists.
+    * apply iso_step. 
       etransitivity. apply dot2unit_r. apply add_vlabel2_unit. 
-    * apply isop_step. exists.
+    * apply iso_step. 
       etransitivity. apply dot2unit_l.
       etransitivity. apply add_vlabel2_edge.
       apply edge_graph2_iso=>//. apply monC.
-    * apply isop_step. exists. 
+    * apply iso_step. 
       etransitivity. apply dot2unit_r. apply add_vlabel2_edge. 
     * etransitivity. apply isop_step.
       2: etransitivity.

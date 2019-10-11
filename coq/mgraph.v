@@ -582,6 +582,9 @@ Global Opaque union_merge_l.
 Lemma map_map_pairs {A B C} (f: A -> B) (g: B -> C) l: map_pairs g (map_pairs f l) = map_pairs (g \o f) l.
 Proof. by rewrite /map_pairs -map_comp. Qed.
 
+Lemma map_pairs_id {A} (l: pairs A): map_pairs id l = l.
+Proof. elim l=>//=[[a a'] q]/=. congruence. Qed.
+
 Section union_merge_r.
   Variables (F G: graph) (l: pairs G).
   Lemma union_merge_r: F ⊎ merge_seq G l ≃ merge_seq (F ⊎ G) (map_pairs unr l).
