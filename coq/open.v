@@ -899,13 +899,6 @@ Defined.
 
 End Transfer. 
    
-Lemma oliso_is_graphL (G H : pre_graph) (h : G ⩭2 H) : is_graph G.
-Proof. by case: h. Qed.
-
-Lemma oliso_is_graphR (G H : pre_graph) (h : G ⩭2 H) : is_graph H.
-Proof. by case: h. Qed.
-
-
 (* TOTHINK: the converse does NOT hold since [h] is the identity on
 vertices outside of [G]. This could be made to hold by taking [fresh (vset H)] 
 as value outside of [G] *)
@@ -1130,10 +1123,10 @@ Proof. apply: oliso_step. econstructor. exact: iso2_id. Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
-Lemma iso2_edge_flip (G : graph2) (x y : G) u : G ∔ [x,u,y] ≃2 G ∔ [y,u°,x].
-Proof. apply add_edge2_rev. by apply Eqv'_sym. Defined.
+(* Lemma iso2_edge_flip (G : graph2) (x y : G) u : G ∔ [x,u,y] ≃2 G ∔ [y,u°,x]. *)
+(* Proof. apply add_edge2_rev. by apply Eqv'_sym. Defined. *)
 
-(* We prove this directly rather than going though [liso_edge_flip],
+(* We prove this directly rather than going though [add_edge2_rev],
 because this way we can avoid the assumption [e \notin eset G] *)
 Lemma add_edge_flip (G : pre_graph) (isG : is_graph G) e x y u v: 
   u° ≡ v ->
@@ -1145,16 +1138,13 @@ Proof.
   econstructor.
   pose dir (e0 : edge (close (G ∔ [e,x,u,y]) isG1)) := val e0 == e.
   iso2 bij_id bij_id dir => //=. 2-3: exact: val_inj.
-  admit.
-  (* - case => e' /= He'. case: (fset1UE He') => [?|].  *)
-  (*   + subst e'. by rewrite /dir/= eqxx /= !updateE /= -E cnvI. *)
-  (*   + case => A ?. by rewrite /dir/= (negbTE A) //= !updateE. *)
-  (* - case => e' /= He'. apply: val_inj => /=. case: (fset1UE He') => [?|]. *)
-  (*   + subst e'. by rewrite /dir/= eqxx /= !updateE. *)
-  (*   + case => A ?. by rewrite /dir/= (negbTE A) /= !updateE. *)
-  (* - case => e' /= He'. apply: val_inj => /=. case: (fset1UE He') => [?|]. *)
-  (*   + subst e'. by rewrite /dir/= eqxx /= !updateE. *)
-  (*   + case => A ?. by rewrite /dir/= (negbTE A) /= !updateE. *)
+  split => //.
+  - case => e' He' b /=. apply: val_inj => /=. case: (fset1UE He') => [?|].
+    + subst e'. by rewrite /dir/=!eqxx addTb !updateE if_neg. 
+    + case => A ?. by rewrite /dir/= (negbTE A) !updateE.
+  - case => e' He'. rewrite /dir/=. case: (fset1UE He') => [?|].
+    + subst e'. rewrite eqxx !updateE. by symmetry in E.
+    + case => A ?. by rewrite /dir/= (negbTE A) !updateE.
 Defined.
 
 Lemma del_edges_add_test (G : pre_graph) E x a : 
@@ -1897,11 +1887,25 @@ Proof with eauto with typeclass_instances.
         by rewrite fsetUC.
 Qed.
 
+Hint Resolve oarc_vsetL oarc_vsetR : vset.
+
 Lemma ostep_graph (F G : pre_graph) (isG : is_graph F) : ostep F G -> is_graph G.
-Admitted.
+Proof with eauto with typeclass_instances.
+  case => {G}...
+  - move => x y z e1 e2 u v Iz D IOz xDz yDz arc_e1 arc_e2.
+    apply: add_edge_graph'; rewrite /= in_fsetD1 ?xDz ?yDz /=.
+    exact: oarc_vsetL arc_e1. exact: oarc_vsetR arc_e2.
+  - move => x y e1 e2 u v e1De2 arc_e1 arc_e2. 
+    apply: add_edge_graph'. exact: oarc_vsetL arc_e1. exact: oarc_vsetR arc_e2.
+Qed.
 
 Lemma osteps_graph (F G : pre_graph) (isG : is_graph F) : osteps F G -> is_graph G.
-Admitted.
+Proof.
+  move => S. elim: S isG => {F G}. 
+  - move => F G FG _. apply: oiso2_graphR FG.
+  - move => F G FG isF. apply: ostep_graph FG.
+  - move => F G H. tauto.
+Qed.
 
 Proposition local_confluence (F G1 G2 : pre_graph) (isF : is_graph F) : 
   ostep F G1 -> ostep F G2 -> exists H, osteps G1 H /\ osteps G2 H.
@@ -2010,7 +2014,15 @@ Lemma efun_of_bij (F G : pre_graph) (i : F ⩭2 G) :
           {in eset G, cancel g (efun_of i)} &
           {in eset G, forall x, g x \in eset F}].
 Proof.
-Admitted.
+  case: i => isF isG i /=.
+  pose g := efun_body (iso2_sym i).e.
+  exists g. split => //; rewrite /efun_of/=. 
+  - move => e Fe. rewrite /g !efun_bodyE /=. exact: valP.
+    move => p. by rewrite fsvalK bijK.
+  - move => e Ge. rewrite /g !efun_bodyE /=. exact: valP.
+    move => p. by rewrite fsvalK bijK'.
+  - move => e Ge. rewrite /g !efun_bodyE /=. exact: valP.
+Qed.                         
 
 Lemma oiso2_edges_at  (F G : pre_graph) (i : F ⩭2 G) z : z \in vset F ->
   edges_at G (i z) = [fset (efun_of i) x | x in edges_at F z].
@@ -2108,7 +2120,7 @@ Lemma oiso2_del_edgesE (F G : pre_graph) (i : F ⩭2 G) E E' EE' :
   @oiso2_del_edges F G i E E' EE' =1 i.
 Admitted.
 
-Hint Resolve oarc_vsetL oarc_vsetR : vset.
+
 
 Lemma osteps_iso (F G H : pre_graph) : 
   ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
