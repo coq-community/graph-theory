@@ -249,9 +249,9 @@ Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
 
 (* isomorphisms about [unit_graph] *)
 
-Lemma unit_graph_eqv a b: a ≡ b -> unit_graph a ≃ unit_graph b.
+Global Instance unit_graph_iso: CProper (eqv ==> iso) unit_graph.
 Proof.
-  intro. Iso bij_id bij_id xpred0.
+  intros a b ab. Iso bij_id bij_id xpred0.
   abstract by split=>//=;symmetry.
 Defined.
 
@@ -310,7 +310,7 @@ Proof.
 Defined.
 
 Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 a b).
-Proof. apply (unit_graph_eqv (monC b a)). Defined.
+Proof. apply (unit_graph_iso (monC b a)). Defined.
 
 Lemma add_vlabel_mon0 G x: G [tst x <- mon0] ≃ G.
 Proof.
@@ -672,12 +672,8 @@ Admitted.
 Lemma two_graph_swap a b: two_graph a b ≃ two_graph b a.
 Proof. apply union_C. Defined.
 
-
 Global Instance add_vertex_iso : CProper (iso ==> eqv ==> iso) add_vertex.
-Proof.
-  move => F G h a b ab. rewrite /add_vertex.
-  apply: union_iso. apply: h. apply: unit_graph_eqv ab.
-Defined.
+Proof. move => F G h a b ab. apply (union_iso h (unit_graph_iso ab)). Defined.
 
 
 
