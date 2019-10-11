@@ -134,6 +134,21 @@ Section t.
 End t.
 Global Opaque quot_same. 
 
+Definition kernel {A B} (f: A -> B): A -> A -> Prop := fun x y => f x = f y.
+Section quot_kernel.
+ Context {A: finType} {B: Type}.
+ Variables (r: equiv_rel A) (f: A -> B) (f': B -> A).
+ Hypothesis Hr: forall x y, reflect (kernel f x y) (r x y).
+ Hypothesis Hf: cancel f' f.
+ Lemma surj_repr_pi x: f (@repr _ r (\pi x)) = f x.
+ Proof. by move:(piK r x)=>/Hr. Qed.
+ Lemma quot_kernel_can: cancel (fun c => f (@repr _ r c)) (fun b => \pi f' b).
+ Proof. intro. rewrite -{2}(reprK x); apply /eqquotP. by apply/Hr. Qed.
+ Lemma quot_kernel_can': cancel (fun b => \pi f' b) (fun c => f (@repr _ r c)).
+ Proof. intro. by rewrite surj_repr_pi. Qed.
+ Definition quot_kernel: bij (quot r) B := Bij quot_kernel_can quot_kernel_can'. 
+End quot_kernel.
+
 
 Section map_equiv.
   Variables (S T: Type) (h: T -> S) (e: equiv_rel S).

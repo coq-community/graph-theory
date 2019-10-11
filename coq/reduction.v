@@ -206,22 +206,31 @@ Lemma dot_edges (a b c d: test) (u v: term):
 ≃2 two_graph2 a d ∔ ([b·c]) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
 Proof.
   unshelve Iso2
-  (merge_surj
-     (G:=edge_graph a u b ⊎ edge_graph c v d) _
-     (H:=two_graph2 a d ∔ _ ∔ [_, u, _] ∔ [_, v, _])
-     (fv:=fun x =>
-            match x with
-            | inl (inl _) => inl (inl tt)
-            | inr (inr _) => inl (inr tt)
-            | _ => inr tt
-            end)
-     (fe:=two_option_void)
-     _ _ _ _).
-  5,6: apply merge_surjE. 
-  repeat case. by exists (inl (inl tt)). by exists (inr (inr tt)). by exists (inl (inr tt)).
-  by repeat case.
-  by repeat case.
-  hnf. case; [case; case | case].
+  (@merge_surj _
+     (edge_graph a u b ⊎ edge_graph c v d) _
+     (two_graph2 a d ∔ _ ∔ [_, u, _] ∔ [_, v, _])
+     (fun x =>
+        match x with
+        | inl (inl _) => inl (inl tt)
+        | inr (inr _) => inl (inr tt)
+        | _ => inr tt
+        end)
+     (fun x =>
+        match x with
+        | inl (inl _) => inl (inl tt)
+        | inl (inr _) => inr (inr tt)
+        | inr tt => inl (inr tt)
+        end)
+     (two_option_void)
+     _ _ _ _ _).
+  6,7: apply merge_surjE.
+  - apply kernel_eqv_clot.
+    * by repeat constructor.
+    * case=>[[[]|[]]|[[]|[]]]; case=>[[[]|[]]|[[]|[]]]//= _; eqv.
+  - by repeat case. 
+  - by repeat case.
+  - by repeat case.
+  - case; [case; case | case].
   (* Damien to Christian: how to let the bigops just compute? *)
 Admitted.
 
@@ -255,21 +264,25 @@ Lemma par_edges (a b c d: test) (u v: term):
 ≃2 two_graph2 [a·c] [b·d] ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
 Proof.
   unshelve Iso2
-  (merge_surj
-     (G:=edge_graph a u b ⊎ edge_graph c v d) _
-     (H:=two_graph2 [a·c] [b·d] ∔ [_, u, _] ∔ [_, v, _])
-     (fv:=fun x =>
-            match x with
-            | inl y => y
-            | inr y => y
-            end)
-     (fe:=two_option_void')
-     _ _ _ _ ).
-  5,6: apply merge_surjE. 
-  repeat case. by exists (inl (inl tt)). by exists (inl (inr tt)). 
-  by repeat case.
-  by repeat case.
-  hnf. case; case. 
+  (@merge_surj _
+     (edge_graph a u b ⊎ edge_graph c v d) _
+     (two_graph2 [a·c] [b·d] ∔ [_, u, _] ∔ [_, v, _])
+     (fun x =>
+        match x with
+        | inl y => y
+        | inr y => y
+        end)
+     (inl)
+     (two_option_void')
+     _ _ _ _ _ ).
+  6,7: apply merge_surjE.
+  - apply kernel_eqv_clot.
+    * by repeat constructor.
+    * case=>[[[]|[]]|[[]|[]]]; case=>[[[]|[]]|[[]|[]]]//= _; eqv.
+  - by repeat case. 
+  - by repeat case.
+  - by repeat case.
+  - case; case. 
   (* Damien to Christian: how to let the bigops just compute? *)
 Admitted.
 

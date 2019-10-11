@@ -253,16 +253,17 @@ Lemma merge_iso2 (F G : graph) (h: F ≃ G) l (i o: F):
   point (merge_seq G (map_pairs h l)) (\pi (h i)) (\pi (h o)).
 Proof. Iso2 (merge_iso h l); by rewrite h_mergeE. Defined.
 
-Lemma merge2_surj (G: graph2) (r: equiv_rel G) (H: graph2) (fv : G -> H) (fe : bij (edge G) (edge H)):
-  surjective fv ->
+Lemma merge2_surj (G: graph2) (r: equiv_rel G) (H: graph2) (fv : G -> H) (fv': H -> G) (fe : bij (edge G) (edge H)):
+  (forall x y, reflect (kernel fv x y) (r x y)) ->
+  cancel fv' fv ->
   (forall b e, fv (endpoint b e) = endpoint b (fe e)) ->
   (forall e, elabel (fe e) ≡ elabel e) ->
   (forall y: H, vlabel y ≡ \big[mon2/mon0]_(x | fv x == y) vlabel x) ->
   fv input = input -> fv output = output ->
   merge2 G r ≃2 H.
 Proof.
-  intros Hfv Hept Helbl Hvlbl I O.
-  Iso2 (merge_surj _ Hfv Hept Helbl Hvlbl); by rewrite merge_surjE.
+  intros H1 H2 H3 H4 H5 I O.
+  Iso2 (merge_surj H1 H2 H3 H4 H5); by rewrite merge_surjE.
 Defined.
 
 Lemma merge_same (F : graph) (h k: equiv_rel F) (i i' o o': F):
@@ -410,9 +411,13 @@ Proof.
      (G ⊎ unit_graph2 a) _
      (G [tst output <- a])
      (fun x => match x with inl y => y | inr tt => output end)
-     sumxU _ _ _ _).
-  5,6: by rewrite merge_surjE. 
-  - move=>x. by exists (inl x).
+     (fun x => inl x)
+     sumxU _ _ _ _ _).
+  6,7: by rewrite merge_surjE.
+  - apply kernel_eqv_clot.
+    * by constructor.
+    * case=>[x|[]]; case=>[y|[]]=>//->; eqv. 
+  - by []. 
   - by move=>b [e|[]].
   - by case. 
   - move=>x/=. admit.           (* should be rather simple... *)
@@ -618,9 +623,13 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
   unshelve Iso2
    (@merge_surj _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (mon2 a (mon2 b c)) ∔ [tt, u, tt])
      (fun _ => tt)
-     (bij_comp sumxU (option_bij sumxU)) _ _ _ _).
-  5,6: by rewrite merge_surjE. 
-  - move=>x. by exists (inr tt).
+     (fun _ => inr tt)
+     (bij_comp sumxU (option_bij sumxU)) _ _ _ _ _).
+  6,7: by rewrite merge_surjE.
+  - apply kernel_eqv_clot.
+    * by repeat constructor.
+    * (repeat case)=>//=_; try eqv; apply eqv_clot_trans with (inr tt); eqv.
+  - by case. 
   - move=>d. repeat case=>//=. by case d. 
   - by repeat case. 
   - repeat case=>//=. rewrite eq_refl/=.
