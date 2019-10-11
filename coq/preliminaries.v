@@ -34,6 +34,17 @@ Notation "'Σ' x .. y , p" :=
 
 (** *** Generic Trivialities *)
 
+Lemma enum_sum (T1 T2 : finType) (p : pred (T1 + T2)) :
+  enum p = 
+  map inl (enum [pred i | p (inl i)]) ++ map inr (enum [pred i | p (inr i)]).
+Proof.
+by rewrite /enum_mem {1}unlock /= /sum_enum filter_cat !filter_map.
+Qed.
+
+Lemma enum_unit (p : pred unit) : enum p = filter p [:: tt].
+Proof. by rewrite /enum_mem unlock. Qed.
+
+
 Lemma contraTnot b (P : Prop) : (P -> ~~ b) -> (b -> ~ P).
 Proof. by case: b => //= H _ /H. Qed.
 
