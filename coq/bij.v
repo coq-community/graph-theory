@@ -38,6 +38,21 @@ Lemma card_bij (A B: finType) (f : bij A B) : #|A| = #|B|.
 Proof. exact: (bij_card_eq (f := f)). Qed.
 Arguments card_bij [A B] f.
 
+Lemma bij_mem_imset (aT rT : finType) (f : bij aT rT) (x : aT) (A : {set aT}): 
+  (f x \in [set f x | x in A]) = (x \in A).
+Proof. 
+  apply/imsetP/idP; last by exists x.
+  case => x0 xA. by move/(@bij_injective _ _ f) ->.
+Qed.
+
+Lemma bij_imsetC (aT rT : finType) (f : bij aT rT) (A : {set aT}) : 
+  ~: [set f x | x in A] = [set f x | x in ~: A].
+Proof. apply/setP => x. by rewrite -[x](bijK' f) !inE !bij_mem_imset inE. Qed.
+
+Lemma bij_eqLR (aT rT : finType) (f : bij aT rT) x y : 
+  (f x == y) = (x == f^-1 y).
+Proof. by rewrite -{1}[y](bijK' f) bij_eq. Qed.
+
 (** Specific Bijections *)
 
 Definition bij_id {A}: bij A A := @Bij A A id id (@erefl A) (@erefl A).

@@ -83,8 +83,16 @@ Section Subgraphs.
        vlabel x := vlabel (val x);
        elabel e := elabel (val e);
     |}.
-End Subgraphs.
 
+  (* edge deletion is treated as a special case, because this avoids the change in the vertex type *)
+  Definition del_edges := 
+    {| vertex := [finType of G];
+       edge := [finType of {e | e \in ~: E}];
+       endpoint b e := endpoint b (val e); 
+       vlabel x := vlabel x;
+       elabel e := elabel (val e); |}.
+    
+End Subgraphs.
 
 Section Defs.
 Variables (G : graph).
@@ -102,13 +110,11 @@ End Defs.
 Arguments edges_at [G] x, G x.
 
 Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
-Admitted.
+Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
 
 (* Commonly used subgraphs *)
 Definition del_vertex (G : graph) (z : G) : graph := 
   subgraph_for (@consistent_del1 G z).
-
-
 
 
 (* disjoint union of two graphs *)
@@ -141,7 +147,6 @@ Definition add_vertex G a := G ⊎ unit_graph a.
 Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
 
 
-(* xor operation on Booleans, such that [xor false b] is convertible to [b] *)
 Lemma addbxx x : x (+) x = false. 
 Proof. by rewrite -negb_eqb eqxx. Qed.
 
@@ -324,6 +329,20 @@ Defined.
 
 (* isomorphisms about subgraphs *)
 
+Lemma incident_iso (F G : graph) (h : F ≃ G) (x : F) (e : edge F) : 
+  incident x e = incident (h x) (h.e e).
+Proof. 
+  rewrite /incident. apply/existsP/existsP => [] [b] E; exists (h.d e (+) b).
+  - by rewrite endpoint_iso addbA addbxx addFb (eqP E).
+  - by rewrite endpoint_iso bij_eq in E. 
+Qed.
+
+Lemma edges_at_iso (F G : graph) (h : F ≃ G) (x : F) :
+  edges_at (h x) = [set h.e e | e in edges_at x].
+Proof. 
+  apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
+Qed.
+
 Lemma subgraph_for_iso' G H (h : G ≃ H) 
   (VG :{set G}) (VH : {set H}) (EG : {set edge G}) (EH : {set edge H})
   (con1 : consistent VG EG) (con2 : consistent VH EH) :
@@ -349,14 +368,26 @@ Lemma del_vertex_iso' F G (h : F ≃ G) (z : F) (z' : G) :
   h z = z' -> del_vertex z ≃ del_vertex z'.
 Proof.
   move => h_z. apply: (subgraph_for_iso' (h := h)). 
-  - rewrite -h_z. (* follows with bijectiviy *) admit.
-  - admit.
+  - abstract(by rewrite -h_z -bij_imsetC /= imset_set1).
+  - abstract(by rewrite -h_z -bij_imsetC /= edges_at_iso). 
 Defined.
 
-Lemma del_vertex_isoE' F G (h : F ≃ G) (z : F) (z' : G) E x p X : 
-  @del_vertex_iso' F G h z z' E (Sub x p) = Sub (h x) (X p).
+Lemma del_vertex_proof (F G : graph) (h : F ≃ G) (z : F) (z' : G) x : 
+  h z = z' -> x \in [set~ z] -> h x \in [set~ z'].
+Proof. move => E. by rewrite -E !inE bij_eq. Qed.
+  
+Lemma del_vertex_isoE' F G (h : F ≃ G) (z : F) (z' : G) E x p : 
+  @del_vertex_iso' F G h z z' E (Sub x p) = Sub (h x) (del_vertex_proof E p).
 Proof. exact: val_inj. Qed.
 
+Lemma del_edges_iso' F G (h : F ≃ G) (A : {set edge F}) (B : {set edge G}) : 
+  ~: B = (h.e @: ~: A) -> del_edges A ≃ del_edges B.
+Proof.
+  move => E. Iso h (subset_bij E) (fun e => h.d (val e)). split.
+  - case => e He b /=. exact: endpoint_iso.
+  - move => v /=. exact: vlabel_iso.
+  - case => e He /=. exact: elabel_iso.
+Defined.
 
 (* isomorphisms about [union] *)
 

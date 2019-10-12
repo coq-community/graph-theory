@@ -647,6 +647,8 @@ Admitted.
 
 (* lemmas needed in open.v *)
 
+Arguments iso_iso2' [F G] h _ _ _ _ _ _.
+
 Notation IO := [set input;output].
 
 Lemma del_vertex_proof1 (G : graph2) (z : G) (Hz : z \notin IO) : input \in [set~ z].
@@ -663,23 +665,25 @@ Lemma del_vertex2_iso' (F G : graph2) (i : F ≃2 G)
   i z = z' -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
 Proof.
   move => E. apply (@iso_iso2' _ _ (del_vertex_iso' E)). 
-  - rewrite del_vertex_isoE'. admit.
-    move => p. apply: val_inj => /=. exact: iso2_input.
-  - rewrite del_vertex_isoE'. admit.
-    move => p. apply: val_inj => /=. exact: iso2_output.
+  - abstract(rewrite del_vertex_isoE'; apply: val_inj; exact: iso2_input).
+  - abstract(rewrite del_vertex_isoE'; apply: val_inj; exact: iso2_output). 
 Defined.
 
-Parameter del_edges2 : 
-  forall (G : graph2) (E : {set edge G}), graph2.
+Definition del_edges2 (G : graph2) (E : {set edge G}) := 
+  point (del_edges E) input output.
 
 Lemma iso2_del_edges2 (F G : graph2) (i : F ≃2 G) 
   (EF : {set edge F}) (EG : {set edge G}) : 
   EG = [set i.e e | e in EF] -> del_edges2 EF ≃2 del_edges2 EG.
-Admitted.
+Proof.
+  move => E.
+  have EE : ~: EG = [set i.e e | e in ~: EF] by rewrite -bij_imsetC E. 
+  apply: (iso_iso2' (del_edges_iso' EE)). exact: iso2_input. exact: iso2_output. 
+Defined.
 
-(* requires definition to type check *)
-(* Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :  *)
-(*   @iso2_del_edges2 F G i EF EG h =1 i. *)
+Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :
+  @iso2_del_edges2 F G i EF EG h =1 i.
+Proof. done. Qed.
 
 End s. 
 

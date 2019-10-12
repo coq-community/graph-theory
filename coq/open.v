@@ -302,7 +302,7 @@ Lemma iso2_intro (G H : graph2) (hv : bij G H) (he : bij (edge G) (edge H)) (hd 
 Proof. move => hom_h. by exists (Iso hom_h). Defined.
 
 Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) := 
-  match goal with |- ?G ≃2 ?H => apply (@iso2_intro G H hv he hd) end.
+  match goal with |- ?G ≃2 ?H => refine (@iso2_intro G H hv he hd _ _ _) end.
 
 
 Lemma openK (G : graph2) : G ≃2 close (open G).
@@ -1965,8 +1965,18 @@ Lemma close_v_IO (F : pre_graph) (isF : is_graph F) z (Hz : z \notin pIO F) :
   @close_v F isF z \notin IO.
 Admitted.
 
+(* 
+Definition fsetD1_bij (T : finType) (E : {fset nat}) (f : bij T E) (z : T) : bij { x | x != z} (E `\ val (f z)).
+Admitted.
+
+Definition fsetD_bij (T : finType) (E : {fset nat}) (f : bij T E) (A : {set T}) : 
+  bij {x | x \in ~: A} (E `\` [fset val (f x) | x in A]).
+Admitted.
+*)
+
 Lemma close_del_vertex (F : pre_graph) (isF : is_graph F) z (isF' : is_graph (F \ z)) (Hz : z \notin pIO F) : 
   close (F \ z) ≃2 @del_vertex2 tm (close F) (close_v z) (close_v_IO isF Hz).
+Proof.
 Admitted.
 
 Lemma close_vE (G : pre_graph) (isG : is_graph G) z (Vz : z \in vset G) : 
@@ -2068,9 +2078,8 @@ Proof.
   econstructor. 
   apply: iso2_comp (iso2_sym _) _. by apply: close_add_test.
   apply: iso2_comp. 2: apply: close_add_test. 2: exact: (iso2_vset (OIso2 i)).
-  apply: iso2_comp. apply: add_vlabel2_iso'. exact: i. exact: ab.
-  apply (add_vlabel2_iso'' (h:=@iso2_id _ _))=>//.
-  by rewrite /= vfun_bodyE /= close_fsval close_vE. 
+  apply add_vlabel2_iso'' with i. 2:exact: ab.
+  abstract (by rewrite /= vfun_bodyE /= close_fsval close_vE).
 Defined.
 
 Lemma oiso2_add_testE (F G : pre_graph) (i : F ⩭2 G) x a b Vx ab z : 
@@ -2081,24 +2090,29 @@ Proof.
   case: i => isF isG i /=. by rewrite vfun_bodyE. 
 Qed.
 
+Arguments del_vertex2 [L] G z _.
+
+(* TOTHINK: this is the only place where close_del_vertex is used far. It might
+be easiert to treat del_vertex without going to the mgraph2 pendant *)
 Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
   z \notin pIO F -> F \ z ⩭2 G \ j z.
 Proof.
   move: j => [isF isG i] Vz IOz /=. 
-  have IOiz : vfun_body i z \notin pIO G by rewrite vfun_bodyE -oiso2_pIO_vfun.
+  have IOiz : vfun_body i z \notin pIO G by abstract (by rewrite vfun_bodyE -oiso2_pIO_vfun).
   have isG' : is_graph (G \ vfun_body i z) by apply: del_vertex_graph.
   econstructor.
-  apply: iso2_comp. apply: close_del_vertex => //. 
-  apply: iso2_comp (iso2_sym _). 2: apply: close_del_vertex => //=.
-  apply del_vertex2_iso' with i. 
-  rewrite /vfun_of vfun_bodyE /=. by rewrite close_fsval close_vE.
+  apply: iso2_comp. apply: close_del_vertex. assumption.
+  apply: iso2_comp (iso2_sym _). 2: apply: close_del_vertex. 2:assumption.
+  apply del_vertex2_iso' with i.
+  abstract (by rewrite /vfun_of vfun_bodyE /= close_fsval close_vE).
 Defined.
 
-Lemma oiso2_del_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B : 
-  @oiso2_del_vertex F G z j A B =1 j.
+Lemma oiso2_del_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B x : 
+  x \in vset (F \ z) -> @oiso2_del_vertex F G z j A B x = j x.
 Proof.
-  rewrite /=. case: j => isF isG j /=. (* FIXME, does not compute ... *)
+  case: j => isF isG j Vx. rewrite /=. rewrite !vfun_bodyE /=.
+  (* FIXME, does not compute because of close_del_vertex *)
 Admitted.
 
 (** Variant of the above with a linear pattern in the conclusion *)
@@ -2110,17 +2124,48 @@ Proof. move => ? ? ->. exact: oiso2_del_vertex. Qed.
 Lemma oiso2_add_edge (F G : pre_graph) (i : F ⩭2 G) e1 e2 x y u v : 
   e1 \notin eset F -> e2 \notin eset G -> x \in vset F -> y \in vset F -> u ≡ v ->
   F ∔ [e1,x,u,y] ⩭2 G ∔ [e2,i x,v,i y].
+Proof.
+  case: i => isF isG i fresh_e1 fresh_e2 Vx Vy uv /=.
+  have isF' : is_graph (F ∔ [e1, x, u, y]) by abstract exact: add_edge_graph'.
+  have isG' : is_graph (G ∔ [e2, vfun_body i x, v, vfun_body i y]).
+    by abstract (apply: add_edge_graph'; exact: (iso2_vset (OIso2 i))).
+  econstructor.
+  apply: iso2_comp. apply: close_add_edge'. assumption. 
+  apply: iso2_comp (iso2_sym _). 2: apply: close_add_edge';assumption. 
+  apply add_edge2_iso'' with i; try assumption.
+  all: abstract (by rewrite /vfun_of vfun_bodyE /= close_fsval close_vE).
+Defined.
+
+Arguments del_edges2 [L] G E.
+
+Definition fsetD_sig_bij (T : choiceType) (A B : {fset T}) : 
+  bij (A `\` B) { x : A | x \in ~: [set y | val y \in B]}.
 Admitted.
+
+Lemma close_del_edges (G : pre_graph) (isG : is_graph G) (E : {fset ET})  : 
+  close (G - E) ≃2 del_edges2 (close G) [set e | val e \in E].
+Proof.
+  iso2 bij_id (fsetD_sig_bij _ _) xpred0. 2-3: exact: val_inj.
+  split => //=.
+  - admit.
+  - admit.
+Qed.
 
 Lemma oiso2_del_edges (F G : pre_graph) (i : F ⩭2 G) E E':
   E' = [fset efun_of i e | e in E] -> (F - E) ⩭2 (G - E').
-Admitted.
+Proof.
+  case: i => isF isG i /= EE'.
+  econstructor.
+  apply: iso2_comp. apply: close_del_edges. 
+  apply: iso2_comp (iso2_sym _). 2: apply: close_del_edges.
+  apply iso2_del_edges2 with i.
+  admit.
+Defined.
 
 Lemma oiso2_del_edgesE (F G : pre_graph) (i : F ⩭2 G) E E' EE' :
   @oiso2_del_edges F G i E E' EE' =1 i.
+Proof. rewrite /=. 
 Admitted.
-
-
 
 Lemma osteps_iso (F G H : pre_graph) : 
   ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
@@ -2162,14 +2207,16 @@ Proof with eauto with vset.
       * exact: oiso2_oarc arc_e1.
       * exact: oiso2_oarc arc_e2.
     + have @j : (F \ z)  ⩭2 (H \ i z). exact: oiso2_del_vertex.
-      have jE : j =1 i by exact: oiso2_del_vertexE.
-      rewrite -![i x]jE -![i y]jE. apply (oiso2_add_edge j).
+      have jE : {in vset (F \ z), j =1 i}. exact: oiso2_del_vertexE.
+      rewrite -![i x]jE -?[i y]jE //=. apply (oiso2_add_edge j).
       * by rewrite /= Iz maxn_fsetD.
       * rewrite in_fsetD negb_and negbK oiso2_edges_at //. 
         by rewrite Iz imfset1U imfset1 maxn_fset2.
       * rewrite in_fsetD1 xDz /=...
       * rewrite in_fsetD1 yDz /=...
       * move: (oiso2_lv i Vz) => X. Fail rewrite X. admit. (* why? *)
+      * rewrite in_fsetD1 yDz /=...
+      * rewrite in_fsetD1 xDz /=...
   - move => x e u arc_e i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     exists ((H - [fset efun_of i e])[adt i x <- [1 ∥ le H (efun_of i e)]])%O. split.
