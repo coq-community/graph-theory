@@ -2308,48 +2308,44 @@ Lemma del_vertexK (G : pre_graph) (isG : is_graph G) z :
   add_vertex (G \ z) z (lv G z) ≡G del_edges G (edges_at G z).
 Admitted.
 
+Lemma eqvG_close G H (isG : is_graph G) (isH : is_graph H) : 
+  G ≡G H -> close G ≃2 close H.
+Admitted.
 
 Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : is_graph (G ∔ [e,x, u, y])) :
   e \notin eset G -> x' = close_v x :> close G -> y' = close_v y :> close G -> 
   close (G ∔ [e,x, u, y]) ≃2 close G ∔ [x', u,y'].
 Admitted.
 
+(** We need one expansion lemma for every rule *)
 
-      
-Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
-  ostep G H -> steps (close G) (close H).
-(*
-Proof with eauto with typeclass_instances.
-  move => S. case: S isG isH => {H}.
-  - move => x z e u He Hz arc_e xDz isG isH.
-    set a := lv G z in isH *.
-    have xV : x \in vset G by eauto with vset.
-    have x_del_z : x \in vset (G \ z) by eauto with vset.
-    have z_del_z : z \notin vset (G \ z) by rewrite !inE eqxx.
-    have h : close G ≃2 close (G \ z) ∔ a ∔ [Some (close_v x), u, None].
-    { symmetry.
-      apply: iso2_comp. apply: (iso2_add_edge _). apply liso_sym, close_add_vertex,z_del_z.
-      rewrite /=. 
-      set Sx := Sub _ _. set Sz := Sub z _. set G' := add_vertex _ _ _.
-      have -> : Sx = (@close_v G' _ x). { apply: val_inj. rewrite /= !close_vK /G' //. admit. }
-      have -> : Sz = (@close_v G' _ z). { admit. } 
-      apply: liso_comp (liso_sym _) _. eapply close_add_edge. 
-      apply: liso_of_oliso. apply weqG_oliso...
-      - apply: add_edge_graph. by rewrite !inE xDz (oarc_vsetL _ arc_e). by rewrite !inE eqxx.
-      - admit. }
-    apply: cons_step h _ _. constructor. 
-    apply liso_step. rewrite -> close_add_test => //. 
-    apply: liso_of_oliso. apply: weqG_oliso. by rewrite del_vertex_add_test.
-  - move => x y z e1 e2 u v Iz e1De2 Hz xDz yDz arc_e1 arc_e2 isG isH.
-    set a := lv G z in isH *.
-    have xV : x \in vset G by eauto with vset.
-    have yV : y \in vset G by eauto with vset.
-    have x_del_z : x \in vset (G \ z) by eauto with vset.
-    have y_del_z : y \in vset (G \ z) by eauto with vset.
-    have z_del_z : z \notin vset (G \ z) by rewrite !inE eqxx.
-    have h : close G ≃2 
-             close (G \ z) ∔ a ∔ [Some (close_v x),u,None] ∔ [None,v,Some (close_v y)].
-    { symmetry. 
+Lemma expand_isolated (G : pre_graph) (z : VT) (isG : is_graph G) (isH : is_graph (G \ z)) :
+    z \in vset G -> edges_at G z = fset0 -> close G ≃2 close (G \ z) ∔ lv G z.
+Proof.
+Admitted.
+
+Lemma expand_pendant (G : pre_graph) (x z : VT) (e : ET) (isG : is_graph G) (Hz : z \notin pIO G) u :
+    edges_at G z = [fset e] -> oarc G e x u z -> x != z -> 
+    close G ≃2 close (G \ z) ∔ lv G z ∔ [inl (close_v x), u, inr tt].
+Proof.
+  (* { symmetry. *)
+  (*     apply: iso2_comp. apply: (iso2_add_edge _). apply liso_sym, close_add_vertex,z_del_z. *)
+  (*     rewrite /=.  *)
+  (*     set Sx := Sub _ _. set Sz := Sub z _. set G' := add_vertex _ _ _. *)
+  (*     have -> : Sx = (@close_v G' _ x). { apply: val_inj. rewrite /= !close_vK /G' //. admit. } *)
+  (*     have -> : Sz = (@close_v G' _ z). { admit. }  *)
+  (*     apply: liso_comp (liso_sym _) _. eapply close_add_edge.  *)
+  (*     apply: liso_of_oliso. apply weqG_oliso... *)
+  (*     - apply: add_edge_graph. by rewrite !inE xDz (oarc_vsetL _ arc_e). by rewrite !inE eqxx. *)
+  (*     - admit. } *)
+Admitted.
+
+Lemma expand_chain (G : pre_graph) (isG : is_graph G) (x y z : VT) (e1 e2 : ET) (Hz : z \notin pIO G) u v :
+  edges_at G z = [fset e1; e2] -> e1 != e2 -> x != z -> y != z -> oarc G e1 x u z -> oarc G e2 z v y ->
+  x \in vset G -> y \in vset G -> 
+  close G ≃2 close (G \ z) ∔ lv G z ∔ [inl (close_v x), u, inr tt] ∔ [inr tt, v, inl (close_v y)].
+Proof.
+  (* { symmetry. 
       apply: liso_comp. 
         apply: liso_add_edge. 
         apply: liso_add_edge. 
@@ -2373,13 +2369,64 @@ Proof with eauto with typeclass_instances.
         admit.
       admit.
     }
-    apply: cons_step h _ _. constructor. 
-    apply liso_step. apply: liso_sym _.
-    apply: (@close_add_edge' (G \ z)). by rewrite /= Iz maxn_fsetD. 
-  - admit.
-  - admit.
-*)
+  *)
 Admitted.
+Lemma expand_loop (G : pre_graph) (isG : is_graph G) (x : VT) (e : ET) u :
+    oarc G e x u x -> close G ≃2 close (G - [fset e]) ∔ [close_v x, le G e, close_v x].
+Proof.
+Admitted.
+
+Lemma expand_parallel (G : pre_graph) (isG : is_graph G) (x y : VT) (e1 e2 : ET) u v :
+  e1 != e2 -> oarc G e1 x u y -> oarc G e2 x v y ->
+  close G ≃2 close (G - [fset e1; e2]) ∔ [close_v x, u, close_v y] ∔ [close_v x, v, close_v y].
+Proof.
+Admitted.  
+  
+Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
+  ostep G H -> steps (close G) (close H).
+Proof with eauto with typeclass_instances.
+  move => S. case: S isG isH => {H}.
+  - move => z Vz Iz IOz isG isH. 
+    have h : close G ≃2 close (G \ z) ∔ lv G z by exact: expand_isolated.
+    apply: cons_step h _ (steps_refl _). by constructor.
+  - move => x z e u He Hz arc_e xDz isG isH.
+    set a := lv G z in isH *.
+    have xV : x \in vset G by eauto with vset.
+    have x_del_z : x \in vset (G \ z) by eauto with vset.
+    have z_del_z : z \notin vset (G \ z) by rewrite !inE eqxx.
+    have h : close G ≃2 close (G \ z) ∔ a ∔ [inl (close_v x), u, inr tt]. 
+    { exact: expand_pendant He arc_e _. }
+    apply: cons_step h _ _. constructor. 
+    apply iso_step. apply: iso2_comp. apply: close_add_test => //.
+    apply: eqvG_close. by rewrite del_vertex_add_test.
+  - move => x y z e1 e2 u v Iz e1De2 Hz xDz yDz arc_e1 arc_e2 isG isH.
+    set a := lv G z in isH *.
+    have xV : x \in vset G by eauto with vset.
+    have yV : y \in vset G by eauto with vset.
+    have x_del_z : x \in vset (G \ z) by eauto with vset.
+    have y_del_z : y \in vset (G \ z) by eauto with vset.
+    have z_del_z : z \notin vset (G \ z) by rewrite !inE eqxx.
+    have h : close G ≃2 
+             close (G \ z) ∔ a ∔ [inl (close_v x),u,inr tt] ∔ [inr tt,v,inl (close_v y)].
+    { apply: expand_chain. exact: Iz. all: done. }
+    apply: cons_step h _ _. constructor. 
+    apply: iso_step. apply: iso2_comp (iso2_sym _) _. apply: (@close_add_edge' (G \ z)).
+    by rewrite /= Iz maxn_fsetD. reflexivity.
+  - move => x e u arc_e isG isH.
+    have h : close G ≃2 close (G - [fset e]) ∔ [close_v x,le G e,close_v x].
+    { exact: expand_loop arc_e. }
+    apply: cons_step h _ _. constructor. 
+    apply: iso_step. apply: iso2_comp. apply: close_add_test. 
+    + by eauto with vset.
+    + exact: close_irrelevance.
+  - move => x y e1 e2 u v e1De2 arc_e1 arc_e2 isF isH.
+    have h : close G ≃2 close (G - [fset e1; e2]) ∔ [close_v x,u,close_v y] ∔ [close_v x,v,close_v y].
+    { exact: expand_parallel. }
+    apply: cons_step h _ _. constructor. 
+    apply: iso_step. apply: iso2_comp (iso2_sym _) _. apply: (@close_add_edge' (G - [fset e1;e2])).
+    + by rewrite maxn_fsetD.
+    + reflexivity.
+Qed.
 
 Definition measure (G : pre_graph) := (#|` vset G| + #|` eset G|)%N.
 
