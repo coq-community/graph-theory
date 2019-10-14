@@ -284,12 +284,12 @@ Proof.
   Iso2 (merge_same' H);
     rewrite merge_same'E =>//;
     apply /eqquotP; by rewrite <- H. 
-Qed.
+Defined.
 
 Lemma merge_same' (F : graph) (h k: equiv_rel F) (i o: F):
   (h =2 k) ->
   point (merge F h) (\pi i) (\pi o) ≃2 point (merge F k) (\pi i) (\pi o).
-Proof. intros. by apply merge_same. Qed.
+Proof. intros. by apply merge_same. Defined.
 
 Lemma merge2_same (F : graph) (h k: equiv_rel F) (i i' o o': F):
   (h =2 k) -> h i i' -> h o o' -> merge2 (point F i o) h ≃2 merge2 (point F i' o') k.

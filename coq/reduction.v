@@ -202,7 +202,7 @@ Notation steps := (@steps X).
 Definition mentions (A: eqType) (l: pairs A) :=
   flatten [seq [::x.1;x.2] | x <- l].
 
-Definition admissible_l (G: graph2) (H: eqType) (e : pairs (G+H)) := 
+Definition admissible_l (G: graph2) (H: eqType) (e : pairs (G+H)) :=
   all (fun x => if x is inl z then z \in IO else true) (mentions e).
 
 Definition replace_ioL (G G': graph2) (H: eqType) (e : pairs (G+H)) : pairs (G'+H) := 
@@ -213,10 +213,9 @@ Definition replace_ioL (G G': graph2) (H: eqType) (e : pairs (G+H)) : pairs (G'+
                end) e.
 Arguments replace_ioL [G G' H].
 
-Lemma replace_ioE vT eT1 eT2 st1 st2 lv1 lv2 le1 le2 i1 i2 o1 o2 H e : admissible_l e -> 
-   i1 = i2 -> o1 = o2 ->                                                                      
-   @replace_ioL (point (@Graph _ vT eT1 st1 lv1 le1) i1 o1) 
-                (point (@Graph _ vT eT2 st2 lv2 le2) i2 o2) H e = e.
+Lemma replace_ioE vT eT1 eT2 st1 st2 lv1 lv2 le1 le2 i o H e : admissible_l e -> 
+   @replace_ioL (point (@Graph _ vT eT1 st1 lv1 le1) i o) 
+                (point (@Graph _ vT eT2 st2 lv2 le2) i o) H e = e.
 Admitted.
 
 Lemma cons_iso_steps G G' H : steps G' H -> G ≃2 G' -> steps G H.
@@ -240,14 +239,16 @@ Proof.
   by rewrite map_pairs_id.
   all: by rewrite merge_sameE. 
 Defined.
+
+(* TOFIX: even with Opaque merge_iso h_merge, the rewrite merge_add_edgeE succeeds by unfolding if we don't do the rewrite merge_isoE first. *)
 Lemma merge_add_edgeLE G H x y u l i o z:
-  @merge_add_edgeL G H x y u l i o z = z.
+  @merge_add_edgeL G H x y u l i o (\pi z) = (\pi z).
 Proof.
-  rewrite /merge_add_edgeL. simpl.
+  rewrite /merge_add_edgeL/=.
+  rewrite (@merge_isoE _ _ _ (union_add_edge_l H x u y) l).
   rewrite merge_add_edgeE.
-  (* things are unfolded here while they shouldn't... *)
-  rewrite merge_sameE.
-Admitted.
+  by rewrite merge_sameE.
+Qed.
 
 Section a.
 Variables (G H : graph2) (a: test) (l: pairs (add_vertex2 G a ⊎ H)%G).
@@ -284,6 +285,7 @@ Proof.
   eapply iso2_comp.
   refine (iso_iso2' (h:=union_merge_l _ _) _ _).
   1,2: rewrite union_merge_lEl//.
+  eapply iso2_sym.              (* just so that [merge_add_vertexLE] gets easier below... *)
   apply merge_same'.
   by rewrite admissible_map.
 Defined.
@@ -292,16 +294,33 @@ Lemma merge_add_vertexLE x:
   merge_add_vertexL (\pi (inl x)) =
   match x with inl x => inl (\pi inl x) | _ => inr tt end. 
 Proof.
-  (* case x=>[y|[]]=>/=. *)
-  (* rewrite (merge_isoE _ l).   *)
-Admitted.
+  simpl.
+  rewrite (@merge_isoE _ _ _ (iso_sym (union_A G (unit_graph a) H)) l).
+  rewrite (@merge_isoE _ _ _ (union_iso iso_id (union_C (unit_graph a) H)) _).
+  rewrite (@merge_isoE _ _ _ (union_A G H (unit_graph a)) _).
+  rewrite merge_same'E.
+  rewrite union_merge_l'E. 
+  by case x=>[y|[]].
+Qed.
 
 End a.
 
 Definition merge_add_vlabelL (G H: graph2) x a l i o : 
-   point (merge_seq (G[tst x <- a] ⊎ H) l) i o
-≃2 point (merge_seq (G ⊎ H) l) i o [tst \pi inl x <- a].
-Admitted.
+   point (merge_seq (G[tst x <- a] ⊎ H) l) (\pi i) (\pi o)
+≃2 point (merge_seq (G ⊎ H) l) (\pi i) (\pi o) [tst \pi inl x <- a].
+Proof.
+  eapply iso2_comp.
+  apply (iso_iso2' (h:=merge_iso (union_add_vlabel_l _ _ _) _)).
+  1,2: rewrite merge_isoE//.
+  eapply iso2_comp.  
+  refine (iso_iso2' (h:=merge_add_vlabel _ _ _) _ _).
+  1,2: by rewrite merge_add_vlabelE.
+  unshelve refine (iso_iso2' (h:=add_vlabel_iso'' (h:=mgraph.merge_same _) _ _) _ _)=>/=.
+  3: reflexivity. 
+  by rewrite map_pairs_id.
+  all: by rewrite merge_sameE.
+  (* this proof could be made simpler since we don't need to Defined it *)
+Qed.
 
 
 Lemma merge_step (G' G H: graph2) (l : pairs (G+H)) : 
