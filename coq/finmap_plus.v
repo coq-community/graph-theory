@@ -92,6 +92,15 @@ Arguments fset1U1 [K x B].
 Require Import Coq.Relations.Relation_Definitions.
 Require Import edone preliminaries.
 
+Lemma fset2_inv (T : choiceType) (x y x' y' : T) : x != y ->
+  [fset x;y] = [fset x';y'] -> (x = x' /\ y = y') + (x = y' /\ y = x').
+Proof.
+  move => /negbTE D /fsetP H. move: (H x). rewrite !inE eqxx /= => /esym. 
+  case/orb_sum => /eqP ?;[left|right]; subst; move: (H y).
+  - rewrite !inE eqxx orbT eq_sym D. by move/esym/eqP.
+  - rewrite !inE eqxx orbT [y == y']eq_sym D orbF. by move/esym/eqP.
+Qed.
+
 (** uses Sigma *)
 Lemma fset2_cases (T : choiceType) (x y x' y' : T) : x != y -> x' != y' ->
   let A := [fset x;y] in 

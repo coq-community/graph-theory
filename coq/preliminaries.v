@@ -571,6 +571,11 @@ Lemma update_same (aT : eqType) (rT : Type) (f : aT -> rT) x a b :
   f[upd x := a][upd x := b] =1 f[upd x := b].
 Proof. rewrite /update => z. by case: (z == x). Qed.
 
+Lemma update_fx (aT : eqType) (rT : Type) (f : aT -> rT) (x : aT):
+  f[upd x := f x] =1 f.
+Proof. move => y. rewrite /update. by case: (altP (y =P x)) => [->|]. Qed.
+
+
 (** *** Sequences and Paths *)
 
 Lemma tnth_uniq (T : eqType) n (t : n.-tuple T) (i j : 'I_n) : 
