@@ -504,10 +504,11 @@ Proof. apply: contraNneq => <-. by rewrite in_fset2 eqxx. Qed.
 Lemma pIO_No x : x \notin pIO -> p_out G != x.
 Proof. apply: contraNneq => <-. by rewrite in_fset2 eqxx. Qed.
 
-Lemma is_edge_vsetL (isG : is_graph G) e x y u : 
-  is_edge G e x u y -> x \in vset G. Admitted.
-Lemma is_edge_vsetR (isG : is_graph G) e x y u : 
-  is_edge G e x u y -> y \in vset G. Admitted.
+Lemma is_edge_vsetL (isG : is_graph G) e x y u : is_edge G e x u y -> x \in vset G.
+Proof. case => E [<- _ _]. exact: endptP. Qed.
+
+Lemma is_edge_vsetR (isG : is_graph G) e x y u : is_edge G e x u y -> y \in vset G.
+Proof. case => E [_ <- _]. exact: endptP. Qed.
 
 Lemma oarc_cnv e x y u : oarc G e x u y <-> oarc G e y u° x. 
 Proof. 
@@ -527,7 +528,7 @@ Proof. rewrite oarc_cnv. exact: oarc_edge_atL. Qed.
 
 Lemma oarc_cases e x u y : 
   oarc G e x u y -> is_edge G e x u y \/ is_edge G e y u° x.
-Admitted.
+Proof. by case => E [[|]] [A B C]; [right|left]. Qed.
 
 Lemma oarc_vsetL (isG : is_graph G) e x y u : 
   oarc G e x u y -> x \in vset G.
@@ -661,12 +662,18 @@ Lemma incident_delv G z : incident (G \ z) =2 incident G. done. Qed.
 
 Lemma incident_dele (G : pre_graph) E : incident (G - E) =2 incident G. done. Qed.
 
+Lemma incident_addv (G : pre_graph) x a : incident (G ∔ [x,a]) =2 incident G.
+Proof. done. Qed.
+
+Lemma incident_vset (G : pre_graph) (isG : is_graph G) x e : 
+  e \in eset G -> incident G x e -> x \in vset G.
+Proof. move => He /existsP[b][/eqP<-]. exact: endptP. Qed.
+
 Lemma edges_at_del (G : pre_graph) (z x : VT) : 
   edges_at (G \ z) x = edges_at G x `\` edges_at G z.
 Proof.
   apply/fsetP => k. by rewrite !(edges_atE,inE) !incident_delv !andbA.
 Qed.
-
 
 Lemma edges_at_add_edge (G : pre_graph) x y e u : 
   edges_at (G ∔ [e, x, u, y]) y = e |` edges_at G y.
@@ -687,11 +694,14 @@ Proof.
   - by rewrite /incident/= !existsb_case !update_neq.
 Qed.
 
-Lemma edges_at_add_vertex (G : pre_graph) x a : x \notin vset G -> 
+(** this acually relies on [eset G] containing edges incident to [x] *) 
+Lemma edges_at_added_vertex (G : pre_graph) (isG : is_graph G) x a : x \notin vset G -> 
   edges_at (G ∔ [x, a]) x = fset0.
 Proof. 
-  move => Hx. apply/fsetP => e. rewrite inE edges_atE.
-Admitted.
+  move => Hx. apply/fsetP => e. rewrite inE edges_atE. 
+  case Ee : (_ \in _) => //=. rewrite incident_addv. 
+  apply: contraNF Hx. exact: incident_vset.
+Qed.
 
 
 (* TODO: how to get parentheses around complex G to display? *)
@@ -832,21 +842,17 @@ Admitted. (* similar to above, symmetry argument *)
 Lemma add_testK (G : pre_graph) x a : G[adt x <- a] \ x ≡G G \ x.
 Proof. split => //= y /fsetD1P [? _]. by rewrite updateE. Qed.
 
-Lemma add_vertexK (G : pre_graph) x a : 
+(* TOTHINK: is the [is_graph] assumption really required, or only for [edges_at_added_vertex] *)
+Lemma add_vertexK (G : pre_graph) (isG : is_graph G) x a : 
   x \notin vset G -> G ∔ [x, a] \ x ≡G G.
 Proof. 
   move => Hx. split => //=.
   - by rewrite fsetU1K.
-  - by rewrite edges_at_add_vertex // fsetD0.
+  - by rewrite edges_at_added_vertex // fsetD0.
   - rewrite fsetU1K // => y Hy. rewrite update_neq //. 
     by apply: contraNneq Hx => <-.
 Qed.
-(*
-Lemma name_add_edge (G : pre_graph) x y u (e : ET) :
-  e \notin eset G -> G ∔ [x,u,y] ⩭ add_edge' G e x u y.
-Admitted.
-Arguments name_add_edge [G x y u] e _.
-*)
+
 
 (** ** Commutation with open/close *)
 
