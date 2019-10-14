@@ -243,6 +243,14 @@ Section union_quot_l.
   Proof. simpl. apply /eqquotP. apply piK. Qed.
   Lemma union_quot_lEr (x: T): union_quot_l (inr x) = \pi (inr x).
   Proof. simpl. apply /eqquotP=>//=. Qed.
+  Lemma union_quot_l'E (x: S+T):
+    union_quot_l^-1 (\pi x) =
+    match x with inl y => inl (\pi y) | inr y => inr y end.
+  Proof.
+    case x=>y.
+    by rewrite -(union_quot_lEl y) bijK. 
+    by rewrite -(union_quot_lEr y) bijK. 
+  Qed.
 End union_quot_l.
 Global Opaque union_quot_l.
 

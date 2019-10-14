@@ -624,6 +624,10 @@ Section union_merge_l.
   Proof. by rewrite /=union_quot_lEl quot_sameE. Qed.
   Lemma union_merge_lEr (x: G): union_merge_l (unr x) = \pi unr x.
   Proof. by rewrite /=union_quot_lEr quot_sameE. Qed.
+  Lemma union_merge_l'E (x: F+G):
+    union_merge_l^-1 (\pi x) =
+    match x with inl y => inl (\pi y) | inr y => inr y end.
+  Proof. by rewrite /=quot_sameE union_quot_l'E. Qed.
 End union_merge_l.  
 Global Opaque union_merge_l.
 
