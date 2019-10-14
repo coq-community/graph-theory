@@ -2167,7 +2167,7 @@ Lemma oiso2_del_edgesE (F G : pre_graph) (i : F ⩭2 G) E E' EE' :
 Proof. rewrite /=. 
 Admitted.
 
-Lemma osteps_iso (F G H : pre_graph) : 
+Lemma ostep_iso (F G H : pre_graph) : 
   ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
 Proof with eauto with vset.
   case => {G}.
@@ -2257,6 +2257,58 @@ Proof. by rewrite /= !inE. Qed.
 
 (** connecting the open step relation with the additive one on typed graphs *)
 
+(** Transfer of a single closed step to the open step relation. We
+first prove a slightly weaker statement with isomorphisms on both
+sides of the open step. We then use preservation open steps under
+isomorphisms to obtain the desired form of the lemma *)
+
+Lemma eqvG_close G H (isG : is_graph G) (isH : is_graph H) : 
+  G ≡G H -> close G ≃2 close H.
+Admitted.
+
+Lemma ostep_of' (F G : graph2) : 
+  step F G -> inhabited (Σ F' G', (open F ⩭2 F') * ostep F' G' * (G' ⩭2 open G)).
+Proof with eauto with typeclass_instances.
+  case => {F G}.
+  - (* V0 *)
+    move => G a. constructor. e2split.
+    + apply: open_add_vertex.
+    + apply: (ostep_v0 (z := fresh (vset (open G)))). 
+      * admit.
+      * admit.
+      * admit.
+    + admit.
+  - (* V1 *) 
+    move => G x u a. constructor. e2split.
+    + apply: oiso2_trans. apply: open_add_edge. 
+      apply: oiso2_add_edge. apply open_add_vertex. 
+      2: instantiate (1 := fresh (eset (open G))). all: admit.
+    + instantiate (2 := u). rewrite !open_add_vertexE. 
+      set z := fresh _. set e := fresh _.
+      apply: (@ostep_v1 _ (inj_v x) z e u). all: admit.
+    + set z := fresh _. set e := fresh _.
+      etransitivity. 2: symmetry. 2: apply: open_add_test.
+      eapply weqG_oliso. admit. admit.
+      rewrite -del_vertex_add_test. 
+      admit.
+  - (* V2 *) 
+    move => G x y u a v. constructor. e2split.
+    + admit.
+    + admit.
+    + admit.
+  - (* E0 *) admit.
+  - (* E1 *) admit.
+Admitted.
+
+Lemma ostep_of (F G : graph2) : 
+  step F G -> exists G', [/\ inhabited (ostep (open F) G') & inhabited (G' ⩭2 open G)].
+Proof.
+  move/ostep_of' => [[F'] [G']  [[A B] C]].
+  case: (ostep_iso B (oiso2_sym A)) => H [H1 H2]. 
+  exists H. split => //. constructor. etransitivity. 2: apply: C. by symmetry.
+Qed.
+
+(* This is not enough *)
 Lemma osteps_of (G H : graph2) : step G H -> osteps (open G) (open H).
 Proof with eauto with typeclass_instances.
   case => {G H}.
@@ -2330,9 +2382,6 @@ Proof.
   - move => e'. rewrite fsetD1K // => He'. by case: (altP (e' =P e)) => [->|?]; rewrite updateE // C.
 Qed. 
 
-Lemma eqvG_close G H (isG : is_graph G) (isH : is_graph H) : 
-  G ≡G H -> close G ≃2 close H.
-Admitted.
 
 Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : is_graph (G ∔ [e,x, u, y])) :
   e \notin eset G -> x' = close_v x :> close G -> y' = close_v y :> close G -> 
@@ -2474,7 +2523,7 @@ Lemma flip_edge_kill' (G : pre_graph) (e : ET) (E : {fset ET})  :
   e \in E -> (flip_edge G e) - E ≡G G - E.
 Admitted.
   
-Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
+Lemma steps_of_ostep (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
   ostep G H -> steps (close G) (close H).
 Proof with eauto with typeclass_instances.
   move => S. case: S isG isH => {H}.
@@ -2569,6 +2618,11 @@ Proof with eauto with typeclass_instances.
     + reflexivity.
 Qed.
 
+Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
+  osteps G H -> steps (close G) (close H).
+Admitted.
+
+(*
 Definition measure (G : pre_graph) := (#|` vset G| + #|` eset G|)%N.
 
 Lemma step_decreases (F G : pre_graph) : ostep F G -> measure G < measure F.
@@ -2621,5 +2675,8 @@ Proof.
   + transitivity (close (open H)) => //. apply: iso_step. exact: openK.
 Qed.
 
+*)
+
 End ostep.
 End OpenCloseFacts.
+
