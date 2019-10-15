@@ -460,8 +460,6 @@ Defined.
 
 (* isomorphisms about [merge] *)
 
-(* TOMOVE *)
-
 (* remove if no longer used below *)
 Lemma eq_eqv {X: setoid} (x y: X): x = y -> x ≡ y.
 Proof. by move=>->. Qed.
@@ -481,8 +479,8 @@ Section merge_surj.
    - rewrite -Hendpoints=>/=. by rewrite surj_repr_pi. 
    - rewrite Hvlabel. apply eq_eqv, eq_bigl=>x.
      apply /idP/idP =>/eqP E.
-     apply /eqP. admit.
-     rewrite -E surj_repr_pi=>//.
+     * apply /eqP. move:E=>/Hr/eqquotP E. rewrite E. apply reprK. 
+     * rewrite -E surj_repr_pi=>//.
    - apply Helabel.
  Defined.
  Lemma merge_surjE (x: G): merge_surj (\pi x) = fv x.
@@ -496,12 +494,17 @@ Section h_merge_nothing'.
  Hypothesis H: forall x y: F, r x y -> x=y.
  Lemma merge_nothing': merge F r ≃ F.
  Proof.
-   exists (quot_id H: bij (merge F r) F) bij_id xpred0.
-   split; intros; rewrite /=?quot_idE?H//.
-   admit.
+   apply merge_surj with id id bij_id=>//.
+   - intros. apply Bool.iff_reflect.
+     split. intros ->. by rewrite equiv_refl.
+     intro E. apply H. by rewrite E.
+   - intro.
+     (* does not work since mon2/mon0 is only a monoid up to eqv... *)
+     (* by rewrite big_pred1_eq. *)
+     admit.
  Defined.
  Lemma merge_nothing'E x: merge_nothing' (\pi x) = x.
- Proof. by rewrite /=quot_idE. Qed.
+ Proof. by rewrite /=merge_surjE. Qed.
 End h_merge_nothing'.
 Global Opaque merge_nothing'.
 
@@ -510,10 +513,15 @@ Section merge_merge.
   Lemma hom_merge_merge: is_hom (quot_quot e': merge _ e' -> merge F _) bij_id xpred0.
   Proof.
     split; intros=>//. by rewrite /=-equiv_comp_pi.
-  Admitted.
+    (* again, bigop lemma would be needed on monoids up to eqv *)
+    admit.
+  Qed.
   Lemma merge_merge: merge (merge F e) e' ≃ merge F (equiv_comp e').
   Proof. eexists. eapply hom_merge_merge. Defined.
+  Lemma merge_mergeE x: merge_merge (\pi (\pi x)) = \pi x.
+  Proof. apply quot_quotE. Qed.
 End merge_merge.
+Global Opaque merge_merge.
 
 Section merge.
   Variables (F G: graph) (h: iso F G) (l: pairs F).
@@ -571,20 +579,12 @@ Global Opaque merge_nothing.
 Section merge_merge_seq.
   Variables (F: graph) (h k: pairs F) (k': pairs (merge_seq F h)).
   Hypothesis kk': k' = map_pairs (pi (eqv_clot h)) k.
-  Definition h_merge_merge_seq: bij (merge_seq (merge_seq F h) k') (merge_seq F (h++k)).
-  Proof.
-    eapply bij_comp. apply quot_quot. apply quot_same.
-    rewrite kk'. apply eqv_clot_cat.
+  Definition merge_merge_seq: merge_seq (merge_seq F h) k' ≃ merge_seq F (h++k).
+    eapply iso_comp. apply merge_merge. apply merge_same'.
+    abstract by rewrite kk'; apply eqv_clot_cat.
   Defined.
-  Lemma hom_merge_merge_seq: is_hom h_merge_merge_seq bij_id xpred0.
-  Proof.
-    split; intros=>//; try by rewrite /=quot_quotE quot_sameE.
-    admit.
-  Qed.
-  Definition merge_merge_seq: merge_seq (merge_seq F h) k' ≃ merge_seq F (h++k) :=
-    Iso hom_merge_merge_seq.
   Lemma merge_merge_seqE (x: F): merge_merge_seq (\pi (\pi x)) = \pi x.
-  Proof. by rewrite /=quot_quotE quot_sameE. Qed.
+  Proof. by rewrite /=merge_mergeE merge_same'E. Qed.
 End merge_merge_seq.
 Global Opaque merge_merge_seq.
 
@@ -603,15 +603,19 @@ Proof.
 Qed.
 
 Lemma merge_add_edge (G: graph) (r: equiv_rel G) x u y: merge (G ∔ [x, u, y]) r ≃ merge G r ∔ [\pi x, u, \pi y].
-Admitted.
+Proof. Iso bij_id bij_id xpred0. split=>//. case=>//. by case. Defined.
 Lemma merge_add_edgeE (G: graph) (r: equiv_rel G) x u y (z: G): @merge_add_edge G r x u y (\pi z) = \pi z.
-Admitted.
+Proof. by []. Qed.
+Global Opaque merge_add_edge.
 
 Lemma merge_add_vlabel (G: graph) (r: equiv_rel G) x a: merge (G [tst x <- a]) r ≃ merge G r [tst \pi x <- a].
-Admitted.
+Proof.
+  Iso bij_id bij_id xpred0. split=>//.
+  move=> v/=. admit. 
+Defined.
 Lemma merge_add_vlabelE (G: graph) (r: equiv_rel G) x a (z: G): @merge_add_vlabel G r x a (\pi z) = \pi z.
-Admitted.
-
+Proof. by []. Qed.
+Global Opaque merge_add_vlabel.
 
 
 (* isomorphisms about [union] and [merge] *)
@@ -725,6 +729,7 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
+(* used only in unused proofs in reduction.v *)
 Lemma merge_two a b: merge_seq (unit_graph a ⊎ unit_graph b) [:: (inl tt,inr tt)] ≃ unit_graph (mon2 a b).
 Admitted.
 Lemma merge_twoE a b x: merge_two a b x = tt.

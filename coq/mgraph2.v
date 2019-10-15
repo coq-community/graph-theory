@@ -405,7 +405,7 @@ Proof.
   etransitivity. refine (iso_iso2 (merge_add_vlabel _ _ _) _ _). simpl.
   etransitivity. refine (iso_iso2 (add_vlabel_iso (merge_union_K_l (K:=g2_one) (inl input) (inl output) (k:=fun _ => output) _ _ _) _ _) _ _)=>//. 
   case; apply /eqquotP; eqv.
-  rewrite /=!merge_union_KE !merge_add_vlabelE !merge_union_KE/=. 
+  rewrite /=!merge_union_KE/=. 
   etransitivity. refine (add_vlabel2_iso (merge2_nothing _) _ _).
   repeat (constructor =>//=).
   destruct G=>/=. by rewrite merge_nothingE. 
