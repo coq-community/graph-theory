@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries bij reduction.
+Require Import edone preliminaries bij reduction open.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -18,20 +18,52 @@ Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
 
-(* /begin 
- left here for the record, but should disappear since confluence is proved directly via open graphs *)
+(* TOMOVE to open.v *)
+Lemma oiso_of (G H: graph2): G ≃2 H -> oiso2 (open G) (open H).
+Proof.
+  intro.
+  apply (@OIso2 _ _ _ (open_is_graph G) (open_is_graph H)).
+  etransitivity. symmetry. apply openK.
+  etransitivity. eassumption. apply openK.
+Qed.
+
+Lemma osteps_iso (tm: pttdom) (F G H: pre_graph (pttdom.test tm) tm): osteps F H -> oiso2 F G -> osteps G H.
+Proof.
+  revert G. induction 1 as [F H FH|F H FH|F F' H FF' F'H IH]=>FG.
+  (* TODO in open.v *)
+Admitted.
+
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> G ≃2p H -> 
     exists F, steps G' F /\ steps H' F.
-Admitted.                       (* through open confluence *)
+Proof.
+  (* by transferring local confluence of open steps *)
+  move => GG HH [GH].
+  apply ostep_of in GG as [U [[sGU] [UG']]]. 
+  apply ostep_of in HH as [V [[sHV] [VH']]].
+  apply oiso_of in GH.
+  destruct (ostep_iso sGU GH) as [W [sHW UW]].
+  destruct (fun HF => local_confluence HF sHV sHW) as [T [sVT sWT]]. by apply GH.
+  have gT: is_graph T. by eapply osteps_graph, sWT; apply UW.
+  exists (close T); split.
+  - eapply cons_iso_steps. 2:apply openK. apply steps_of.
+    eapply osteps_iso. apply sWT.
+    eapply oiso2_trans. apply oiso2_sym. apply UW. apply UG'.
+  - eapply cons_iso_steps. 2:apply openK. apply steps_of.
+    eapply osteps_iso. apply sVT. apply VH'.
+Qed.
+
 Definition measure (G: graph2) := #|vertex G| + #|edge G|.
+
 Lemma step_decreases G H: step G H -> measure H < measure G.
 Proof.
   rewrite /measure.
   case; intros=>/=; by rewrite ?card_option ?card_sum ?card_unit ?card_void ?addSnnS ?addnS ?addn0.
 Qed.
+
 Lemma iso_stagnates G H: G ≃2p H -> measure H = measure G.
 Proof. case. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
+
 Proposition confluence F: forall G H, steps F G -> steps F H -> exists F', steps G F' /\ steps H F'.
 Proof.
   induction F as [F_ IH] using (well_founded_induction_type (Wf_nat.well_founded_ltof _ measure)).
@@ -48,7 +80,6 @@ Proof.
      rewrite /Wf_nat.ltof -(iso_stagnates (inhabits FF1)). apply /ltP. by apply step_decreases.
      exists R. split=>//. by transitivity L.
 Qed.
-(* /end  *)
 
 (* graphs of normal forms are in normal form (i.e., can't reduce) *)
 Lemma nf_steps s: forall H, steps (graph_of_nf_term s) H -> graph_of_nf_term s ≃2p H.
