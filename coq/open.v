@@ -264,6 +264,14 @@ split.
 - move => e /=. by rewrite inj_eK.
 Defined.
 
+Lemma oiso_of (G H: graph2): G ≃2 H -> open G ⩭2 open H.
+Proof.
+  intro.
+  apply (@OIso2 _ _ (open_is_graph G) (open_is_graph H)).
+  etransitivity. symmetry. apply openK.
+  etransitivity. eassumption. apply openK.
+Qed.
+
 Lemma openKE (G : graph2) (x : G) :
   openK G x = close_v (inj_v x) :> close (open G).
 Proof. 
@@ -2207,7 +2215,12 @@ Proof with eauto with vset.
       * done.
 Qed.
 
-
+Lemma osteps_iso (F G H: pre_graph): osteps F H -> F ⩭2 G -> osteps G H.
+Proof.
+  intros FH FG. eapply osteps_trans. 
+  apply oliso_step. symmetry. apply FG.
+  assumption. 
+Qed.
 
 Lemma vset_add_vertex (G : pre_graph) x a z : 
   z \in vset (G ∔ [x,a]) = (z == x) || (z \in vset G).

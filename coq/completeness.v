@@ -17,22 +17,6 @@ Notation graph2 := (graph2 (pttdom_labels (tm_pttdom A))).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
-
-(* TOMOVE to open.v *)
-Lemma oiso_of (G H: graph2): G ≃2 H -> oiso2 (open G) (open H).
-Proof.
-  intro.
-  apply (@OIso2 _ _ _ (open_is_graph G) (open_is_graph H)).
-  etransitivity. symmetry. apply openK.
-  etransitivity. eassumption. apply openK.
-Qed.
-
-Lemma osteps_iso (tm: pttdom) (F G H: pre_graph (pttdom.test tm) tm): osteps F H -> oiso2 F G -> osteps G H.
-Proof.
-  revert G. induction 1 as [F H FH|F H FH|F F' H FF' F'H IH]=>FG.
-  (* TODO in open.v *)
-Admitted.
-
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> G ≃2p H -> 
     exists F, steps G' F /\ steps H' F.
