@@ -516,6 +516,7 @@ Section merge_merge.
     split; intros=>//. by rewrite /=-equiv_comp_pi.
     simpl. 
     (* again, bigop lemma would be needed on monoids up to eqv *)
+    (* denesting *)
     admit.
   Qed.
   Lemma merge_merge: merge (merge F e) e' ≃ merge F (equiv_comp e').
@@ -536,7 +537,9 @@ Section merge.
   Proof.
     split; intros=>/=. 
     - rewrite endpoint_iso. symmetry. apply h_mergeE. 
-    - rewrite quot_sameE. admit. 
+    - rewrite quot_sameE.
+      (* basically a Proper lemma *)
+      admit. 
     - apply elabel_iso.
   Qed.
   Definition merge_iso: merge_seq F l ≃ merge_seq G (map_pairs h l) := Iso merge_hom.
@@ -553,6 +556,7 @@ Section merge_same'.
    split; intros=>//; try (rewrite /=; apply/eqquotP; rewrite -H; apply: piK').
    simpl. rewrite -(reprK v) quot_sameE.
    apply eq_eqv. apply eq_bigl=>x.
+      (* no longer about bigops, steps above could be replace by appropriate Proper lemma *)
    admit.
  Qed.
  Definition merge_same': merge F h ≃ merge F k := Iso merge_same'_hom.
@@ -615,7 +619,9 @@ Global Opaque merge_add_edge.
 Lemma merge_add_vlabel (G: graph) (r: equiv_rel G) x a: merge (G [tst x <- a]) r ≃ merge G r [tst \pi x <- a].
 Proof.
   Iso bij_id bij_id xpred0. split=>//.
-  move=> v/=. admit. 
+  move=> v/=.
+  (* isolating a term in the bigop + ssreflect case distinctions I don't do well... *)
+  admit. 
 Defined.
 Lemma merge_add_vlabelE (G: graph) (r: equiv_rel G) x a (z: G): @merge_add_vlabel G r x a (\pi z) = \pi z.
 Proof. by []. Qed.
@@ -630,7 +636,9 @@ Section union_merge_l.
   Proof. eapply bij_comp. apply union_quot_l. apply quot_same. apply union_equiv_l_eqv_clot. Defined.
   Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id xpred0.
   Proof.
-    try (split; case; intros=>//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE //).
+    split; try by case; intros=>//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE //.
+    case=>/=.
+    (* should be a Proper lemma I guess *)
     admit.
     admit. 
   Qed.
@@ -724,6 +732,8 @@ Section merge_union_K.
   Lemma hom_merge_union_K: is_hom h_merge_union_K h_merge_union_Ke xpred0.
   Proof.
     split; try (case; intros =>//=; by rewrite ?quot_union_KEl ?quot_union_KEr quot_sameE).
+    simpl.
+    (* removing a few neutral elements *)
   Admitted.
 
   Definition merge_union_K: merge_seq (F ⊎ K) h ≃ merge_seq F union_K_pairs :=
