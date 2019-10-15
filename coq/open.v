@@ -453,6 +453,14 @@ Proof.
     + move => [e p]. by rewrite bij_castE /= Ele.
   - rewrite bij_castE. exact: val_inj.
   - rewrite bij_castE. exact: val_inj.
+Defined.
+
+Lemma weqG_iso2E (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) (E : G ≡G H) x :
+  x \in vset G ->
+  @weqG_oliso G H isG isH E x = x.
+Proof. 
+  move => Vx. rewrite /= vfun_bodyE /=. destruct E.
+  rewrite /=. by rewrite bij_castE.
 Qed.
 
 (** Experimental: A class of boxed properties to allow inference of "non-class" assumptions *)
@@ -2237,39 +2245,178 @@ Lemma eqvG_close G H (isG : is_graph G) (isH : is_graph H) :
   G ≡G H -> close G ≃2 close H.
 Admitted.
 
+Lemma oiso2_add_edge' (F G : pre_graph) (i : F ⩭2 G) 
+ (e1 e2 : ET) (x y x' y' : VT) (u v : tm) :
+ e1 \notin eset F -> e2 \notin eset G ->
+ x \in vset F -> y \in vset F -> x' \in vset G -> y' \in vset G -> 
+ i x = x' -> i y = y' -> u ≡ v -> 
+ F ∔ [e1, x, u, y] ⩭2 G ∔ [e2, x', v, y'].
+Proof with eauto with typeclass_instances.
+  case: i => isF isG i.
+  move => E1 E2 Vx Vy Vx' Vy' Ix Iy uv. 
+  have isF' : is_graph ( F ∔ [e1, x, u, y] ). apply add_edge_graph'...
+  have isG' : is_graph (  G ∔ [e2, x', v, y']). apply add_edge_graph'...
+  econstructor. 
+  apply: iso2_comp. apply: close_add_edge'. assumption.
+  apply: iso2_comp (iso2_sym _). 2: apply: close_add_edge'; try assumption.
+  apply: (add_edge2_iso'' (h := i)). 
+  abstract (by rewrite -Ix //= vfun_bodyE close_fsval close_vE).
+  abstract (by rewrite -Iy //= vfun_bodyE close_fsval close_vE).
+  exact: uv.
+Defined.
+  
+
+Lemma oiso2_add_edgeE' F G i e1 e2 x y x' y' u v E1 E2 Vx Vy Vx' Vy' Ix Iy uv k : 
+  k \in vset F ->
+  @oiso2_add_edge' F G i e1 e2 x y x' y' u v E1 E2 Vx Vy Vx' Vy' Ix Iy uv k = i k.
+Proof.
+  move => Vk. destruct i => /=. by rewrite !vfun_bodyE /=.
+Qed.
+
+Lemma oiso2_transE F G H i j k : @oiso2_trans F G H i j k = j (i k).
+Admitted.
+
+Hint Resolve inj_v_open : vset.
+Hint Resolve freshP : vset.
+
+Lemma inj_vNfresh (G : graph2) (x : G) : inj_v x != fresh (vset (open G)).
+Admitted.
+
+Lemma oiso2_id G (isG : is_graph G) : G ⩭2 G. 
+Proof. econstructor. exact: iso2_id. Defined.
+
+Lemma oiso2_idE G (isG : is_graph G) x : 
+  x \in vset G -> oiso2_id isG x = x.
+Proof. move => Vx. by rewrite /= vfun_bodyE. Qed.
+
+Lemma open_add_edgeE (G : graph2) (x y z : G) u :
+  @open_add_edge G x y u (inj_v z) = (inj_v z). 
+Proof.
+  rewrite /= vfun_bodyE ?inj_v_open //= => p. 
+  by rewrite imfset_bij_bwdE.
+Qed.
+
+Definition oiso2E := (oiso2_transE, 
+                      open_add_edgeE, 
+                      oiso2_add_edgeE', 
+                      oiso2_idE, 
+                      open_add_vertexE).
+
 Lemma ostep_of' (F G : graph2) : 
   step F G -> inhabited (Σ F' G', (open F ⩭2 F') * ostep F' G' * (G' ⩭2 open G)).
-Proof with eauto with typeclass_instances.
+Proof with eauto with typeclass_instances vset.
   case => {F G}.
   - (* V0 *)
-    move => G a. constructor. e2split.
+    move => G a. constructor. 
+    have ? : fresh (vset (open G)) \notin pIO (open G ∔ [fresh (vset (open G)), a]).
+    { rewrite pIO_add. apply: pIO_fresh. exact: freshP. }
+    e2split.
     + apply: open_add_vertex.
-    + apply: (ostep_v0 (z := fresh (vset (open G)))). 
-      * admit.
-      * admit.
-      * admit.
-    + admit.
+    + apply: (ostep_v0 (z := fresh (vset (open G)))) => //.
+      * by rewrite /= !inE eqxx.
+      * by rewrite edges_at_added_vertex // freshP.
+    + apply weqG_oliso => //... by rewrite add_vertexK // freshP.
   - (* V1 *) 
     move => G x u a. constructor. e2split.
     + apply: oiso2_trans. apply: open_add_edge. 
       apply: oiso2_add_edge. apply open_add_vertex. 
-      2: instantiate (1 := fresh (eset (open G))). all: admit.
-    + instantiate (2 := u). rewrite !open_add_vertexE. 
+      2: instantiate (1 := fresh (eset (open G))). 5: instantiate (1 := u). 
+      all: idtac... reflexivity.
+    + rewrite !open_add_vertexE. 
       set z := fresh _. set e := fresh _.
-      apply: (@ostep_v1 _ (inj_v x) z e u). all: admit.
+      apply: (@ostep_v1 _ (inj_v x) z e u). 
+      * rewrite edges_at_add_edge edges_at_added_vertex ?fsetU0 //.
+        exact: freshP.
+      * rewrite !pIO_add. apply: pIO_fresh. exact: freshP.
+      * exact: oarc_added_edge.
+      * exact: inj_vNfresh.
     + set z := fresh _. set e := fresh _.
       etransitivity. 2: symmetry. 2: apply: open_add_test.
-      eapply weqG_oliso. admit. admit.
-      rewrite -del_vertex_add_test. 
-      admit.
+      eapply weqG_oliso. 
+      * admit. 
+      * admit.
+      * rewrite -del_vertex_add_test add_edgeKr ?add_vertexK ?freshP //.
+        by rewrite [lv _ _]/= updateE.
   - (* V2 *) 
-    move => G x y u a v. constructor. e2split.
-    + admit.
-    + admit.
-    + admit.
-  - (* E0 *) admit.
-  - (* E1 *) admit.
-Admitted.
+    move => G x y u a v. constructor. 
+    (* mathcomp pose does not resolve inh_type *)
+    pose (z := fresh (vset (open G))).
+    pose (e1 := fresh (eset (open G))).
+    pose (e2 := fresh (e1 |` eset (open G))).
+    exists (open G ∔ [z,a] ∔ [e1, inj_v x, u, z] ∔ [e2,z,v,inj_v y])%O. 
+    eexists; split; first split.
+    + apply: oiso2_trans. apply: open_add_edge. 
+      unshelve apply: oiso2_add_edge'.
+      apply: oiso2_trans. apply: open_add_edge. 
+      unshelve apply: oiso2_add_edge'.
+      apply: oiso2_trans. apply: open_add_vertex. 
+      exact: oiso2_id.
+      (* side conditons *)
+      all: try abstract by rewrite ?freshP ?inE ?inj_v_open.
+      1: abstract (by rewrite /= !inE eqxx).
+      3: abstract (by rewrite /= !inE eqxx).
+      1-2: abstract by rewrite !oiso2E // ?inE ?inj_v_open ?eqxx.
+      all: by rewrite !oiso2E // ?inE ?inj_v_open ?eqxx.
+    + apply (@ostep_v2 _ (inj_v x) (inj_v y) z e1 e1 u v).
+      (* looks good *) all: admit.
+    + rewrite /= updateE. 
+      apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
+      unshelve apply: oiso2_add_edge'. 
+      { apply weqG_oliso... all: abstract admit. }
+      1: admit.
+      all: rewrite ?weqG_iso2E ?freshP //=.
+      all: by rewrite ?inE ?inj_v_open ?inj_vNfresh.
+  - (* E0 *) move => G x u. 
+    pose (e := fresh (eset (open G))).
+    constructor. e2split.
+    + apply: open_add_edge.
+    + apply: (@ostep_e0 _ (inj_v x) e u). exact: oarc_added_edge.
+    + rewrite /= update_eq.
+      apply: oiso2_trans _ (oiso2_sym _). 2:apply: open_add_test.
+      eapply weqG_oliso... admit. admit.
+  - (* E2 *) 
+    move => G x y u v. constructor. 
+    pose (e1 := fresh (eset (open G))).
+    pose (e2 := fresh (e1 |` eset (open G))).
+    have: e1 != e2 by admit.
+    exists (open G ∔  [e1, inj_v x, u, inj_v y] ∔ [e2, inj_v x, v, inj_v y])%O.
+    eexists; split; first split.
+    + apply: oiso2_trans. apply: open_add_edge. 
+      unshelve apply: oiso2_add_edge'.
+      apply: open_add_edge. 
+      all: by rewrite ?freshP ?inj_v_open ?open_add_edgeE.
+    + apply: (@ostep_e2 _ (inj_v x) (inj_v y) e1 e2 u v) => //.
+      * apply: oarc_add_edge => //. exact: oarc_added_edge.
+      * exact: oarc_added_edge.
+    + apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
+      unshelve apply: oiso2_add_edge'. 
+      { apply weqG_oliso... all: abstract admit. }
+      1: by rewrite maxn_fsetD.
+      all: by rewrite ?weqG_iso2E ?freshP //= ?inj_v_open.
+Qed.
+
+Lemma ostep_of (F G : graph2) : 
+  step F G -> exists G', [/\ inhabited (ostep (open F) G') & inhabited (G' ⩭2 open G)].
+Proof.
+  elim => {F G}.
+  - admit.
+  - admit.
+  - move => G x y u a v. eexists; split;constructor. 
+    set G' := (_ ∔ [_,_,_])%G2. 
+    apply: (@ostep_v2 (open G') 
+                      (@inj_v G' (inl x)) 
+                      (@inj_v G' (inl y)) 
+                      (@inj_v G' (inr tt)) 
+                      (@inj_e (edge G') (Some None))
+                      (@inj_e (edge G') None) u v).
+    8:{ rewrite /= inj_vK. 
+    apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
+    unshelve eapply oiso2_add_edge'. 
+    (* turning this into a computational iso does not look good *)
+      
+  - admit.
+  - admit.
+Abort.
 
 Lemma ostep_of (F G : graph2) : 
   step F G -> exists G', [/\ inhabited (ostep (open F) G') & inhabited (G' ⩭2 open G)].
