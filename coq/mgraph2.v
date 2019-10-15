@@ -21,7 +21,8 @@ Section s.
 Variable L: labels.
 Notation Lv := (lv L).  
 Notation Le := (le L).
-Notation graph := (graph L). 
+Notation graph := (graph L).
+Local Open Scope labels.
 
 Record graph2 :=
   Graph2 {
@@ -154,11 +155,11 @@ Definition g2_cnv (F: graph2) := point F output input.
 
 Definition g2_dom (F: graph2) := point F input input.
 
-Definition g2_one: graph2 := unit_graph2 mon0.
+Definition g2_one: graph2 := unit_graph2 1.
 
-Definition g2_top: graph2 := two_graph2 mon0 mon0.
+Definition g2_top: graph2 := two_graph2 1 1.
 
-Definition g2_var a: graph2 := edge_graph2 mon0 a mon0.
+Definition g2_var a: graph2 := edge_graph2 1 a 1.
 
 (* Note: maybe nicer to prove that this is a ptt algebra (with top)
   and deduce automatically that this is a pttdom (as we did in the previous version) *)
@@ -231,21 +232,21 @@ Proof. by apply add_vlabel2_iso'. Defined.
 Lemma add_vlabel2_C F x a y b: F [tst x <- a] [tst y <- b] ≃2 F [tst y <- b] [tst x <- a].
 Proof. Iso2 (add_vlabel_C _ _). Defined.
 
-Lemma add_vlabel2_unit a x b: unit_graph2 a [tst x <- b] ≃2 unit_graph2 (mon2 a b).
+Lemma add_vlabel2_unit a x b: unit_graph2 a [tst x <- b] ≃2 unit_graph2 (a⊗b).
 Proof. Iso2 (add_vlabel_unit _ _). Defined.
 
-Lemma add_vlabel2_unit' x b: unit_graph2 b ≃2 unit_graph2 mon0 [tst x <- b].
+Lemma add_vlabel2_unit' x b: unit_graph2 b ≃2 unit_graph2 1 [tst x <- b].
 Proof. apply iso2_sym. irewrite add_vlabel2_unit. apply unit_graph2_iso. by rewrite monC monU. Defined.
 
 Lemma add_vlabel2_two a b (x: unit+unit) c:
-  two_graph2 a b [tst x <- c] ≃2 two_graph2 (if x then mon2 a c else a) (if x then b else mon2 b c).
+  two_graph2 a b [tst x <- c] ≃2 two_graph2 (if x then a⊗c else a) (if x then b else b⊗c).
 Proof. Iso2 (add_vlabel_two _ _ _ _); by case x; case. Defined.
 
 Lemma add_vlabel2_edge a u b (x: unit+unit) c:
-  edge_graph2 a u b [tst x <- c] ≃2 edge_graph2 (if x then mon2 a c else a) u (if x then b else mon2 b c).
+  edge_graph2 a u b [tst x <- c] ≃2 edge_graph2 (if x then a⊗c else a) u (if x then b else b⊗c).
 Proof. Iso2 (add_vlabel_edge _ _ _ _ _); by case x; case. Defined.
 
-Lemma add_vlabel2_mon0 G x: G [tst x <- mon0] ≃2 G.
+Lemma add_vlabel2_mon0 G x: G [tst x <- 1] ≃2 G.
 Proof. Iso2 (add_vlabel_mon0 x). Defined.
 
 
@@ -325,7 +326,7 @@ Proof. apply merge_merge. Qed.
 
 (**  merge_union_K  *)
 Lemma merge_union_K_l (F K: graph) (i o: F+K) (h: pairs (F+K)) (k: K -> F)
-      (kv: forall x: K, vlabel x = mon0)
+      (kv: forall x: K, vlabel x = 1)
       (ke: edge K -> False)
       (kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)]):
   point (merge_seq (F ⊎ K) h) (\pi i) (\pi o)
@@ -338,7 +339,7 @@ Proof. Iso2 (merge_add_edge _ _ _ _); by rewrite merge_add_edgeE. Defined.
 Lemma merge2_add_vlabel (G: graph2) (r: equiv_rel G) x a: merge2 (G [tst x <- a]) r ≃2 merge2 G r [tst \pi x <- a].
 Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Defined.
 
-Lemma merge2_two a b: merge2_seq (two_graph2 a b) [:: (inl tt,inr tt)] ≃2 unit_graph2 (mon2 a b).
+Lemma merge2_two a b: merge2_seq (two_graph2 a b) [:: (inl tt,inr tt)] ≃2 unit_graph2 (a⊗b).
 Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Defined.
 
 
@@ -431,6 +432,8 @@ Proof.
   - move=>x/=.
     admit.           (* bigop proof *)
 Qed.
+
+Local Close Scope labels.
 
 (* [dot2one] follows from [dot2unit_r] *)
 Lemma dot2one (F: graph2): F · 1 ≃2 F.
@@ -536,7 +539,7 @@ Proof.
   eqv.
 Qed.
 
-Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph mon0) (unl input) (inr tt).
+Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (inr tt).
 Proof.
   rewrite /=/g2_dot.
   irewrite (merge_iso2 (union_iso iso_id (union_C _ _))).
@@ -611,6 +614,7 @@ Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
 Canonical g2_pttdom.
 
 (* additional lemmas needed in reduction.v *)
+Local Open Scope labels.
 
 Lemma dot2unit_l (G: graph2) a: unit_graph2 a · G ≃2 G [tst input <- a].
 Proof.
@@ -621,16 +625,16 @@ Proof.
   apply dot2unit_r.
 Qed.
 
-Lemma par2unitunit a b: unit_graph2 a ∥ unit_graph2 b ≃2 unit_graph2 (mon2 a b).
+Lemma par2unitunit a b: unit_graph2 a ∥ unit_graph2 b ≃2 unit_graph2 (a⊗b).
 Proof.
   etransitivity. apply par2dot=>//.
   etransitivity. apply dot2unit_r.
   apply add_vlabel2_unit.
 Qed.
 
-Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (mon2 a (mon2 b c)) ∔ [tt, u, tt].
+Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt].
   unshelve Iso2
-   (@merge_surj _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (mon2 a (mon2 b c)) ∔ [tt, u, tt])
+   (@merge_surj _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt])
      (fun _ => tt)
      (fun _ => inr tt)
      (bij_comp sumxU (option_bij sumxU)) _ _ _ _ _).
@@ -705,9 +709,9 @@ Notation point G i o := (@Graph2 _ G i o).
 Notation "G ∔ [ x , u , y ]" := 
   (add_edge2 G x y u) (at level 20, left associativity) : graph2_scope.
 Notation "G ∔ a" := 
-  (add_vertex2 G a) (at level 20, left associativity) : graph2_scope.
+  (add_vertex2 G a%lbl) (at level 20, left associativity) : graph2_scope.
 Notation "G [tst  x <- a ]" := 
-  (add_vlabel2 G x a) (at level 20, left associativity) : graph2_scope.
+  (add_vlabel2 G x a%lbl) (at level 20, left associativity) : graph2_scope.
 Notation merge2_seq G l := (merge2 G (eqv_clot l)).
 
 Arguments iso2 {_}.

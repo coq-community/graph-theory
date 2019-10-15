@@ -33,7 +33,8 @@ Section s.
     
 Variable L: labels.
 Notation Lv := (lv L).  
-Notation Le := (le L).  
+Notation Le := (le L).
+Local Open Scope labels.
 
 (* labelled multigraphs (not pointed) *)
 Record graph: Type :=
@@ -62,7 +63,7 @@ Notation "G ∔ [ x , u , y ]" := (@add_edge G x y u) (at level 20, left associa
 Definition add_vlabel (G: graph) (x: G) (a: Lv): graph :=
   @Graph (vertex G) (edge G)
          (@endpoint G)
-         (fun v => if v==x then mon2 a (vlabel v) else vlabel v)
+         (fun v => if v==x then a⊗vlabel v else vlabel v)
          (@elabel G).
 Notation "G [tst  x <- a ]" := (@add_vlabel G x a) (at level 20, left associativity).
 
@@ -316,10 +317,10 @@ Proof.
   by rewrite 2!monA (monC a b).
 Defined.
 
-Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (mon2 a b).
+Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (a⊗b).
 Proof. apply (unit_graph_iso (monC b a)). Defined.
 
-Lemma add_vlabel_mon0 G x: G [tst x <- mon0] ≃ G.
+Lemma add_vlabel_mon0 G x: G [tst x <- 1] ≃ G.
 Proof.
   Iso bij_id bij_id xpred0. 
   split=>//=. move=>v.
@@ -442,7 +443,7 @@ Proof.
 Defined.
 
 Lemma add_vlabel_two a b (x: unit+unit) c:
-  two_graph a b [tst x <- c] ≃ two_graph (if x then mon2 a c else a) (if x then b else mon2 b c).
+  two_graph a b [tst x <- c] ≃ two_graph (if x then a⊗c else a) (if x then b else b⊗c).
 Proof.
   case x; case=>/=. 
   etransitivity. apply iso_sym. apply union_add_vlabel_l. apply union_iso=>//. apply add_vlabel_unit. 
@@ -450,7 +451,7 @@ Proof.
 Defined.  
 
 Lemma add_vlabel_edge a u b (x: unit+unit) c:
-  edge_graph a u b [tst x <- c] ≃ edge_graph (if x then mon2 a c else a) u (if x then b else mon2 b c).
+  edge_graph a u b [tst x <- c] ≃ edge_graph (if x then a⊗c else a) u (if x then b else b⊗c).
 Proof.
   etransitivity. apply iso_sym. apply add_edge_vlabel.
   etransitivity. apply (add_edge_iso (add_vlabel_two a b x c)).
@@ -678,7 +679,7 @@ Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
   Definition union_K_pairs := map_pairs (sum_left k) h.
 
-  Hypothesis kv: forall x: K, vlabel x = mon0.
+  Hypothesis kv: forall x: K, vlabel x = 1%lbl.
   Hypothesis kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)].
 
   Lemma equiv_clot_Kl: union_K_equiv (eqv_clot h) =2 eqv_clot union_K_pairs.
@@ -730,7 +731,7 @@ End merge_union_K.
 Global Opaque merge_union_K.
 
 (* used only in unused proofs in reduction.v *)
-Lemma merge_two a b: merge_seq (unit_graph a ⊎ unit_graph b) [:: (inl tt,inr tt)] ≃ unit_graph (mon2 a b).
+Lemma merge_two a b: merge_seq (unit_graph a ⊎ unit_graph b) [:: (inl tt,inr tt)] ≃ unit_graph (a⊗b).
 Admitted.
 Lemma merge_twoE a b x: merge_two a b x = tt.
 Admitted.  
@@ -764,9 +765,9 @@ Arguments add_vlabel {L} G x a.
 Notation "G ∔ [ x , u , y ]" := 
   (add_edge G x y u) (at level 20, left associativity) : graph_scope.
 Notation "G ∔ a" := 
-  (add_vertex G a) (at level 20, left associativity) : graph_scope.
+  (add_vertex G a%lbl) (at level 20, left associativity) : graph_scope.
 Notation "G [tst  x <- a ]" :=
-  (add_vlabel G x a) (at level 20, left associativity) : graph_scope.
+  (add_vlabel G x a%lbl) (at level 20, left associativity) : graph_scope.
 
 Arguments merge {L} _ _.
 Notation merge_seq G l := (merge G (eqv_clot l)).

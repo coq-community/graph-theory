@@ -14,10 +14,11 @@ Variable L: labels.
 Notation Le := (le L).
 Notation Lv := (lv L). 
 Notation graph := (graph L).  
-Notation graph2 := (graph2 L).  
+Notation graph2 := (graph2 L).
+Local Open Scope labels.
 
 Lemma merge43 (a b c d: Lv):
-  merge_seq (two_graph a b ⊎ two_graph c d) [:: (inl (inr tt), inr (inl tt))] ≃ two_graph2 a d ∔ mon2 b c.
+  merge_seq (two_graph a b ⊎ two_graph c d) [:: (inl (inr tt), inr (inl tt))] ≃ two_graph2 a d ∔ (b⊗c).
 Proof.
   etransitivity. refine (merge_iso (iso_sym (union_A _ _ _)) _).
   etransitivity. refine (merge_iso (union_iso iso_id (union_A _ _ _)) _). 
@@ -45,7 +46,7 @@ Opaque merge43.
 Lemma merge42 (a b c d: Lv):
   merge_seq (two_graph a b ⊎ two_graph c d)
             [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))]
-≃ two_graph2 (mon2 a c) (mon2 b d).
+≃ two_graph2 (a⊗c) (b⊗d).
 Proof.
   etransitivity. refine (merge_iso (iso_sym (union_A _ _ _)) _).
   etransitivity. refine (merge_iso (union_iso iso_id (union_C _ _)) _). 
@@ -86,7 +87,7 @@ Defined.
 Lemma dot_edges (a b c d: Lv) (u v: Le):
   point (merge_seq (edge_graph a u b ⊎ edge_graph c v d) [:: (inl (inr tt), inr (inl tt))])
         (\pi inl (inl tt)) (\pi (inr (inr tt)))
-≃2 two_graph2 a d ∔ mon2 b c ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
+≃2 two_graph2 a d ∔ (b⊗c) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
 Proof.
   unshelve Iso2
   (@merge_surj _
@@ -125,7 +126,7 @@ Qed.
 Lemma dot_edges' (a b c d: Lv) (u v: Le):
   point (merge_seq (edge_graph a u b ⊎ edge_graph c v d) [:: (inl (inr tt), inr (inl tt))])
         (\pi inl (inl tt)) (\pi (inr (inr tt)))
-≃2 two_graph2 a d ∔ mon2 b c ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
+≃2 two_graph2 a d ∔ (b⊗c) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
 Proof.
   etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
   etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
@@ -146,12 +147,12 @@ Lemma par_edges (a b c d: Lv) (u v: Le):
   point (merge_seq (edge_graph a u b ⊎ edge_graph c v d)
                    [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))])
         (\pi inl (inl tt)) (\pi (inr (inr tt)))
-≃2 two_graph2 (mon2 a c) (mon2 b d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
+≃2 two_graph2 (a⊗c) (b⊗d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
 Proof.
   unshelve Iso2
   (@merge_surj _
      (edge_graph a u b ⊎ edge_graph c v d) _
-     (two_graph2 (mon2 a c) (mon2 b d) ∔ [_, u, _] ∔ [_, v, _])
+     (two_graph2 (a⊗c) (b⊗d) ∔ [_, u, _] ∔ [_, v, _])
      (fun x =>
         match x with
         | inl y => y
@@ -178,7 +179,7 @@ Lemma par_edges' (a b c d: Lv) (u v: Le):
   point (merge_seq (edge_graph a u b ⊎ edge_graph c v d)
                    [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))])
         (\pi inl (inl tt)) (\pi (inr (inr tt)))
-≃2 two_graph2 (mon2 a c) (mon2 b d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
+≃2 two_graph2 (a⊗c) (b⊗d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
 Proof.
   etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
   etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.

@@ -127,7 +127,7 @@ Section derived.
  
 End derived.
 Coercion pttdom_labels: pttdom >-> labels. 
-Notation "[ x ]" := (@infer_test _ x _ erefl): pttdom_ops.
+Notation "[ x ]" := (@infer_test _ x%ptt _ erefl): pttdom_ops.
 
 
 (* initial algebra of terms *)

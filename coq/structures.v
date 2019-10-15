@@ -68,3 +68,10 @@ Program Definition flat_labels (X: Type) :=
      le := eq_setoid X; eqv' _ _ := False |}.
 Next Obligation. by case x. Qed.
 Next Obligation. tauto. Qed.
+
+(* notations for vertex labels *)
+Bind Scope labels with lv.
+Delimit Scope labels with lbl.
+Infix "⊗" := mon2 (left associativity, at level 25): labels.
+Notation "1" := mon0: labels.
+
