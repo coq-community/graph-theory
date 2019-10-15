@@ -500,9 +500,9 @@ Section h_merge_nothing'.
      split. intros ->. by rewrite equiv_refl.
      intro E. apply H. by rewrite E.
    - intro.
-     (* does not work since mon2/mon0 is only a monoid up to eqv... *)
-     (* by rewrite big_pred1_eq. *)
-     admit.
+     rewrite -big_filter filter_index_enum /=.
+     rewrite enum1 big_cons big_nil/=.
+     by rewrite monU. 
  Defined.
  Lemma merge_nothing'E x: merge_nothing' (\pi x) = x.
  Proof. by rewrite /=merge_surjE. Qed.
@@ -514,6 +514,7 @@ Section merge_merge.
   Lemma hom_merge_merge: is_hom (quot_quot e': merge _ e' -> merge F _) bij_id xpred0.
   Proof.
     split; intros=>//. by rewrite /=-equiv_comp_pi.
+    simpl. 
     (* again, bigop lemma would be needed on monoids up to eqv *)
     admit.
   Qed.
@@ -550,6 +551,8 @@ Section merge_same'.
  Lemma merge_same'_hom: is_hom (quot_same H: merge _ h -> merge _ k) bij_id xpred0.
  Proof.
    split; intros=>//; try (rewrite /=; apply/eqquotP; rewrite -H; apply: piK').
+   simpl. rewrite -(reprK v) quot_sameE.
+   apply eq_eqv. apply eq_bigl=>x.
    admit.
  Qed.
  Definition merge_same': merge F h ≃ merge F k := Iso merge_same'_hom.
