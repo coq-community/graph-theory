@@ -266,7 +266,7 @@ Proof.
   admit.                        (* ok *)
   exfalso. clear -A2. admit.     (* ok *)
   apply IH, Q. 
-Admitted.
+Qed.
 
 Lemma merge_add_vertexL:
    point (merge_seq (G ∔ a ⊎ H) l) (\pi (inl (inl input))) (\pi (unr output))
@@ -539,6 +539,6 @@ Proof.
     apply isop_step. exists. 
     etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
     admit.               (* algebraic *)
-Admitted.
+Qed.
 
 End s'.

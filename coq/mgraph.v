@@ -480,14 +480,15 @@ Section merge_surj.
    Iso (quot_kernel Hr Hsurj) fe xpred0. split; intros=>/=.
    - rewrite -Hendpoints=>/=. by rewrite surj_repr_pi. 
    - rewrite Hvlabel. apply eq_eqv, eq_bigl=>x.
-     (* grr, what's the proper way of proceeding here? *)
-     apply Bool.eq_true_iff_eq; split; move=>/eqP E. admit.
-     rewrite -E surj_repr_pi=>//. admit. 
+     apply /idP/idP =>/eqP E.
+     apply /eqP. admit.
+     rewrite -E surj_repr_pi=>//.
    - apply Helabel.
- Admitted.
+ Defined.
  Lemma merge_surjE (x: G): merge_surj (\pi x) = fv x.
- Admitted.
+ Proof. by rewrite /=surj_repr_pi. Qed.
 End merge_surj.
+Global Opaque merge_surj.
 
 
 Section h_merge_nothing'.
@@ -497,8 +498,12 @@ Section h_merge_nothing'.
  Proof.
    exists (quot_id H: bij (merge F r) F) bij_id xpred0.
    split; intros; rewrite /=?quot_idE?H//.
- Admitted.
+   admit.
+ Defined.
+ Lemma merge_nothing'E x: merge_nothing' (\pi x) = x.
+ Proof. by rewrite /=quot_idE. Qed.
 End h_merge_nothing'.
+Global Opaque merge_nothing'.
 
 Section merge_merge.
   Variables (F: graph) (e: equiv_rel F) (e': equiv_rel (merge F e)).
@@ -523,7 +528,7 @@ Section merge.
     - rewrite endpoint_iso. symmetry. apply h_mergeE. 
     - rewrite quot_sameE. admit. 
     - apply elabel_iso.
-  Admitted.
+  Qed.
   Definition merge_iso: merge_seq F l ≃ merge_seq G (map_pairs h l) := Iso merge_hom.
   Lemma merge_isoE (x: F): merge_iso (\pi x) = \pi h x.
   Proof. apply h_mergeE. Qed.
@@ -536,7 +541,8 @@ Section merge_same'.
  Lemma merge_same'_hom: is_hom (quot_same H: merge _ h -> merge _ k) bij_id xpred0.
  Proof.
    split; intros=>//; try (rewrite /=; apply/eqquotP; rewrite -H; apply: piK').
- Admitted.
+   admit.
+ Qed.
  Definition merge_same': merge F h ≃ merge F k := Iso merge_same'_hom.
  Lemma merge_same'E (x: F): merge_same' (\pi x) = \pi x.
  Proof. apply quot_sameE. Qed.
@@ -558,8 +564,7 @@ Section merge_nothing.
  Definition merge_nothing: merge_seq F h ≃ F.
  Proof. apply merge_nothing', eqv_clot_nothing', H. Defined.
  Lemma merge_nothingE (x: F): merge_nothing (\pi x) = x.
- Admitted.                      (* need Transparent merge_nothing *)
- (* Proof. apply quot_idE. Qed. *)
+ Proof. apply merge_nothing'E. Qed.
 End merge_nothing.
 Global Opaque merge_nothing.
 
@@ -574,7 +579,8 @@ Section merge_merge_seq.
   Lemma hom_merge_merge_seq: is_hom h_merge_merge_seq bij_id xpred0.
   Proof.
     split; intros=>//; try by rewrite /=quot_quotE quot_sameE.
-  Admitted.
+    admit.
+  Qed.
   Definition merge_merge_seq: merge_seq (merge_seq F h) k' ≃ merge_seq F (h++k) :=
     Iso hom_merge_merge_seq.
   Lemma merge_merge_seqE (x: F): merge_merge_seq (\pi (\pi x)) = \pi x.
@@ -617,7 +623,9 @@ Section union_merge_l.
   Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id xpred0.
   Proof.
     try (split; case; intros=>//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE //).
-  Admitted.
+    admit.
+    admit. 
+  Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
   Lemma union_merge_lEl (x: F): union_merge_l (inl (\pi x)) = \pi unl x.

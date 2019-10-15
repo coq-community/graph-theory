@@ -132,4 +132,4 @@ Qed.
    (using g2_pttdom on the flat bisetoid) *)
 
 End s.
-
+Print Assumptions completeness.

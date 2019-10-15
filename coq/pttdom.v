@@ -271,6 +271,6 @@ Section terms.
      admit.                      (* ok *)
    - rewrite dotx1.
      admit.                      (* ok *)
- Admitted.
+ Qed.
 
 End terms.

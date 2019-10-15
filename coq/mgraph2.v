@@ -428,8 +428,9 @@ Proof.
   - by []. 
   - by move=>b [e|[]].
   - by case. 
-  - move=>x/=. admit.           (* should be rather simple... *)
-Admitted.
+  - move=>x/=.
+    admit.           (* bigop proof *)
+Qed.
 
 (* [dot2one] follows from [dot2unit_r] *)
 Lemma dot2one (F: graph2): F · 1 ≃2 F.
@@ -633,7 +634,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
      (fun _ => tt)
      (fun _ => inr tt)
      (bij_comp sumxU (option_bij sumxU)) _ _ _ _ _).
-  6,7: by rewrite merge_surjE.
+  (* 6,7: by rewrite merge_surjE. *)
   - apply kernel_eqv_clot.
     * by repeat constructor.
     * (repeat case)=>//=_; try eqv; apply eqv_clot_trans with (inr tt); eqv.
@@ -641,9 +642,10 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
   - move=>d. repeat case=>//=. by case d. 
   - by repeat case. 
   - repeat case=>//=. rewrite eq_refl/=.
-    (* grr: again, how to let this compute? *)
-    admit.
-Admitted.
+    rewrite -big_filter filter_index_enum /=; 
+    rewrite !enum_sum !enum_unit /= !big_cons big_nil.
+    by rewrite monU.
+Qed.
 
 (* lemmas needed in open.v *)
 
