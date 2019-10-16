@@ -526,6 +526,7 @@ Section merge_merge.
 End merge_merge.
 Global Opaque merge_merge.
 
+
 Section merge.
   Variables (F G: graph) (h: iso F G) (l: pairs F).
   Definition h_merge: bij (merge_seq F l) (merge_seq G (map_pairs h l)).
@@ -537,9 +538,11 @@ Section merge.
   Proof.
     split; intros=>/=. 
     - rewrite endpoint_iso. symmetry. apply h_mergeE. 
-    - rewrite quot_sameE.
-      (* basically a Proper lemma *)
-      admit. 
+    - rewrite quot_sameE. symmetry.
+      (* Equivalence Lemma for bigops over [mon2/1] *)
+      apply: (eqv_big_bij (f := h)). exact: bij_perm_enum.
+      + admit. 
+      + admit.
     - apply elabel_iso.
   Qed.
   Definition merge_iso: merge_seq F l ≃ merge_seq G (map_pairs h l) := Iso merge_hom.
