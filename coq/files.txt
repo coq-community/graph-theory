@@ -4,7 +4,7 @@ mgraph: labelled multigraphs
 mgraph2: pointed multigraphs, pttdom algebra of such graphs
 rewriting: definition of the rewriting system
 reduction: rewriting system powerful enough to reach normal forms
-???,???: open graphs, confluence proof
+open: open graphs, open local confluence proof
 completeness: wrapping up everything into a completeness proof
 
 
@@ -15,12 +15,11 @@ with the following dependencies:
 	     mgraph  pttdom
 	        mgraph2
                rewriting
-                       ???
-       reduction	  ???
+           reduction    open
 	     completeness
 
 
-Note: one could break the dependency on mgraph->pttdom if [pttdom.pttdom] was defined in structures.v (would make sense actually)
+Note: one could break the dependency on mgraph2->pttdom if [pttdom.pttdom] was defined in structures.v (would make sense actually)
 
 
 files ending in _bak.v are supposed to disappear once
@@ -29,5 +28,9 @@ files ending in _bak.v are supposed to disappear once
 (some files in attic/ could also be removed)
 
 
-status of files open.v and confluence.v remains to be checked
+status of file confluence.v remains to be determined
+
+
+the extraction_iso/top and corollaries modules still depend on some _bak files ...
+we'll have to port them to the new mgraph (possibly hard) or just remove them
 
