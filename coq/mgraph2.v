@@ -729,3 +729,78 @@ Tactic Notation "Iso2" uconstr(f) :=
 (* temporary *)
 Notation add_test := add_vlabel2 (only parsing).
 Notation add_test_cong := add_vlabel2_iso' (only parsing).
+
+
+(* relabeling graphs *)
+Section h.
+  Variables X Y: labels.
+  Variable fv: lv X -> lv Y.
+  Variable fe: le X -> le Y.
+  Definition relabel (G: graph X): graph Y :=
+    Graph (@endpoint _ G) (fv \o (@vlabel _ G)) (fe \o (@elabel _ G)).
+  Hypothesis Hfv: Proper (eqv ==> eqv) fv.
+  Hypothesis Hfe: forall b, Proper (eqv_ b ==> eqv_ b) fe.
+  Lemma relabel_iso: CProper (iso ==> iso) relabel.
+  Proof.
+    intros G H h. Iso h h.e h.d. split.
+    - apply h.
+    - intro. apply Hfv, h.
+    - intro. apply Hfe, h.
+  Defined.
+  Lemma relabel_union F G: relabel (F ⊎ G) ≃ relabel F ⊎ relabel G.
+  Proof. Iso bij_id bij_id xpred0. by split=>//; case. Defined.
+  Hypothesis Hfvmon2: forall a b, fv (a ⊗ b)%lbl ≡ (fv a ⊗ fv b)%lbl.
+  Hypothesis Hfvmon0: fv 1%lbl ≡ 1%lbl.
+  Lemma relabel_merge F r: relabel (merge F r) ≃ merge (relabel F) r.
+  Proof.
+    Iso bij_id bij_id xpred0.
+    split=>//= v.
+    generalize Hfvmon2. 
+    generalize Hfvmon0.
+    admit.                      (* bigop lemma (just an induction on the underlying list to apply Hvmon0/2) *)
+  Defined.
+  Lemma relabel_add_edge F x y u: relabel (F ∔ [x, u, y]) ≃ relabel F ∔ [x, fe u, y].
+  Proof.
+    Iso bij_id bij_id xpred0. by split=>//; case.
+  Defined.    
+  Lemma relabel_unit a: relabel (unit_graph a) ≃ unit_graph (fv a).
+  Proof. Iso bij_id bij_id xpred0. by split. Defined.
+  Lemma relabel_two a b: relabel (two_graph a b) ≃ two_graph (fv a) (fv b).
+  Proof. etransitivity. apply relabel_union. apply union_iso; apply relabel_unit. Defined.
+  Lemma relabel_edge a u b: relabel (edge_graph a u b) ≃ edge_graph (fv a) (fe u) (fv b).
+  Proof. etransitivity. apply relabel_add_edge. by apply (add_edge_iso'' (h:=relabel_two _ _)). Defined.
+
+  Definition relabel2 (G: graph2 X): graph2 Y :=
+    point (relabel G) input output.
+  Lemma relabel2_iso: CProper (iso2 ==> iso2) relabel2.
+  Proof. intros G H h. Iso2 (relabel_iso h); apply h. Defined.
+  Lemma relabel2_dot (F G: graph2 X): relabel2 (F · G) ≃2 relabel2 F · relabel2 G.
+  Proof.
+    etransitivity. apply (iso_iso2 (relabel_merge _)).
+    refine (merge_iso2 (relabel_union F G) _ _ _).
+  Qed.
+  Lemma relabel2_par (F G: graph2 X): relabel2 (F ∥ G) ≃2 relabel2 F ∥ relabel2 G.
+  Proof.
+    etransitivity. apply (iso_iso2 (relabel_merge _)).
+    refine (merge_iso2 (relabel_union F G) _ _ _).
+  Qed.
+  Lemma relabel2_cnv (F: graph2 X): relabel2 (F°) ≃2 (relabel2 F)°.
+  Proof. reflexivity. Qed.
+  Lemma relabel2_dom (F: graph2 X): relabel2 (dom F) ≃2 dom (relabel2 F).
+  Proof. reflexivity. Qed.
+  Lemma relabel2_one: relabel2 1 ≃2 1.
+  Proof.
+    transitivity (unit_graph2 (fv 1%lbl)). Iso2 (relabel_unit _).
+    apply unit_graph2_iso, Hfvmon0.
+  Qed.
+  Lemma relabel2_top: relabel2 (g2_top X) ≃2 g2_top Y.
+  Proof.
+    transitivity (two_graph2 (fv 1%lbl) (fv 1%lbl)). Iso2 (relabel_two _ _).
+    apply two_graph2_iso; apply Hfvmon0.
+  Qed.
+  Lemma relabel2_var a: relabel2 (g2_var a) ≃2 g2_var (fe a).
+  Proof.
+    transitivity (edge_graph2 (fv 1%lbl) (fe a) (fv 1%lbl)). Iso2 (relabel_edge _ _ _).
+    apply edge_graph2_iso=>//.
+  Qed.
+End h.

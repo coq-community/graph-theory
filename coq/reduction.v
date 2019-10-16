@@ -452,10 +452,12 @@ End s.
 Section s'.
 Variable A: Type.
 Notation term := (term A).  
-Notation nf_term := (nf_term A).  
+Notation nterm := (nf_term A).  
 Notation test := (test (tm_pttdom A)). 
-Notation graph := (graph (pttdom_labels (tm_pttdom A))).
-Notation graph2 := (graph2 (pttdom_labels (tm_pttdom A))).
+Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
+Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
+Notation graph := (graph (flat_labels A)).
+Notation graph2 := (graph2 (flat_labels A)).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
@@ -471,16 +473,17 @@ Canonical Structure tm_labels :=
 (* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
 
 (* graphs of terms and normal forms *)
-Definition graph_of_term: term -> graph2 := eval (fun a: A => g2_var (tm_var a)). 
+Definition graph_of_term: term -> graph2 := eval (fun a: A => @g2_var (flat_labels A) a). 
+Definition tgraph_of_term: term -> tgraph2 := eval (fun a: A => g2_var (tm_var a)). 
 
-Definition graph_of_nf_term (t: nf_term): graph2 :=
+Definition tgraph_of_nterm (t: nterm): tgraph2 :=
   match t with
   | nf_test a => unit_graph2 a
   | nf_conn a u b => edge_graph2 a u b
   end.
 
 (* reduction lemma *)
-Proposition reduce (u: term): steps (graph_of_term u) (graph_of_nf_term (nf u)).
+Proposition reduce (u: term): steps (tgraph_of_term u) (tgraph_of_nterm (nf u)).
 Proof.
   induction u=>//=.
   - etransitivity. apply dot_steps; [apply IHu1|apply IHu2].

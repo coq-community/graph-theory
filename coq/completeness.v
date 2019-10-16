@@ -10,10 +10,12 @@ Set Bullet Behavior "Strict Subproofs".
 Section s.
 Variable A: Type.
 Notation term := (term A).  
-Notation nf_term := (nf_term A).  
+Notation nterm := (nf_term A).  
 Notation test := (test (tm_pttdom A)). 
-Notation graph := (graph (pttdom_labels (tm_pttdom A))).
-Notation graph2 := (graph2 (pttdom_labels (tm_pttdom A))).
+Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
+Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
+Notation graph := (graph (flat_labels A)).
+Notation graph2 := (graph2 (flat_labels A)).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
@@ -37,7 +39,7 @@ Proof.
     eapply osteps_iso. apply sVT. apply VH'.
 Qed.
 
-Definition measure (G: graph2) := #|vertex G| + #|edge G|.
+Definition measure (G: tgraph2) := #|vertex G| + #|edge G|.
 
 Lemma step_decreases G H: step G H -> measure H < measure G.
 Proof.
@@ -66,9 +68,9 @@ Proof.
 Qed.
 
 (* graphs of normal forms are in normal form (i.e., can't reduce) *)
-Lemma nf_steps s: forall H, steps (graph_of_nf_term s) H -> graph_of_nf_term s ≃2p H.
+Lemma nf_steps s: forall H, steps (tgraph_of_nterm s) H -> tgraph_of_nterm s ≃2p H.
 Proof.
-  suff E: forall G H, steps G H -> G ≃2p graph_of_nf_term s -> G ≃2p H.
+  suff E: forall G H, steps G H -> G ≃2p tgraph_of_nterm s -> G ≃2p H.
     by intros; apply E=>//; reflexivity. 
   destruct 1 as [G H I|G' G H H' I S _]=>//L.
   - exfalso. setoid_rewrite (inhabits I: _ ≃2p _) in L.
@@ -92,8 +94,8 @@ Proof.
 Qed.
 
 (* isomorphisms on graphs of normal forms give back equations *)
-Lemma iso_nf (s t: nf_term):
-  graph_of_nf_term s ≃2p graph_of_nf_term t ->
+Lemma iso_nf (s t: nterm):
+  tgraph_of_nterm s ≃2p tgraph_of_nterm t ->
   term_of_nf s ≡ term_of_nf t.
 Proof.
   case s=>[a|a u b];
@@ -116,20 +118,41 @@ Proof.
     intros. symmetry. apply dot_eqv=>//. apply dot_eqv=>//. 
 Qed.
 
+(* transferring isomorphisms on letter-labeled graphs to term-labeled graphs *)
+Lemma tgraph_graph (u: term): tgraph_of_term u ≃2 relabel2 (fun _ => tst_one _) (@tm_var _) (graph_of_term u).
+Proof.
+  have Hmon0: eqv_test (tst_one (tm_pttdom A)) (tst_one (tm_pttdom A)) by [].
+  have Hmon2 (a b: unit): (tst_one (tm_pttdom A)) ≡ (1 ⊗ 1)%lbl by symmetry; apply dotx1.
+  induction u=>/=.
+  - etransitivity. apply (dot_iso2 IHu1 IHu2). symmetry. apply relabel2_dot=>//. 
+  - etransitivity. apply (par_iso2 IHu1 IHu2). symmetry. apply relabel2_par=>//. 
+  - etransitivity. apply (cnv_iso2 IHu). symmetry. apply relabel2_cnv=>//. 
+  - etransitivity. apply (dom_iso2 IHu). symmetry. apply relabel2_dom=>//.
+  - symmetry. apply relabel2_one=>//. 
+  - symmetry. apply relabel2_var=>//.
+Qed.
+
+Lemma tgraph_graph_iso (u v: term):
+  graph_of_term u ≃2p graph_of_term v -> tgraph_of_term u ≃2p tgraph_of_term v.
+Proof.
+  intros [h]. exists.
+  etransitivity. apply tgraph_graph.  
+  etransitivity. 2: symmetry; apply tgraph_graph.
+  apply relabel2_iso=>//.
+  case=>//=??/=->//.  
+Qed.
+                  
 (* main completeness theorem *)
 Theorem completeness (u v: term): graph_of_term u ≃2p graph_of_term v -> u ≡ v.
 Proof.
-  move=>h.
+  move=>/tgraph_graph_iso h.
   pose proof (reduce u) as H.
-  have H' : steps (graph_of_term u) (graph_of_nf_term (nf v))
+  have H' : steps (tgraph_of_term u) (tgraph_of_nterm (nf v))
     by rewrite h; apply reduce. 
   case (confluence H H')=>F [/nf_steps HF /nf_steps HF'].
   rewrite-> (nf_correct u), (nf_correct v).
   apply iso_nf. by rewrite HF'. 
 Qed.
-
-(* TODO: go one step further and get soundness and completeness w.r.t. letter-labelled graphs
-   (using g2_pttdom on the flat bisetoid) *)
 
 End s.
 Print Assumptions completeness.
