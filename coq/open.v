@@ -520,10 +520,10 @@ Proof. apply: contraNneq => <-. by rewrite in_fset2 eqxx. Qed.
 Lemma pIO_No x : x \notin pIO -> p_out G != x.
 Proof. apply: contraNneq => <-. by rewrite in_fset2 eqxx. Qed.
 
-Lemma is_edge_vsetL (isG : is_graph G) e x y u : is_edge G e x u y -> x \in vset G.
+Lemma is_edge_vsetL {isG : is_graph G} e x y u : is_edge G e x u y -> x \in vset G.
 Proof. case => E [<- _ _]. exact: endptP. Qed.
 
-Lemma is_edge_vsetR (isG : is_graph G) e x y u : is_edge G e x u y -> y \in vset G.
+Lemma is_edge_vsetR {isG : is_graph G} e x y u : is_edge G e x u y -> y \in vset G.
 Proof. case => E [_ <- _]. exact: endptP. Qed.
 
 Lemma oarc_cnv e x y u : oarc G e x u y <-> oarc G e y u° x. 
@@ -1030,20 +1030,15 @@ Variant ostep (G : pre_graph) : pre_graph -> Type :=
     ostep G ((del_edges G [fset e1;e2]) ∔ [maxn e1 e2,x,u∥v,y]).
 
 Inductive osteps: pre_graph -> pre_graph -> Prop :=
-  | oliso_step:    CRelationClasses.subrelation oiso2 osteps
+  | oiso_step:    CRelationClasses.subrelation oiso2 osteps
   | ostep_step:    CRelationClasses.subrelation ostep osteps
   | osteps_trans : CRelationClasses.Transitive osteps.
 
-Lemma oliso_stepL G G' H : G ⩭2 G' -> osteps G' H -> osteps G H.
-Admitted.
+Lemma oiso_stepL G G' H : G ⩭2 G' -> osteps G' H -> osteps G H.
+Proof. move => h A. apply: osteps_trans _ A. exact: oiso_step. Qed.
 
 Lemma ostep_stepL G G' H : ostep G G' -> osteps G' H -> osteps G H.
-Admitted.
-
-Lemma oliso_stepR G H H' : oiso2 H H' -> osteps G H' -> osteps G H.
-Admitted.
-
-
+Proof. move => A. apply: osteps_trans. exact: ostep_step. Qed.
 
 
 Lemma pIO_add_vertex (G : pre_graph) x a : pIO (add_vertex G x a) = pIO G. done. Qed.
@@ -1165,7 +1160,7 @@ Proof.
 Qed.
 
 Lemma osteps_refl (G : pre_graph) (isG : is_graph G) : osteps G G.
-Proof. apply: oliso_step. econstructor. exact: iso2_id. Qed.
+Proof. apply: oiso_step. econstructor. exact: iso2_id. Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
@@ -1463,7 +1458,7 @@ Proof with eauto with typeclass_instances.
         rewrite -> oarc_cnv in arc_e1',arc_e2'. 
         move/(_ y' x' yDz' xDz' _ _ _ _ arc_e2' arc_e1') in W. rewrite fsetUC eq_sym in W.
         case: W => // Gl [Gr] [[S1 S2] WG]. exists Gl. exists Gr. do 2 (split => //). 
-        apply: oliso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
+        apply: oiso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
         by rewrite !cnvdot cnvtst dotA. }
       subst y'. 
       have ? : e2' = e by apply: oarc_uniqeR arc_e2'. subst e2'. 
@@ -1567,7 +1562,7 @@ Proof with eauto with typeclass_instances.
           case: W => //. 1-2: by rewrite <- oarc_cnv. 
           move => Gl [Gr] [[S1 S2] E']. e2split;[exact: S1| |exact: E']. 
           (* TODO: this is exactly the same as in the first wlog argument -> lemma *)
-          apply: oliso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
+          apply: oiso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
           by rewrite !cnvdot cnvtst dotA. }
         subst e1' e2'.
         case: (altP (z =P z')) => [?|D].
@@ -1638,7 +1633,7 @@ Proof with eauto with typeclass_instances.
          rewrite -> oarc_cnv in arc_e1,arc_e2. 
          move/(_ _ _ _ _ _ _ arc_e2 arc_e1) in W. rewrite fsetUC eq_sym in W.
          case: W => // Gl [Gr] [[S1 S2] WG]. exists Gl. exists Gr. do 2 (split => //). 
-         apply: oliso_stepL S1. rewrite maxnC. apply: add_edge_flip; eauto with vset.
+         apply: oiso_stepL S1. rewrite maxnC. apply: add_edge_flip; eauto with vset.
          by rewrite !cnvdot cnvtst dotA. }
        wlog ? : e1' e2' x' y' u' v'  arc_e1' arc_e2' Iz' e1De2' xDz' yDz' He / e2 = e1' ; [move => W|subst e1'].
        { have: e2 \in [fset e1';e2']. { move/fsetP : He => /(_ e2). rewrite in_fset1 eqxx. by case/fsetIP. }
@@ -1646,7 +1641,7 @@ Proof with eauto with typeclass_instances.
          rewrite -> oarc_cnv in arc_e1',arc_e2'. 
          move/(_ _ _ _ _ _ _ arc_e2' arc_e1') in W. rewrite fsetUC eq_sym in W.
          case: W => // Gl [Gr] [[S1 S2] WG]. exists Gl. exists Gr. do 2 (split => //). 
-         apply: oliso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
+         apply: oiso_stepL S2. rewrite maxnC. apply: add_edge_flip; eauto with vset.
          by rewrite !cnvdot cnvtst dotA. }
        have {He} E1 : e1 != e2'.
        { apply: contraNneq e1De2 => E. by rewrite -in_fset1 -He !inE E !eqxx. }
@@ -1702,7 +1697,7 @@ Proof with eauto with typeclass_instances.
         subst x'. rewrite -> oarc_cnv in arc_e2', arc_e1'. 
         case: (W _ _ _ _ _ _ _ arc_e2' arc_e1'); rewrite 1?eq_sym //.
         move => Gl' [Gr'] [[Sl Sr] E]. e2split; [exact: Sl| |exact: E].
-        apply: oliso_stepL Sr. rewrite fsetUC maxnC. apply: add_edge_flip; eauto with vset.
+        apply: oiso_stepL Sr. rewrite fsetUC maxnC. apply: add_edge_flip; eauto with vset.
         by rewrite cnvpar parC. }
       subst y'. 
       wlog ? : e1 e2 u v x y e1De2 arc_e1 arc_e2 xDz yDz Iz / e1' = e1.
@@ -1711,7 +1706,7 @@ Proof with eauto with typeclass_instances.
         subst e1'. rewrite -> oarc_cnv in arc_e2, arc_e1. 
         case: (W _ _ _ _ _ _ _ arc_e2 arc_e1); rewrite // 1?eq_sym 1?fsetUC //.
         move => Gl [Gr] [[Sl Sr] E]. e2split; [ | exact: Sr|exact: E].
-        apply: oliso_stepL Sl. rewrite maxnC. apply: add_edge_flip; eauto with vset.
+        apply: oiso_stepL Sl. rewrite maxnC. apply: add_edge_flip; eauto with vset.
         by rewrite !cnvdot cnvtst dotA. }
       subst e1'. 
       have /eqP ? : e2' == e2; [|subst e2'].
@@ -1780,7 +1775,7 @@ Proof with eauto with typeclass_instances.
       { move => W. move: He. rewrite in_fset2. case/orb_sum => /eqP E; first exact: W.
         case: (W _ _ _ _ _ _ arc_e2' arc_e1' _ E); rewrite 1?eq_sym //.
         move => Gl [Gr] [[Sl Sr] Elr]. e2split; [exact: Sl | | exact: Elr].
-        rewrite fsetUC maxnC. apply: oliso_stepL Sr. eapply weqG_oliso.
+        rewrite fsetUC maxnC. apply: oiso_stepL Sr. eapply weqG_oliso.
         - apply: add_edge_graph'; by eauto with vset.
         - apply: add_edge_graph'; by eauto with vset.
         - by rewrite parC. }
@@ -1815,7 +1810,7 @@ Proof with eauto with typeclass_instances.
       { move => W. case: (fset2_inv e1De2 E) => [|[? ?]]; first exact: W.
         subst e2' e1'. rewrite [[fset e2;e1]]fsetUC [maxn e2 e1]maxnC. 
         case: (W _ _ _ _ _ arc_e2' arc_e1') => // Gl [Gr] [[Sl Sr] EG].
-        e2split; [exact: Sl| |exact: EG]. apply: oliso_stepL Sr. 
+        e2split; [exact: Sl| |exact: EG]. apply: oiso_stepL Sr. 
         apply weqG_oliso. 1-2: apply: add_edge_graph'; eauto with vset.
         by rewrite parC. }
       subst e1' e2'. 
@@ -1824,7 +1819,7 @@ Proof with eauto with typeclass_instances.
         case: (same_oarc arc_e1 arc_e1') => [|[? ? Hu]]; first exact: W.
         subst x' y'. rewrite -> oarc_cnv in arc_e2'. case: (W _ _ u'° _ arc_e2') => //.
         move => Gl [Gr] [[Sl Sr] EG]. 
-        e2split; [exact: Sl| |exact: EG]. apply: oliso_stepL Sr. 
+        e2split; [exact: Sl| |exact: EG]. apply: oiso_stepL Sr. 
         apply: add_edge_flip; eauto with vset. by rewrite cnvpar. }
       subst x' y'. 
       (* There are actually two cases here *)
@@ -1868,7 +1863,7 @@ Proof with eauto with typeclass_instances.
         rewrite -> oarc_cnv in arc_e1,arc_e2. 
         move/(_ _ _ _ _ _ _ arc_e2 arc_e1) in W. rewrite fsetUC eq_sym in W.
         case: W => // Gl [Gr] [[S1 S2] WG]. exists Gl. exists Gr. do 2 (split => //). 
-        apply: oliso_stepL S1. rewrite maxnC. apply: add_edge_flip; eauto with vset.
+        apply: oiso_stepL S1. rewrite maxnC. apply: add_edge_flip; eauto with vset.
         by rewrite !cnvpar parC. }
       wlog ? : e1' e2' x' y' u' v'  arc_e1' arc_e2' e1De2' He / e2 = e1' ; [move => W|subst e1'].
       { have: e2 \in [fset e1';e2']. { move/fsetP : He => /(_ e2). rewrite in_fset1 eqxx. by case/fsetIP. }
@@ -1876,7 +1871,7 @@ Proof with eauto with typeclass_instances.
         rewrite -> oarc_cnv in arc_e1',arc_e2'. 
         move/(_ _ _ _ _ _ _ arc_e2' arc_e1') in W. rewrite eq_sym [[fset e2';_]]fsetUC in W.
         case: W => // Gl [Gr] [[S1 S2] WG]. exists Gl. exists Gr. do 2 (split => //). 
-        apply: oliso_stepL S2. rewrite maxnC fsetUC. apply: add_edge_flip; eauto with vset.
+        apply: oiso_stepL S2. rewrite maxnC fsetUC. apply: add_edge_flip; eauto with vset.
         by rewrite !cnvpar parC. }
       have {He} E1 : e1 != e2'.
       { apply: contraNneq e1De2 => E. by rewrite -in_fset1 -He !inE E !eqxx. }
@@ -1886,7 +1881,7 @@ Proof with eauto with typeclass_instances.
         rewrite -> oarc_cnv in arc_e2'. subst x' y'.  
         case: (W _ _ u'° _ arc_e2'). split => //. by rewrite E cnvI.
         move => Gl [Gr] [[Sl Sr] EG]. e2split; [exact: Sl| |exact: EG].
-        apply: oliso_stepL Sr. rewrite maxnC fsetUC. apply: add_edge_flip; eauto with vset.
+        apply: oiso_stepL Sr. rewrite maxnC fsetUC. apply: add_edge_flip; eauto with vset.
         by rewrite !cnvpar. }
       subst.
       have He2' : e2' \notin [fset e1; e2] by rewrite !inE negb_or ![e2' == _]eq_sym E1 e1De2'.
@@ -1940,7 +1935,7 @@ Proposition local_confluence (F G1 G2 : pre_graph) (isF : is_graph F) :
 Proof.
   move => S1 S2.
   move: (local_confluence_aux isF S1 S2) => [H1] [H2] [[S1' S2'] I].
-  exists H2. split => //. apply: osteps_trans (S1') _. apply: oliso_step. 
+  exists H2. split => //. apply: osteps_trans (S1') _. apply: oiso_step. 
   suff [isH1 isH2] : is_graph H1 /\ is_graph H2 by apply: weqG_oliso I.
   split. 
   - unshelve eapply (osteps_graph _ S1'). apply: ostep_graph S1.
@@ -2226,7 +2221,7 @@ Qed.
 Lemma osteps_iso (F G H: pre_graph): osteps F H -> F ⩭2 G -> osteps G H.
 Proof.
   intros FH FG. eapply osteps_trans. 
-  apply oliso_step. symmetry. apply FG.
+  apply oiso_step. symmetry. apply FG.
   assumption. 
 Qed.
 
@@ -2332,9 +2327,10 @@ Proof with eauto with typeclass_instances vset.
       * exact: inj_vNfresh.
     + set z := fresh _. set e := fresh _.
       etransitivity. 2: symmetry. 2: apply: open_add_test.
-      eapply weqG_oliso. 
-      * admit. 
-      * admit.
+      eapply weqG_oliso...
+      * apply del_vertex_graph => //=. 
+        -- apply add_test_graph. by apply: add_edge_graph'; rewrite !inE ?eqxx ?inj_v_open.
+        -- rewrite !pIO_add. constructor. apply: pIO_fresh. exact: freshP.
       * rewrite -del_vertex_add_test add_edgeKr ?add_vertexK ?freshP //.
         by rewrite [lv _ _]/= updateE.
   - (* V2 *) 
@@ -2343,6 +2339,7 @@ Proof with eauto with typeclass_instances vset.
     pose (z := fresh (vset (open G))).
     pose (e1 := fresh (eset (open G))).
     pose (e2 := fresh (e1 |` eset (open G))).
+    have ? : e1 != e2. admit.
     exists (open G ∔ [z,a] ∔ [e1, inj_v x, u, z] ∔ [e2,z,v,inj_v y])%O. 
     eexists; split; first split.
     + apply: oiso2_trans. apply: open_add_edge. 
@@ -2357,8 +2354,11 @@ Proof with eauto with typeclass_instances vset.
       3: abstract (by rewrite /= !inE eqxx).
       1-2: abstract by rewrite !oiso2E // ?inE ?inj_v_open ?eqxx.
       all: by rewrite !oiso2E // ?inE ?inj_v_open ?eqxx.
-    + apply (@ostep_v2 _ (inj_v x) (inj_v y) z e1 e1 u v).
-      (* looks good *) all: admit.
+    + apply (@ostep_v2 _ (inj_v x) (inj_v y) z e1 e2 u v).
+      all: rewrite ?pIO_add ?pIO_fresh ?inj_v_fresh ?freshP //.
+      * admit. (* missing lemma *)
+      * apply: oarc_add_edge => //. exact: oarc_added_edge.
+      * exact: oarc_added_edge.
     + rewrite /= updateE. 
       apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
       unshelve apply: oiso2_add_edge'. 
@@ -2398,42 +2398,15 @@ Qed.
 Lemma ostep_of (F G : graph2) : 
   step F G -> exists G', [/\ inhabited (ostep (open F) G') & inhabited (G' ⩭2 open G)].
 Proof.
-  elim => {F G}.
-  - admit.
-  - admit.
-  - move => G x y u a v. eexists; split;constructor. 
-    set G' := (_ ∔ [_,_,_])%G2. 
-    apply: (@ostep_v2 (open G') 
-                      (@inj_v G' (inl x)) 
-                      (@inj_v G' (inl y)) 
-                      (@inj_v G' (inr tt)) 
-                      (@inj_e (edge G') (Some None))
-                      (@inj_e (edge G') None) u v).
-    8:{ rewrite /= inj_vK. 
-    apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
-    unshelve eapply oiso2_add_edge'. 
-    (* turning this into a computational iso does not look good *)
-      
-  - admit.
-  - admit.
-Abort.
-
-Lemma ostep_of (F G : graph2) : 
-  step F G -> exists G', [/\ inhabited (ostep (open F) G') & inhabited (G' ⩭2 open G)].
-Proof.
   move/ostep_of' => [[F'] [G']  [[A B] C]].
   case: (ostep_iso B (oiso2_sym A)) => H [H1 H2]. 
   exists H. split => //. constructor. etransitivity. 2: apply: C. by symmetry.
 Qed.
 
-
-
-
-
-Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : is_graph (G ∔ [e,x, u, y])) :
-  e \notin eset G -> x' = close_v x :> close G -> y' = close_v y :> close G -> 
-  close (G ∔ [e,x, u, y]) ≃2 close G ∔ [x', u,y'].
-Admitted.
+(* Lemma close_add_edge_eq G e x y u (isG : is_graph G) (x' y' : close G) (isG' : is_graph (G ∔ [e,x, u, y])) : *)
+(*   e \notin eset G -> x' = close_v x :> close G -> y' = close_v y :> close G ->  *)
+(*   close (G ∔ [e,x, u, y]) ≃2 close G ∔ [x', u,y']. *)
+(* Admitted. *)
 
 (** We need one expansion lemma for every rule *)
 
@@ -2621,7 +2594,8 @@ Proof with eauto with typeclass_instances.
     { move => W. case: (oarc_cases arc_e1) => {arc_e1} edge_e1; first exact: W.
       etransitivity. apply: iso_step. apply: (flip_edge_iso e1).
       etransitivity. unshelve eapply (W (flip_edge G e1)) => //.
-      - abstract admit.
+      - abstract by apply: add_edge_graph'; rewrite !inE ?xDz ?yDz ; 
+          [apply: (is_edge_vsetR edge_e1)|apply: oarc_vsetR arc_e2].
       - by rewrite ?edges_at_flip_edge.
       - exact: oarc_flip_edge.
       - exact: flipped_edge. 
@@ -2631,7 +2605,8 @@ Proof with eauto with typeclass_instances.
     { move => W. case: (oarc_cases arc_e2) => {arc_e2} edge_e2; first exact: W.
       etransitivity. apply: iso_step. apply: (flip_edge_iso e2).
       etransitivity. unshelve eapply (W (flip_edge G e2)) => //.
-      - abstract admit.
+      - abstract by apply: add_edge_graph'; rewrite !inE ?xDz ?yDz;
+          [apply: (is_edge_vsetL edge_e1)|apply: is_edge_vsetL edge_e2].
       - by rewrite ?edges_at_flip_edge.
       - exact: is_edge_flip_edge.
       - exact: flipped_edge. 
@@ -2662,8 +2637,7 @@ Proof with eauto with typeclass_instances.
     { move => W. case: (oarc_cases arc_e1) => {arc_e1} edge_e1; first exact: W.
       etransitivity. apply: iso_step. apply: (flip_edge_iso e1).
       etransitivity. unshelve eapply (W (flip_edge G e1)) => //.
-      - abstract admit.
-      (* - by rewrite ?edges_at_flip_edge. *)
+      - abstract by apply: add_edge_graph' => /=;  eauto with vset. 
       - exact: oarc_flip_edge.
       - exact: flipped_edge. 
       - apply: iso_step. apply: eqvG_close. rewrite flip_edge_kill' //=.
@@ -2672,7 +2646,7 @@ Proof with eauto with typeclass_instances.
     { move => W. case: (oarc_cases arc_e2) => {arc_e2} edge_e2; first exact: W.
       etransitivity. apply: iso_step. apply: (flip_edge_iso e2).
       etransitivity. unshelve eapply (W (flip_edge G e2)) => //.
-      - abstract admit.
+      - abstract by apply: add_edge_graph' => /=;  eauto with vset. 
       - exact: is_edge_flip_edge.
       - exact: flipped_edge. 
       - apply: iso_step. apply: eqvG_close. rewrite flip_edge_kill' //=.
@@ -2687,8 +2661,14 @@ Qed.
 
 Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
   osteps G H -> steps (close G) (close H).
-Admitted.
-
+Proof.
+  move => S. elim: S isG isH => {G H} [G H h|G H GH |G F H S IH1 _ IH2] isG isH.
+  - apply: iso_step.
+    apply: iso2_comp (iso2_comp (oiso2_iso h) _); apply: close_irrelevance.
+  - exact: steps_of_ostep.
+  - have isF : is_graph F by apply: osteps_graph S. 
+    by transitivity (close F). 
+Qed.
 
 End ostep.
 End PttdomGraphTheory.
