@@ -452,7 +452,7 @@ End s.
 Section s'.
 Variable A: Type.
 Notation term := (term A).  
-Notation nterm := (nf_term A).  
+Notation nterm := (nterm A).  
 Notation test := (test (tm_pttdom A)). 
 Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
 Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
@@ -478,17 +478,17 @@ Definition tgraph_of_term: term -> tgraph2 := eval (fun a: A => g2_var (tm_var a
 
 Definition tgraph_of_nterm (t: nterm): tgraph2 :=
   match t with
-  | nf_test a => unit_graph2 a
-  | nf_conn a u b => edge_graph2 a u b
+  | nt_test a => unit_graph2 a
+  | nt_conn a u b => edge_graph2 a u b
   end.
 
 (* reduction lemma *)
-Proposition reduce (u: term): steps (tgraph_of_term u) (tgraph_of_nterm (nf u)).
+Proposition reduce (u: term): steps (tgraph_of_term u) (tgraph_of_nterm (nt u)).
 Proof.
   induction u=>//=.
   - etransitivity. apply dot_steps; [apply IHu1|apply IHu2].
-    case (nf u1)=>[a|a u b];
-    case (nf u2)=>[c|c v d]=>/=.
+    case (nt u1)=>[a|a u b];
+    case (nt u2)=>[c|c v d]=>/=.
     * apply iso_step. 
       etransitivity. apply dot2unit_r. apply add_vlabel2_unit. 
     * apply iso_step. 
@@ -506,8 +506,8 @@ Proof.
       apply dot_eqv=>//. rewrite dotA. apply dot_eqv=>//. 
 
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
-    case (nf u1)=>[a|a u b];
-    case (nf u2)=>[c|c v d]=>/=.
+    case (nt u1)=>[a|a u b];
+    case (nt u2)=>[c|c v d]=>/=.
     * apply isop_step. exists. apply par2unitunit.
     * etransitivity. apply isop_step.
       2: etransitivity.
@@ -530,7 +530,7 @@ Proof.
       exists. apply par_edges. 
       
   - etransitivity. apply cnv_steps, IHu. 
-    case (nf u)=>[a|a v b]=>//=.
+    case (nt u)=>[a|a v b]=>//=.
     apply isop_step. exists.
     etransitivity. refine (iso_iso2 (add_edge_rev _ _ _) _ _).
     simpl. rewrite /eqv'/=. symmetry. apply cnvI.
@@ -538,7 +538,7 @@ Proof.
     reflexivity. 
       
   - etransitivity. apply dom_steps, IHu. 
-    case (nf u)=>[a|a v b]=>//=.
+    case (nt u)=>[a|a v b]=>//=.
     etransitivity. apply one_step, (@step_v1 _ (unit_graph2 a) tt v b).
     apply isop_step. exists. 
     etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.

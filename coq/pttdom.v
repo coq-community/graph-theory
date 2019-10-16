@@ -198,75 +198,75 @@ Section terms.
  (* TOTHINK: might want to move normalisation to completeness related files *)
  
  (* normal forms for terms *)
- Inductive nf_term :=
- | nf_test: test -> nf_term
- | nf_conn: test -> term -> test -> nf_term.
+ Inductive nterm :=
+ | nt_test: test -> nterm
+ | nt_conn: test -> term -> test -> nterm.
 
- Definition term_of_nf (t: nf_term) :=
+ Definition term_of_nterm (t: nterm) :=
    match t with
-   | nf_test alpha => elem_of alpha (* why do we need to insert the coercion??? *)
-   | nf_conn alpha u gamma => alpha · u · gamma
+   | nt_test alpha => elem_of alpha (* why do we need to insert the coercion??? *)
+   | nt_conn alpha u gamma => alpha · u · gamma
    end.                                         
 
  (* pttdom algebra on normal forms *)
- Definition nf_one := nf_test [1].
- Definition nf_var a := nf_conn [1] (tm_var a) [1].
- Definition nf_cnv u :=
+ Definition nt_one := nt_test [1].
+ Definition nt_var a := nt_conn [1] (tm_var a) [1].
+ Definition nt_cnv u :=
    match u with
-   | nf_test _ => u
-   | nf_conn a u b => nf_conn b (u°) a
+   | nt_test _ => u
+   | nt_conn a u b => nt_conn b (u°) a
    end.
- Definition nf_dom u :=
+ Definition nt_dom u :=
    match u with
-   | nf_test _ => u
-   | nf_conn a u b => nf_test [a · dom (u·b)]
+   | nt_test _ => u
+   | nt_conn a u b => nt_test [a · dom (u·b)]
    end.
- Definition nf_dot u v :=
+ Definition nt_dot u v :=
    match u,v with
-   | nf_test a, nf_test b => nf_test [a·b]
-   | nf_test a, nf_conn b u c => nf_conn [a·b] u c
-   | nf_conn a u b, nf_test c => nf_conn a u [b·c]
-   | nf_conn a u b, nf_conn c v d => nf_conn a (u·b·c·v) d
+   | nt_test a, nt_test b => nt_test [a·b]
+   | nt_test a, nt_conn b u c => nt_conn [a·b] u c
+   | nt_conn a u b, nt_test c => nt_conn a u [b·c]
+   | nt_conn a u b, nt_conn c v d => nt_conn a (u·b·c·v) d
    end.
- Definition nf_par u v :=
+ Definition nt_par u v :=
    match u,v with
-   | nf_test a, nf_test b => nf_test [a·b]
-   | nf_test a, nf_conn b u c => nf_test [a ∥ b·u·c]
-   | nf_conn a u b, nf_test c => nf_test [c ∥ a·u·b]
-   | nf_conn a u b, nf_conn c v d => nf_conn [a·c] (u ∥ v) [b·d]
+   | nt_test a, nt_test b => nt_test [a·b]
+   | nt_test a, nt_conn b u c => nt_test [a ∥ b·u·c]
+   | nt_conn a u b, nt_test c => nt_test [c ∥ a·u·b]
+   | nt_conn a u b, nt_conn c v d => nt_conn [a·c] (u ∥ v) [b·d]
    end.
 
  (* normalisation function (could also be defined as an [eval])*)
- Fixpoint nf (u: term): nf_term :=
+ Fixpoint nt (u: term): nterm :=
    match u with
-   | tm_dot u v => nf_dot (nf u) (nf v)
-   | tm_par u v => nf_par (nf u) (nf v)
-   | tm_cnv u => nf_cnv (nf u) 
-   | tm_var a => nf_var a
-   | tm_dom u => nf_dom (nf u)
-   | tm_one => nf_one
+   | tm_dot u v => nt_dot (nt u) (nt v)
+   | tm_par u v => nt_par (nt u) (nt v)
+   | tm_cnv u => nt_cnv (nt u) 
+   | tm_var a => nt_var a
+   | tm_dom u => nt_dom (nt u)
+   | tm_one => nt_one
    end.
  
- Proposition nf_correct (u: term): u ≡ term_of_nf (nf u).
+ Proposition nt_correct (u: term): u ≡ term_of_nterm (nt u).
  Proof.
    induction u=>//=.
    - rewrite {1}IHu1 {1}IHu2.
-     case (nf u1)=>[a|a u b];
-     case (nf u2)=>[c|c v d]=>//=; 
+     case (nt u1)=>[a|a u b];
+     case (nt u2)=>[c|c v d]=>//=; 
      rewrite !dotA//.
    - rewrite {1}IHu1 {1}IHu2.
-     case (nf u1)=>[a|a u b];
-     case (nf u2)=>[c|c v d]=>//=.
+     case (nt u1)=>[a|a u b];
+     case (nt u2)=>[c|c v d]=>//=.
      admit.                      (* ok *)
      apply parC.
      admit.                      (* ok *)
    - rewrite {1}IHu.
-     case (nf u)=>[a|a v b]=>//=.
+     case (nt u)=>[a|a v b]=>//=.
      admit.                      (* ok *)
      rewrite 2!cnvdot dotA.
      admit. (* ok *)
    - rewrite {1}IHu.
-     case (nf u)=>[a|a v b]=>//=.
+     case (nt u)=>[a|a v b]=>//=.
      admit.                      (* ok *)
      admit.                      (* ok *)
    - rewrite dotx1.

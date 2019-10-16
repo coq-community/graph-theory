@@ -10,7 +10,7 @@ Set Bullet Behavior "Strict Subproofs".
 Section s.
 Variable A: Type.
 Notation term := (term A).  
-Notation nterm := (nf_term A).  
+Notation nterm := (nterm A).  
 Notation test := (test (tm_pttdom A)). 
 Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
 Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
@@ -68,7 +68,7 @@ Proof.
 Qed.
 
 (* graphs of normal forms are in normal form (i.e., can't reduce) *)
-Lemma nf_steps s: forall H, steps (tgraph_of_nterm s) H -> tgraph_of_nterm s ≃2p H.
+Lemma normal_steps s: forall H, steps (tgraph_of_nterm s) H -> tgraph_of_nterm s ≃2p H.
 Proof.
   suff E: forall G H, steps G H -> G ≃2p tgraph_of_nterm s -> G ≃2p H.
     by intros; apply E=>//; reflexivity. 
@@ -94,9 +94,9 @@ Proof.
 Qed.
 
 (* isomorphisms on graphs of normal forms give back equations *)
-Lemma iso_nf (s t: nterm):
+Lemma normal_iso (s t: nterm):
   tgraph_of_nterm s ≃2p tgraph_of_nterm t ->
-  term_of_nf s ≡ term_of_nf t.
+  term_of_nterm s ≡ term_of_nterm t.
 Proof.
   case s=>[a|a u b];
   case t=>[c|c v d]=>/=; move=> [[h hi ho]].
@@ -147,11 +147,11 @@ Theorem completeness (u v: term): graph_of_term u ≃2p graph_of_term v -> u ≡
 Proof.
   move=>/tgraph_graph_iso h.
   pose proof (reduce u) as H.
-  have H' : steps (tgraph_of_term u) (tgraph_of_nterm (nf v))
+  have H' : steps (tgraph_of_term u) (tgraph_of_nterm (nt v))
     by rewrite h; apply reduce. 
-  case (confluence H H')=>F [/nf_steps HF /nf_steps HF'].
-  rewrite-> (nf_correct u), (nf_correct v).
-  apply iso_nf. by rewrite HF'. 
+  case (confluence H H')=>F [/normal_steps HF /normal_steps HF'].
+  rewrite-> (nt_correct u), (nt_correct v).
+  apply normal_iso. by rewrite HF'. 
 Qed.
 
 End s.
