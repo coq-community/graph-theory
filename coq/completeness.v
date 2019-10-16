@@ -154,5 +154,12 @@ Proof.
   apply normal_iso. by rewrite HF'. 
 Qed.
 
+(* actually an iff since graphs from a 2p algebra *)
+Theorem soundness_and_completeness (u v: term): graph_of_term u ≃2p graph_of_term v <-> u ≡ v.
+Proof.
+  split. apply completeness.
+  intro E. apply E.             (* implicit call to [g2_pttdom] *)
+Qed.
+
 End s.
-Print Assumptions completeness.
+Print Assumptions soundness_and_completeness.
