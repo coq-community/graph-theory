@@ -478,7 +478,9 @@ Section merge_surj.
  Proof.
    Iso (quot_kernel Hr Hsurj) fe xpred0. split; intros=>/=.
    - rewrite -Hendpoints=>/=. by rewrite surj_repr_pi. 
-   - rewrite Hvlabel. apply eq_eqv, eq_bigl=>x.
+   - rewrite Hvlabel.
+     (* TOCLEAN *)
+     apply eq_eqv, eq_bigl=>x.
      apply /idP/idP =>/eqP E.
      * apply /eqP. move:E=>/Hr/eqquotP E. rewrite E. apply reprK. 
      * rewrite -E surj_repr_pi=>//.
@@ -500,6 +502,7 @@ Section h_merge_nothing'.
      split. intros ->. by rewrite equiv_refl.
      intro E. apply H. by rewrite E.
    - intro.
+     (* TOCLEAN *)
      rewrite -big_filter filter_index_enum /=.
      rewrite enum1 big_cons big_nil/=.
      by rewrite monU. 
@@ -539,11 +542,13 @@ Section merge.
     split; intros=>/=. 
     - rewrite endpoint_iso. symmetry. apply h_mergeE. 
     - rewrite quot_sameE. symmetry.
-      (* Equivalence Lemma for bigops over [mon2/1] *)
+     (* TOCLEAN *)
       apply: (eqv_big_bij (f := h)). exact: bij_perm_enum.
-      + admit. 
-      + admit.
-    - apply elabel_iso.
+      + move=>x. rewrite eqmodE eqv_clot_map. 2: apply bij_injective.
+        apply /idP/idP. move=>/eqP E. rewrite -E. apply piK'.
+        intro. apply /eqP. rewrite -(reprK v). by apply /eqquotP.
+      + move=> x _. by rewrite vlabel_iso.
+    - apply elabel_iso.        
   Qed.
   Definition merge_iso: merge_seq F l ≃ merge_seq G (map_pairs h l) := Iso merge_hom.
   Lemma merge_isoE (x: F): merge_iso (\pi x) = \pi h x.
@@ -557,10 +562,10 @@ Section merge_same'.
  Lemma merge_same'_hom: is_hom (quot_same H: merge _ h -> merge _ k) bij_id xpred0.
  Proof.
    split; intros=>//; try (rewrite /=; apply/eqquotP; rewrite -H; apply: piK').
-   simpl. rewrite -(reprK v) quot_sameE.
-   apply eq_eqv. apply eq_bigl=>x.
-      (* no longer about bigops, steps above could be replace by appropriate Proper lemma *)
-   admit.
+   (* TOCLEAN *)
+   apply (eqv_big_bij (f := id))=>//.
+   apply (bij_perm_enum bij_id).
+   intro. by rewrite -(reprK v) quot_sameE 2!eqmodE H.
  Qed.
  Definition merge_same': merge F h ≃ merge F k := Iso merge_same'_hom.
  Lemma merge_same'E (x: F): merge_same' (\pi x) = \pi x.
@@ -640,10 +645,9 @@ Section union_merge_l.
   Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id xpred0.
   Proof.
     split; try by case; intros=>//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE //.
-    case=>/=.
-    (* should be a Proper lemma I guess *)
-    admit.
-    admit. 
+    move=> x. rewrite /=quot_sameE. case:x=>[x|x].
+    - admit.                    (* half of the elements are ruled out *)
+    - admit.                    (* idem *)
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
@@ -735,7 +739,8 @@ Section merge_union_K.
   Lemma hom_merge_union_K: is_hom h_merge_union_K h_merge_union_Ke xpred0.
   Proof.
     split; try (case; intros =>//=; by rewrite ?quot_union_KEl ?quot_union_KEr quot_sameE).
-    simpl.
+    move=> v/=.
+    rewrite quot_sameE/=.
     (* removing a few neutral elements *)
   Admitted.
 
