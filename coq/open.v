@@ -1988,10 +1988,12 @@ Lemma close_v_IO (F : pre_graph) (isF : is_graph F) z (Hz : z \notin pIO F) :
   @close_v F isF z \notin IO.
 Admitted.
 
-Lemma close_del_vertex (F : pre_graph) (isF : is_graph F) z (isF' : is_graph (F \ z)) (Hz : z \notin pIO F) : 
-  close (F \ z) ≃2 @del_vertex2 tm (close F) (close_v z) (close_v_IO isF Hz).
-Proof.
-Admitted.
+(* Lemma close_del_vertex (F : pre_graph) (isF : is_graph F) z (isF' : is_graph (F \ z)) (Hz : z \notin pIO F) :  *)
+(*   close (F \ z) ≃2 @del_vertex2 tm (close F) (close_v z) (close_v_IO isF Hz). *)
+(* Proof. *)
+(*   (* rewrite /close/close'/del_vertex2/mgraph.del_vertex/subgraph_for/sub_vertex/=. rewrite/sub_edge/=. *) *)
+(*   (* symmetry. *) *)
+(* Admitted. *)
 
 
 Lemma Sub_endpt (G : pre_graph) (isG : is_graph G) (e : ET) (He : e \in eset G) b (p : endpt G b e \in vset G) :
@@ -2063,28 +2065,64 @@ Qed.
 
 Arguments del_vertex2 [L] G z _.
 
+
+
+ 
 (* TOTHINK: this is the only place where close_del_vertex is used far. It might
 be easiert to treat del_vertex without going to the mgraph2 pendant *)
 Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
   z \notin pIO F -> F \ z ⩭2 G \ j z.
 Proof.
-  move: j => [isF isG i] Vz IOz /=. 
-  have IOiz : vfun_body i z \notin pIO G by abstract (by rewrite vfun_bodyE -oiso2_pIO_vfun).
-  have isG' : is_graph (G \ vfun_body i z) by apply: del_vertex_graph.
-  econstructor.
-  apply: iso2_comp. apply: close_del_vertex. assumption.
-  apply: iso2_comp (iso2_sym _). 2: apply: close_del_vertex. 2:assumption.
-  apply del_vertex2_iso' with i.
-  abstract (by rewrite /vfun_of vfun_bodyE /= close_fsval close_vE).
+  (* move => Vz IOz. *)
+  move: j => [isF isG i] Vz IOz /=.
+  (* have [isF isG] : is_graph F /\ is_graph G; eauto with typeclass_instances. *)
+  unshelve econstructor. apply del_vertex_graph => //; constructor. rewrite (oiso2_pIO (OIso2 i)) // in IOz. 
+  have E1 : [fset vfun_body i z] = [fset val (i x) | x : vset F & val x \in [fset z]]. (* : / in?? *)
+  { apply/fsetP => k. rewrite inE vfun_bodyE. apply/eqP/imfsetP => /= [->|[x] /= ].
+    - exists (Sub z Vz) => //. by rewrite !inE.
+    - rewrite !inE => /eqP X ->. move: Vz. rewrite -X => Vz. by rewrite fsvalK. }
+  have E2 : edges_at G (vfun_body i z) = [fset val (i.e x) | x : eset F & val x \in edges_at F z].
+  { rewrite (@oiso2_edges_at _ _ (OIso2 i)) //=. apply/fsetP => k. apply/imfsetP/imfsetP.
+    - case => /= x Ix ->. 
+      have Hx : x \in eset F. move: Ix. rewrite edges_atE. by case: (_ \in _).
+      exists (Sub x Hx) => //. by rewrite efun_bodyE. 
+    - case => /= x. rewrite inE => Hx ->. exists (fsval x) => //. by rewrite efun_bodyE fsvalK. }
+  - unshelve iso2 (fsetD_bij (f := i) E1) (fsetD_bij (f := i.e) E2) (fun k => i.d (Sub (val k) (fsetDl (valP k)))). 
+    + split. 
+      * case => e p b. rewrite fsetD_bijE. admit.
+        move => q. 
+        rewrite /=. apply/val_inj => /=. move: (fsetDl _) => He. move: (fsetDl _) => He'. move: (fsetDl _) => Hv.
+        rewrite [fsval _](_ : _ = (efun_of (OIso2 i) e)) ?(@oiso2_endpoint _ _ (OIso2 i)) //=.
+        rewrite vfun_bodyE; first exact: endptP. rewrite edir_bodyE => Hv'. by rewrite (bool_irrelevance Hv Hv').
+        by rewrite efun_bodyE (bool_irrelevance He He').
+      * case => v p. rewrite fsetD_bijE. admit.
+        move => q. rewrite /=. admit.
+      * case => e p. rewrite fsetD_bijE. admit.
+        move => q. rewrite /=. admit.
+    + rewrite fsetD_bijE. admit.
+      admit.
+    + abstract admit.
 Defined.
+
+(*   move: j => [isF isG i] Vz IOz /=.  *)
+(*   have IOiz : vfun_body i z \notin pIO G by abstract (by rewrite vfun_bodyE -oiso2_pIO_vfun). *)
+(*   have isG' : is_graph (G \ vfun_body i z) by apply: del_vertex_graph. *)
+(*   econstructor. *)
+(*   apply: iso2_comp. apply: close_del_vertex. assumption. *)
+(*   apply: iso2_comp (iso2_sym _). 2: apply: close_del_vertex. 2:assumption. *)
+(*   apply del_vertex2_iso' with i. *)
+(*   abstract (by rewrite /vfun_of vfun_bodyE /= close_fsval close_vE). *)
+(* Defined. *)
 
 Lemma oiso2_del_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B x : 
   x \in vset (F \ z) -> @oiso2_del_vertex F G z j A B x = j x.
 Proof.
-  case: j => isF isG j Vx. rewrite /=. rewrite !vfun_bodyE /=.
-  (* FIXME, does not compute because of close_del_vertex *)
-Admitted.
+  case: j => isF isG j Vx. rewrite /= !vfun_bodyE fsetD_bijE.
+  - rewrite !inE [_ \in vset G]valP andbT. rewrite vfun_bodyE val_eqE bij_eqLR bijK.
+    by case/fsetD1P : (Vx).
+  - move => p. by rewrite /= (vfun_bodyE _ (fsetDl Vx)). 
+Qed.
 
 (** Variant of the above with a linear pattern in the conclusion *)
 Lemma oiso2_del_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) : 

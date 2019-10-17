@@ -326,3 +326,39 @@ Proof.
 Defined.
 
 End Fresh2Bij.
+
+
+Lemma fsetDl (T : choiceType) (A C : {fset T}) k : k \in A `\` C -> k \in A. by case/fsetDP. Qed.
+
+Section fsetD_bij.
+Variables (T : choiceType) (A B C C' : {fset T}) (f : bij A B).
+
+Hypothesis (E : C' = [fset val (f x) | x : A & val x \in C]).
+
+Lemma fsetD_bij_fwd_proof (k : A `\` C) : val (f (Sub (val k) (fsetDl (valP k)))) \in B `\` C'.
+Proof.
+  subst. rewrite inE [_ \in B]valP andbT. apply/imfsetP => [/= [x]]. rewrite inE => xC /val_inj.
+  move/(@bij_injective _ _ f) => ?. subst. rewrite /= in xC. case/fsetDP: (valP k). by rewrite xC.
+Qed.
+
+Lemma fsetD_bij_bwd_proof (k : B `\` C') : val (f^-1 (Sub (val k) (fsetDl (valP k)))) \in A `\` C.
+Proof.
+  subst. rewrite inE [_ \in A]valP andbT. apply: contraTN (valP k) => X.
+  rewrite inE negb_and negbK. apply/orP;left. apply/imfsetP => /=. 
+  exists (f^-1 (Sub (val k) (fsetDl (valP k)))); by rewrite ?inE ?bijK'.
+Qed.
+
+Definition fsetD_bij_fwd (k : (A `\` C)) : (B `\` C') := [` fsetD_bij_fwd_proof k].
+Definition fsetD_bij_bwd (k : (B `\` C')) : (A `\` C) := [` fsetD_bij_bwd_proof k].
+
+Lemma fsetD_bij_can_fwd : cancel fsetD_bij_fwd fsetD_bij_bwd.
+Proof. move => x. apply: val_inj => //=. by rewrite !(fsvalK,bijK). Qed.
+
+Lemma fsetD_bij_can_bwd : cancel fsetD_bij_bwd fsetD_bij_fwd.
+Proof. move => x. apply: val_inj => //=. by rewrite !(fsvalK,bijK'). Qed.
+
+Definition fsetD_bij := Bij fsetD_bij_can_fwd fsetD_bij_can_bwd.
+
+Lemma fsetD_bijE k (p : k \in A `\` C) q : fsetD_bij (Sub k p) = Sub (val (f (Sub k (fsetDl p)))) q.
+apply: val_inj => /=. do 2 f_equal. exact: val_inj. Qed.
+End fsetD_bij.
