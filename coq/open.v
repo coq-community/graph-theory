@@ -25,23 +25,39 @@ Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) :=
 
 
 Lemma testC X (a b : test X) : a·b ≡ b·a. 
-Admitted.
+Proof. exact: tst_dotC. Qed.
 
 Lemma eqvxx (X : setoid) (x : X) : x ≡ x. reflexivity. Qed.
 Arguments eqvxx [X x].
+Arguments eqv : simpl never.
 
 Lemma infer_testE X x x' y y' p p' : 
   (@infer_test X x y p) ≡ (@infer_test X x' y' p') <-> x ≡ x'.
 Proof. rewrite /infer_test. by subst. Qed.
 
-(** whats a reasonable name for [u ≡[b] v] and the associated lemmas? *)
-Lemma eqv_negb (X: pttdom) (u v : X) b : u ≡[~~b] v <-> u ≡[b] v°.
-Admitted.
-
-Lemma eqv_trans (X : pttdom) (u v w : X) (b1 b2 : bool) : 
+Lemma eqvb_trans (X : pttdom) (u v w : X) (b1 b2 : bool) : 
   u ≡[b1] v -> v ≡[b2] w -> u ≡[b1 (+) b2] w.
-Proof.
-Admitted.
+Proof. 
+  case: b1; case: b2 => //=; eauto using eqv10, eqv01, eqv11. 
+  by transitivity v.
+Qed.
+
+Lemma eqvb_transR (X : pttdom) b b' (u v v' : X) : 
+  u ≡[b (+) b'] v' ->  v' ≡[b'] v ->  u ≡[b] v.
+Proof. move => A B. move:(eqvb_trans A B). by rewrite -addbA addbxx addbF. Qed.
+
+Lemma eqvb_transL (X : pttdom) b b' (u u' v : X) : 
+  u' ≡[b (+) b'] v ->  u ≡[b'] u' ->  u ≡[b] v.
+Proof. move => A B. move:(eqvb_trans B A). by rewrite addbC -addbA addbxx addbF. Qed.
+
+(** whats a reasonable name for [u ≡[b] v] and the associated lemmas? *)
+Lemma eqvb_neq (X: pttdom) (u v : X) b : u ≡[~~b] v <-> u ≡[b] v°.
+Proof. 
+  split; apply: eqvb_transL.
+  - rewrite addbN addbxx. change (v ≡ v°°). by rewrite cnvI.
+  - by rewrite addNb addbxx. 
+Qed.
+
 
 (** Picking fresh vertices/edges *)
 
@@ -289,7 +305,7 @@ Lemma close_irrelevance (G : pre_graph) (graph_G graph_G' : is_graph G) :
 Proof.
   iso2 bij_id bij_id xpred0; try exact: val_inj.
   split => // e [|]; exact: val_inj.
-Qed.
+Defined.
   
 Lemma liso_of_oliso (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) : 
   G ⩭2 H -> close G ≃2 close H.
@@ -306,7 +322,7 @@ Proof.
   move => F G H [isF isG FG] [isG' isH GH]. econstructor.
   apply: iso2_comp GH. 
   apply: iso2_comp FG _. exact: close_irrelevance.
-Qed.
+Defined.
 
 Lemma oiso2_sym : CRelationClasses.Symmetric oiso2.
 Proof. move => F G [isF isG /iso2_sym ?]. by econstructor. Qed.
@@ -531,7 +547,7 @@ Proof.
   wlog suff W : x u y / oarc G e x u y -> oarc G e y u° x. 
   { split; first exact: W. move/W. by rewrite cnvI. }
   case => E [b] [A B C]. split => //. exists (~~b). rewrite negbK.
-  split => //. by rewrite eqv_negb cnvI.
+  split => //. by rewrite eqvb_neq cnvI.
 Qed.
 
 Lemma oarc_edge_atL e x y u : 
@@ -700,6 +716,15 @@ Proof.
   - rewrite /incident/=. by rewrite !existsb_case !updateE.
 Qed.
 
+Lemma edges_at_add_edgeL (G : pre_graph) x y e u : 
+  edges_at (G ∔ [e, x, u, y]) x = e |` edges_at G x.
+Proof.
+  apply/fsetP => e0. rewrite inE !edges_atE /= !inE. 
+  case: (altP (e0 =P e)) => //= [->|e0De].
+  - rewrite /incident/=. existsb false. by rewrite !update_eq. 
+  - rewrite /incident/=. by rewrite !existsb_case !updateE.
+Qed.
+
 Lemma edges_at_add_edge' G e x y z u : 
   e \notin eset G ->
   x != z -> y != z -> edges_at (G ∔ [e,x,u,y]) z = edges_at G z.
@@ -851,9 +876,14 @@ Proof.
 Qed.
 Definition add_edgeKr := add_edge_del_vertex.
 
+(* similar to above, symmetry argument? *)
 Lemma add_edgeKl (G : pre_graph) e x u y : 
   e \notin eset G -> G ∔ [e,x,u,y] \ x ≡G G \ x.
-Admitted. (* similar to above, symmetry argument *)
+Proof.
+  move => He. split => //=; rewrite edges_at_add_edgeL. 2: move => b.
+  all: rewrite fsetUDU ?fdisjoint1X // => f /fsetDP [Hf _]; 
+       rewrite update_neq //; by apply: contraNneq He => <-.
+Qed.
 
 Lemma add_testK (G : pre_graph) x a : G[adt x <- a] \ x ≡G G \ x.
 Proof. split => //= y /fsetD1P [? _]. by rewrite updateE. Qed.
@@ -925,15 +955,16 @@ Lemma close_fsval (G : pre_graph) (isG : is_graph G) (v : vset G) : close_v (fsv
 Proof. apply: val_inj => //=. by rewrite close_vK ?fsvalP. Qed.
 
 
+
 Definition close_add_test (G : pre_graph) (isG : is_graph G) x (Hx : x \in vset G) a :
   (close G)[tst close_v x <- a] ≃2 close (G[adt x <- a]).
 Proof.
   iso2 bij_id bij_id xpred0; try exact: val_inj.
   split => //.
-  - move => e b. exact: val_inj.
+  - move => e b. exact: val_inj. 
   - move => v. rewrite /= /update. (* simpl should not expose tst_dot *)
     case: (altP (v =P close_v x)) => [->|D]. 
-    + rewrite close_vK // eqxx /=. admit. (* never want to see this ! *)
+    + rewrite close_vK // eqxx /=. by rewrite tst_dotC.
     + suff -> : (fsval v == x = false) by []. 
       apply: contra_neqF D => /eqP<-. by rewrite close_fsval.
 Defined.
@@ -941,16 +972,16 @@ Defined.
 Section Transfer.
 Variable (G : graph2).
 
-(* not used? *)
-Lemma edges_at_open (x : G) (E : {set edge G}) :  
-  mgraph.edges_at G x = E ->
-  edges_at (open G) (inj_v x) = [fset inj_e e | e in E].
-Admitted.
+(* (* not used? *) *)
+(* Lemma edges_at_open (x : G) (E : {set edge G}) :   *)
+(*   mgraph.edges_at G x = E -> *)
+(*   edges_at (open G) (inj_v x) = [fset inj_e e | e in E]. *)
+(* Admitted. *)
 
 
-Lemma fresh_imfsetF (T : finType) (f : T -> ET) (e : T) :
-   f e == fresh [fset f x | x in T] = false.
-Admitted. 
+(* Lemma fresh_imfsetF (T : finType) (f : T -> ET) (e : T) : *)
+(*    f e == fresh [fset f x | x in T] = false. *)
+(* Admitted.  *)
 
 (* TOTHINK: could replace [fresh _] with an arbitrary fresh  *)
 Definition open_add_vertex a : 
@@ -1143,7 +1174,7 @@ Proof.
   { apply: contra_neq_eq xDy. rewrite -eqb_negR => /eqbP ?; subst.
     by symmetry. }
   subst b'. change (u ≡[false] u'). rewrite -(addbxx b). 
-  apply: eqv_trans. symmetry. exact: C. done.
+  apply: eqvb_trans. symmetry. exact: C. done.
 Qed.
 
 Lemma oarc_loop G e x y x' u u' : oarc G e x u y -> oarc G e x' u' x' -> x = y.
@@ -1154,9 +1185,9 @@ Lemma same_oarc G e x y x' y' u u' : oarc G e x u y -> oarc G e x' u' y' ->
 Proof.
   case => Ee [b] [A B C]. case => _ [b'] [A' B' C']. 
   case: (altP (b =P b')) => [Eb|]. 
-  - subst. left. split => //. apply: (eqv_addb b'). apply: eqv_trans C'. by symmetry.
+  - subst. left. split => //. apply: (eqv_addb b'). apply: eqvb_trans C'. by symmetry.
   - rewrite -eqb_negR => /eqP ?; subst. right; split => //. by rewrite negbK.
-    apply: (eqv_addbN b'). rewrite addbC. apply: eqv_trans C'. by symmetry.
+    apply: (eqv_addbN b'). rewrite addbC. apply: eqvb_trans C'. by symmetry.
 Qed.
 
 Lemma osteps_refl (G : pre_graph) (isG : is_graph G) : osteps G G.
@@ -1318,9 +1349,19 @@ Lemma critical_pair2 (u v : tm) : (1∥u)·(1∥v) ≡ 1∥(u∥v).
 (* Proof. by rewrite dotpartst' parA [_∥1]parC !parA par11. Qed. *)
 Admitted.
 
+(* should have proved this earlier ... *)
+Lemma edges_atP G e z : reflect (e \in eset G /\ exists b, endpt G b e = z) (e \in edges_at G z).
+Proof.
+  rewrite edges_atE /incident. apply: (iffP andP); intuition. 
+  - case/existsP : H1 => b /eqP<-. by exists b.
+  -case: H1 => b <-. apply/existsP. by exists b.
+Qed.
+                                     
 Lemma edges_at_oarc G e x y z u : 
   e \in edges_at G z -> oarc G e x u y -> x = z \/ y = z.
-Admitted.
+Proof.
+  move => Iz [Ee [b] [<- <- _]]. case/edges_atP : Iz => _ [[|]]; case: b; tauto. 
+Qed.
 
 Lemma add_test_merge G x a b : 
   G[adt x <- a][adt x <- b] ≡G G[adt x <- [a·b]].
@@ -1985,8 +2026,8 @@ Proof. by rewrite (oiso2_pIO (OIso2 i)) //= vfun_bodyE. Qed.
 
 
 Lemma close_v_IO (F : pre_graph) (isF : is_graph F) z (Hz : z \notin pIO F) : 
-  @close_v F isF z \notin IO.
-Admitted.
+  z \in vset F -> @close_v F isF z \notin IO.
+Proof. move => Vz. apply: contraNN Hz. by rewrite close_vE !inE. Qed.
 
 (* Lemma close_del_vertex (F : pre_graph) (isF : is_graph F) z (isF' : is_graph (F \ z)) (Hz : z \notin pIO F) :  *)
 (*   close (F \ z) ≃2 @del_vertex2 tm (close F) (close_v z) (close_v_IO isF Hz). *)
@@ -2040,7 +2081,7 @@ Proof.
   case => Ee [b] [A B C]. split; first exact: im_efun_of.
   exists (edir_of i e (+) b). 
   rewrite !oiso2_endpoint // -addbN !addbA !addbxx !addFb A B. split => //.
-  exact: eqv_trans (oiso2_le _ _ ) _.
+  exact: eqvb_trans (oiso2_le _ _ ) _.
 Qed.
 
 Lemma oiso2_add_test (F G : pre_graph) (i : F ⩭2 G) x a b :
@@ -2066,7 +2107,6 @@ Qed.
 Arguments del_vertex2 [L] G z _.
 
 
-
  
 (* TOTHINK: this is the only place where close_del_vertex is used far. It might
 be easiert to treat del_vertex without going to the mgraph2 pendant *)
@@ -2077,7 +2117,8 @@ Proof.
   (* move => Vz IOz. *)
   move: j => [isF isG i] Vz IOz /=.
   (* have [isF isG] : is_graph F /\ is_graph G; eauto with typeclass_instances. *)
-  unshelve econstructor. apply del_vertex_graph => //; constructor. rewrite (oiso2_pIO (OIso2 i)) // in IOz. 
+  unshelve econstructor. 
+  { apply del_vertex_graph => //; constructor. rewrite (oiso2_pIO (OIso2 i)) // in IOz. }
   have E1 : [fset vfun_body i z] = [fset val (i x) | x : vset F & val x \in [fset z]]. (* : / in?? *)
   { apply/fsetP => k. rewrite inE vfun_bodyE. apply/eqP/imfsetP => /= [->|[x] /= ].
     - exists (Sub z Vz) => //. by rewrite !inE.
@@ -2088,21 +2129,36 @@ Proof.
       have Hx : x \in eset F. move: Ix. rewrite edges_atE. by case: (_ \in _).
       exists (Sub x Hx) => //. by rewrite efun_bodyE. 
     - case => /= x. rewrite inE => Hx ->. exists (fsval x) => //. by rewrite efun_bodyE fsvalK. }
-  - unshelve iso2 (fsetD_bij (f := i) E1) (fsetD_bij (f := i.e) E2) (fun k => i.d (Sub (val k) (fsetDl (valP k)))). 
+  - have P e (p : e \in eset (F \ z)) : val (i.e (Sub e (fsetDl p))) \in eset G `\` edges_at G (vfun_body i z).
+    { rewrite inE [_ \in eset G]valP andbT E2. apply: contraTN (p).
+      case/imfsetP => /= e0. rewrite inE => A. move/val_inj. move/(@bij_injective _ _ i.e) => ?; subst.
+      by rewrite inE A. }
+    have Q v (p : v \in vset (F \ z)) : val (i (Sub v (fsetDl p))) \in vset G `\ vfun_body i z.
+    { rewrite inE [_ \in vset G]valP andbT E1. apply: contraTN (p).
+      case/imfsetP => /= v0. rewrite inE => A. move/val_inj. move/(@bij_injective _ _ i) => ?; subst.
+      by rewrite inE A. }
+    iso2 (fsetD_bij (f := i) E1) (fsetD_bij (f := i.e) E2) (fun k => i.d (Sub (val k) (fsetDl (valP k)))). 
     + split. 
-      * case => e p b. rewrite fsetD_bijE. admit.
+      * case => e p b. rewrite fsetD_bijE. apply: P.
         move => q. 
         rewrite /=. apply/val_inj => /=. move: (fsetDl _) => He. move: (fsetDl _) => He'. move: (fsetDl _) => Hv.
         rewrite [fsval _](_ : _ = (efun_of (OIso2 i) e)) ?(@oiso2_endpoint _ _ (OIso2 i)) //=.
         rewrite vfun_bodyE; first exact: endptP. rewrite edir_bodyE => Hv'. by rewrite (bool_irrelevance Hv Hv').
         by rewrite efun_bodyE (bool_irrelevance He He').
-      * case => v p. rewrite fsetD_bijE. admit.
-        move => q. rewrite /=. admit.
-      * case => e p. rewrite fsetD_bijE. admit.
-        move => q. rewrite /=. admit.
-    + rewrite fsetD_bijE. admit.
-      admit.
-    + abstract admit.
+      * case => v p. case/fsetD1P : (p) => p1 p2. rewrite fsetD_bijE. apply: Q.
+        move => q. rewrite ![vlabel _]/=. rewrite -(oiso2_lv (OIso2 i)) //= vfun_bodyE. 
+        by rewrite (bool_irrelevance (fsetDl p) p2).
+      * case => e p. case/fsetDP : (p) => p1 p2. rewrite fsetD_bijE. apply: P.
+        move => q. rewrite ![elabel _]/=. rewrite [i.d _]/=. 
+        move: (oiso2_le (OIso2 i) p1) => H. apply: eqvb_transR H => //=. 
+        rewrite edir_bodyE efun_bodyE. rewrite (bool_irrelevance (fsetDl p) p1). 
+        rewrite (bool_irrelevance (fsetDl (valP [` p])) p1) addbxx. done.
+    + rewrite fsetD_bijE. apply: Q.
+      move => q. apply/val_inj => /=. rewrite -(oiso2_input (OIso2 i)) /= vfun_bodyE. apply: p_inP. 
+      move => r. set X := fsetDl _. by rewrite (bool_irrelevance X r).
+    + rewrite fsetD_bijE. apply: Q.
+      move => q. apply/val_inj => /=. rewrite -(oiso2_output (OIso2 i)) /= vfun_bodyE. apply: p_outP. 
+      move => r. set X := fsetDl _. by rewrite (bool_irrelevance X r).
 Defined.
 
 (*   move: j => [isF isG i] Vz IOz /=.  *)
@@ -2306,14 +2362,18 @@ Proof.
   move => Vk. destruct i => /=. by rewrite !vfun_bodyE /=.
 Qed.
 
-Lemma oiso2_transE F G H i j k : @oiso2_trans F G H i j k = j (i k).
-Admitted.
+Lemma oiso2_transE F G H i j k : k \in vset F -> @oiso2_trans F G H i j k = j (i k).
+Proof. 
+  case: i j => isF isG i [isF' isH j] Vk.
+  rewrite /= !vfun_bodyE; first exact: valP. 
+  move => p /=. by rewrite fsvalK.
+Qed.
 
 Hint Resolve inj_v_open : vset.
 Hint Resolve freshP : vset.
 
 Lemma inj_vNfresh (G : graph2) (x : G) : inj_v x != fresh (vset (open G)).
-Admitted.
+Proof. apply: inj_v_fresh. exact: freshP. Qed.
 
 Lemma oiso2_id G (isG : is_graph G) : G ⩭2 G. 
 Proof. econstructor. exact: iso2_id. Defined.
@@ -2363,21 +2423,22 @@ Proof with eauto with typeclass_instances vset.
       * rewrite !pIO_add. apply: pIO_fresh. exact: freshP.
       * exact: oarc_added_edge.
       * exact: inj_vNfresh.
-    + set z := fresh _. set e := fresh _.
+    + set z := fresh _. set e := fresh _. rewrite /= updateE.
       etransitivity. 2: symmetry. 2: apply: open_add_test.
       eapply weqG_oliso...
       * apply del_vertex_graph => //=. 
         -- apply add_test_graph. by apply: add_edge_graph'; rewrite !inE ?eqxx ?inj_v_open.
         -- rewrite !pIO_add. constructor. apply: pIO_fresh. exact: freshP.
       * rewrite -del_vertex_add_test add_edgeKr ?add_vertexK ?freshP //.
-        by rewrite [lv _ _]/= updateE.
   - (* V2 *) 
     move => G x y u a v. constructor. 
     (* mathcomp pose does not resolve inh_type *)
     pose (z := fresh (vset (open G))).
     pose (e1 := fresh (eset (open G))).
     pose (e2 := fresh (e1 |` eset (open G))).
-    have ? : e1 != e2. admit.
+    have ? : e1 != e2. 
+    { apply: contraTneq (@freshP  (e1 |` eset (open G))). 
+      rewrite -/e2 => <-. by rewrite !inE eqxx. }
     exists (open G ∔ [z,a] ∔ [e1, inj_v x, u, z] ∔ [e2,z,v,inj_v y])%O. 
     eexists; split; first split.
     + apply: oiso2_trans. apply: open_add_edge. 
@@ -2394,13 +2455,14 @@ Proof with eauto with typeclass_instances vset.
       all: by rewrite !oiso2E // ?inE ?inj_v_open ?eqxx.
     + apply (@ostep_v2 _ (inj_v x) (inj_v y) z e1 e2 u v).
       all: rewrite ?pIO_add ?pIO_fresh ?inj_v_fresh ?freshP //.
-      * admit. (* missing lemma *)
+      * by rewrite edges_at_add_edgeL edges_at_add_edge edges_at_added_vertex ?freshP ?fsetU0 1?fsetUC.
       * apply: oarc_add_edge => //. exact: oarc_added_edge.
       * exact: oarc_added_edge.
     + rewrite /= updateE. 
       apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
       unshelve apply: oiso2_add_edge'. 
-      { apply weqG_oliso... all: abstract admit. }
+      { apply weqG_oliso ...      
+all: abstract admit. }
       1: admit.
       all: rewrite ?weqG_iso2E ?freshP //=.
       all: by rewrite ?inE ?inj_v_open ?inj_vNfresh.
@@ -2566,7 +2628,7 @@ Lemma oarc_flip_edge (G : pre_graph) e1 e2 x y u :
 Proof.
   case: (altP (e2 =P e1)) => [->|D]. 
   - case => E [b] [A B C]. split => //. exists (~~ b). rewrite /= !negbK !updateE. 
-    split => //. symmetry. rewrite eqv_negb. symmetry. by rewrite cnvI.
+    split => //. symmetry. rewrite eqvb_neq. symmetry. by rewrite cnvI.
   - case => E [b] [A B C]. split => //. exists b. by rewrite /= !updateE.
 Qed.
 
