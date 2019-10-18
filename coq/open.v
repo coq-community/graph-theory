@@ -68,7 +68,10 @@ Proof.
   have S e' : e' \in E -> e' < fresh E. 
   { rewrite /fresh ltnS => inE. by rewrite -[e']/(val [`inE]) leq_bigmax. }
   apply/negP => /S. by rewrite ltnn.
-Qed.   
+Qed.
+
+Lemma freshP' (E E' : {fset nat}) : E' `<=` E -> fresh E \notin E'.
+Proof. apply: contraTN => H. apply/fsubsetPn. exists (fresh E) => //. exact: freshP. Qed.
 
 Lemma fresh_eqF (E : {fset nat}) (x : E) : val x == fresh E = false.
 Proof. by rewrite fsval_eqF // freshP. Qed.
@@ -457,6 +460,10 @@ Proof.
     all: try rewrite S1; try apply W2. all: rewrite -?S1 //.
 Qed.
 
+Lemma weqG_sym : Symmetric weqG.
+Proof. move => G H. by symmetry. Qed.
+
+(* TODO: eliminate uses of this lemma in foavor of the L/R variants below *)
 Definition weqG_oliso (G H : pre_graph) : 
   is_graph G -> is_graph H -> G ≡G H -> G ⩭2 H.
 Proof.
@@ -470,6 +477,20 @@ Proof.
   - rewrite bij_castE. exact: val_inj.
   - rewrite bij_castE. exact: val_inj.
 Defined.
+
+Lemma weqG_graph (G H : pre_graph) (isG : is_graph G) : G ≡G H -> is_graph H.
+Proof.
+  move => [EV EE Eep Elv Ele Ei Eo]. econstructor.
+  - move => e b Ee. rewrite -EE in Ee. rewrite -EV -Eep //. exact: endptP. 
+  - rewrite -EV -Ei. exact: p_inP.
+  - rewrite -EV -Eo. exact: p_outP.
+Qed.
+
+Definition weqG_iso2L (G H : pre_graph) (isG : is_graph G) (E : G ≡G H) := 
+  @weqG_oliso G H isG (weqG_graph isG E) E.
+
+Definition weqG_iso2R (G H : pre_graph) (isH : is_graph H) (E : G ≡G H) := 
+  @weqG_oliso G H (weqG_graph isH (weqG_sym E)) isH E.
 
 Lemma weqG_iso2E (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) (E : G ≡G H) x :
   x \in vset G ->
@@ -2389,6 +2410,9 @@ Proof.
   by rewrite imfset_bij_bwdE.
 Qed.
 
+Lemma del_edgesD G E : [disjoint eset G & E] -> G - E ≡G G.
+Proof. move => D. split => //=. exact: fsetDidPl. Qed.
+
 Definition oiso2E := (oiso2_transE, 
                       open_add_edgeE, 
                       oiso2_add_edgeE', 
@@ -2459,11 +2483,11 @@ Proof with eauto with typeclass_instances vset.
       * apply: oarc_add_edge => //. exact: oarc_added_edge.
       * exact: oarc_added_edge.
     + rewrite /= updateE. 
+      have E : open G ∔ [z, a] ∔ [e1, inj_v x, u, z] ∔ [e2, z, v, inj_v y] \ z ≡G open G.
+      { by rewrite add_edgeKl ?add_edgeKr ?add_vertexK ?freshP. }
       apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
-      unshelve apply: oiso2_add_edge'. 
-      { apply weqG_oliso ...      
-all: abstract admit. }
-      1: admit.
+      unshelve apply: oiso2_add_edge'. apply: weqG_iso2R E.
+      1: { rewrite (sameE E). case: maxnP => _; rewrite ?freshP //. apply: freshP'. apply: fsubsetUr. }
       all: rewrite ?weqG_iso2E ?freshP //=.
       all: by rewrite ?inE ?inj_v_open ?inj_vNfresh.
   - (* E0 *) move => G x u. 
@@ -2473,12 +2497,16 @@ all: abstract admit. }
     + apply: (@ostep_e0 _ (inj_v x) e u). exact: oarc_added_edge.
     + rewrite /= update_eq.
       apply: oiso2_trans _ (oiso2_sym _). 2:apply: open_add_test.
-      eapply weqG_oliso... admit. admit.
+      eapply weqG_iso2R...
+      rewrite add_edge_del_edgesK ?inE //.
+      by rewrite del_edgesD // fdisjointX1 freshP. 
   - (* E2 *) 
     move => G x y u v. constructor. 
     pose (e1 := fresh (eset (open G))).
     pose (e2 := fresh (e1 |` eset (open G))).
-    have: e1 != e2 by admit.
+    have ? : e1 != e2. 
+    { apply: contraTneq (@freshP  (e1 |` eset (open G))). 
+      rewrite -/e2 => <-. by rewrite !inE eqxx. }
     exists (open G ∔  [e1, inj_v x, u, inj_v y] ∔ [e2, inj_v x, v, inj_v y])%O.
     eexists; split; first split.
     + apply: oiso2_trans. apply: open_add_edge. 
@@ -2490,7 +2518,8 @@ all: abstract admit. }
       * exact: oarc_added_edge.
     + apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
       unshelve apply: oiso2_add_edge'. 
-      { apply weqG_oliso... all: abstract admit. }
+      { apply weqG_iso2R... rewrite !add_edge_del_edgesK ?inE ?eqxx //.
+        rewrite del_edgesD // fdisjointXU !fdisjointX1 freshP freshP' //. apply: fsubsetUr. }
       1: by rewrite maxn_fsetD.
       all: by rewrite ?weqG_iso2E ?freshP //= ?inj_v_open.
 Qed.
