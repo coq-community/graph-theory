@@ -1639,17 +1639,21 @@ Proof with eauto with typeclass_instances.
           subst x x'.
           case: (same_oarc arc_e2 arc_e2') => [[? ? U']|[? ? U']]; first by subst;rewrite eqxx in D.
           subst y y'.
+          have ?: (maxn e1 e2 |` [fset e1; e2] `\` [fset e1; e2]) `\ maxn e1 e2 = fset0.
+          { apply/fsetP => e; rewrite !inE; case: maxnP => _.
+            all: case (altP (e =P e1)) => [?|?]; subst; rewrite ?(negbTE e1De2) //=.
+            all: by case: (altP (e =P e2)). }
           e2split.
           * apply: ostep_stepL. apply: ostep_e0. apply: oarc_added_edge.
             apply: ostep_step. apply: (@ostep_v0 _ z'). all: try done.
               rewrite /= in_fsetD inE eq_sym D. exact: oarc_vsetL arc_e1.
             rewrite /= edges_at_test edges_at_del_edges edges_at_add_edge. 
-            rewrite edges_at_del. (* OK *) admit.
+            by rewrite edges_at_del Iz Iz'. 
           * apply: ostep_stepL. apply: ostep_e0. apply: oarc_added_edge.
             apply: ostep_step. apply: (@ostep_v0 _ z). all: try done.
               rewrite /= in_fsetD inE D. exact: oarc_vsetR arc_e1.
             rewrite /= edges_at_test edges_at_del_edges edges_at_add_edge. 
-            rewrite edges_at_del. (* OK *) admit.
+            by rewrite edges_at_del Iz Iz'. 
           * rewrite !add_testK !add_edge_del_edgesK. 2-3: by rewrite in_fset1.
             by rewrite -!del_vertex_edges del_vertexC. }
     + (* independent instances *)
@@ -2301,7 +2305,7 @@ Proof with eauto with vset.
       * apply: contra_neq xDz. apply: vfun_of_inj...
     + unshelve apply: oiso2_del_vertex_. apply: oiso2_add_test...
       * (* rewrite infer_testE. rewrite (oiso2_lv i Vz). -- why does this fail? *)
-        abstract admit.
+        move: (oiso2_lv i Vz) => E. admit.
       * done.
       * done.
       * by rewrite oiso2_add_testE. 
@@ -2327,7 +2331,9 @@ Proof with eauto with vset.
         by rewrite Iz imfset1U imfset1 maxn_fset2.
       * rewrite in_fsetD1 xDz /=...
       * rewrite in_fsetD1 yDz /=...
-      * move: (oiso2_lv i Vz) => X. Fail rewrite X. admit. (* why? *)
+      * move: (oiso2_lv i Vz) => X.
+        Fail rewrite -X. (* why? *)
+        apply: dot_eqv => //. apply dot_eqv => //. symmetry in X. etransitivity. exact X. done.
       * rewrite in_fsetD1 yDz /=...
       * rewrite in_fsetD1 xDz /=...
   - move => x e u arc_e i.
@@ -2341,7 +2347,9 @@ Proof with eauto with vset.
       have jE z (Vz : z \in vset F) : j z = i z. { exact: oiso2_del_edgesE. }
       rewrite -!jE. apply: oiso2_add_test. 
       * rewrite /=. exact: oarc_vsetL arc_e.
-      *  admit. (* OK *)
+      * case: arc_e {j jE} => E _.
+        move:(oiso2_le i E). move: (efun_of i e) => e'. move: (edir_of i e) => b. symmetry.
+        admit. (* OK *)
       * rewrite /=. exact: oarc_vsetL arc_e.
   - move => x y e1 e2 u v e1De2 arc_e1 arc_e2 i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
@@ -2388,7 +2396,10 @@ isomorphisms to obtain the desired form of the lemma *)
 Lemma eqvG_close G H (isG : is_graph G) (isH : is_graph H) : 
   G ≡G H -> close G ≃2 close H.
 Proof. 
-Admitted.
+  move/weqG_oliso => h. 
+  apply: iso2_comp _ (iso2_comp  (@oiso2_iso _ _ h) _); apply: close_irrelevance.
+Qed.
+
 
 Lemma oiso2_add_edge' (F G : pre_graph) (i : F ⩭2 G) 
  (e1 e2 : ET) (x y x' y' : VT) (u v : tm) :
@@ -2574,13 +2585,21 @@ Qed.
 
 (** We need one expansion lemma for every rule *)
 
-Lemma in_vsetD G z x : x != z -> x \in vset G -> x \in vset (G \ z).
+Lemma in_vsetDV G z x : x != z -> x \in vset G -> x \in vset (G \ z).
 Proof. by rewrite !inE => -> -> . Qed.
-Hint Resolve in_vsetD : vset.
+Hint Resolve in_vsetDV : vset.
+
+Lemma in_vsetDE G x E: x \in vset G -> x \in vset (G - E).
+Proof. apply. Qed.
+Hint Resolve in_vsetDE : vset.
 
 Lemma in_vsetAV G z a x : x \in vset G -> x \in vset (G ∔ [z,a]).
 Proof. by rewrite !inE => ->. Qed.
 Hint Resolve in_vsetAV : vset.
+
+Lemma in_vsetAE G x y z u e : x \in vset G -> x \in vset (G ∔ [e,y,u,z]).
+Proof. by apply. Qed.
+Hint Resolve in_vsetAE.
 
 Lemma in_vsetAV' G z a : z \in vset (G ∔ [z,a]).
 Proof. by rewrite !inE eqxx. Qed.
@@ -2664,13 +2683,38 @@ Qed.
 Lemma expand_loop (G : pre_graph) (isG : is_graph G) (x : VT) (e : ET) u :
     is_edge G e x u x -> close G ≃2 close (G - [fset e]) ∔ [close_v x, le G e, close_v x].
 Proof.
-Admitted.
+  move => edge_e. symmetry. 
+  have E : (G - [fset e]) ∔ [e,x,le G e,x] ≡G G. 
+  { rewrite del_edgeK //. by case: edge_e => E [A B C]. }
+  apply: iso2_comp (iso2_sym _) _. 
+  unshelve eapply (close_add_edge' (G := G - [fset e]) (e := e)).
+  { symmetry in E. apply: weqG_graph E. }
+  - by rewrite /= !inE eqxx.
+  - exact: eqvG_close E.
+Qed.
 
 Lemma expand_parallel (G : pre_graph) (isG : is_graph G) (x y : VT) (e1 e2 : ET) u v :
   e1 != e2 -> is_edge G e1 x u y -> is_edge G e2 x v y ->
   close G ≃2 close (G - [fset e1; e2]) ∔ [close_v x, u, close_v y] ∔ [close_v x, v, close_v y].
-Proof.
-Admitted.
+Proof with eauto with vset.
+  move => e1De2 edge_e1 edge_e2. symmetry.
+  pose G' := ((G - [fset e1; e2]) ∔ [e1, x, u, y])%O.
+  have isG' : is_graph G'. { apply: add_edge_graph'... }
+  apply: iso2_comp. apply: add_edge2_iso. apply: iso2_sym. 
+  unshelve eapply (close_add_edge' (e := e1)).
+  { abstract (by rewrite !inE eqxx). }
+  rewrite /=. 
+  have E : (G - [fset e1; e2]) ∔ [e1, x, u, y] ∔ [e2,x, v,y] ≡G G. 
+  { rewrite fsetUC -del_edges_edges !del_edgeK //. apply: is_edge_del_edges edge_e1. by rewrite inE. }
+  apply: iso2_comp (iso2_sym _) _. 
+  rewrite -/G'. set Cx := close_v x. set Cy := close_v y.
+  have -> : Cx = (@close_v G' _ x). { rewrite /Cx /G' !close_vE... move => ? ?. exact: val_inj. }
+  have -> : Cy = (@close_v G' _ y). { rewrite /Cy /G' !close_vE... move => ? ?. exact: val_inj. }
+  unshelve eapply (close_add_edge' (G := G') (e := e2)).
+  - rewrite /G'. symmetry in E. apply: weqG_graph E.
+  - by rewrite !inE eqxx eq_sym (negbTE e1De2).
+  - exact: eqvG_close E.
+Qed.
 
 (** Move this up ?*)
 
@@ -2812,7 +2856,14 @@ Proof with eauto with typeclass_instances.
     apply: iso_step. apply: iso2_comp (iso2_sym _) _. apply: (@close_add_edge' (G \ z)).
     by rewrite /= Iz maxn_fsetD. reflexivity.
   - move => x e u arc_e isG isH.
-    have edge_e : is_edge G e x u x. { admit. (* TODO: the rule should use is_edge *) }
+    wlog edge_e : G u {arc_e} isG isH / is_edge G e x u x.
+    { move => W. case: (oarc_cases arc_e) => {arc_e} edge_e; first apply: W edge_e.
+      etransitivity. apply: iso_step. apply: (flip_edge_iso e).
+      etransitivity. apply: (W _ u).
+      - exact: flipped_edge. 
+      - apply: iso_step. apply: eqvG_close. rewrite flip_edge_kill' ?inE ?eqxx //= updateE.
+        rewrite (_ : [1∥(le G e)°] ≡ [1∥(le G e)]) //. 
+        admit. }
     have h : close G ≃2 close (G - [fset e]) ∔ [close_v x,le G e,close_v x].
     { exact: expand_loop edge_e. }
     apply: cons_step h _ _. constructor. 
