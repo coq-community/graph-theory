@@ -626,10 +626,12 @@ Global Opaque merge_add_edge.
 
 Lemma merge_add_vlabel (G: graph) (r: equiv_rel G) x a: merge (G [tst x <- a]) r ≃ merge G r [tst \pi x <- a].
 Proof.
-  Iso bij_id bij_id xpred0. split=>//.
-  move=> v/=.
-  (* isolating a term in the bigop + ssreflect case distinctions I don't do well... *)
-  admit. 
+  Iso bij_id bij_id xpred0. split=>//= v. case: (altP (v =P \pi x)) => [-> {v}|D].
+  - rewrite (bigD1 x) // [in X in _ ≡ X](bigD1 x) // ?eqxx monA. apply: mon_eqv => //.
+    apply: eqv_bigr => y /andP [_ H]. by rewrite (negbTE H).
+  - apply: (eqv_big_bij (f := bij_id)) => //. 
+    + exact: bij_perm_enum.
+    + move => /= y /eqP ?. case: (altP (y =P x)) => // ?; subst. by rewrite eqxx in D.
 Defined.
 Lemma merge_add_vlabelE (G: graph) (r: equiv_rel G) x a (z: G): @merge_add_vlabel G r x a (\pi z) = \pi z.
 Proof. by []. Qed.
@@ -637,6 +639,7 @@ Global Opaque merge_add_vlabel.
 
 
 (* isomorphisms about [union] and [merge] *)
+
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
@@ -646,8 +649,13 @@ Section union_merge_l.
   Proof.
     split; try by case; intros=>//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE //.
     move=> x. rewrite /=quot_sameE. case:x=>[x|x].
-    - admit.                    (* half of the elements are ruled out *)
-    - admit.                    (* idem *)
+    have x0 := repr x.
+    - pose f (z : F + G) := if z is inl z' then z' else x0.
+      etransitivity. apply: (reindex_onto (@inl _ _) f) => /=.
+      + move => [i|i] //=. admit. 
+      + rewrite [X in X ≡ _]big_mkcond [X in _ ≡ X]big_mkcond.
+        apply: eqv_bigr => z _ => /=. admit. (* eqv_clot_map? *)
+    - admit. (* idem *)
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
@@ -740,9 +748,14 @@ Section merge_union_K.
   Proof.
     split; try (case; intros =>//=; by rewrite ?quot_union_KEl ?quot_union_KEr quot_sameE).
     move=> v/=.
-    rewrite quot_sameE/=.
-    (* removing a few neutral elements *)
-  Admitted.
+    rewrite quot_sameE/=.  
+    have x0 : F. { case: (repr v). exact: id. exact k. }
+    etransitivity. apply: (reindex_onto (sum_left (fun _ : K => x0)) (@inl _ _)) => //.
+    rewrite /= [X in X ≡ _]big_mkcond [X in _ ≡ X]big_mkcond /=.
+    apply: eqv_bigr => [[x|x]] /= _.
+    - rewrite eqxx andbT. admit.
+    - rewrite andbC kv -[X in X ≡ _]/1. by case: ifP.
+  Qed.
 
   Definition merge_union_K: merge_seq (F ⊎ K) h ≃ merge_seq F union_K_pairs :=
     Iso hom_merge_union_K.

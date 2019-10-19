@@ -124,5 +124,73 @@ Lemma eqv_big_bij (I1 I2 : finType) (f : I1 -> I2)
    \big[mon2/1]_(i <- r1 | P1 i) F1 i ≡ \big[mon2/1]_(i <- r2 | P2 i) F2 i.
 Proof. move => pr HP HF. rewrite (perm_big _ _ pr). exact: eqv_map. Qed.
 
+Lemma big_split I r (P : pred I) (F1 F2 : I -> lv L) :
+  \big[mon2/1]_(i <- r | P i) (F1 i ⊗ F2 i) ≡
+  (\big[mon2/1]_(i <- r | P i) F1 i) ⊗ \big[mon2/1]_(i <- r | P i) F2 i.
+Proof.
+  elim/big_rec3 : _ => [|i x y z Pi ->]; rewrite ?monU //.
+  rewrite -!monA. apply: mon_eqv => //. by rewrite monA [_ ⊗ y]monC monA.
+Qed.
+
+Lemma eqv_bigr (I : Type) (r : seq I) (P : pred I) (F1 F2 : I -> lv L) :
+    (forall i : I, P i -> F1 i ≡ F2 i) -> \big[mon2/1]_(i <- r | P i) F1 i ≡ \big[mon2/1]_(i <- r | P i) F2 i.
+Proof. elim/big_rec2 : _ => // i x y Pi H1 H2. by rewrite H2 ?H1. Qed.
+
+Lemma eqv_bigl I r (P1 P2 : pred I) (F : I -> lv L) :
+  P1 =1 P2 ->
+  \big[mon2/1]_(i <- r | P1 i) F i ≡ \big[mon2/1]_(i <- r | P2 i) F i.
+Proof. by move=> eqP12; rewrite -!(big_filter r) (eq_filter eqP12). Qed.
+
+Lemma bigID (I:eqType) r (a P : pred I) (F : I -> lv L) :
+  \big[mon2/1]_(i <- r | P i) F i ≡
+  (\big[mon2/1]_(i <- r | P i && a i) F i) ⊗ \big[mon2/1]_(i <- r | P i && ~~ a i) F i.
+Proof.
+  rewrite !(@big_mkcond I r _ F) -big_split. 
+  apply: eqv_bigr => i; case: (a i); by rewrite /= ?andbT ?andbF ?monU ?monUl.
+Qed.
+
+Lemma big_pred1_eq (I : finType) (i : I) (F : I -> lv L) :
+  \big[mon2/1]_(j | j == i) F j ≡ F i.
+Proof. rewrite -big_filter filter_index_enum enum1. (* big_seq1. *) by rewrite big_cons big_nil monU. Qed.
+
+Lemma big_pred1 (I : finType) i (P : pred I) (F : I -> lv L) :
+  P =1 pred1 i -> \big[mon2/1]_(j | P j) F j ≡ F i.
+Proof.  move/(eq_bigl _ _)->; apply: big_pred1_eq. Qed.
+
+Lemma bigD1 (I : finType) j (P : pred I) (F : I -> lv L) : 
+  P j -> \big[mon2/1]_(i | P i) F i ≡ F j ⊗ \big[mon2/1]_(i | P i && (i != j)) F i.
+Proof.
+  move=> Pj; rewrite (bigID _ (pred1 j)); apply mon_eqv => //.
+  apply: big_pred1 => i /=. by rewrite /= andbC; case: eqP => // ->.
+Qed.
+Arguments bigD1 [I] j [P F].
+
+Lemma reindex_onto (I J : finType) (h : J -> I) h' (P : pred I) (F : I -> lv L) :
+   (forall i, P i -> h (h' i) = i) ->
+  \big[mon2/1]_(i | P i) F i ≡
+  \big[mon2/1]_(j | P (h j) && (h' (h j) == j)) F (h j).
+Proof.
+move=> h'K; elim: {P}_.+1 {-3}P h'K (ltnSn #|P|) => //= n IHn P h'K.
+case: (pickP P) => [i Pi | P0 _]; last first.
+  by rewrite !big_pred0 // => j; rewrite P0.
+rewrite ltnS (cardD1x Pi); move/IHn {n IHn} => IH.
+rewrite (bigD1 i Pi) (bigD1 (h' i)) h'K ?Pi ?eq_refl //=. apply: mon_eqv => //.
+rewrite {}IH => [|j]; [apply: eqv_bigl => j | by case/andP; auto].
+rewrite andbC -andbA (andbCA (P _)); case: eqP => //= hK; congr (_ && ~~ _).
+by apply/eqP/eqP=> [<-|->] //; rewrite h'K.
+Qed.
+Arguments reindex_onto [I J] h h' [P F].
+
+
+Lemma reindex (I J : finType) (h : J -> I) (P : pred I) (F : I -> lv L) :
+    {on [pred i | P i], bijective h} ->
+  \big[mon2/1]_(i | P i) F i ≡ \big[mon2/1]_(j | P (h j)) F (h j).
+Proof.
+case=> h' hK h'K; rewrite (reindex_onto h h' h'K).
+by apply eqv_bigl => j; rewrite !inE; case Pi: (P _); rewrite //= hK ?eqxx.
+Qed.
 
 End Theory.
+Arguments reindex_onto [L I J] h h' [P F].
+Arguments reindex [L I J] h [P F].
+Arguments bigD1 [L I] j [P F].
