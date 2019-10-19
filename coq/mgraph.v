@@ -672,7 +672,10 @@ Section union_merge_l.
         apply: eqv_bigr => z _ => /=.
         rewrite eqmodE eqv_clot_map. 2: apply inl_inj.
         rewrite eqxx andbT -{2}(reprK x) eqmodE//. 
-    - admit. (* idem *)
+    - apply (big_pred1 (i:=inr x))=>y.
+      rewrite eqmodE. case y=>z.
+      + by rewrite eqv_clot_map_lr.
+      + apply eqv_clot_map_eq. admit. 
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
