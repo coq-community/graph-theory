@@ -665,9 +665,13 @@ Section union_merge_l.
     have x0 := repr x.
     - pose f (z : F + G) := if z is inl z' then z' else x0.
       etransitivity. apply: (reindex_onto (@inl _ _) f) => /=.
-      + move => [i|i] //=. admit. 
+      + move => [i|i] //=.
+        by rewrite eq_sym eqmodE eqv_clot_map_lr.
       + rewrite [X in X ≡ _]big_mkcond [X in _ ≡ X]big_mkcond.
-        apply: eqv_bigr => z _ => /=. admit. (* eqv_clot_map? *)
+        (* TOCLEAN *)
+        apply: eqv_bigr => z _ => /=.
+        rewrite eqmodE eqv_clot_map. 2: apply inl_inj.
+        rewrite eqxx andbT -{2}(reprK x) eqmodE//. 
     - admit. (* idem *)
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
@@ -766,7 +770,10 @@ Section merge_union_K.
     etransitivity. apply: (reindex_onto (sum_left (fun _ : K => x0)) (@inl _ _)) => //.
     rewrite /= [X in X ≡ _]big_mkcond [X in _ ≡ X]big_mkcond /=.
     apply: eqv_bigr => [[x|x]] /= _.
-    - rewrite eqxx andbT. admit.
+    - rewrite eqxx andbT eqmodE. rewrite -{2}(reprK v) eqmodE.
+      rewrite -equiv_clot_Kl. simpl. rewrite /map_equiv_rel/=.
+      set (r := repr _). case r=>//= w.
+      generalize (kh w). rewrite -eqmodE. move <-. by rewrite eqmodE.
     - rewrite andbC kv -[X in X ≡ _]/1. by case: ifP.
   Qed.
 
