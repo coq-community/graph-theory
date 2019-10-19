@@ -31,12 +31,18 @@ Proof.
   destruct (ostep_iso sGU GH) as [W [sHW UW]].
   destruct (fun HF => local_confluence HF sHV sHW) as [T [sVT sWT]]. by apply GH.
   have gT: is_graph T. by eapply osteps_graph, sWT; apply UW.
+  have gU: is_graph U. by apply UW. 
+  have gV: is_graph V. by apply VH'. 
+  have gW: is_graph W. by apply UW. 
+  apply (steps_of gV gT) in sVT. 
+  apply (steps_of gW gT) in sWT. 
   exists (close T); split.
-  - eapply cons_iso_steps. 2:apply openK. apply steps_of.
-    eapply osteps_iso. apply sWT.
-    eapply oiso2_trans. apply oiso2_sym. apply UW. apply UG'.
-  - eapply cons_iso_steps. 2:apply openK. apply steps_of.
-    eapply osteps_iso. apply sVT. apply VH'.
+  - transitivity (close W)=>//. apply iso_step. 
+    etransitivity. apply openK. apply liso_of_oliso.
+    eapply oiso2_trans. apply oiso2_sym. eassumption. assumption.
+  - transitivity (close V)=>//. apply iso_step. 
+    etransitivity. apply openK. apply liso_of_oliso.
+    by apply oiso2_sym.
 Qed.
 
 Definition measure (G: tgraph2) := #|vertex G| + #|edge G|.
