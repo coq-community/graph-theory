@@ -44,6 +44,13 @@ Record graph: Type :=
       endpoint: bool -> edge -> vertex; (* source and target functions *)
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
+(* note: 
+   - we need everything to be finite to get a terminating rewrite system
+   - elsewhere we don't care that the edge type is a finType, it could certainly just be a Type
+   - the vertex type has to be an eqType at various places since we regularly compare vertices (e.g., [add_vlabel])
+   - the vertex type has to be a finType for the [merge] operation, but only in order to express the new vertex labeling function... we could imagine a [finitary_merge] operation that would not impose this restriction
+   - the vertex type has to be finite also when we go to open graphs (although maybe countable would suffice)
+ *)
 
 (* empty graph *)
 Definition void_graph := Graph (fun _ => vfun) vfun vfun.
@@ -152,6 +159,12 @@ Lemma addbxx x : x (+) x = false.
 Proof. by rewrite -negb_eqb eqxx. Qed.
 
 (* homomorphisms *)
+(* TOTHINK: actually, vlabel_hom should use a bigop, like in lemma [merge_surj]
+   -> would be a more natural notion of homomorphism
+   -> we would have the equivalence with the current definition when hv is injective (and thus, for isomorphisms)
+   -> lemma [merge_surj] would just asssume a homormophism which is vertex surjective and edge bijective
+   (not done for now since we do not really use general homomorphisms, only isomorphisms)
+*)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
   { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
     vlabel_hom: forall v, vlabel (hv v) ≡ vlabel v;
