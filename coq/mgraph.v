@@ -532,7 +532,7 @@ Section merge_merge.
     rewrite [X in X ≡ _](partition_big (fun x => \pi x) (fun w => \pi w == v)). 
     - apply: eqv_bigr => w pw. apply: eqv_big => x //. 
       case: (altP (\pi x =P w)) => // ?. subst w. by rewrite -(eqP pw) quot_quotE eqxx.
-    - move => x E. (* trivial, right? ... *) admit.
+    - move => x. by rewrite -[v]reprK -[repr v]reprK quot_quotE !eqmodE.
   Qed.
   Lemma merge_merge: merge (merge F e) e' ≃ merge F (equiv_comp e').
   Proof. eexists. eapply hom_merge_merge. Defined.

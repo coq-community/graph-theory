@@ -756,10 +756,8 @@ Section h.
   Lemma relabel_merge F r: relabel (merge F r) ≃ merge (relabel F) r.
   Proof.
     Iso bij_id bij_id xpred0.
-    split=>//= v.
-    generalize Hfvmon2. 
-    generalize Hfvmon0.
-    admit.                      (* bigop lemma (just an induction on the underlying list to apply Hvmon0/2) *)
+    split=>//= v. 
+    elim/big_rec2 : _ => [|i y1 y2 _ ->]; by [rewrite ?Hfvmon2|symmetry].
   Defined.
   Lemma relabel_add_edge F x y u: relabel (F ∔ [x, u, y]) ≃ relabel F ∔ [x, fe u, y].
   Proof.

@@ -144,11 +144,20 @@ Admitted.
 Lemma partst u v a : (u ∥ v)·a ≡ u ∥ v·a.
 Admitted.
 
+Lemma tstpar u v a : a·(u ∥ v) ≡ a·u ∥ v.
+Admitted.
+
 Lemma par_tst_cnv (a : test) u : a ∥ u° ≡ a ∥ u.
 Proof. by rewrite paratst -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed.
 
 Lemma eqvb_par1 a u v (b : bool) : u ≡[b] v -> a ∥ u ≡ a ∥ v.
 Proof. case: b => [->|-> //]. exact: par_tst_cnv. Qed.
+
+(** used twice in reduce in reduction.v *)
+Lemma reduce_shuffle v (a c d : test) : c·(d·a)·[1∥v] ≡ a ∥ c·v·d.
+Proof.
+Admitted.
+
  
 End derived.
 Coercion pttdom_labels: pttdom >-> labels. 
