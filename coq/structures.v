@@ -148,6 +148,7 @@ Proof.
   rewrite !(@big_mkcond I r _ F) -big_split. 
   apply: eqv_bigr => i; case: (a i); by rewrite /= ?andbT ?andbF ?monU ?monUl.
 Qed.
+Arguments bigID [I r] a P F.
 
 Lemma big_pred1_eq (I : finType) (i : I) (F : I -> lv L) :
   \big[mon2/1]_(j | j == i) F j ≡ F i.
@@ -160,7 +161,7 @@ Proof.  move/(eq_bigl _ _)->; apply: big_pred1_eq. Qed.
 Lemma bigD1 (I : finType) j (P : pred I) (F : I -> lv L) : 
   P j -> \big[mon2/1]_(i | P i) F i ≡ F j ⊗ \big[mon2/1]_(i | P i && (i != j)) F i.
 Proof.
-  move=> Pj; rewrite (bigID _ (pred1 j)); apply mon_eqv => //.
+  move=> Pj; rewrite (bigID (pred1 j)); apply mon_eqv => //.
   apply: big_pred1 => i /=. by rewrite /= andbC; case: eqP => // ->.
 Qed.
 Arguments bigD1 [I] j [P F].
@@ -189,6 +190,7 @@ Proof.
 case=> h' hK h'K; rewrite (reindex_onto h h' h'K).
 by apply eqv_bigl => j; rewrite !inE; case Pi: (P _); rewrite //= hK ?eqxx.
 Qed.
+Arguments reindex [I J] h P F.
 
 Lemma eqv_big I (r:seq I) (P1 P2 : pred I) (F1 F2 : I -> lv L) :
   P1 =1 P2 -> (forall i, P1 i -> F1 i ≡ F2 i) ->
@@ -206,13 +208,31 @@ elim: {Q Qp}_.+1 {-2}Q (ltnSn #|Q|) => // n IHn Q.
 case: (pickP Q) => [j Qj | Q0 _]; last first.
   by rewrite !big_pred0 // => i; rewrite Q0 andbF.
 rewrite ltnS (cardD1x Qj) (bigD1 j) //; move/IHn=> {n IHn} <-.
-rewrite (bigID _ (fun i => p i == j)) => /=. apply: mon_eqv; apply: eqv_bigl => i.
+rewrite (bigID (fun i => p i == j)) => /=. apply: mon_eqv; apply: eqv_bigl => i.
   case: eqP => [-> | _] ; by rewrite ?(Qj). 
 by rewrite andbA.
 Qed.
+
+
+(* TODO: eliminate [i1] and [i2], which are only used as defaults for reindexing *)
+Lemma big_sum (I1 I2 : finType) (i1 : I1) (i2 : I2) (P : pred (I1 + I2)) (F : (I1 + I2) -> lv L) : 
+  \big[mon2/1]_(x | P x) F x ≡ 
+  (\big[mon2/1]_(x | P (inl x)) F (inl x)) ⊗ (\big[mon2/1]_(x | P (inr x)) F (inr x)).
+Proof.
+  rewrite (bigID is_inl). apply: mon_eqv. 
+  - rewrite (reindex inl). exact: eqv_bigl. 
+    exists (fun x => if x is inl x then x else i1) => //. move => [x|x] //. by rewrite inE /= andbF.
+  - rewrite (reindex inr). exact: eqv_bigl. 
+    exists (fun x => if x is inr x then x else i2) => //. move => [x|x] //. by rewrite inE /= andbF.
+Qed.
+Arguments big_sum [I1 I2] i1 i2 P F.
+
+Lemma big_seq1 I (i : I) (F : I -> lv L) : \big[mon2/1]_(j <- [:: i]) F j ≡ F i.
+Proof. by rewrite unlock /= monU. Qed.
 
 End Theory.
 Arguments reindex_onto [L I J] h h' [P F].
 Arguments reindex [L I J] h [P F].
 Arguments bigD1 [L I] j [P F].
 Arguments partition_big [L I J P] p Q [F].
+Arguments big_pred1 [L I] i P F.

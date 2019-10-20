@@ -429,8 +429,10 @@ Proof.
   - by []. 
   - by move=>b [e|[]].
   - by case. 
-  - move=>x/=.
-    admit.           (* bigop proof *)
+  - move=>x/=. rewrite (big_sum x tt) big_pred1_eq. 
+    case: (altP (x =P output)) => [?|xDo]; subst.
+    + by rewrite (big_pred1 tt) => [|[]]; rewrite 1?monC /= ?eqxx.
+    + rewrite big_pred0 ?monU // => [[]]. by rewrite eq_sym (negbTE xDo).
 Qed.
 
 Local Close Scope labels.
