@@ -74,14 +74,24 @@ Section derived.
  (* tests *)
  Definition is_test (x: X) := dom x ≡ x.
  Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
- Lemma one_test: is_test 1.
+
+ Lemma domtst (a : test) : dom a ≡ a. 
+ Proof. by case: a. Qed.
+
+ Lemma tstpar1 (a : test) : a ∥ 1 ≡ a.
  Admitted.
+
+ Lemma one_test: is_test 1. 
+ Proof. rewrite /is_test. by rewrite -{1}par11 -{2}cnv1 -A10 dotx1 par11. Qed.
  Canonical Structure tst_one := Test one_test. 
- Lemma dom_test x: is_test (dom x).
- Admitted.
+
+ Lemma dom_test x: is_test (dom x). 
+ Proof. rewrite /is_test. by rewrite -{1}[dom x]dot1x -A13 dot1x. Qed.
  Canonical Structure tst_dom x := Test (dom_test x).
+
  Lemma par_test (a: test) (u: X): is_test (a∥u).
- Admitted.
+ Proof. rewrite /is_test. Admitted.
+
  Canonical Structure tst_par a u := Test (par_test a u). 
  Lemma dot_test (a b: test): is_test (a·b).
  Admitted.
@@ -96,15 +106,18 @@ Section derived.
  (* commutative monoid of  tests *)
  Definition eqv_test (a b: test) := a ≡ b.
  Arguments eqv_test _ _ /.
- Lemma eqv_test_equiv: Equivalence eqv_test.
- Admitted. 
+ Lemma eqv_test_equiv: Equivalence eqv_test. 
+ Proof. 
+   split => [x|x y|x y z]; rewrite /eqv_test /=.
+   reflexivity. by symmetry. by transitivity (elem_of y).
+ Qed.
  Canonical Structure pttdom_test_setoid := Setoid eqv_test_equiv.
  Lemma tst_dot_eqv: Proper (eqv ==> eqv ==> eqv) tst_dot.
  Proof. intros [a] [b] ? [c] [d] ?. by apply dot_eqv. Qed.
  Lemma tst_dotA: forall a b c: test, a·(b·c) ≡ (a·b)·c.
  Proof. intros [a] [b] [c]. apply dotA. Qed.
  Lemma tst_dotC: forall a b: test, a·b ≡ b·a.
- Admitted.
+ Proof. Admitted.
  Lemma tst_dotU: forall a: test, a·1 ≡ a.
  Proof. intros [a]. apply dotx1. Qed.
 
@@ -130,7 +143,7 @@ Implicit Types (u v x y z : X) (a b : test).
 (** Lemmas to turn pttdom expressions into (projections of) tests *)
 Lemma par1tst u : 1 ∥ u = [1∥u]. by []. Qed.
 Lemma paratst a u : a ∥ u = [a∥u]. by []. Qed.
-Lemma domtst u : dom u = [dom u]. by []. Qed.
+Lemma dom_tst u : dom u = [dom u]. by []. Qed.
 
 (** this allows rewrinting an equivalence between tests inside a pttdom expression *)
 Lemma rwT (a b : test) : a ≡ b -> elem_of a ≡ elem_of b. by []. Qed.
@@ -155,9 +168,23 @@ Proof. case: b => [->|-> //]. exact: par_tst_cnv. Qed.
 
 (** used twice in reduce in reduction.v *)
 Lemma reduce_shuffle v (a c d : test) : c·(d·a)·[1∥v] ≡ a ∥ c·v·d.
-Proof.
-Admitted.
+Proof. 
+  rewrite [c·(d·a)]dotA -dotA tstpar dotx1.
+  by rewrite -dotA (paratst a v) tst_dotC /= partst parC tstpar parC dotA.
+Qed.
 
+(** lemma for nt_correct *)
+Lemma par_nontest u v (a b c d : test) : a·u·b∥c·v·d ≡ a·c·(u∥v)·(b·d).
+Proof. by rewrite -partst -[a·u·b]dotA -tstpar parC -tstpar -partst !dotA parC. Qed.
+
+
+(** used in open.v *)
+Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
+Proof. 
+  split; apply: eqvb_transL.
+  - rewrite addbN addbxx. change (v ≡ v°°). by rewrite cnvI.
+  - by rewrite addNb addbxx. 
+Qed.
  
 End derived.
 Coercion pttdom_labels: pttdom >-> labels. 
@@ -280,7 +307,17 @@ Section terms.
    | tm_dom u => nt_dom (nt u)
    | tm_one => nt_one
    end.
- 
+
+Ltac fold_ops := 
+  repeat match goal with 
+         | |- context[tm_par ?u ?v] => change (tm_par u v) with (u ∥ v) 
+         | |- context[tm_dot ?u ?v] => change (tm_dot u v) with (u · v)
+         | |- context[tm_cnv ?u] => change (tm_cnv u) with (u°)
+         | |- context[tm_dom ?u] => change (tm_dom u) with (dom u)
+         | |- tm_eqv ?u ?v => change (u ≡ v)
+         end.
+
+
  Proposition nt_correct (u: term): u ≡ term_of_nterm (nt u).
  Proof.
    induction u=>//=.
@@ -290,21 +327,22 @@ Section terms.
      rewrite !dotA//.
    - rewrite {1}IHu1 {1}IHu2.
      case (nt u1)=>[a|a u b];
-     case (nt u2)=>[c|c v d]=>//=.
-     admit.                      (* ok *)
-     apply parC.
-     admit.                      (* ok *)
+     case (nt u2)=>[c|c v d]=>//=. 
+     exact: pardot.
+     apply parC. 
+     exact: par_nontest.
    - rewrite {1}IHu.
      case (nt u)=>[a|a v b]=>//=.
-     admit.                      (* ok *)
-     rewrite 2!cnvdot dotA.
-     admit. (* ok *)
+     exact: cnvtst.
+     fold_ops.
+     by rewrite 2!cnvdot dotA !cnvtst.
    - rewrite {1}IHu.
      case (nt u)=>[a|a v b]=>//=.
-     admit.                      (* ok *)
-     admit.                      (* ok *)
-   - rewrite dotx1.
-     admit.                      (* ok *)
+     exact: domtst.
+     by rewrite -dotA A13 (dom_tst (v·b)) domtst.
+   - by rewrite dotx1 dot1x.
  Qed.
 
 End terms.
+
+

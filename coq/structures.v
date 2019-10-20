@@ -1,6 +1,6 @@
 Require Import RelationClasses Morphisms Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
-Require Import edone.
+Require Import edone preliminaries.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -59,10 +59,30 @@ Notation "x ≡[ b ] y" := (eqv_ b x y) (at level 79).
 Global Instance eqv_sym {X: labels} {b}: Symmetric (@eqv_ X b).
 Proof. case b=> x y/=. apply Eqv'_sym. by symmetry. Qed.
 
+Lemma eqvb_trans (X : labels) (u v w : le X) (b1 b2 : bool) : 
+  u ≡[b1] v -> v ≡[b2] w -> u ≡[b1 (+) b2] w.
+Proof. 
+  case: b1; case: b2 => //=; eauto using eqv10, eqv01, eqv11. 
+  by transitivity v.
+Qed.
+
+(* variants of the above that are more useful for backward chaining *)
+Lemma eqvb_transR (X : labels) b b' (u v v' : le X) : 
+  u ≡[b (+) b'] v' ->  v' ≡[b'] v ->  u ≡[b] v.
+Proof. move => A B. move:(eqvb_trans A B). by rewrite -addbA addbxx addbF. Qed.
+
+Lemma eqvb_transL (X : labels) b b' (u u' v : le X) : 
+  u' ≡[b (+) b'] v ->  u ≡[b'] u' ->  u ≡[b] v.
+Proof. move => A B. move:(eqvb_trans B A). by rewrite addbC -addbA addbxx addbF. Qed.
+
 Global Instance eqv_morphim (X: labels) : 
   Proper (eq ==> eqv ==> eqv ==> iff) (@eqv_ X).
-Proof. move => b ? <- x x' xx y y' yy. Admitted.
-
+Proof. 
+  move => b ? <- x x' xx y y' yy. 
+  change (x ≡[false] x') in xx. change (y ≡[false] y') in yy. split => H. 
+  - symmetry in xx. apply: eqvb_transR yy. apply: eqvb_transL xx. by rewrite !addbF.
+  - symmetry in yy. apply: eqvb_transR yy. apply: eqvb_transL xx. by rewrite !addbF.
+Qed.
 
 Program Definition flat_labels (X: Type) :=
   {| lv := eq_setoid unit; mon0:=tt; mon2 _ _ :=tt;

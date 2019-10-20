@@ -1451,7 +1451,7 @@ Proof.
 Qed. 
 
 Lemma critical_pair3 u u' (a b : test) :  dom (u'·(dom (u·a)·b)) ≡ dom (u'·b·u·a).
-by rewrite (domtst (u·a)) tst_dotC /= dotA -A13 !dotA.
+by rewrite (dom_tst (u·a)) tst_dotC /= dotA -A13 !dotA.
 Qed.
 
 
