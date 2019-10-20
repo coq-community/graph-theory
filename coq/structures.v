@@ -190,7 +190,29 @@ case=> h' hK h'K; rewrite (reindex_onto h h' h'K).
 by apply eqv_bigl => j; rewrite !inE; case Pi: (P _); rewrite //= hK ?eqxx.
 Qed.
 
+Lemma eqv_big I (r:seq I) (P1 P2 : pred I) (F1 F2 : I -> lv L) :
+  P1 =1 P2 -> (forall i, P1 i -> F1 i ≡ F2 i) ->
+  \big[mon2/1]_(i <- r | P1 i) F1 i ≡ \big[mon2/1]_(i <- r | P2 i) F2 i.
+Proof. by move/eqv_bigl <-; move/eqv_bigr->. Qed.
+
+Lemma partition_big (I J : finType) (P : pred I) p (Q : pred J) (F : I -> lv L) :
+    (forall i, P i -> Q (p i)) ->
+      \big[mon2/1]_(i | P i) F i ≡
+         \big[mon2/1]_(j | Q j) \big[mon2/1]_(i | P i && (p i == j)) F i.
+Proof.
+move=> Qp; transitivity (\big[mon2/1]_(i | P i && Q (p i)) F i).
+  by apply: eqv_bigl => i; case Pi: (P i); rewrite // Qp.
+elim: {Q Qp}_.+1 {-2}Q (ltnSn #|Q|) => // n IHn Q.
+case: (pickP Q) => [j Qj | Q0 _]; last first.
+  by rewrite !big_pred0 // => i; rewrite Q0 andbF.
+rewrite ltnS (cardD1x Qj) (bigD1 j) //; move/IHn=> {n IHn} <-.
+rewrite (bigID _ (fun i => p i == j)) => /=. apply: mon_eqv; apply: eqv_bigl => i.
+  case: eqP => [-> | _] ; by rewrite ?(Qj). 
+by rewrite andbA.
+Qed.
+
 End Theory.
 Arguments reindex_onto [L I J] h h' [P F].
 Arguments reindex [L I J] h [P F].
 Arguments bigD1 [L I] j [P F].
+Arguments partition_big [L I J P] p Q [F].

@@ -504,7 +504,6 @@ Section merge_surj.
 End merge_surj.
 Global Opaque merge_surj.
 
-
 Section h_merge_nothing'.
  Variables (F: graph) (r: equiv_rel F).
  Hypothesis H: forall x y: F, r x y -> x=y.
@@ -529,11 +528,11 @@ Section merge_merge.
   Variables (F: graph) (e: equiv_rel F) (e': equiv_rel (merge F e)).
   Lemma hom_merge_merge: is_hom (quot_quot e': merge _ e' -> merge F _) bij_id xpred0.
   Proof.
-    split; intros=>//. by rewrite /=-equiv_comp_pi.
-    simpl. 
-    (* again, bigop lemma would be needed on monoids up to eqv *)
-    (* denesting *)
-    admit.
+    split; intros=>//=; first by rewrite -equiv_comp_pi.
+    rewrite [X in X ≡ _](partition_big (fun x => \pi x) (fun w => \pi w == v)). 
+    - apply: eqv_bigr => w pw. apply: eqv_big => x //. 
+      case: (altP (\pi x =P w)) => // ?. subst w. by rewrite -(eqP pw) quot_quotE eqxx.
+    - move => x E. (* trivial, right? ... *) admit.
   Qed.
   Lemma merge_merge: merge (merge F e) e' ≃ merge F (equiv_comp e').
   Proof. eexists. eapply hom_merge_merge. Defined.
@@ -675,7 +674,7 @@ Section union_merge_l.
     - apply (big_pred1 (i:=inr x))=>y.
       rewrite eqmodE. case y=>z.
       + by rewrite eqv_clot_map_lr.
-      + apply eqv_clot_map_eq. admit. 
+      + apply eqv_clot_map_eq. by rewrite inr_codom_inl.
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
