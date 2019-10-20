@@ -703,7 +703,7 @@ Definition add_test (G : pre_graph) (x:VT) (a:test) :=
   {| vset := vset G;
      eset := eset G;
      endpt  := endpt G;
-     lv := update (lv G) x [lv G x·a];
+     lv := update (lv G) x (a ⊗ lv G x)%lbl;
      le := le G;
      p_in := p_in G;
      p_out := p_out G |}.
@@ -801,13 +801,15 @@ Proof.
   - by rewrite !edges_at_del fsetDDD fsetUC -fsetDDD.
 Qed.
 
+Arguments mon2 : simpl never.
+
 Lemma add_testC (G : pre_graph) x y a b :
   G[adt x <- a][adt y <- b] ≡G G[adt y <- b][adt x <- a].
 Proof.
   split => //= z. 
   case: (altP (x =P y)) => xy; subst. 
-  - rewrite !update_same. case: (altP (z =P y)) => zy; subst; rewrite !updateE //=.
-    by rewrite infer_testE -dotA testC dotA.
+  - rewrite !update_same. case: (altP (z =P y)) => zy; subst; rewrite !updateE => //=.
+    by rewrite monA [(b ⊗ a)%lbl]monC -monA.
   - case: (altP (z =P x)) => zx; case: (altP (z =P y)) => zy; subst.
     by rewrite eqxx in xy. all: by rewrite !updateE.
 Qed.
@@ -869,10 +871,7 @@ Instance add_test_morphism : Proper (weqG ==> eq ==> eqv ==> weqG) add_test.
 Proof.
   move => G H [EV EE Eep Elv Ele Ei Eo] ? x ? u v uv. subst.
   split => //= y Hy. case: (altP (y =P x)) => [?|?].
-  - subst y. rewrite !updateE. 
-    Fail rewrite Elv.
-    rewrite infer_testE. Fail rewrite Elv. Fail rewrite uv.
-    apply: tst_dot_eqv uv. exact: Elv.
+  - subst y. by rewrite !updateE Elv // uv.
   - by rewrite !updateE // Elv.
 Qed.
 
@@ -995,7 +994,7 @@ Proof.
   - move => e b. exact: val_inj. 
   - move => v. rewrite /= /update. (* simpl should not expose tst_dot *)
     case: (altP (v =P close_v x)) => [->|D]. 
-    + rewrite close_vK // eqxx /=. by rewrite tst_dotC.
+    + by rewrite close_vK // eqxx.
     + suff -> : (fsval v == x = false) by []. 
       apply: contra_neqF D => /eqP<-. by rewrite close_fsval.
 Defined.
@@ -1411,17 +1410,6 @@ Proof.
 Qed.
 
 
-(** TODO fix the 2pdom theory *)
-
-Lemma cnvtst (a : test) : a° ≡ a. Admitted.
-
-Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v.
-(* Proof. by rewrite -dotA A10 cnvdot cnvtst -lifttstR. Qed. *)
-Admitted.
-
-Lemma critical_pair2 (u v : tm) : (1∥u)·(1∥v) ≡ 1∥(u∥v).
-(* Proof. by rewrite dotpartst' parA [_∥1]parC !parA par11. Qed. *)
-Admitted.
 
 (* should have proved this earlier ... *)
 Lemma edges_atP G e z : reflect (e \in eset G /\ exists b, endpt G b e = z) (e \in edges_at G z).
@@ -1441,20 +1429,31 @@ Lemma add_test_merge G x a b :
   G[adt x <- a][adt x <- b] ≡G G[adt x <- [a·b]].
 Proof. 
   constructor => //= y yG. 
-  case: (altP (y =P x)) => [->|?]; rewrite !updateE //=.
-  by rewrite infer_testE dotA.
+  case: (altP (y =P x)) => [->|?]; rewrite !updateE //=. 
+  by rewrite monA [(b ⊗ a)%lbl]monC -monA.
 Qed.
 
-Lemma par_tst_cnv (a : test) u : a ∥ u° ≡ a ∥ u.
-(* Proof. by rewrite -[a∥u]/(term_of [a∥u]) -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed. *)
-Admitted.
+
 
 Lemma oarcxx_le G e x u : oarc G e x u x -> 1∥le G e ≡ 1∥u.
-(* Proof. by case => _ [[_ _ A]|[_ _ A]]; rewrite A ?par_tst_cnv. Qed. *)
-Admitted.
+Proof. case => E [[|] [A B /= C]]; by rewrite C ?par_tst_cnv. Qed.
 
 Lemma fset01 (T : choiceType) (x : T) : [fset x] != fset0.
 Proof. by rewrite -[[fset x]]fsetU0 fset1U0. Qed.
+
+Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v. 
+Proof. by rewrite -dotA pttdom.A10 cnvdot cnvtst partst. Qed. 
+
+Lemma critical_pair2 (u v : tm) : (1∥u)·(1∥v) ≡ 1∥(u∥v).
+Proof. 
+  rewrite (par1tst u) (par1tst v) -pardot /=.
+  by rewrite parA [_∥1]parC !parA par11. 
+Qed. 
+
+Lemma critical_pair3 u u' (a b : test) :  dom (u'·(dom (u·a)·b)) ≡ dom (u'·b·u·a).
+by rewrite (domtst (u·a)) tst_dotC /= dotA -A13 !dotA.
+Qed.
+
 
 Lemma local_confluence_aux (G : pre_graph) (isG : is_graph G) Gl Gr : 
   ostep G Gl -> ostep G Gr -> exists Gl' Gr', (osteps Gl Gl' /\ osteps Gr Gr') /\ (Gl' ≡G Gr'). 
@@ -1595,8 +1594,8 @@ Proof with eauto with typeclass_instances.
       * rewrite /= updateE. set a := lv G z. set b := lv G z'. 
         rewrite -del_vertex_add_test del_vertexC add_testK. 
         rewrite -del_vertex_add_test add_edgeKr /= ?Iz' ?maxn_fsetD //.
-        apply: add_test_morphism => //. rewrite infer_testE.
-        by rewrite dotA -A13 !dotA (oarc_weq _ arc_e2' arc_e).
+        apply: add_test_morphism => //=.
+        rewrite infer_testE (oarc_weq _ arc_e2' arc_e) //. exact: critical_pair3.
     + (* independent case *)
       move: xD'. rewrite in_fset2 negb_or => /andP [zDx zDy].
       have E1 : e1' != e. 
@@ -1946,9 +1945,8 @@ Proof with eauto with typeclass_instances.
         -- eapply ostep_step,ostep_e0. apply: oarc_added_edge.
         -- eapply ostep_step,ostep_e0. apply: oarc_added_edge.
         -- rewrite /= !updateE !add_edge_del_edgesK ?in_fset1 ?eqxx //.
-           apply: add_test_morphism => //. rewrite infer_testE. admit.
-           (* rewrite Hu Hv. rewrite [u'∥_]parC parA -[1]/(term_of [1]) par_tst_cnv. *)
-           (* by rewrite -parA [v'∥_]parC. *)
+           apply: add_test_morphism => //. rewrite infer_testE Hu Hv.
+           by rewrite parA par1tst par_tst_cnv parA.
     + (* independent instances *)
       move: (fdisjointP D) => D1. rewrite fdisjoint_sym in D. move: (fdisjointP D) => {D} D2.
       e2split. 
@@ -2350,8 +2348,7 @@ Proof with eauto with vset.
       * exact: oiso2_oarc arc_e.
       * apply: contra_neq xDz. apply: vfun_of_inj...
     + unshelve apply: oiso2_del_vertex_. apply: oiso2_add_test...
-      * (* rewrite infer_testE. rewrite (oiso2_lv i Vz). -- why does this fail? *)
-        move: (oiso2_lv i Vz) => E. admit.
+      * by rewrite infer_testE  (rwT (oiso2_lv i Vz)). 
       * done.
       * done.
       * by rewrite oiso2_add_testE. 
@@ -2394,8 +2391,8 @@ Proof with eauto with vset.
       rewrite -!jE. apply: oiso2_add_test. 
       * rewrite /=. exact: oarc_vsetL arc_e.
       * case: arc_e {j jE} => E _.
-        move:(oiso2_le i E). move: (efun_of i e) => e'. move: (edir_of i e) => b. symmetry.
-        admit. (* OK *)
+        move:(oiso2_le i E). move: (efun_of i e) => e'. move: (edir_of i e) => b X. 
+        symmetry. exact: eqvb_par1 X. 
       * rewrite /=. exact: oarc_vsetL arc_e.
   - move => x y e1 e2 u v e1De2 arc_e1 arc_e2 i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
@@ -2913,8 +2910,7 @@ Proof with eauto with typeclass_instances.
       etransitivity. apply: (W _ u).
       - exact: flipped_edge. 
       - apply: iso_step. apply: eqvG_close. rewrite flip_edge_kill' ?inE ?eqxx //= updateE.
-        rewrite (_ : [1∥(le G e)°] ≡ [1∥(le G e)]) //. 
-        admit. }
+        rewrite (_ : [1∥(le G e)°] ≡ [1∥(le G e)]) //. exact: par_tst_cnv. }
     have h : close G ≃2 close (G - [fset e]) ∔ [close_v x,le G e,close_v x].
     { exact: expand_loop edge_e. }
     apply: cons_step h _ _. constructor. 

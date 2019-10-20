@@ -101,11 +101,11 @@ Section derived.
  Canonical Structure pttdom_test_setoid := Setoid eqv_test_equiv.
  Lemma tst_dot_eqv: Proper (eqv ==> eqv ==> eqv) tst_dot.
  Proof. intros [a] [b] ? [c] [d] ?. by apply dot_eqv. Qed.
- Lemma tst_dotA: forall a b c: test, [a·[b·c]] ≡ [[a·b]·c].
+ Lemma tst_dotA: forall a b c: test, a·(b·c) ≡ (a·b)·c.
  Proof. intros [a] [b] [c]. apply dotA. Qed.
- Lemma tst_dotC: forall a b: test, [a·b] ≡ [b·a].
+ Lemma tst_dotC: forall a b: test, a·b ≡ b·a.
  Admitted.
- Lemma tst_dotU: forall a: test, [a·1] ≡ a.
+ Lemma tst_dotU: forall a: test, a·1 ≡ a.
  Proof. intros [a]. apply dotx1. Qed.
 
  (* dualised equality (to get the [labels] structure below) *)
@@ -124,6 +124,31 @@ Section derived.
    Labels
      tst_dot_eqv tst_dotA tst_dotC tst_dotU
      eqv'_sym eqv10 eqv01 eqv11.
+
+Implicit Types (u v x y z : X) (a b : test).
+
+(** Lemmas to turn pttdom expressions into (projections of) tests *)
+Lemma par1tst u : 1 ∥ u = [1∥u]. by []. Qed.
+Lemma paratst a u : a ∥ u = [a∥u]. by []. Qed.
+Lemma domtst u : dom u = [dom u]. by []. Qed.
+
+(** this allows rewrinting an equivalence between tests inside a pttdom expression *)
+Lemma rwT (a b : test) : a ≡ b -> elem_of a ≡ elem_of b. by []. Qed.
+
+Lemma cnvtst a : a° ≡ a. 
+Admitted.
+
+Lemma pardot a b : a ∥ b ≡ a·b.
+Admitted.
+
+Lemma partst u v a : (u ∥ v)·a ≡ u ∥ v·a.
+Admitted.
+
+Lemma par_tst_cnv (a : test) u : a ∥ u° ≡ a ∥ u.
+Proof. by rewrite paratst -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed.
+
+Lemma eqvb_par1 a u v (b : bool) : u ≡[b] v -> a ∥ u ≡ a ∥ v.
+Proof. case: b => [->|-> //]. exact: par_tst_cnv. Qed.
  
 End derived.
 Coercion pttdom_labels: pttdom >-> labels. 
