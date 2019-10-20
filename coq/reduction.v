@@ -217,7 +217,12 @@ Arguments replace_ioL [G G' H].
 Lemma replace_ioE vT eT1 eT2 st1 st2 lv1 lv2 le1 le2 i o H e : admissible_l e -> 
    @replace_ioL (point (@Graph _ vT eT1 st1 lv1 le1) i o) 
                 (point (@Graph _ vT eT2 st2 lv2 le2) i o) H e = e.
-Admitted.
+Proof.
+  elim: e => //=. case => [[a|a] [b|b]] l /= IH. 
+  all: rewrite /admissible_l /=. all: first [case/and3P|case/andP|idtac].
+  all: repeat (case/set2P => ->). all: move => HA; rewrite ?IH ?eqxx //.
+  all: by case: (altP (i =P o)) => [->|?].
+Qed.
 
 Lemma cons_iso_steps G G' H : steps G' H -> G ≃2 G' -> steps G H.
 Proof. intros E F. etransitivity. apply iso_step, F. assumption. Qed.
@@ -261,11 +266,11 @@ Proof.
   rewrite 2!map_map_pairs. induction l as [|[a1 a2] q IH]=>//.
   simpl. move: A =>/andP[/=A1 /andP[/=A2 Q]]. f_equal. f_equal.
   destruct a1 as [[x|[]]|x]=>//=.
-  admit.                        (* ok *)
-  exfalso. clear -A1. admit.     (* ok *)
+  case/set2P : A1 => [] [->]; rewrite sum_eqE ?eqxx //. by case: (altP (input =P output)) => [->|].
+  exfalso. clear -A1. by rewrite !inE in A1.
   destruct a2 as [[x|[]]|x]=>//=.
-  admit.                        (* ok *)
-  exfalso. clear -A2. admit.     (* ok *)
+  case/set2P : A2 => [] [->]; rewrite sum_eqE ?eqxx //. by case: (altP (input =P output)) => [->|].
+  exfalso. clear -A2. by rewrite !inE in A2. 
   apply IH, Q. 
 Qed.
 

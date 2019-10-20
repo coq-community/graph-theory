@@ -138,11 +138,17 @@ Lemma eqv_clot_eq (T: finType) (h k: pairs T):
   eqv_clot h =2 eqv_clot k.
 Proof. move=> A B x y. by apply/idP/idP; apply eqv_clot_subrel. Qed.
 
-Lemma kernel_eqv_clot {A: finType} {B} (l: pairs A) (f: A -> B):
+Lemma kernel_eqv_clot {A: finType} {B:eqType} (l: pairs A) (f: A -> B):
   List.Forall (fun p => f p.1 = f p.2) l ->
   (forall x y, f x = f y -> eqv_clot l x y) ->
   (forall x y, reflect (kernel f x y) (eqv_clot l x y)).
-Admitted.
+Proof.
+  move => /ForallE H1 H2 x y. apply: (iffP idP); last exact: H2.
+  move => E. apply/kernelP. 
+  suff: subrel (eqv_clot l) (EquivRelPack (kernel_equivalence f)) by apply.
+  rewrite /eqv_clot -lock. apply equiv_of_sub'.
+  by move => {E x y} x y /= /H1/eqP.
+Qed.
 
 Lemma eq_equiv_class (T : eqType) : equiv_class_of (@eq_op T). 
 Proof. split => //. exact: eq_op_trans. Qed.

@@ -135,6 +135,14 @@ End t.
 Global Opaque quot_same. 
 
 Definition kernel {A B} (f: A -> B): A -> A -> Prop := fun x y => f x = f y.
+Definition kernelb A (B : eqType) (f : A -> B) := [rel x y | f x == f y].
+
+Lemma kernelP A (B : eqType) (f : A -> B) x y : reflect (kernel f x y) (kernelb f x y).
+Proof. exact: (iffP eqP). Qed.
+
+Lemma kernel_equivalence A (B : eqType) (f : A -> B) : equiv_class_of (kernelb f).
+Proof. by split => [x|x y|x y z] //= => /eqP->/eqP->. Qed.
+
 Section quot_kernel.
  Context {A: finType} {B: Type}.
  Variables (r: equiv_rel A) (f: A -> B) (f': B -> A).
