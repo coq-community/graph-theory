@@ -75,11 +75,19 @@ Section derived.
  Definition is_test (x: X) := dom x ≡ x.
  Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
 
+ Lemma is_test_alt (x: X): dom x ≡ x <-> x∥1 ≡ x.
+ Proof.
+   split=>E.
+   - rewrite -{1}E -{1}(dotx1 (dom x)) -A14.
+     by rewrite par11 dotx1. 
+   - by rewrite -E -{1}cnv1 -A10 dotx1 parC.
+ Qed.
+ 
  Lemma domtst (a : test) : dom a ≡ a. 
- Proof. by case: a. Qed.
-
+ Proof. apply testE. Qed.
+ 
  Lemma tstpar1 (a : test) : a ∥ 1 ≡ a.
- Admitted.
+ Proof. apply is_test_alt, domtst. Qed.
 
  Lemma one_test: is_test 1. 
  Proof. rewrite /is_test. by rewrite -{1}par11 -{2}cnv1 -A10 dotx1 par11. Qed.
@@ -88,17 +96,38 @@ Section derived.
  Lemma dom_test x: is_test (dom x). 
  Proof. rewrite /is_test. by rewrite -{1}[dom x]dot1x -A13 dot1x. Qed.
  Canonical Structure tst_dom x := Test (dom_test x).
-
+ 
  Lemma par_test (a: test) (u: X): is_test (a∥u).
- Proof. rewrite /is_test. Admitted.
+ Proof.
+   rewrite /is_test is_test_alt.
+   by rewrite -parA (parC u) parA tstpar1. 
+ Qed.
+ Canonical Structure tst_par a u := Test (par_test a u).
 
- Canonical Structure tst_par a u := Test (par_test a u). 
- Lemma dot_test (a b: test): is_test (a·b).
- Admitted.
- Canonical Structure tst_dot a b := Test (dot_test a b).
+ Lemma cnvtst (a: test): a° ≡ a.
+ Proof.
+   rewrite -tstpar1 cnvpar cnv1 -(dot1x (a°)) parC A10 cnvI parC.
+   apply domtst.
+ Qed.
+
  Lemma cnv_test (a: test): is_test (a°).
- Admitted.
+ Proof.
+   by rewrite /is_test is_test_alt cnvtst tstpar1. 
+ Qed.
  Canonical Structure tst_cnv a := Test (cnv_test a).
+
+ Lemma tstpar (a: test) (x y: X): a·(x∥y) ≡ a·x ∥ y.
+ Proof. rewrite -domtst. apply A14. Qed.
+
+ Lemma pardot (a b: test): a ∥ b ≡ a·b.
+ Proof.
+   by rewrite -{2}(tstpar1 b) (parC _ 1) tstpar dotx1.
+ Qed.
+ 
+ Lemma dot_test (a b: test): is_test (a·b).
+ Proof. rewrite /is_test -pardot. apply domtst. Qed.
+ Canonical Structure tst_dot a b := Test (dot_test a b).
+ 
  (* automatised inference of tests *)
  Definition infer_test x y (e: elem_of y = x) := y.
  Notation "[ x ]" := (@infer_test x _ erefl).
@@ -117,7 +146,7 @@ Section derived.
  Lemma tst_dotA: forall a b c: test, a·(b·c) ≡ (a·b)·c.
  Proof. intros [a] [b] [c]. apply dotA. Qed.
  Lemma tst_dotC: forall a b: test, a·b ≡ b·a.
- Proof. Admitted.
+ Proof. intros. rewrite -2!pardot. apply parC. Qed.
  Lemma tst_dotU: forall a: test, a·1 ≡ a.
  Proof. intros [a]. apply dotx1. Qed.
 
@@ -148,17 +177,11 @@ Lemma dom_tst u : dom u = [dom u]. by []. Qed.
 (** this allows rewrinting an equivalence between tests inside a pttdom expression *)
 Lemma rwT (a b : test) : a ≡ b -> elem_of a ≡ elem_of b. by []. Qed.
 
-Lemma cnvtst a : a° ≡ a. 
-Admitted.
-
-Lemma pardot a b : a ∥ b ≡ a·b.
-Admitted.
-
 Lemma partst u v a : (u ∥ v)·a ≡ u ∥ v·a.
-Admitted.
-
-Lemma tstpar u v a : a·(u ∥ v) ≡ a·u ∥ v.
-Admitted.
+Proof.
+  apply cnv_inj. rewrite cnvdot 2!cnvpar cnvdot.
+  by rewrite parC tstpar parC.
+Qed.
 
 Lemma par_tst_cnv (a : test) u : a ∥ u° ≡ a ∥ u.
 Proof. by rewrite paratst -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed.
