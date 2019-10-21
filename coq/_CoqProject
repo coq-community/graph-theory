@@ -22,7 +22,7 @@ mgraph.v
 mgraph2.v
 rewriting.v
 reduction.v
-open.v
+open_confluence.v
 transfer.v
 completeness.v
 
