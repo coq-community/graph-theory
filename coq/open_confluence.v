@@ -918,6 +918,8 @@ Proof. case => E [[|] [A B /= C]]; by rewrite C ?par_tst_cnv. Qed.
 Lemma fset01 (T : choiceType) (x : T) : [fset x] != fset0.
 Proof. by rewrite -[[fset x]]fsetU0 fset1U0. Qed.
 
+(** ** Open Local Confluence *)
+
 Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v. 
 Proof. by rewrite -dotA pttdom.A10 cnvdot cnvtst partst. Qed. 
 
@@ -930,7 +932,6 @@ Qed.
 Lemma critical_pair3 u u' (a b : test) :  dom (u'·(dom (u·a)·b)) ≡ dom (u'·b·u·a).
 by rewrite (dom_tst (u·a)) tst_dotC /= dotA -A13 !dotA.
 Qed.
-
 
 Lemma local_confluence_aux (G : pre_graph) (isG : is_graph G) Gl Gr : 
   ostep G Gl -> ostep G Gr -> exists Gl' Gr', (osteps Gl Gl' /\ osteps Gr Gr') /\ (Gl' ≡G Gr'). 

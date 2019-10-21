@@ -7,6 +7,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Completeness *)
+
 Section s.
 Variable A: Type.
 Notation term := (term A).  
@@ -159,6 +161,8 @@ Proof.
   rewrite-> (nt_correct u), (nt_correct v).
   apply normal_iso. by rewrite HF'. 
 Qed.
+
+(** ** Main Result *)
 
 (* actually an iff since graphs from a 2p algebra *)
 Theorem soundness_and_completeness (u v: term): graph_of_term u ≃2p graph_of_term v <-> u ≡ v.

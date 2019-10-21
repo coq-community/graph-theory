@@ -12,6 +12,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Transfer of Open Local Confluence *)
+
 (** ** Opening and closing of type-based graphs *)
 Ltac e2split := do 2 eexists; split; [split|].
 
@@ -105,8 +107,7 @@ Definition close := Eval hnf in
 End Close.
 Arguments close [_] G [_] , [_] G graph_G.
 
-(** ** Open 2p-graphs labeled with elements of a 2pdom algebra *)
-
+(** ** Isomorphism and Commutation Properties *)
 
 (* TODO: separate the things that are specific to pttdom from those that work for any label structure *)
 Section PttdomGraphTheory.
@@ -744,6 +745,8 @@ Proof.
   case: i EE' => isF isG j EE' Vx. by rewrite /= !vfun_bodyE. 
 Qed.
 
+(** ** Preservation of open steps under isomorphisms *)
+
 Lemma ostep_iso (F G H : pre_graph) : 
   ostep F G -> F ⩭2 H -> Σ U, ostep H U * (G ⩭2 U).
 Proof with eauto with vset.
@@ -923,6 +926,8 @@ Qed.
 Lemma del_edgesD (G : pre_graph) E  : [disjoint eset G & E] -> G - E ≡G G.
 Proof. move => D. split => //=. exact: fsetDidPl. Qed.
 
+(** ** Packaged steps to open steps *) 
+
 Definition oiso2E := (oiso2_transE, 
                       open_add_edgeE, 
                       oiso2_add_edgeE', 
@@ -1041,6 +1046,8 @@ Proof.
   case: (ostep_iso B (oiso2_sym A)) => H [H1 H2]. 
   exists H. split => //. constructor. etransitivity. 2: apply: C. by symmetry.
 Qed.
+
+(** ** Open steps to packaged steps *)
 
 (** We need one expansion lemma for every rule *)
 

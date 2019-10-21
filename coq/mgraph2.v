@@ -8,12 +8,11 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(* two pointed labelled multigraphs and their operations
+(** * Two-Pointed Labelled Multigraphs and Their Operations *)
 
-TO DO
+(* TODO:
  - input/output as a function from [bool]?
  - recheck status of [unr/unl]
-
  *)
 
 Section s.
@@ -53,17 +52,8 @@ Definition unit_graph2 a := point (unit_graph a) tt tt.
 Definition two_graph2 a b := point (two_graph a b) (inl tt) (inr tt). 
 Definition edge_graph2 a u b := two_graph2 a b ∔ [inl tt, u, inr tt]. 
 
+(** ** Isomorphisms of 2p-graphs *)
 
-(* TODO: via sigma types again?
-
-Notation "'Σ' x .. y , p" :=
-  (sigT (fun x => .. (sigT (fun y => p%type)) ..))
-  (at level 200, x binder, y binder, right associativity).
-
-Definition iso2 (F G: graph2): Type :=
-   Σ f: iso F G, f input = input /\ f output = output. 
-
- *)
 Record iso2 (F G: graph2): Type :=
   Iso2 { iso2_iso:> F ≃ G;
          iso2_input: iso2_iso input = input;
@@ -733,7 +723,7 @@ Notation add_test := add_vlabel2 (only parsing).
 Notation add_test_cong := add_vlabel2_iso' (only parsing).
 
 
-(* relabeling graphs *)
+(** ** Relabeling Graphs *)
 Section h.
   Variables X Y: labels.
   Variable fv: lv X -> lv Y.

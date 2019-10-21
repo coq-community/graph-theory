@@ -9,6 +9,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Directed Labeled Multigraphs *)
+
 (** Note on Equivalences and Morphisms: This development mixes both
 rewriting in Prop (e.g., 2pdom algebras) and rewriting in Type (e.g.,
 iso). To facilitate this, we import the Prop versions and introduce
@@ -51,6 +53,8 @@ Record graph: Type :=
    - the vertex type has to be a finType for the [merge] operation, but only in order to express the new vertex labeling function... we could imagine a [finitary_merge] operation that would not impose this restriction
    - the vertex type has to be finite also when we go to open graphs (although maybe countable would suffice)
  *)
+
+(** ** Basic Operations *)
 
 (* empty graph *)
 Definition void_graph := Graph (fun _ => vfun) vfun vfun.
@@ -124,8 +128,8 @@ Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
 Definition del_vertex (G : graph) (z : G) : graph := 
   subgraph_for (@consistent_del1 G z).
 
+(** ** Disjoint Union and Quotients of graphs *)
 
-(* disjoint union of two graphs *)
 Definition union (F G : graph) : graph :=
   {| vertex := [finType of F + G];
      edge := [finType of edge F + edge G];
@@ -158,8 +162,8 @@ Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
 Lemma addbxx x : x (+) x = false. 
 Proof. by rewrite -negb_eqb eqxx. Qed.
 
-(* homomorphisms *)
-(* TOTHINK: actually, vlabel_hom should use a bigop, like in lemma [merge_surj]
+(** ** Homomorphisms *)
+(** TOTHINK: actually, vlabel_hom should use a bigop, like in lemma [merge_surj]
    -> would be a more natural notion of homomorphism
    -> we would have the equivalence with the current definition when hv is injective (and thus, for isomorphisms)
    -> lemma [merge_surj] would just asssume a homormophism which is vertex surjective and edge bijective
@@ -170,7 +174,7 @@ Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> boo
     vlabel_hom: forall v, vlabel (hv v) ≡ vlabel v;
     elabel_hom: forall e, elabel (he e) ≡[hd e] elabel e;
   }.
-(* nota: 
+(** note: 
    - when using the flat_bisetoid for Le, the edge swapping funcion [hd] 
      may only be constantly false
    - when the edge swapping function [hd] is constantly false, the
@@ -206,7 +210,7 @@ Proof.
   move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). rewrite -{3}(bijK' he e) bijK'. by symmetry. 
 Qed.
 
-(* isomorphisms *)
+(** ** Isomorphisms *)
 
 Record iso (F G: graph): Type :=
   Iso { iso_v:> bij F G;
@@ -268,7 +272,7 @@ Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
   match goal with |- ?F ≃ ?G => apply (@Iso F G f g h) end.
 
 
-(* isomorphisms about [unit_graph] *)
+(** isomorphisms about [unit_graph] *)
 
 Global Instance unit_graph_iso: CProper (eqv ==> iso) unit_graph.
 Proof.
@@ -277,7 +281,7 @@ Proof.
 Defined.
 
 
-(* isomorphisms about [add_edge] *)
+(** isomorphisms about [add_edge] *)
 
 Lemma add_edge_iso'' F G (h: F ≃ G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
   F ∔ [x, u, y] ≃ G ∔ [x', v, y'].
@@ -341,7 +345,7 @@ Proof.
 Defined.
 
 
-(* isomorphisms about subgraphs *)
+(** isomorphisms about subgraphs *)
 
 Lemma incident_iso (F G : graph) (h : F ≃ G) (x : F) (e : edge F) : 
   incident x e = incident (h x) (h.e e).
@@ -403,7 +407,7 @@ Proof.
   - case => e He /=. exact: elabel_iso.
 Defined.
 
-(* isomorphisms about [union] *)
+(** isomorphisms about [union] *)
 
 Global Instance union_iso: CProper (iso ==> iso ==> iso) union.
 Proof.
@@ -472,7 +476,7 @@ Proof.
 Defined.
 
 
-(* isomorphisms about [merge] *)
+(** isomorphisms about [merge] *)
 
 (* remove if no longer used below *)
 Lemma eq_eqv {X: setoid} (x y: X): x = y -> x ≡ y.
@@ -650,7 +654,7 @@ Proof. by []. Qed.
 Global Opaque merge_add_vlabel.
 
 
-(* isomorphisms about [union] and [merge] *)
+(** isomorphisms about [union] and [merge] *)
 
 
 Section union_merge_l.

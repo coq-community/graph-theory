@@ -8,6 +8,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+(** * Reducibility *)
+
 (* preliminary isomorphisms (on arbitrary graphs) *)
 Section prelim.
 Variable L: labels.
