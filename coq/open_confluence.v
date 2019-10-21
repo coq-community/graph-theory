@@ -12,26 +12,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** ** Preliminaries *)
-(* TODO move elsewhere *)
-
-Lemma iso2_intro (L : labels) (G H : graph2 L) (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
-  is_hom hv he hd -> hv input = input -> hv output = output -> G ≃2 H.
-Proof. move => hom_h. by exists (Iso hom_h). Defined.
-
-Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) := 
-  match goal with |- ?G ≃2 ?H => refine (@iso2_intro _ G H hv he hd _ _ _) end.
-
-
-Lemma eqvxx (X : setoid) (x : X) : x ≡ x. reflexivity. Qed.
-Arguments eqvxx [X x].
-Arguments eqv : simpl never.
-
-Lemma infer_testE X x x' y y' p p' : 
-  (@infer_test X x y p) ≡ (@infer_test X x' y' p') <-> x ≡ x'.
-Proof. rewrite /infer_test. by subst. Qed.
-
-
 (** Picking fresh vertices/edges *)
 
 Definition fresh (E : {fset nat}) : nat := (\max_(e : E) val e).+1.

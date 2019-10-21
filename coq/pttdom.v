@@ -185,11 +185,16 @@ Proof.
   - rewrite addbN addbxx. change (v ≡ v°°). by rewrite cnvI.
   - by rewrite addNb addbxx. 
 Qed.
- 
+
+Lemma infer_testE x x' (y y' : test) p p' : 
+  (@infer_test x y p) ≡ (@infer_test x' y' p') <-> x ≡ x'.
+Proof. rewrite /infer_test. by subst. Qed.
+
 End derived.
 Coercion pttdom_labels: pttdom >-> labels. 
 Notation "[ x ]" := (@infer_test _ x%ptt _ erefl): pttdom_ops.
 
+Arguments eqv : simpl never.
 
 (* initial algebra of terms *)
 Section terms.
