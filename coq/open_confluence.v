@@ -1,7 +1,7 @@
 Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
-Require Import edone set_tac finite_quotient preliminaries bij equiv.
+Require Import edone finite_quotient preliminaries bij equiv.
 Require Import pttdom mgraph mgraph2 rewriting.
 
 Require Import finmap_plus.
