@@ -38,11 +38,11 @@ Proof.
   have gW: is_graph W. by apply UW. 
   apply (steps_of gV gT) in sVT. 
   apply (steps_of gW gT) in sWT. 
-  exists (close T); split.
-  - transitivity (close W)=>//. apply iso_step. 
+  exists (pack T); split.
+  - transitivity (pack W)=>//. apply iso_step. 
     etransitivity. apply openK. apply liso_of_oliso.
     eapply oiso2_trans. apply oiso2_sym. eassumption. assumption.
-  - transitivity (close V)=>//. apply iso_step. 
+  - transitivity (pack V)=>//. apply iso_step. 
     etransitivity. apply openK. apply liso_of_oliso.
     by apply oiso2_sym.
 Qed.
