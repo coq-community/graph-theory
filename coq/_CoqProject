@@ -23,6 +23,7 @@ mgraph2.v
 rewriting.v
 reduction.v
 open.v
+transfer.v
 completeness.v
 
 ## extraction (first three files obsolete, following ones to be ported)
