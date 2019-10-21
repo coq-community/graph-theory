@@ -515,7 +515,7 @@ Proof.
   apply eqv_clot_trans with (inr (inr tt)); eqv. 
 Qed.
 
-Lemma A10 (F G: graph2): 1 ∥ F·G ≃2 dom (F ∥ G°).
+Lemma g2_A10 (F G: graph2): 1 ∥ F·G ≃2 dom (F ∥ G°).
 Proof.
   irewrite (par2C 1).
   rewrite /=/g2_par/g2_dot/g2_dom/g2_cnv.
@@ -541,10 +541,10 @@ Proof.
   case. apply /eqquotP. eqv.
 Qed.
 
-Lemma A11 (F: graph2): F·top ≃2 dom F·top.
+Lemma g2_A11 (F: graph2): F·top ≃2 dom F·top.
 Proof. irewrite topR. symmetry. by irewrite topR. Qed.
 
-Lemma A12' (F G: graph2): @input F = @output F -> F·G ≃2 F·top ∥ G.
+Lemma g2_A12' (F G: graph2): @input F = @output F -> F·G ≃2 F·top ∥ G.
 Proof.
   intro H. rewrite /=/g2_par/g2_dot.
   irewrite' (merge_iso2 (union_merge_l _ _)).
@@ -561,11 +561,40 @@ Proof.
   repeat case=>//=; rewrite H; apply /eqquotP; eqv. 
 Qed.
 
-Lemma A12 (F G: graph2): (F ∥ 1)·G ≃2 (F ∥ 1)·top ∥ G.
+Lemma g2_A12 (F G: graph2): (F ∥ 1)·G ≃2 (F ∥ 1)·top ∥ G.
 Proof.
-  apply A12'.
+  apply g2_A12'.
   apply /eqquotP. apply eqv_clot_trans with (inr tt); eqv.
 Qed.
+
+Lemma g2_A13 (F G: graph2): dom(F·G) ≃2 dom(F·dom G).
+Proof. reflexivity. Qed.
+
+Lemma g2_A14' (F G H: graph2): @input F = output -> F·(G∥H) ≃2 F·G ∥ H.
+Proof.
+  (* this lemma could be skipped by going through 2p algebra *)
+  intro E. 
+  irewrite (merge_iso2 (union_merge_r _ _)).
+  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /fst/snd.
+  irewrite (merge_merge (G:=F ⊎ (G ⊎ H))
+                        (k:=[::(unl output,unr (unl input))]))=>//.
+  irewrite' (merge_iso2 (union_merge_l _ _)).
+  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
+  irewrite' (merge_merge (G:=(F ⊎ G) ⊎ H)
+                              (k:=[::(unl (unl input),unr input); (unl (unr output),unr output)]))=>//.
+  irewrite (merge_iso2 (union_A _ _ _)).
+  apply merge_same'. rewrite /unl/unr/=E.
+  set a := inl _. set (b := inl _). set (c := inl _). set (e := inr _). set (f := inr _).
+  apply eqv_clot_eq=>/=.  
+   constructor=>/=. apply eqv_clot_trans with c; eqv.
+   leqv. 
+   constructor. eqv. 
+   constructor=>/=. apply eqv_clot_trans with a; eqv. 
+   leqv. 
+Qed.
+
+Lemma g2_A14 (F G H: graph2): dom F·(G∥H) ≃2 dom F·G ∥ H.
+Proof. by apply g2_A14'. Qed.
 
 Lemma dot_iso2: CProper (iso2 ==> iso2 ==> iso2) g2_dot.
 Proof.
@@ -600,9 +629,9 @@ Next Obligation. exists. apply cnv2I. Qed.
 Next Obligation. exists. apply cnv2par. Qed.
 Next Obligation. exists. apply cnv2dot. Qed.
 Next Obligation. exists. apply par2oneone. Qed.
-Next Obligation. exists. apply A10. Qed.
-Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
-Next Obligation. exists. Admitted. (* consequence of being a 2p algebra... *)
+Next Obligation. exists. apply g2_A10. Qed.
+Next Obligation. exists. apply g2_A13. Qed.
+Next Obligation. exists. apply g2_A14. Qed.
 Canonical g2_pttdom.
 
 (* additional lemmas needed in reduction.v *)
