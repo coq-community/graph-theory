@@ -12,9 +12,7 @@ TODO: packed classes? (does not seem to be problematic for now)
 but we should at least understand the current hack in rewriting.v for setoid_of_bisetoid
 *)
 
-(** ** Structures *)
-
-(** setoids *)
+(** ** setoids *)
 Structure setoid :=
   Setoid {
       car:> Type;
@@ -30,6 +28,7 @@ Definition eq_setoid (X: Type): setoid := Setoid (@eq_equivalence X).
 Lemma eqvxx (X : setoid) (x : X) : x ≡ x. reflexivity. Qed.
 Arguments eqvxx [X x].
 
+(** ** label structure (Definition 4.1) *)
 (* ingredients required to label graphs
    - eqv' x y = eqv x y° (when we have an involution _°)
    - eqv' _ _ = False    (otherwise)
@@ -57,7 +56,7 @@ Arguments mon2 {_}.
 Arguments eqv' {_}.
 Infix "≡'" := eqv' (at level 79).
 
-(** switch between [≡] and [≡'] based on a Boolean (useful for defining potentially edge swapping homomorphisms) *)
+(* switch between [≡] and [≡'] based on a Boolean (useful for defining potentially edge swapping homomorphisms) *)
 Definition eqv_ (X: labels) (b: bool) (x y: le X) := if b then x ≡' y else x ≡ y.
 Notation "x ≡[ b ] y" := (eqv_ b x y) (at level 79).
 Global Instance eqv_sym {X: labels} {b}: Symmetric (@eqv_ X b).
@@ -70,7 +69,7 @@ Proof.
   by transitivity v.
 Qed.
 
-(** variants of the above that are more useful for backward chaining *)
+(* variants of the above that are more useful for backward chaining *)
 Lemma eqvb_transR (X : labels) b b' (u v v' : le X) : 
   u ≡[b (+) b'] v' ->  v' ≡[b'] v ->  u ≡[b] v.
 Proof. move => A B. move:(eqvb_trans A B). by rewrite -addbA addbxx addbF. Qed.
@@ -88,13 +87,14 @@ Proof.
   - symmetry in yy. apply: eqvb_transR yy. apply: eqvb_transL xx. by rewrite !addbF.
 Qed.
 
+(* label structure for letter-labeled graphs (Definition 4.2) *)
 Program Definition flat_labels (X: Type) :=
   {| lv := eq_setoid unit; mon0:=tt; mon2 _ _ :=tt;
      le := eq_setoid X; eqv' _ _ := False |}.
 Next Obligation. by case x. Qed.
 Next Obligation. tauto. Qed.
 
-(** notations for vertex labels *)
+(* notations for vertex labels *)
 Bind Scope labels with lv.
 Delimit Scope labels with lbl.
 Infix "⊗" := mon2 (left associativity, at level 25): labels.

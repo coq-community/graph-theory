@@ -8,9 +8,9 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Reducibility *)
+(** * Reducibility for the rewrite system *)
 
-(* preliminary isomorphisms (on arbitrary graphs) *)
+(** ** Preliminary isomorphisms (on arbitrary graphs) *)
 Section prelim.
 Variable L: labels.
 Notation Le := (le L).
@@ -193,7 +193,8 @@ Qed.
 End prelim.
 
 
-(* algebraic operations preserve rewriting steps (for every pttdom algebra) *)
+(** ** preservation of steps under algebraic operations *)
+(* (for every pttdom algebra) *)
 Section s.
 Variable X: pttdom.
 Notation test := (test X). 
@@ -201,6 +202,8 @@ Notation graph := (graph (pttdom_labels X)).
 Notation graph2 := (graph2 (pttdom_labels X)).
 Notation step := (@step X).
 Notation steps := (@steps X).
+
+(* preliminaries to obtain the technical Lemma 6.3 *)
 
 Definition mentions (A: eqType) (l: pairs A) :=
   flatten [seq [::x.1;x.2] | x <- l].
@@ -330,7 +333,7 @@ Proof.
   (* this proof could be made simpler since we don't need to Defined it *)
 Qed.
 
-
+(** *** Lemma 6.3 *)
 Lemma merge_step (G' G H: graph2) (l : pairs (G+H)) : 
   admissible_l l -> step G G' -> 
   steps (point (merge_seq (G ⊎ H) l) (\pi (unl input)) (\pi (unr output)))
@@ -385,6 +388,8 @@ Proof.
   - etransitivity. apply isop_step, If. exists. apply I.
     etransitivity. apply Sf, S. apply IH. 
 Qed.
+
+(** *** Lemma 6.2 *)
 
 Instance cnv_steps: Proper (steps ==> steps) (@cnv _).
 Proof.
@@ -455,7 +460,8 @@ Qed.
 End s.
 
 
-(* reduction lemma (in the initial pttdom algebra of terms) *)
+(** ** reduction lemma *)
+(* (in the initial pttdom algebra of terms) *)
 Section s'.
 Variable A: Type.
 Notation term := (term A).  
@@ -479,8 +485,12 @@ Canonical Structure tm_labels :=
 (* Check erefl: tm_setoid A = le _. *)
 (* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
 
-(* graphs of terms and normal forms *)
+(** *** graphs of terms and normal terms *)
+
+(* function g^A from the end of Section 5 *)
 Definition graph_of_term: term -> graph2 := eval (fun a: A => @g2_var (flat_labels A) a). 
+
+(* function g^T from the end of Section 5 *)
 Definition tgraph_of_term: term -> tgraph2 := eval (fun a: A => g2_var (tm_var a)). 
 
 Definition tgraph_of_nterm (t: nterm): tgraph2 :=
@@ -493,7 +503,7 @@ Arguments mon2 : simpl never.
 Arguments eqv : simpl never.
 
 
-(* reduction lemma *)
+(* reduction lemma (Proposition 7.2) *)
 Proposition reduce (u: term): steps (tgraph_of_term u) (tgraph_of_nterm (nt u)).
 Proof.
   induction u=>//=.

@@ -23,6 +23,7 @@ Notation Le := (le L).
 Notation graph := (graph L).
 Local Open Scope labels.
 
+(* 2p-graphs  *)
 Record graph2 :=
   Graph2 {
       graph_of:> graph;
@@ -122,19 +123,21 @@ Proof. intros. Iso2 h. Defined.
 
 
 (* simple tactics for rewriting with isomorphisms at toplevel, in the lhs or in the rhs
-   (used in place of setoid_rewrite or rewrite->, which are pretty slow) *)
+   (used in place of setoid_rewrite or rewrite->, which are pretty slow, or just don't work) *)
 Tactic Notation "irewrite" uconstr(L) := (eapply iso2_comp;[apply L|]); last 1 first.
 Tactic Notation "irewrite'" uconstr(L) := eapply iso2_comp;[|apply iso2_sym, L].
 
 
-(* two pointed graphs operations *)
+(** ** 2pdom operations on graphs *)
 
+(* parallel composition *)
 Definition g2_par (F G: graph2) :=
   point (merge_seq (F ⊎ G) [::(unl input,unr input); (unl output,unr output)])
         (\pi (unl input)) (\pi (unr output)).
   (* merge2_seq (point (F ⊎ G) (inl input) (inr output)) *)
   (*            [::(inl input,inr input); (inl output,inr output)]. *)
 
+(* sequential composition *)
 Definition g2_dot (F G: graph2) :=
   point (merge_seq (F ⊎ G) [::(unl output,unr input)])
         (\pi (unl input)) (\pi (unr output)).
@@ -151,8 +154,8 @@ Definition g2_top: graph2 := two_graph2 1 1.
 
 Definition g2_var a: graph2 := edge_graph2 1 a 1.
 
-(* Note: maybe nicer to prove that this is a ptt algebra (with top)
-  and deduce automatically that this is a pttdom (as we did in the previous version) *)
+(* Note: would be nicer to prove that this is a 2p algebra (with top)
+   and deduce automatically that this is a 2pdom  *)
 Canonical Structure g2_ops: pttdom.ops_ :=
   {| dot := g2_dot;
      par := g2_par;
@@ -162,7 +165,8 @@ Canonical Structure g2_ops: pttdom.ops_ :=
      (* top := g2_top *) |}.
 Notation top := g2_top.         (* TEMPORARY *)
 
-(* laws about low level operations (union/merge/add_vertex/add_vlabel/add_edge) *)
+(** ** laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) *)
+(* mostly recasting the ones proved in [mgraph]  *)
 
 (* isomorphisms about [unit_graph2] *)
 
@@ -301,7 +305,6 @@ Lemma merge2_nothing (F: graph2) (h: pairs F):
 Proof. destruct F. apply merge_nothing. Defined.
 
 
-(** merge_merge  *)
 Lemma merge_merge (G: graph) (h k: pairs G) (k': pairs (merge_seq G h)) (i o: G):
   k' = map_pairs (pi (eqv_clot h)) k ->
   point (merge_seq (merge_seq G h) k') (\pi (\pi i)) (\pi (\pi o))
@@ -314,7 +317,6 @@ Lemma merge2_merge (G: graph2) (h k: pairs G) (k': pairs (merge_seq G h)):
 Proof. apply merge_merge. Qed.
 
 
-(**  merge_union_K  *)
 Lemma merge_union_K_l (F K: graph) (i o: F+K) (h: pairs (F+K)) (k: K -> F)
       (kv: forall x: K, vlabel x = 1)
       (ke: edge K -> False)
@@ -339,7 +341,7 @@ Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Defined.
    because some of them could be useful in Type in open.v and reduction.v
    (simple ones like commutativity to get symmetry reasonning, 
     but also CProper)
-   we might want to prove downgrade some of them to Prop [iso2prop]
+   we might want to downgrade some of them to Prop [iso2prop]
  *)
 
 Lemma par2C (F G: graph2): F ∥ G ≃2 G ∥ F.
@@ -572,7 +574,7 @@ Proof. reflexivity. Qed.
 
 Lemma g2_A14' (F G H: graph2): @input F = output -> F·(G∥H) ≃2 F·G ∥ H.
 Proof.
-  (* this lemma could be skipped by going through 2p algebra *)
+  (* this law could be skipped by going through 2p algebra *)
   intro E. 
   irewrite (merge_iso2 (union_merge_r _ _)).
   rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /fst/snd.
@@ -616,6 +618,7 @@ Proof. intros F F' f. eexists; apply f. Qed.
 Lemma dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
+(* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
 Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
 Next Obligation. apply CProper2, dot_iso2. Qed.
 Next Obligation. apply CProper2, par_iso2. Qed.
@@ -633,6 +636,8 @@ Next Obligation. exists. apply g2_A10. Qed.
 Next Obligation. exists. apply g2_A13. Qed.
 Next Obligation. exists. apply g2_A14. Qed.
 Canonical g2_pttdom.
+
+(** ** additional laws required for the completeness proof *)
 
 (* additional lemmas needed in reduction.v *)
 Local Open Scope labels.
@@ -672,9 +677,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
     by rewrite monU.
 Qed.
 
-(* lemmas needed in open.v *)
-
-Arguments iso_iso2' [F G] h _ _ _ _ _ _.
+(* needed in open.v *)
 
 Notation IO := [set input;output].
 
@@ -705,7 +708,7 @@ Lemma iso2_del_edges2 (F G : graph2) (i : F ≃2 G)
 Proof.
   move => E.
   have EE : ~: EG = [set i.e e | e in ~: EF] by rewrite -bij_imsetC E. 
-  apply: (iso_iso2' (del_edges_iso' EE)). exact: iso2_input. exact: iso2_output. 
+  apply: (@iso_iso2' _ _ (del_edges_iso' EE)). exact: iso2_input. exact: iso2_output. 
 Defined.
 
 Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :
@@ -753,6 +756,8 @@ Notation add_test_cong := add_vlabel2_iso' (only parsing).
 
 
 (** ** Relabeling Graphs *)
+(* used to move from letter-labeled graphs to term-labeled graphs (Lemma 5.3) *)
+(* (i.e., the [g2_pttdom] construction is functorial) *)
 Section h.
   Variables X Y: labels.
   Variable fv: lv X -> lv Y.

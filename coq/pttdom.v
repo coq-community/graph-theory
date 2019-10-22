@@ -8,9 +8,9 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(* 2pdom algebra, initial algebra of terms, tests *)
+(** * 2pdom algebra, tests, initial algebra of terms *)
 
-(* TODO: 2p algebra and their links with 2pdom algebra *)
+(** ** 2pdom algebra *)
 
 (* operations are put apart so that the can get notations for them before stating/proving the laws  *)
 Structure ops_ :=
@@ -29,6 +29,7 @@ Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"
 Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): pttdom_ops.
 Notation "1"  := (one _): pttdom_ops.
 
+(* 2pdom axioms *)
 Structure pttdom :=
   { ops:> ops_;
     dot_eqv: Proper (eqv ==> eqv ==> eqv) (@dot ops);
@@ -52,6 +53,7 @@ Structure pttdom :=
   }.
 Existing Instances dot_eqv par_eqv cnv_eqv dom_eqv.
 
+(** ** basic derivable laws  *)
 Section derived.
 
  Variable X: pttdom.
@@ -71,7 +73,7 @@ Section derived.
  Lemma dotcnv (x y: X): x·y ≡ (y°·x°)°.
  Proof. apply cnv_inj. by rewrite cnvdot cnvI. Qed.
 
- (* tests *)
+ (** ** tests *)
  Definition is_test (x: X) := dom x ≡ x.
  Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
 
@@ -128,11 +130,11 @@ Section derived.
  Proof. rewrite /is_test -pardot. apply domtst. Qed.
  Canonical Structure tst_dot a b := Test (dot_test a b).
  
- (* automatised inference of tests *)
+ (** automatised inference of tests *)
  Definition infer_test x y (e: elem_of y = x) := y.
  Notation "[ x ]" := (@infer_test x _ erefl).
 
- (* commutative monoid of  tests *)
+ (** ** commutative monoid of  tests *)
  Definition eqv_test (a b: test) := a ≡ b.
  Arguments eqv_test _ _ /.
  Lemma eqv_test_equiv: Equivalence eqv_test. 
@@ -150,6 +152,8 @@ Section derived.
  Lemma tst_dotU: forall a: test, a·1 ≡ a.
  Proof. intros [a]. apply dotx1. Qed.
 
+ (** ** label structure of a 2pdom algebra (Definition 4.3)  *)
+ 
  (* dualised equality (to get the [labels] structure below) *)
  Definition eqv' (x y: X) := x ≡ y°.
  Arguments eqv' _ _ /.
@@ -169,13 +173,15 @@ Section derived.
 
 Implicit Types (u v x y z : X) (a b : test).
 
-(** Lemmas to turn pttdom expressions into (projections of) tests *)
+(* Lemmas to turn pttdom expressions into (projections of) tests *)
 Lemma par1tst u : 1 ∥ u = [1∥u]. by []. Qed.
 Lemma paratst a u : a ∥ u = [a∥u]. by []. Qed.
 Lemma dom_tst u : dom u = [dom u]. by []. Qed.
 
-(** this allows rewrinting an equivalence between tests inside a pttdom expression *)
+(* this allows rewriting an equivalence between tests inside a pttdom expression *)
 Lemma rwT (a b : test) : a ≡ b -> elem_of a ≡ elem_of b. by []. Qed.
+
+(** ** other derivable laws used in the completeness proof *)
 
 Lemma partst u v a : (u ∥ v)·a ≡ u ∥ v·a.
 Proof.
@@ -189,19 +195,19 @@ Proof. by rewrite paratst -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed.
 Lemma eqvb_par1 a u v (b : bool) : u ≡[b] v -> a ∥ u ≡ a ∥ v.
 Proof. case: b => [->|-> //]. exact: par_tst_cnv. Qed.
 
-(** used twice in reduce in reduction.v *)
+(* used twice in reduce in reduction.v *)
 Lemma reduce_shuffle v (a c d : test) : c·(d·a)·[1∥v] ≡ a ∥ c·v·d.
 Proof. 
   rewrite [c·(d·a)]dotA -dotA tstpar dotx1.
   by rewrite -dotA (paratst a v) tst_dotC /= partst parC tstpar parC dotA.
 Qed.
 
-(** lemma for nt_correct *)
+(* lemma for nt_correct *)
 Lemma par_nontest u v (a b c d : test) : a·u·b∥c·v·d ≡ a·c·(u∥v)·(b·d).
 Proof. by rewrite -partst -[a·u·b]dotA -tstpar parC -tstpar -partst !dotA parC. Qed.
 
 
-(** used in open.v *)
+(* used in open.v *)
 Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
 Proof. 
   split; apply: eqvb_transL.
@@ -219,7 +225,7 @@ Notation "[ x ]" := (@infer_test _ x%ptt _ erefl): pttdom_ops.
 
 Arguments eqv : simpl never.
 
-(* initial algebra of terms *)
+(** ** initial algebra of terms *)
 Section terms.
  Variable A: Type.
  Inductive term :=
@@ -242,9 +248,9 @@ Section terms.
    | tm_var a => f a
    end.
  End e.
- (* axiomatic equality on terms (we do not prove it, but this
-    impredicative encoding is equivalent to the inductive defining
-    equational reasoning in pttdom) *)
+
+ (* axiomatic equality on terms *)
+ (* (via impredicative encoding to avoid repeating the axioms in an inductive definition)) *)
  Definition tm_eqv (u v: term): Prop :=
    forall (X: pttdom) (f: A -> X), eval f u ≡ eval f v.
  Hint Unfold tm_eqv.
@@ -263,7 +269,8 @@ Section terms.
       cnv := tm_cnv;
       dom := tm_dom;
       one := tm_one |}.
- (* quotiented terms indeed form a pttdom *)
+ 
+ (* quotiented terms indeed form a 2pdom algebra *)
  Program Definition tm_pttdom: pttdom := {| ops := tm_ops_ |}.
  Next Obligation. repeat intro; simpl. by apply dot_eqv. Qed.
  Next Obligation. repeat intro; simpl. by apply par_eqv. Qed.
@@ -283,21 +290,25 @@ Section terms.
  Canonical tm_pttdom. 
  
  Notation test := (test tm_pttdom).
-
- (* TOTHINK: might want to move normalisation to completeness related files *)
  
- (* normal forms for terms *)
+ (** ** normal terms and normalisation function (Section 7)*)
+
+ (* TOTHINK: might want to move normalisation to completeness related files
+    also, the normal terms construction actually works in an arbitrary pttdom *)
+
+ (* normal terms *)
  Inductive nterm :=
  | nt_test: test -> nterm
  | nt_conn: test -> term -> test -> nterm.
 
+ (* reading back terms *)
  Definition term_of_nterm (t: nterm) :=
    match t with
    | nt_test alpha => elem_of alpha (* why do we need to insert the coercion??? *)
    | nt_conn alpha u gamma => alpha · u · gamma
    end.                                         
 
- (* pttdom algebra on normal forms *)
+ (* pttdom algebra on normal terms *)
  Definition nt_one := nt_test [1].
  Definition nt_var a := nt_conn [1] (tm_var a) [1].
  Definition nt_cnv u :=
@@ -325,7 +336,8 @@ Section terms.
    | nt_conn a u b, nt_conn c v d => nt_conn [a·c] (u ∥ v) [b·d]
    end.
 
- (* normalisation function (could also be defined as an [eval])*)
+ (* normalisation function (Definition 7.1) *)
+ (* TODO: define it as an [eval]) *)
  Fixpoint nt (u: term): nterm :=
    match u with
    | tm_dot u v => nt_dot (nt u) (nt v)
@@ -345,7 +357,7 @@ Ltac fold_ops :=
          | |- tm_eqv ?u ?v => change (u ≡ v)
          end.
 
-
+ (* correctness of the normalisation function (Proposition 7.1)  *)
  Proposition nt_correct (u: term): u ≡ term_of_nterm (nt u).
  Proof.
    induction u=>//=.

@@ -11,7 +11,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Directed Labeled Multigraphs *)
 
-(** Note on Equivalences and Morphisms: This development mixes both
+(* Note on Equivalences and Morphisms: This development mixes both
 rewriting in Prop (e.g., 2pdom algebras) and rewriting in Type (e.g.,
 iso). To facilitate this, we import the Prop versions and introduce
 notations for the Type versions. This leads to the follwing usage
@@ -29,7 +29,7 @@ Delimit Scope csignature with C.
 Notation "A ==> B" := (@CMorphisms.respectful _ _ (A%C) (B%C)) : csignature.
 Arguments CMorphisms.Proper [A] _%C _.
 
-(* labelled multigraphs and their operations *)
+(** ** labeled directed multigraphs and their operations *)
 
 Section s.
     
@@ -38,7 +38,7 @@ Notation Lv := (lv L).
 Notation Le := (le L).
 Local Open Scope labels.
 
-(* labelled multigraphs (not pointed) *)
+(* labelled directed multigraphs (not pointed, Definition 4.4) *)
 Record graph: Type :=
   Graph {
       vertex:> finType;
@@ -130,6 +130,7 @@ Definition del_vertex (G : graph) (z : G) : graph :=
 
 (** ** Disjoint Union and Quotients of graphs *)
 
+(* disjoint union (Definition 4.5)*)
 Definition union (F G : graph) : graph :=
   {| vertex := [finType of F + G];
      edge := [finType of edge F + edge G];
@@ -142,7 +143,7 @@ Infix "⊎" := union (at level 50, left associativity).
 Definition unl {G H: graph} (x: G): G ⊎ H := inl x.
 Definition unr {G H: graph} (x: H): G ⊎ H := inr x.
 
-(* merging vertices according to an equivalence relation *)
+(* quotient (Definition 4.6): merging vertices according to an equivalence relation *)
 Definition merge (G: graph) (r : equiv_rel G) :=
   {| vertex := quot r;
      edge := (edge G);
@@ -152,7 +153,7 @@ Definition merge (G: graph) (r : equiv_rel G) :=
 Arguments merge _ _: clear implicits. 
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
-(* derived operations *)
+(* derived operations (Definition 4.7) *)
 Definition two_graph a b := unit_graph a ⊎ unit_graph b.
 Definition edge_graph a u b := two_graph a b ∔ [inl tt, u, inr tt].                           
 Definition add_vertex G a := G ⊎ unit_graph a.
@@ -163,23 +164,24 @@ Lemma addbxx x : x (+) x = false.
 Proof. by rewrite -negb_eqb eqxx. Qed.
 
 (** ** Homomorphisms *)
-(** TOTHINK: actually, vlabel_hom should use a bigop, like in lemma [merge_surj]
-   -> would be a more natural notion of homomorphism
-   -> we would have the equivalence with the current definition when hv is injective (and thus, for isomorphisms)
-   -> lemma [merge_surj] would just asssume a homormophism which is vertex surjective and edge bijective
-   (not done for now since we do not really use general homomorphisms, only isomorphisms)
-*)
+
+(* Definition 4.8  *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
   { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
     vlabel_hom: forall v, vlabel (hv v) ≡ vlabel v;
     elabel_hom: forall e, elabel (he e) ≡[hd e] elabel e;
   }.
-(** note: 
-   - when using the flat_bisetoid for Le, the edge swapping funcion [hd] 
+(* note: 
+   - when using [flat_labels] for L, the edge swapping funcion [hd] 
      may only be constantly false
    - when the edge swapping function [hd] is constantly false, the
      types of [endpoint_hom] and [elabel_hom] in the above definition
      simplify to the simple, non swapping, notion of homomorphism *)
+(* TOTHINK: actually, vlabel_hom should use a bigop, like in lemma [merge_surj]
+   -> would be a more natural notion of homomorphism
+   -> we would have the equivalence with the current definition when hv is injective (and thus, for isomorphisms)
+   -> lemma [merge_surj] would just asssume a homormophism which is vertex surjective and edge bijective
+   (not done for now since we do not really use general homomorphisms, only isomorphisms) *)
 
 Lemma hom_id G: @is_hom G G id id xpred0.
 Proof. by split. Qed.
@@ -212,6 +214,7 @@ Qed.
 
 (** ** Isomorphisms *)
 
+(* Definition 4.8 *)
 Record iso (F G: graph): Type :=
   Iso { iso_v:> bij F G;
         iso_e: bij (edge F) (edge G);
@@ -248,6 +251,7 @@ Proof.
   apply hom_comp. apply f. apply g.
 Defined.
 
+(* Fact 4.9 *)
 Global Instance iso_Equivalence: CEquivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
@@ -272,7 +276,11 @@ Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
   match goal with |- ?F ≃ ?G => apply (@Iso F G f g h) end.
 
 
-(** isomorphisms about [unit_graph] *)
+(** ** isomorphisms about local and global operations *)
+
+(* Lemmas 4.10, 4.11, 4.12 and more *)
+
+(** *** isomorphisms about [unit_graph] *)
 
 Global Instance unit_graph_iso: CProper (eqv ==> iso) unit_graph.
 Proof.
@@ -281,7 +289,7 @@ Proof.
 Defined.
 
 
-(** isomorphisms about [add_edge] *)
+(** *** isomorphisms about [add_edge] *)
 
 Lemma add_edge_iso'' F G (h: F ≃ G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
   F ∔ [x, u, y] ≃ G ∔ [x', v, y'].
@@ -345,7 +353,8 @@ Proof.
 Defined.
 
 
-(** isomorphisms about subgraphs *)
+(** *** isomorphisms about subgraphs *)
+(* not neded for now *)
 
 Lemma incident_iso (F G : graph) (h : F ≃ G) (x : F) (e : edge F) : 
   incident x e = incident (h x) (h.e e).
@@ -407,7 +416,7 @@ Proof.
   - case => e He /=. exact: elabel_iso.
 Defined.
 
-(** isomorphisms about [union] *)
+(** *** isomorphisms about [union] *)
 
 Global Instance union_iso: CProper (iso ==> iso ==> iso) union.
 Proof.
@@ -476,7 +485,7 @@ Proof.
 Defined.
 
 
-(** isomorphisms about [merge] *)
+(** *** isomorphisms about [merge] *)
 
 (* remove if no longer used below *)
 Lemma eq_eqv {X: setoid} (x y: X): x = y -> x ≡ y.
@@ -491,6 +500,8 @@ Section merge_surj.
  Hypothesis Hendpoints: forall b e, fv (endpoint b e) = endpoint b (fe e).
  Hypothesis Helabel: forall e, elabel (fe e) ≡ elabel e.
  Hypothesis Hvlabel: forall y, vlabel y ≡ \big[mon2/mon0]_(x | fv x == y) vlabel x.
+ 
+ (* Lemma 4.13 *)
  Lemma merge_surj: merge G r ≃ H.
  Proof.
    Iso (quot_kernel Hr Hsurj) fe xpred0. split; intros=>/=.
@@ -654,7 +665,7 @@ Proof. by []. Qed.
 Global Opaque merge_add_vlabel.
 
 
-(** isomorphisms about [union] and [merge] *)
+(** *** isomorphisms about [union] and [merge] (Lemma 4.11) *)
 
 
 Section union_merge_l.
@@ -803,8 +814,6 @@ Proof. apply union_C. Defined.
 
 Global Instance add_vertex_iso : CProper (iso ==> eqv ==> iso) add_vertex.
 Proof. move => F G h a b ab. apply (union_iso h (unit_graph_iso ab)). Defined.
-
-
 
 End s. 
 

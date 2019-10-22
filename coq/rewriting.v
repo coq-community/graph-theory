@@ -15,6 +15,8 @@ Notation graph2 := (graph2 (pttdom_labels X)).
 
 (** * Rewrite System on Packaged Graphs *)
 
+(* additive presentation *)
+
 (* Universe S. *)
 Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
   | step_v0: forall G alpha,
