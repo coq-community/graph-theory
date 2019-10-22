@@ -381,7 +381,7 @@ Proof. done. Qed.
 
 Lemma incident_vset (G : pre_graph) (isG : is_graph G) x e : 
   e \in eset G -> incident G x e -> x \in vset G.
-Proof. move => He /existsP[b][/eqP<-]. exact: endptP. Qed.
+Proof. move => He /existsP[b]/eqP<-. exact: endptP. Qed.
 
 Lemma edges_at_del (G : pre_graph) (z x : VT) : 
   edges_at (G \ z) x = edges_at G x `\` edges_at G z.
@@ -741,7 +741,7 @@ Arguments eqv_addbN b [X] u v _.
 Lemma oarc_weq (G : pre_graph) e x y u u' : 
   x != y -> oarc G e x u y -> oarc G e x u' y -> u ≡ u'.
 Proof. 
-  move => xDy [[E] [b] [A B C]] [[_] [b'] [A' B' C']].
+  move => xDy [E [b] [A B C]] [_ [b'] [A' B' C']].
   have ? : b' = b. 
   { apply: contra_neq_eq xDy. rewrite -eqb_negR => /eqbP ?; subst.
     by symmetry. }
@@ -1374,7 +1374,7 @@ Proof with eauto with typeclass_instances.
         move => Gl [Gr] [[Sl Sr] Elr]. e2split; [exact: Sl | | exact: Elr].
         by rewrite fsetUC maxnC parC. }
       subst e1'. move: (oarc_loop arc_e1' arc_e) => ?. subst y'.
-      have [?] : x' = x by case: (same_oarc arc_e arc_e1') => [] [? ? ?]; congruence.
+      have ? : x' = x by case: (same_oarc arc_e arc_e1') => [] [? ? ?]; congruence.
       subst x'. 
       e2split. 
       * eapply ostep_step,ostep_e0. apply: oarc_del_edges arc_e2'.
