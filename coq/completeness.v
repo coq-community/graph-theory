@@ -21,6 +21,7 @@ Notation graph2 := (graph2 (flat_labels A)).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
+(* local confluence of the additive, packaged system (Proposition 8.1) *)
 Proposition local_confluence G G' H H':
     step G G' -> step H H' -> G ≃2p H -> 
     exists F, steps G' F /\ steps H' F.
@@ -58,6 +59,7 @@ Qed.
 Lemma iso_stagnates G H: G ≃2p H -> measure H = measure G.
 Proof. case. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
 
+(* confluence, via appropriate variant of Newman's lemma  *)
 Proposition confluence F: forall G H, steps F G -> steps F H -> exists F', steps G F' /\ steps H F'.
 Proof.
   induction F as [F_ IH] using (well_founded_induction_type (Wf_nat.well_founded_ltof _ measure)).
@@ -140,6 +142,7 @@ Proof.
   - symmetry. apply relabel2_var=>//.
 Qed.
 
+(* Lemma 5.3 *)
 Lemma tgraph_graph_iso (u v: term):
   graph_of_term u ≃2p graph_of_term v -> tgraph_of_term u ≃2p tgraph_of_term v.
 Proof.
@@ -149,6 +152,8 @@ Proof.
   apply relabel2_iso=>//.
   case=>//=??/=->//.  
 Qed.
+
+(** ** Main Result *)
                   
 (* main completeness theorem *)
 Theorem completeness (u v: term): graph_of_term u ≃2p graph_of_term v -> u ≡ v.
@@ -162,9 +167,7 @@ Proof.
   apply normal_iso. by rewrite HF'. 
 Qed.
 
-(** ** Main Result *)
-
-(* actually an iff since graphs from a 2p algebra *)
+(* actually an iff since graphs from a 2pdom algebra *)
 Theorem soundness_and_completeness (u v: term): graph_of_term u ≃2p graph_of_term v <-> u ≡ v.
 Proof.
   split. apply completeness.

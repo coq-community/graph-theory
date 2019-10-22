@@ -14,7 +14,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Transfer of Open Local Confluence *)
 
-(** ** Opening and closing of type-based graphs *)
+(** ** Opening and packing of type-based graphs *)
 Ltac e2split := do 2 eexists; split; [split|].
 
 Lemma iso2_intro (L : labels) (G H : graph2 L) (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
@@ -118,7 +118,7 @@ Notation pre_graph := (pre_graph test (car (setoid_of_ops (ops tm)))).
 Notation graph := (graph (pttdom_labels tm)).
 Notation graph2 := (graph2 (pttdom_labels tm)).
 
-(** We define isomorphisms via closing *)
+(** We define isomorphisms via packing *)
 
 Record oiso2 (G H : pre_graph) := 
   OIso2 { oiso2_graphL : is_graph G;
@@ -129,7 +129,7 @@ Global Existing Instance oiso2_graphR.
 
 Notation "G ⩭2 H" := (oiso2 G H) (at level 45).
 
-(** tracing vertices through the closing operation *)
+(** tracing vertices through the packing operation *)
 Definition pack_v (G : pre_graph) (graph_G : is_graph G) (x : VT) : pack G :=
   match @idP (x \in vset G) with
   | ReflectT p => Sub x p

@@ -933,6 +933,7 @@ Lemma critical_pair3 u u' (a b : test) :  dom (u'·(dom (u·a)·b)) ≡ dom (u'�
 by rewrite (dom_tst (u·a)) tst_dotC /= dotA -A13 !dotA.
 Qed.
 
+(* Local confluence: Proposition 8.5 *)
 Lemma local_confluence_aux (G : pre_graph) (isG : is_graph G) Gl Gr : 
   ostep G Gl -> ostep G Gr -> exists Gl' Gr', (osteps Gl Gl' /\ osteps Gr Gr') /\ (Gl' ≡G Gr'). 
 Proof with eauto with typeclass_instances.
