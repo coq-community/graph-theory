@@ -649,7 +649,7 @@ Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
 Lemma minor_map_comp (G H K : sgraph) (f : G -> option H) (g : H -> option K) :
   minor_map f -> minor_map g -> minor_map (obind g \o f).
 Proof.
-  move=> [f1 f2 f3] [g1 g2 g3]; rewrite /funcomp; split.
+  move=> [f1 f2 f3] [g1 g2 g3]. rewrite /comp; split.
   - move => y. case: (g1 y) => y'. case: (f1 y') => x E1 ?.
     exists x. by rewrite E1.
   - move => z x y. rewrite !inE. 

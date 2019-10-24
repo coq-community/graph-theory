@@ -217,7 +217,7 @@ End PathOps.
 Definition in_nodes (T : relType) (x y : T) (p : Path x y) : collective_pred T := 
   [pred u | u \in nodes p].
 Canonical Path_predType (T : relType) (x y :T) := 
-  Eval hnf in @mkPredType T (Path x y) (@in_nodes T x y).
+  Eval hnf in @PredType T (Path x y) (@in_nodes T x y).
 Coercion in_nodes : Path >-> collective_pred.
 
 Section PathTheory.
@@ -689,7 +689,7 @@ Section IPath.
 
   Definition path_of_ipath (p : IPath) := ival p. 
   Definition in_ipath p x := x \in path_of_ipath p.
-  Canonical IPath_predType := Eval hnf in @mkPredType G (IPath) in_ipath.
+  Canonical IPath_predType := Eval hnf in @PredType G (IPath) in_ipath.
   Coercion path_of_ipath : IPath >-> Path.
 End IPath.
 

@@ -60,7 +60,7 @@ Definition pathS := { x : G * G & Path x.1 x.2 }.
 Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1 x.2) (x,y) p.
 
 Definition in_pathS (p : pathS) : collective_pred G := [pred x | x \in tagged p].
-Canonical pathS_predType := Eval hnf in mkPredType (@in_pathS).
+Canonical pathS_predType := Eval hnf in PredType (@in_pathS).
 Arguments in_pathS _ /.
 
 (** We can override fst because MathComp uses .1 *)
