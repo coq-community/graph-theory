@@ -46,7 +46,6 @@ Structure labels :=
       le: setoid;
       eqv': relation le;
       Eqv'_sym: Symmetric eqv';
-      eqv10: forall x y z, eqv' x y -> eqv  y z -> eqv' x z;
       eqv01: forall x y z, eqv  x y -> eqv' y z -> eqv' x z;
       eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z;
     }.
@@ -55,6 +54,9 @@ Arguments mon0 {_}.
 Arguments mon2 {_}.
 Arguments eqv' {_}.
 Infix "≡'" := eqv' (at level 79).
+
+Lemma eqv10 (l : labels) (x y z : le l) : eqv' x y -> eqv  y z -> eqv' x z.
+Proof. move => /Eqv'_sym A B. apply: Eqv'_sym. apply: eqv01 A. by symmetry. Qed.
 
 (* switch between [≡] and [≡'] based on a Boolean (useful for defining potentially edge swapping homomorphisms) *)
 Definition eqv_ (X: labels) (b: bool) (x y: le X) := if b then x ≡' y else x ≡ y.

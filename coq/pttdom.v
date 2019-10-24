@@ -159,8 +159,6 @@ Section derived.
  Arguments eqv' _ _ /.
  Lemma eqv'_sym: Symmetric eqv'.
  Proof. move=> x y /= H. apply cnv_inj. by rewrite cnvI H. Qed.
- Lemma eqv10 x y z: eqv' x y -> y ≡ z -> eqv' x z.
- Proof. by move=> /= H <-. Qed.
  Lemma eqv01 x y z: x ≡ y -> eqv' y z -> eqv' x z.
  Proof. by move=> /= ->. Qed.
  Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
@@ -169,7 +167,7 @@ Section derived.
  Canonical Structure pttdom_labels: labels :=
    Labels
      tst_dot_eqv tst_dotA tst_dotC tst_dotU
-     eqv'_sym eqv10 eqv01 eqv11.
+     eqv'_sym eqv01 eqv11.
 
 Implicit Types (u v x y z : X) (a b : test).
 

@@ -480,7 +480,7 @@ Canonical Structure tm_labels :=
   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
          (@tst_dot_eqv (tm_pttdom A)) (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A))
          (@tst_dotU (tm_pttdom A)) (tm_setoid A) (@eqv' (tm_pttdom A))
-         (@eqv'_sym (tm_pttdom A)) (@eqv10 (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
+         (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
 (* Eval hnf in pttdom_labels (tm_pttdom A). *)
 (* Check erefl: tm_setoid A = le _. *)
 (* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
