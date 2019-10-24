@@ -1,4 +1,6 @@
 -R . graphs
+
+## preliminary modules
 edone.v
 bounded.v
 preliminaries.v
@@ -6,6 +8,9 @@ finmap_plus.v
 set_tac.v
 bij.v
 finite_quotient.v
+equiv.v
+
+## general purpose graph library (JAR19)
 digraph.v
 sgraph.v
 minor.v
@@ -13,9 +18,8 @@ menger.v
 separators.v
 checkpoint.v
 cp_minor.v
-equiv.v
 
-## soundness and completeness for 2pdom 
+## soundness and completeness for 2pdom (CPP20)
 structures.v
 pttdom.v
 mgraph.v
@@ -26,12 +30,12 @@ open_confluence.v
 transfer.v
 completeness.v
 
-## extraction (first three files obsolete, following ones to be ported)
-multigraph_bak.v
-ptt_algebra_bak.v
-ptt_graph_bak.v
+## extraction for of 2p terms from TW2 graphs (ITP18 / JAR19)
+ptt.v
+mgraph_jar.v   # obsolete: to be ported 
+mgraph2_jar.v  # obsolete: to be ported 
 skeleton.v
-subalgebra.v
+mgraph2_tw2.v
 extraction_def.v
 extraction_iso.v
 extraction_top.v

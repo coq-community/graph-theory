@@ -1,7 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries.
 Require Import digraph sgraph minor.
-Require Import multigraph_bak ptt_algebra_bak subalgebra ptt_graph_bak skeleton.
+Require Import mgraph_jar ptt mgraph2_tw2 mgraph2_jar skeleton.
 Require Import extraction_def extraction_top.
 
 Set Implicit Arguments.
