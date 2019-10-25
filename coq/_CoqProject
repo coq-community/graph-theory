@@ -1,3 +1,4 @@
+-arg -w -arg -undeclared-scope #until we drop coq-8.9 and can use Declare Scope
 -arg -w -arg -notation-overridden
 -arg -w -arg -redundant-canonical-projection
 -arg -w -arg -projection-no-head-constant

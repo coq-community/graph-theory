@@ -21,7 +21,7 @@ Structure ops_ :=
     dom: setoid_of_ops -> setoid_of_ops;
     one: setoid_of_ops }.
 
-Declare Scope pttdom_ops.
+(* Declare Scope pttdom_ops. compat:coq-8.9*)
 Bind Scope pttdom_ops with setoid_of_ops.
 Delimit Scope pttdom_ops with ptt.
 Open Scope pttdom_ops.

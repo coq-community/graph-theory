@@ -709,7 +709,7 @@ Proof. done. Qed.
 
 End s. 
 
-Declare Scope graph2_scope.
+(* Declare Scope graph2_scope. compat:coq-8.9*)
 Bind Scope graph2_scope with graph2.
 Delimit Scope graph2_scope with G2.
 

@@ -807,7 +807,7 @@ End s.
 Notation source := (endpoint false).
 Notation target := (endpoint true).
 
-Declare Scope graph_scope.
+(* Declare Scope graph_scope. compat:coq-8.9*)
 Bind Scope graph_scope with graph.
 Delimit Scope graph_scope with G.
 
