@@ -33,7 +33,6 @@ digraph dependencies {
 		"extraction_def"; 
 		"extraction_iso"; 
 		"extraction_top"; 
-		"corollaries";	
 	}
 	subgraph { # 2pdom soundness and completeness (CPP20)
 		node [style=filled; color="violet"];
