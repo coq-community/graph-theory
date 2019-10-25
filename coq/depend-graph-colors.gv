@@ -20,10 +20,13 @@ digraph dependencies {
 		"separators";		
 		"checkpoint";
 	}
-	subgraph { # 2p algebra of multigraphs, extraction (JAR19)
-		node [style=filled; color="red"];
+	subgraph { # 2p algebra of multigraphs (to be removed, JAR19)
+		node [style=filled; color="crimson"];
 		"mgraph_jar";
 		"mgraph2_jar";
+	}
+	subgraph { # 2p algebra of multigraphs, extraction (JAR19)
+		node [style=filled; color="red"];
 		"skeleton";	
 		"mgraph2_tw2";	
 		"cp_minor";	
