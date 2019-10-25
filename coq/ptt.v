@@ -10,7 +10,11 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * 2p algebras, tests, initial algebra of terms *)
 
-(** ** 2p algebras *)
+(** ** 2p algebras (2pdom algebras with top) *)
+
+(* TODO: prove that 2p-algebras are 2pdom algebras to share related definitions and proofs 
+   (requires properly setting up structures)
+ *)
 
 (* operations are put apart so that the can get notations for them before stating/proving the laws  *)
 Structure ops_ :=

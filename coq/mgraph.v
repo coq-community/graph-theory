@@ -13,6 +13,11 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** labeled directed multigraphs and their operations *)
 
+(* this file subsumes mgraph_jar.v : 
+   the notion of multigraph defined here allows labels on vertices and edge-fliping isomorphisms 
+   we can recover multigraphs without vertex-labels and non-flipping isomophisms using the [flat_labels] structure
+ *)
+
 Section s.
     
 Variable L: labels.

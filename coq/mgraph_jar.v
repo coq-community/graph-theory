@@ -9,9 +9,11 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Directed Multigraphs *)
 
-(** We define finite directed multigraphs with labels from a fixed
-type [sym] (i.e., an encapuslated copy of [nat]. We define a number of
-constructions on these graphs: *)
+(* this file is subsumed by mgraph.v, where multigraphs are slightly more general 
+   it will be removed once the files about term extraction have been ported to this new interface *)
+
+(** We define finite directed multigraphs with edge labels.
+    We define the following operations on these graphs, as well as a computational notion of isomorphism *)
 
 (** [union G H] : disjoint union of the graphs [G] and [H]. *)
 

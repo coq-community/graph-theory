@@ -10,7 +10,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * 2pdom algebra, tests, initial algebra of terms *)
 
-(** ** 2pdom algebra *)
+(** ** 2pdom algebra (the top-free fragment of 2p algebra) *)
 
 (* operations are put apart so that the can get notations for them before stating/proving the laws  *)
 Structure ops_ :=

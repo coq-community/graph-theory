@@ -8,11 +8,18 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Two-Pointed Labelled Multigraphs and Their Operations *)
+(** * Two-pointed labelled multigraphs *)
+
+(** 2pdom-operations on such graphs and proof that they form a 2pdom-algebra *)
+(** local operations on such graphs (for the rewrite system) *)
+
+
+(* this file subsumes mgraph2_jar.v *)
 
 (* TODO:
  - input/output as a function from [bool]?
  - recheck status of [unr/unl]
+ - encapsulate the fact that we also get a 2p algebra
  *)
 
 Section s.

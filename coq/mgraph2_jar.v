@@ -7,7 +7,13 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Two-Pointed Graphs *)
+(** * Two-pointed labelled multigraphs (JAR19 version) *)
+
+(** 2p-operations on such graphs and proof that they form a 2p-algebra *)
+
+(* this file is subsumed by mgraph2. 
+   it will be removed once the files about term extraction have been ported to this new interface *)
+
 
 Section pttGraph.
 Variable (sym : eqType).
