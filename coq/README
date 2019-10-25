@@ -22,7 +22,7 @@ Parts of this library are described in the following papers
   https://hal.archives-ouvertes.fr/hal-02316859/document
 - Completeness of an Axiomatization of Graph Isomorphism via Graph Rewriting in Coq,
   C. Doczkal, D. Pous, submitted to CPP'20
-  https://hal.archives-ouvertes.fr/hal-????????/document
+  https://hal.archives-ouvertes.fr/hal-02333553/document
 
 The first one describes the general purpose part of the library, with the soundness result for 2p algebra axioms and the extraction of 2p-terms from K4-free graphs as applications.
 The second one focuses on the completeness proof for 2pdom axioms, which is obtained by proving confluence of a graph rewrite system.
