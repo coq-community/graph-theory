@@ -92,12 +92,12 @@ Section derived.
 
  Lemma dotcnv (x y: X): x·y ≡ (y°·x°)°.
  Proof. apply cnv_inj. by rewrite cnvdot cnvI. Qed.
-
+ 
  Lemma A13 (x y: X): dom(x·y) ≡ dom(x·dom y).
- Admitted.
+ Proof. by rewrite domE -dotA A11 dotA -domE. Qed.
 
  Lemma A14 (x y z: X): dom x·(y∥z) ≡ dom x·y ∥ z.
- Admitted.
+ Proof. by rewrite domE parC A12 (A12 _ y) parA. Qed.
 
  (** ** tests *)
  Definition is_test (x: X) := dom x ≡ x.
