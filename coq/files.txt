@@ -1,46 +1,45 @@
 *** preliminary shared modules ***
 edone:			small extension of the [done] tactic
 bounded:		fixpoint operator for bounded recursion
-preliminaries:		...
+preliminaries:		miscellaneous basic lemmas missing from the standard libraries
 finmap_plus:		additions to the mathcomp-finmap library
 set_tac:		a simple tactic for reasoning about finite sets
 bij:			computationally relevant bijections between sets
 finite_quotient:	abstraction layer for mathcomp quotients
-equiv:			Boolean equivalence relations
+equiv:			lemmas about equivalence closure
 
-*** JAR19 submission (general purpose part)
-digraph:  	     	directed graphs
-sgraph:			simple graphs
-minor:			topological minors
-menger:			Menger's theorem
-separators:		tree decompositions for K4-free graphs
+*** JAR19 submission (general purpose graph library)
+digraph:  	     	directed graphs, paths
+sgraph:			simple graphs, trees and forests
+minor:			tree decompostisions, topological minors
+menger:			Menger's theorem and corollaries
+separators:		separators, proof of TW2 = K4-free via Menger's theorem
 checkpoint:		checkpoints
-cp_minor:		links between checkpoints and minors
 
 *** JAR19 submission (2p-algebra related part)
-ptt:	  		2p-algebras, algebras of terms, tests ...
+ptt:	  		2p-algebras, initial algebra of terms, tests
 mgraph_jar:   		labelled multigraphs
 mgraph2_jar: 		pointed multigraphs, 2p algebra of such graphs
 skeleton:		skeletons of multigraphs
 mgraph2_tw2:		subalgebra of treewidth at most two multigraphs
+cp_minor:		links between checkpoints and minors, for extraction
 extraction_def: 	definition of the extraction function in the connected case
 extraction_iso: 	correctness of the extraction function (connected case)
 extraction_top: 	extension to the general case
 corollaries:		TW2 = K4-free as a corollary
 
-     mgraph_jar          ptt   
-     mgraph2_jar
+     mgraph_jar        ptt     checkpoint  separators
+     mgraph2_jar                     cp_minors
         skeleton
-              mgraph2_tw2 (also needs checkpoint and separators)
-	     extraction_def
-	     extraction_iso
-	     extraction_top
-	      corollaries
-
+              mgraph2_tw2 
+	       	        extraction_def
+	     	        extraction_iso
+	     	        extraction_top
+	      	        corollaries
 
 *** CPP20 submission
 structures:		setoids, bisetoids, monoids
-pttdom: 		2pdom-algebras, algebras of terms, tests ...
+pttdom: 		2pdom-algebras, initial algebra of terms, tests
 mgraph: 		labelled multigraphs
 mgraph2: 		pointed multigraphs, 2pdom algebra of such graphs
 rewriting: 		definition of the rewriting system
@@ -56,5 +55,3 @@ completeness: 		wrapping up everything into a completeness proof
         reduction    open_confluence
                         transfer
 	     completeness
-
-Note: one could break the dependency on mgraph2->pttdom if [pttdom.pttdom] was defined in structures.v (would make sense actually)

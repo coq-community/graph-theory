@@ -1,0 +1,16 @@
+- port term extraction (ITP18/JAR19) to the more general notion of graphs introduced for CPP20
+  (so that we can remove files mgraph_jar.v and mgraph2_jar.v, which are subsumed by mgraph.v and mgraph2.v)
+
+- get completeness for 2p algebra axioms by extending the rewrite system
+
+- develop the equational theories of 2p and 2pdom algebra in a modular way
+  (to avoid code duplication between ptt.v and pttdom.v)
+
+- use packed classes for getting a more fine-grain presentation of the structures we employ,
+  without running into efficiency problems
+  . for multigraphs and 2-pointed multigraphs (which inherit finType)
+  . for setoids, labels, pttdom, ptt and related structures
+
+- conservativity proof of 2p over 2pdom
+
+- simpler term extraction via the rewrite system? (requires expansion)
