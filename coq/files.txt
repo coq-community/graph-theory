@@ -26,8 +26,7 @@ mgraph2_tw2:		subalgebra of treewidth at most two multigraphs
 cp_minor:		links between checkpoints and minors, for extraction
 extraction_def: 	definition of the extraction function in the connected case
 extraction_iso: 	correctness of the extraction function (connected case)
-extraction_top: 	extension to the general case
-corollaries:		TW2 = K4-free as a corollary
+extraction_top: 	extension to the general case, TW2 = K4-free as a corollary
 
      mgraph_jar        ptt     checkpoint  separators
      mgraph2_jar                     cp_minors
@@ -36,7 +35,6 @@ corollaries:		TW2 = K4-free as a corollary
 	       	        extraction_def
 	     	        extraction_iso
 	     	        extraction_top
-	      	        corollaries
 
 *** CPP20 submission
 structures:		setoids, bisetoids, monoids
