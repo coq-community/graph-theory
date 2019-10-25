@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries.
-Require Import digraph sgraph minor.
+Require Import digraph sgraph treewidth minor.
 Require Import mgraph_jar ptt mgraph2_tw2 mgraph2_jar skeleton.
 Require Import extraction_def extraction_top.
 

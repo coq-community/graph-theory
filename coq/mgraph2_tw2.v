@@ -1,6 +1,6 @@
 Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
-Require Import edone set_tac finite_quotient preliminaries digraph sgraph minor equiv.
+Require Import edone set_tac finite_quotient preliminaries digraph sgraph treewidth minor equiv.
 Require Import structures mgraph_jar ptt mgraph2_jar skeleton.
 
 Set Implicit Arguments.
