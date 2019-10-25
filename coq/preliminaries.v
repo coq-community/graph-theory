@@ -97,6 +97,8 @@ Lemma subrelP (T : finType) (e1 e2 : rel T) :
   reflect (subrel e1 e2) ([pred x | e1 x.1 x.2] \subset [pred x | e2 x.1 x.2]).
 Proof. apply: (iffP subsetP) => [S x y /(S (x,y)) //|S [x y]]. exact: S. Qed.
 
+Lemma eqb_negR (b1 b2 : bool) : (b1 == ~~ b2) = (b1 != b2).
+Proof. by case: b1; case: b2. Qed.
 
 Lemma orb_sum (a b : bool) : a || b -> (a + b)%type.
 Proof. by case: a => /=; [left|right]. Qed.

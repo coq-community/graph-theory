@@ -204,12 +204,11 @@ Proof. by rewrite -partst -[a·u·b]dotA -tstpar parC -tstpar -partst !dotA parC
 
 
 (* used in open.v *)
+Lemma eqvbN u v : u ≡[false] v -> u ≡ v. by []. Qed.
+Lemma eqvbT u v : u ≡[true] v -> u ≡ v°. by []. Qed.
+
 Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
-Proof. 
-  split; apply: eqvb_transL.
-  - rewrite addbN addbxx. change (v ≡ v°°). by rewrite cnvI.
-  - by rewrite addNb addbxx. 
-Qed.
+Proof. split; apply: eqvb_transL; by rewrite ?(addbN,addNb) addbxx //= cnvI. Qed.
 
 Lemma infer_testE x x' (y y' : test) p p' : 
   (@infer_test x y p) ≡ (@infer_test x' y' p') <-> x ≡ x'.

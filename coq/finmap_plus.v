@@ -9,6 +9,8 @@ Set Bullet Behavior "Strict Subproofs".
 
 Open Scope fset_scope.
 
+
+
 Lemma fsval_eqF (T:choiceType) (E : {fset T}) (e : E) x : x \notin E -> val e == x = false.
 Proof. apply: contraNF => /eqP <-. exact: fsvalP. Qed.
 
@@ -46,6 +48,17 @@ Proof. move => H. by rewrite cardsDsub // cardfsD fsetIC H subnn. Qed.
 
 Lemma fset1U0 (T : choiceType) (x : T) (A : {fset T}) : x |` A != fset0.
 Proof. apply: contraFneq (in_fset0 x) => <-. by rewrite !inE eqxx. Qed.
+
+Lemma fset01 (T : choiceType) (x : T) : [fset x] != fset0.
+Proof. by rewrite -[[fset x]]fsetU0 fset1U0. Qed.
+
+Lemma fset1D (T : choiceType) (x:T) (A : {fset T}) : 
+  [fset x] `\` A = if x \in A then fset0 else [fset x].
+Proof. 
+  case: (boolP (x \in A)) => xA. 
+  - apply/eqP. by rewrite fsetD_eq0 fsub1set.
+  - apply/fsetDidPl. by rewrite fdisjoint1X.
+Qed.
 
 Lemma imfset0 (aT rT : choiceType) (f : aT -> rT) : [fset f x | x in fset0] = fset0.
 Proof. apply/fsetP => z. rewrite inE. apply: contraTF isT. by case/imfsetP. Qed.

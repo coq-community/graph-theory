@@ -313,7 +313,7 @@ Qed.
 
 
 (* TODO: eliminate uses of this lemma in foavor of the L/R variants below *)
-Definition weqG_iso2 (G H : pre_graph) : 
+Definition eqvG_iso2 (G H : pre_graph) : 
   is_graph G -> is_graph H -> G ≡G H -> G ⩭2 H.
 Proof.
   move => isG isH [EV EE Eep Elv Ele]. econstructor.
@@ -327,15 +327,15 @@ Proof.
   - rewrite bij_castE. exact: val_inj.
 Defined.
 
-Definition weqG_iso2L (G H : pre_graph) (isG : is_graph G) (E : G ≡G H) := 
-  @weqG_iso2 G H isG (weqG_graph isG E) E.
+Definition eqvG_iso2L (G H : pre_graph) (isG : is_graph G) (E : G ≡G H) := 
+  @eqvG_iso2 G H isG (eqvG_graph isG E) E.
 
-Definition weqG_iso2R (G H : pre_graph) (isH : is_graph H) (E : G ≡G H) := 
-  @weqG_iso2 G H (weqG_graph isH (weqG_sym E)) isH E.
+Definition eqvG_iso2R (G H : pre_graph) (isH : is_graph H) (E : G ≡G H) := 
+  @eqvG_iso2 G H (eqvG_graph isH (eqvG_sym E)) isH E.
 
-Lemma weqG_iso2E (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) (E : G ≡G H) x :
+Lemma eqvG_iso2E (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) (E : G ≡G H) x :
   x \in vset G ->
-  @weqG_iso2 G H isG isH E x = x.
+  @eqvG_iso2 G H isG isH E x = x.
 Proof. 
   move => Vx. rewrite /= vfun_bodyE /=. destruct E.
   rewrite /=. by rewrite bij_castE.
@@ -840,7 +840,7 @@ Qed.
 Lemma osteps_iso (F G H: pre_graph): osteps F H -> F ⩭2 G -> exists U, osteps G U /\ inhabited (H ⩭2 U).
 Proof.
   intro S. revert G. induction S as [F G FG|F G FG|F G FG|F G H FG IH GH IH']; intros F' FF'.
-  - exists F'. split. by []. exists. transitivity F=>//. symmetry. apply weqG_iso2L=>//. apply FF'.
+  - exists F'. split. by []. exists. transitivity F=>//. symmetry. apply eqvG_iso2L=>//. apply FF'.
   - exists F'. split=>//. destruct FG. exists. etransitivity. 2: eassumption.
     symmetry. apply add_edge_flip=>//. apply FF'. 
   - destruct (ostep_iso FG FF') as [U [F'U GU]]. exists U. split. by apply ostep_step. by exists.
@@ -863,7 +863,7 @@ isomorphisms to obtain the desired form of the lemma *)
 Lemma eqvG_pack (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
   G ≡G H -> pack G ≃2 pack H.
 Proof. 
-  move/weqG_iso2 => h. 
+  move/eqvG_iso2 => h. 
   apply: iso2_comp _ (iso2_comp  (@oiso2_iso _ _ h) _); apply: pack_irrelevance.
 Qed.
 
@@ -947,7 +947,7 @@ Proof with eauto with typeclass_instances vset.
     + apply: (ostep_v0 (z := fresh (vset (open G)))) => //.
       * by rewrite /= !inE eqxx.
       * by rewrite edges_at_added_vertex // freshP.
-    + apply weqG_iso2 => //... by rewrite add_vertexK // freshP.
+    + apply eqvG_iso2 => //... by rewrite add_vertexK // freshP.
   - (* V1 *) 
     move => G x u a. constructor. e2split.
     + apply: oiso2_trans. apply: open_add_edge. 
@@ -964,7 +964,7 @@ Proof with eauto with typeclass_instances vset.
       * exact: inj_vNfresh.
     + set z := fresh _. set e := fresh _. rewrite /= updateE.
       etransitivity. 2: symmetry. 2: apply: open_add_test.
-      eapply weqG_iso2...
+      eapply eqvG_iso2...
       * apply del_vertex_graph => //=. 
         -- apply add_test_graph. by apply: add_edge_graph'; rewrite !inE ?eqxx ?inj_v_open.
         -- rewrite !pIO_add. constructor. apply: pIO_fresh. exact: freshP.
@@ -1001,9 +1001,9 @@ Proof with eauto with typeclass_instances vset.
       have E : open G ∔ [z, a] ∔ [e1, inj_v x, u, z] ∔ [e2, z, v, inj_v y] \ z ≡G open G.
       { by rewrite add_edgeKl ?add_edgeKr ?add_vertexK ?freshP. }
       apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
-      unshelve apply: oiso2_add_edge'. apply: weqG_iso2R E.
+      unshelve apply: oiso2_add_edge'. apply: eqvG_iso2R E.
       1: { rewrite (sameE E). case: maxnP => _; rewrite ?freshP //. apply: freshP'. apply: fsubsetUr. }
-      all: rewrite ?weqG_iso2E ?freshP //=.
+      all: rewrite ?eqvG_iso2E ?freshP //=.
       all: by rewrite ?inE ?inj_v_open ?inj_vNfresh.
   - (* E0 *) move => G x u. 
     pose (e := fresh (eset (open G))).
@@ -1012,7 +1012,7 @@ Proof with eauto with typeclass_instances vset.
     + apply: (@ostep_e0 _ _ (inj_v x) e u). exact: oarc_added_edge.
     + rewrite /= update_eq.
       apply: oiso2_trans _ (oiso2_sym _). 2:apply: open_add_test.
-      eapply weqG_iso2R...
+      eapply eqvG_iso2R...
       rewrite add_edge_del_edgesK ?inE //.
       by rewrite del_edgesD // fdisjointX1 freshP. 
   - (* E2 *) 
@@ -1033,10 +1033,10 @@ Proof with eauto with typeclass_instances vset.
       * exact: oarc_added_edge.
     + apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
       unshelve apply: oiso2_add_edge'. 
-      { apply weqG_iso2R... rewrite !add_edge_del_edgesK ?inE ?eqxx //.
+      { apply eqvG_iso2R... rewrite !add_edge_del_edgesK ?inE ?eqxx //.
         rewrite del_edgesD // fdisjointXU !fdisjointX1 freshP freshP' //. apply: fsubsetUr. }
       1: by rewrite maxn_fsetD.
-      all: by rewrite ?weqG_iso2E ?freshP //= ?inj_v_open.
+      all: by rewrite ?eqvG_iso2E ?freshP //= ?inj_v_open.
 Qed.
 
 Lemma ostep_of (F G : graph2) : 
@@ -1143,7 +1143,7 @@ Proof with eauto with vset.
   rewrite !{}C //...
   apply: iso2_comp. apply: iso2_sym. eapply (pack_add_edge' (e := e2)).
   { by rewrite 3!inE Iz eq_sym !inE eqxx. }
-  apply: eqvG_pack E. Unshelve. symmetry in E. exact: weqG_graph E.
+  apply: eqvG_pack E. Unshelve. symmetry in E. exact: eqvG_graph E.
 Qed.
 
 Lemma expand_loop (G : pre_graph) (isG : is_graph G) (x : VT) (e : ET) u :
@@ -1154,7 +1154,7 @@ Proof.
   { rewrite del_edgeK //. by case: edge_e => E [A B C]. }
   apply: iso2_comp (iso2_sym _) _. 
   unshelve eapply (pack_add_edge' (G := G - [fset e]) (e := e)).
-  { symmetry in E. apply: weqG_graph E. }
+  { symmetry in E. apply: eqvG_graph E. }
   - by rewrite /= !inE eqxx.
   - exact: eqvG_pack E.
 Qed.
@@ -1177,7 +1177,7 @@ Proof with eauto with vset.
   have -> : Cx = (@pack_v G' _ x). { rewrite /Cx /G' !pack_vE... move => ? ?. exact: val_inj. }
   have -> : Cy = (@pack_v G' _ y). { rewrite /Cy /G' !pack_vE... move => ? ?. exact: val_inj. }
   unshelve eapply (pack_add_edge' (G := G') (e := e2)).
-  - rewrite /G'. symmetry in E. apply: weqG_graph E.
+  - rewrite /G'. symmetry in E. apply: eqvG_graph E.
   - by rewrite !inE eqxx eq_sym (negbTE e1De2).
   - exact: eqvG_pack E.
 Qed.
@@ -1367,7 +1367,7 @@ Lemma steps_of (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) :
 Proof.
   move => S. elim: S isG isH => {G H} [G H h|G H GH|G H GH|G F H S IH1 _ IH2] isG isH.
   - apply: iso_step.
-    apply (weqG_iso2L isG) in h.
+    apply (eqvG_iso2L isG) in h.
     apply: iso2_comp (iso2_comp (oiso2_iso h) _); apply: pack_irrelevance.
   - destruct GH. apply iso_step. apply liso_of_oliso. apply add_edge_flip=>//.
   - exact: steps_of_ostep.
