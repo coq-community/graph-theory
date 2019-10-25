@@ -28,6 +28,7 @@ patterns:
 
 Notation CEquivalence := CRelationClasses.Equivalence.
 Notation CProper := CMorphisms.Proper.
+Declare Scope csignature.
 Delimit Scope csignature with C.
 Notation "A ==> B" := (@CMorphisms.respectful _ _ (A%C) (B%C)) : csignature.
 Arguments CMorphisms.Proper [A] _%C _.
@@ -133,6 +134,7 @@ Next Obligation. by case x. Qed.
 Next Obligation. tauto. Qed.
 
 (* notations for vertex labels *)
+Declare Scope labels.
 Bind Scope labels with lv.
 Delimit Scope labels with lbl.
 Infix "⊗" := mon2 (left associativity, at level 25): labels.

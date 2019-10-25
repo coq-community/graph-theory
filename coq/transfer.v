@@ -382,7 +382,7 @@ Defined.
 
 Lemma inj_v_open (G : graph2) (x : G) : inj_v x \in vset (open G).
 Proof. by rewrite in_imfset. Qed.
-Hint Resolve inj_v_open.
+Hint Resolve inj_v_open : core.
 
 Lemma inj_v_fresh (G : graph2) (x : G) (z : VT) : z \notin vset (open G) -> inj_v x != z.
 Proof. apply: contraNneq => <-. exact: inj_v_open. Qed.

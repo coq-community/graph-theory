@@ -26,6 +26,7 @@ Structure ops_ :=
     one: setoid_of_ops;
     top: setoid_of_ops }.
 
+Declare Scope ptt_ops.
 Bind Scope ptt_ops with setoid_of_ops.
 Delimit Scope ptt_ops with ptt.
 Open Scope ptt_ops.
@@ -226,7 +227,7 @@ Section terms.
  End e.
  Definition tm_eqv (u v: term): Prop :=
    forall (X: ptt) (f: A -> X), eval f u ≡ eval f v.
- Hint Unfold tm_eqv.
+ Hint Unfold tm_eqv : core.
  Lemma tm_eqv_equivalence: Equivalence tm_eqv.
  Proof.
    constructor.

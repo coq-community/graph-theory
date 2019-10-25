@@ -24,7 +24,7 @@ Proof. case: f => f g can_f can_g. by exists g. Qed.
 Lemma bij_bijective' A B (f : bij A B) : bijective f^-1.
 Proof. case: f => f g can_f can_g. by exists f. Qed.
 
-Hint Resolve bij_bijective bij_bijective'.
+Hint Resolve bij_bijective bij_bijective' : core.
 
 Lemma bij_injective A B (f: bij A B) : injective f.
 Proof. exact: bij_inj. Qed.
@@ -32,7 +32,7 @@ Proof. exact: bij_inj. Qed.
 Lemma bij_injective' A B (f: bij A B) : injective f^-1.
 Proof. exact: bij_inj. Qed.
 
-Hint Resolve bij_injective bij_injective'.
+Hint Resolve bij_injective bij_injective' : core.
 
 Lemma card_bij (A B: finType) (f : bij A B) : #|A| = #|B|.
 Proof. exact: (bij_card_eq (f := f)). Qed.

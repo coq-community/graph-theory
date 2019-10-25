@@ -64,4 +64,4 @@ Lemma steps_refl G: steps G G.
 Proof. reflexivity. Qed.
 
 End s.
-Hint Resolve steps_refl.        (* in order [by] to get it *)
+Hint Resolve steps_refl : core.        (* in order [by] to get it *)

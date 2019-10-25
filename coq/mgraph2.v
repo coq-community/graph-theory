@@ -70,7 +70,7 @@ Infix "≃2" := iso2 (at level 79).
 
 Definition iso2_id (G: graph2): G ≃2 G.
 Proof. by exists iso_id. Defined.
-Hint Resolve iso2_id.         (* so that [by] gets it... *)
+Hint Resolve iso2_id : core.         (* so that [by] gets it... *)
 
 Definition iso2_sym F G: F ≃2 G -> G ≃2 F.
 Proof.
@@ -709,6 +709,7 @@ Proof. done. Qed.
 
 End s. 
 
+Declare Scope graph2_scope.
 Bind Scope graph2_scope with graph2.
 Delimit Scope graph2_scope with G2.
 
@@ -736,7 +737,7 @@ Arguments iso2_id {_ _}.
 
 Infix "≃2" := iso2 (at level 79).
 Infix "≃2p" := iso2prop (at level 79).
-Hint Resolve iso2_id.         (* so that [by] gets it... *)
+Hint Resolve iso2_id : core.   (* so that [by] gets it... *)
 
 Tactic Notation "Iso2" uconstr(f) :=
   match goal with |- ?F ≃2 ?G => refine (@Iso2 _ F G f _ _)=>// end.

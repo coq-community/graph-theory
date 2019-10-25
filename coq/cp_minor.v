@@ -235,7 +235,7 @@ Qed.
 
 Lemma set_pred0 (T : finType) : @set0 T =i pred0. 
 Proof. move => z. by rewrite !inE. Qed.
-Hint Resolve set_pred0.
+Hint Resolve set_pred0 : core.
 
 Lemma irred_in_sinterval (G : sgraph) (i o : G) (p : Path i o) : 
   irred p -> {subset interior p <= sinterval i o}.

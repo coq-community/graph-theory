@@ -41,7 +41,7 @@ Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
 Lemma symmetric_restrict_sedge (G : sgraph) (A : pred G) :
   symmetric (restrict A sedge).
 Proof. apply: symmetric_restrict. exact: sg_sym. Qed.
-Hint Resolve symmetric_restrict_sedge.
+Hint Resolve symmetric_restrict_sedge : core.
 
 Lemma srestrict_sym (G : sgraph) (A : pred G) : 
   connect_sym (restrict A sedge).
@@ -330,7 +330,7 @@ Qed.
 
 End Packaged.
 
-Hint Resolve path_begin path_end.
+Hint Resolve path_begin path_end : core.
 
 (** *** Transporting paths to and from induced subgraphs *)
 
@@ -801,7 +801,7 @@ Lemma partition0 (T : finType) (P : {set {set T}}) (D : {set T}) :
 Proof. case/and3P => _ _. by apply: contraNF. Qed.
 Arguments partition0 [T P] D.
 
-Hint Resolve partition_components trivIset_components.
+Hint Resolve partition_components trivIset_components : core.
 
 Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :
   reflect (exists p : Path x y, p \subset H) (y \in pblock (components H) x).

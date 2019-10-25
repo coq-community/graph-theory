@@ -63,7 +63,7 @@ Lemma inj_e_inj : injective inj_e.
 Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
 End inject.
 
-Hint Resolve inj_v_inj inj_e_inj.
+Hint Resolve inj_v_inj inj_e_inj : core.
 
 (** Unlike the typed graphs in mgraph.v and mgraph2.v, the definition of open
 graphs is split into a Record for the computational content and a Class for the
@@ -88,6 +88,7 @@ Class is_graph (G : pre_graph) :=
 
 End OpenGraphs.
 
+Declare Scope open_scope.
 Bind Scope open_scope with pre_graph.
 Delimit Scope open_scope with O.
 
@@ -765,7 +766,7 @@ Qed.
 (* TODO: remove *)
 Lemma osteps_refl (G : pre_graph) : osteps G G.
 Proof. exact: weq_step. Qed.
-Hint Resolve osteps_refl.
+Hint Resolve osteps_refl : core.
 
 Ltac e2split := do 2 eexists; split; [split|].
 
@@ -1553,7 +1554,7 @@ Notation "G [adt x <- a ]" := (add_test G x a)
 Hint Resolve is_edge_vsetL is_edge_vsetR : vset.
 Hint Resolve oarc_vsetL oarc_vsetR : vset.
 Hint Resolve vset_del_vertex vset_del_edges : vset.
-Hint Resolve osteps_refl.
+Hint Resolve osteps_refl : core.
 
 
 

@@ -120,10 +120,9 @@ Canonical Structure g2_setoid: setoid := Setoid iso2prop_Equivalence.
 Tactic Notation "irewrite" uconstr(L) := (eapply iso2_comp;[apply L|]); last 1 first.
 Tactic Notation "irewrite'" uconstr(L) := eapply iso2_comp;[|apply iso2_sym, L].
 
-(* TODO: added this hint so that by/done solve these cases, is there a nicer way to proceeed? *)
 Lemma iso2_refl G: G ≈ G.
 Proof. reflexivity. Qed.
-Hint Resolve iso2_refl.
+Hint Resolve iso2_refl : core.
 
 Lemma iso_in' F G (h: F ≈ G): h^-1 g_in = g_in.
 Proof. apply (iso_in (iso2_sym h)). Qed.
@@ -767,7 +766,7 @@ Section alt.
    case/and3P => /set2P[->|->] /set2P[->|->] _; by rewrite ?eqxx // sym_e.
  Qed.
 
- Hint Resolve equiv_of_sym.
+ Hint Resolve equiv_of_sym : core.
  Ltac sub := apply: sub_equiv_of => /=; by rewrite !eqxx.
 
  Lemma par2_equiv_of : par2_eqv =2 equiv_of par2_eq.
@@ -869,7 +868,7 @@ Section alt.
   by rewrite !xpair_eqE.
  Qed.
 
- Hint Resolve id_bij.
+ Hint Resolve id_bij : core.
 
  Lemma par2_eqvE: eqv_clot [::(unl g_in,unr g_in);(unl g_out,unr g_out)] =2 par2_eqv.
  Proof. 

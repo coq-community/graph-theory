@@ -389,8 +389,8 @@ Proof.
 Qed.
 Arguments union_bij_bwdEr [x p].
 
-Hint Extern 0 (is_true (sval _ \in _)) => exact: valP.
-Hint Extern 0 (is_true (val _ \in _)) => exact: valP.
+Hint Extern 0 (is_true (sval _ \in _)) => exact: valP : core.
+Hint Extern 0 (is_true (val _ \in _)) => exact: valP : core.
 
 Section Disjoint.
   Hypothesis disUV : [disjoint U & V].

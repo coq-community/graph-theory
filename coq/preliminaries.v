@@ -24,7 +24,7 @@ Ltac contrab :=
   end.
 Tactic Notation "existsb" uconstr(x) := apply/existsP;exists x.
 
-Hint Extern 0 (injective Some) => exact: @Some_inj.
+Hint Extern 0 (injective Some) => exact: @Some_inj : core.
 
 (** *** Notations *) 
 
@@ -795,7 +795,7 @@ Proof.
     by apply: connect_img => {x y} x y /=; rewrite !hE !hinvK.
 Qed.
 
-Hint Resolve Some_inj inl_inj inr_inj.
+Hint Resolve Some_inj inl_inj inr_inj : core.
 
 
 (** *** Set preimage *)

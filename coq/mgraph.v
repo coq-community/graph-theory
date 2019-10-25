@@ -222,7 +222,7 @@ Lemma elabel_iso F G (h: iso F G) e: elabel (h.e e) ≡[h.d e] elabel e.
 Proof. apply elabel_hom. Qed.
 
 Definition iso_id {G}: G ≃ G := @Iso _ _ bij_id bij_id _ (hom_id G). 
-Hint Resolve iso_id.         (* so that [by] gets it... *)
+Hint Resolve iso_id : core.    (* so that [by] gets it... *)
 
 Definition iso_sym F G: F ≃ G -> G ≃ F.
 Proof.
@@ -807,6 +807,7 @@ End s.
 Notation source := (endpoint false).
 Notation target := (endpoint true).
 
+Declare Scope graph_scope.
 Bind Scope graph_scope with graph.
 Delimit Scope graph_scope with G.
 
@@ -837,6 +838,6 @@ Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'")
 Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
   match goal with |- ?F ≃ ?G => refine (@Iso _ F G f g h _) end.
 
-Global Hint Resolve iso_id.         (* so that [by] gets it... *)
+Global Hint Resolve iso_id : core.  (* so that [by] gets it... *)
 
 Arguments edges_at [L G] x, [L] G x.
