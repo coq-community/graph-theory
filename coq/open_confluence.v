@@ -377,6 +377,9 @@ Definition del_edges (G : pre_graph) (E : {fset ET}) :=
 
 Notation "G - E" := (del_edges G E) : open_scope.
 
+Lemma del_edges0 (G : pre_graph) : G - fset0 ≡G G. 
+Proof. split => //=. exact: fsetD0. Qed.
+
 Global Instance del_edges_graph (G : pre_graph) {graph_G : is_graph G} (E : {fset ET}) :
   is_graph (del_edges G E).
 Proof. 
@@ -450,6 +453,24 @@ Notation "G [adt x <- a ]" := (add_test G x a)
 
 (** ** Properties of the operations *)
 
+(** Preservation of vertices and edges *)
+
+Lemma in_vsetDV (G : pre_graph) z x : x != z -> x \in vset G -> x \in vset (G \ z).
+Proof. by rewrite !inE => -> -> . Qed.
+
+Lemma in_vsetDE (G : pre_graph) x E: x \in vset G -> x \in vset (G - E).
+Proof. apply. Qed.
+
+Lemma in_vsetAV (G : pre_graph) z a x : x \in vset G -> x \in vset (G ∔ [z,a]).
+Proof. by rewrite !inE => ->. Qed.
+
+Lemma in_vsetAE (G : pre_graph) x y z u e : x \in vset G -> x \in vset (G ∔ [e,y,u,z]).
+Proof. by apply. Qed.
+
+Lemma in_vsetAV' (G : pre_graph) z a : z \in vset (G ∔ [z,a]).
+Proof. by rewrite !inE eqxx. Qed.
+Hint Resolve in_vsetDV in_vsetDE in_vsetAV in_vsetAE in_vsetAV' : vset.
+
 (** Preservation of predicates *)
 
 Lemma pIO_add_vertex (G : pre_graph) x a : pIO (add_vertex G x a) = pIO G. done. Qed.
@@ -472,14 +493,6 @@ Qed.
 Lemma incident_vset (G : pre_graph) (isG : is_graph G) x e : 
   e \in eset G -> incident G x e -> x \in vset G.
 Proof. move => He /existsP[b]/eqP<-. exact: endptP. Qed.
-
-Lemma vset_del_vertex G x z : x \in vset G -> x != z -> x \in vset (G \ z).
-Proof. by rewrite /= !inE => -> ->. Qed.
-
-Lemma vset_del_edges G E x : x \in vset G -> x \in vset (G - E).
-Proof. done. Qed.
-
-Hint Resolve vset_del_vertex vset_del_edges : vset.
 
 Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. done. Qed.
 
@@ -1507,9 +1520,8 @@ Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left as
 Notation "G [adt x <- a ]" := (add_test G x a) 
    (at level 2, left associativity, format "G [adt  x  <-  a ]") : open_scope.
 
-Hint Resolve is_edge_vsetL is_edge_vsetR : vset.
-Hint Resolve oarc_vsetL oarc_vsetR : vset.
-Hint Resolve vset_del_vertex vset_del_edges : vset.
+Hint Resolve in_vsetDV in_vsetDE in_vsetAV in_vsetAE in_vsetAV' : vset.
+Hint Resolve is_edge_vsetL is_edge_vsetR oarc_vsetL oarc_vsetR : vset.
 Hint Resolve osteps_refl : core.
 
 

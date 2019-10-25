@@ -41,10 +41,10 @@ Proof.
   apply (steps_of gW gT) in sWT. 
   exists (pack T); split.
   - transitivity (pack W)=>//. apply iso_step. 
-    etransitivity. apply openK. apply liso_of_oliso.
+    etransitivity. apply openK. apply iso_of_oiso.
     eapply oiso2_trans. apply oiso2_sym. eassumption. assumption.
   - transitivity (pack V)=>//. apply iso_step. 
-    etransitivity. apply openK. apply liso_of_oliso.
+    etransitivity. apply openK. apply iso_of_oiso.
     by apply oiso2_sym.
 Qed.
 
