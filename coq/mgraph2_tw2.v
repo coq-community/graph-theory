@@ -1,7 +1,7 @@
 Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
 Require Import edone set_tac finite_quotient preliminaries digraph sgraph minor equiv.
-Require Import mgraph_jar ptt mgraph2_jar skeleton.
+Require Import structures mgraph_jar ptt mgraph2_jar skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -119,9 +119,9 @@ Section Quotients.
       + move => x y. move/eqquotP => /=. case/adm_e => [<-|A].
         * case: (sbag_cover dec_D' x) => t Ht. left. exists t. by rewrite Ht.
         * left. exists None. by rewrite /= -!sub1set -subUset. 
-    - rewrite /width (bigID (pred1 None)).
-      rewrite big_pred1_eq. rewrite geq_max. apply/andP;split => //.
-      + rewrite (reindex Some) /=.
+    - rewrite /width (bigop.bigID (pred1 None)).
+      rewrite bigop.big_pred1_eq. rewrite geq_max. apply/andP;split => //.
+      + rewrite (bigop.reindex Some) /=.
         * apply: (@leq_trans (maxn (width D1) (width D2))); last by rewrite geq_max W1 W2.
           apply: leq_trans (join_width _ _). 
           apply: max_mono => t. exact: leq_imset_card.

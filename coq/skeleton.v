@@ -1,8 +1,8 @@
-Require Import Setoid CMorphisms.
+Require Import Setoid Morphisms.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient bij preliminaries digraph sgraph minor checkpoint.
-Require Import mgraph_jar mgraph2_jar.
+Require Import structures mgraph_jar mgraph2_jar.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -99,7 +99,7 @@ Proof.
       by rewrite !inE !source_iso !target_iso !eqxx.
 Qed.
 
-Instance skel_iso: Proper (@iso sym ==> diso) skeleton.
+Instance skel_iso: CProper (@iso sym ==> diso) skeleton.
 Proof.
   intros F G h. exists (iso_v h). apply: hom_skel. apply: (hom_skel (iso_sym h)).
 Defined.
@@ -157,7 +157,7 @@ Proof.
   - move => H. by rewrite /edge_rel /= bij_eq // H iso_in iso_out !eqxx.
 Qed.
 
-Instance sskel_iso2: Proper (@iso2 sym ==> diso) sskeleton.
+Instance sskel_iso2: CProper (@iso2 sym ==> diso) sskeleton.
 Proof.
   intros F G h. exists (iso_v h). exact: hom2_sskel. exact:(hom2_sskel (iso2_sym h)).
 Defined.

@@ -7,10 +7,46 @@ Unset Strict Implicit.
 
 (** * Setoids and Label Structures *)
 
+
 (*  
 TODO: packed classes? (does not seem to be problematic for now)
 but we should at least understand the current hack in rewriting.v for setoid_of_bisetoid
 *)
+
+
+(* Note on Equivalences and Morphisms: This development mixes both
+rewriting in Prop (e.g., 2pdom algebras) and rewriting in Type (e.g.,
+iso). To facilitate this, we import the Prop versions and introduce
+notations for the Type versions. This leads to the follwing usage
+patterns: 
+
+- Morphisms and Relation classes should be imported as needed.
+- CMorhisms and CRelationClasses should be Required but never imported.
+- There are notations CEquivalence and CProper that refer to the Type versions.
+- The "_ ==> ..." argumentof CProper is parsed using the respectful from CMorphisms.
+*)
+
+Notation CEquivalence := CRelationClasses.Equivalence.
+Notation CProper := CMorphisms.Proper.
+Delimit Scope csignature with C.
+Notation "A ==> B" := (@CMorphisms.respectful _ _ (A%C) (B%C)) : csignature.
+Arguments CMorphisms.Proper [A] _%C _.
+
+Section CProper.
+Variables A B C: Type.
+Notation i R := (fun x y => inhabited (R x y)). 
+Variable R: A -> A -> Type.
+Variable S: B -> B -> Type.
+Variable T: C -> C -> Type.
+Variable f: A -> B.
+Hypothesis Hf: CProper (R ==> S) f.
+Lemma CProper1: Proper (i R ==> i S) f.
+Proof. intros x y [H]. exists. by apply Hf. Qed.
+Variable g: A -> B -> C.
+Hypothesis Hg: CProper (R ==> S ==> T) g.
+Lemma CProper2: Proper (i R ==> i S ==> i T) g.
+Proof. intros x y [E] u v [F]. exists. by apply Hg. Qed.
+End CProper.
 
 (** ** setoids *)
 Structure setoid :=

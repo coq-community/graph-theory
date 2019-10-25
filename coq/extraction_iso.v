@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij set_tac.
 Require Import digraph sgraph minor checkpoint.
-Require Import mgraph_jar ptt equiv mgraph2_jar skeleton.
+Require Import structures mgraph_jar ptt equiv mgraph2_jar skeleton.
 Require Import bounded extraction_def.
 
 Set Implicit Arguments.
@@ -46,7 +46,7 @@ Proof.
 Qed.
 
 (** These two lemmas make use of [merge_subgraph_dot], drastically
-simplifying their proofs (comparted to the proofs underlying the ITP
+simplifying their proofs (compared to the proofs underlying the ITP
 2018 paper) *)
 
 Lemma split_pip (G : graph2) : 
@@ -54,7 +54,7 @@ Lemma split_pip (G : graph2) :
   G ≈ @bgraph _ G IO g_in · (@igraph _ G g_in g_out · @bgraph _ G IO g_out).
 Proof.
   move => conn_G Dio. symmetry.
-  rewrite -> dotA. 
+  rewrite -> dot2A. 
   rewrite /= {1}/bgraph /igraph /induced. 
   rewrite -> merge_subgraph_dot => //=. 
   move: (union_bij_proofL _ _) => Pi.
@@ -86,7 +86,7 @@ Proof.
   { apply: contraTneq proper_u => <-. by rewrite setUid cpxx setDv inE. }
   have [? ? ?] : [/\ g_in \in @CP G IO, g_out \in @CP G IO & u \in @CP G IO].
   { split; rewrite CP_set2 ?(@mem_cpl G) //; by [rewrite cp_sym (@mem_cpl G)|set_tac]. }
-  rewrite -> dotA. rewrite /= {1}/igraph /bgraph /induced.
+  rewrite -> dot2A. rewrite /= {1}/igraph /bgraph /induced.
   rewrite -> merge_subgraph_dot => //=. 
   move: (union_bij_proofL _ _) => Pi.
   move: (union_bij_proofR _ _) => Po.

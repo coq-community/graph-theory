@@ -1,4 +1,4 @@
-Require Import Setoid CMorphisms.
+Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv ptt mgraph_jar.
 
@@ -93,8 +93,21 @@ Proof.
   apply hom2_comp. apply f. apply g.
 Defined.
 
-Instance iso2_Equivalence: Equivalence iso2.
+Global Instance iso2_Equivalence: CEquivalence iso2.
 constructor. exact @iso2_id. exact @iso2_sym. exact @iso2_comp. Defined.
+
+
+(* Prop version *)
+Definition iso2prop (F G: graph2) := inhabited (F ≈ G). 
+Infix "≈p" := iso2prop (at level 79).
+Global Instance iso2prop_Equivalence: Equivalence iso2prop.
+Proof.
+  split.
+  - by constructor.
+  - intros G H [f]. constructor. by symmetry.
+  - intros F G H [h] [k]. constructor. etransitivity; eassumption.
+Qed.
+Canonical Structure g2_setoid: setoid := Setoid iso2prop_Equivalence. 
 
 (* simple tactics for rewriting with isomorphisms at toplevel, in the lhs or in the rhs
    (used in place of setoid_rewrite or rewrite->, which are pretty slow) *)
@@ -138,9 +151,8 @@ Definition top2 :=
 Definition sym2 a :=
   point (edge_graph a) false true.
 
-Canonical Structure graph2_ops: ptt_ops :=
-  {| weq := iso2;
-     dot := dot2;
+Canonical Structure g2_ops: ops_ :=
+  {| dot := dot2;
      par := par2;
      cnv := cnv2;
      dom := dom2;
@@ -325,7 +337,7 @@ Qed.
 
 (** ** 2p-graphs form a 2p-algebra *)
 
-Lemma par2C (F G: graph2): F ∥ G ≡ G ∥ F.
+Lemma par2C (F G: graph2): F ∥ G ≈ G ∥ F.
 Proof.
   rewrite /=/par2.
   irewrite (merge_iso2 (union_C F G)) =>/=.
@@ -334,7 +346,7 @@ Proof.
   eqv. eqv. 
 Qed.
 
-Lemma par2top (F: graph2): F ∥ top ≡ F.
+Lemma par2top (F: graph2): F ∥ top ≈ F.
 Proof.
   rewrite /=/par2.
   irewrite (merge_union_K_ll (K:=top2) _ _ (k:=fun b => if b then g_out else g_in)).
@@ -344,7 +356,7 @@ Proof.
   intros [|]; apply /eqquotP; eqv. 
 Qed.
 
-Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≡ (F ∥ G) ∥ H.
+Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≈ (F ∥ G) ∥ H.
 Proof.
   rewrite /=/par2/=.
   irewrite (merge_iso2 (union_merge_r _ _))=>/=.
@@ -369,7 +381,7 @@ Proof.
    leqv.
 Qed.
 
-Lemma dot2one (F: graph2): F · 1 ≡ F.
+Lemma dot2one (F: graph2): F · 1 ≈ F.
 Proof.
   rewrite /=/dot2.
   setoid_rewrite (merge_union_K_lr _ _ (k:=fun _ => g_out)).
@@ -381,7 +393,7 @@ Qed.
 
 (* half of associativity *)
 Lemma dot2Aflat (F G H: graph2):
-  F·(G·H) ≡ 
+  F·(G·H) ≈ 
   point (merge_seq (union F (union G H)) 
                    [::(unr (unl (g_out)),unr (unr g_in));(unl g_out,unr (unl g_in))]) 
         (\pi unl g_in) (\pi unr (unr g_out)).
@@ -393,7 +405,7 @@ Proof.
                               (k:=[::(unl g_out,unr (unl g_in))])) =>//.
 Qed.
 
-Lemma dot2A (F G H: graph2): F · (G · H) ≡ (F · G) · H.
+Lemma dot2A (F G H: graph2): F · (G · H) ≈ (F · G) · H.
 Proof.
   irewrite dot2Aflat. 
   rewrite /=/dot2/=.
@@ -406,17 +418,17 @@ Proof.
   apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma cnv2I (F: graph2): F°° ≡ F.
+Lemma cnv2I (F: graph2): F°° ≈ F.
 Proof. destruct F. reflexivity. Qed.
 
-Lemma cnv2par (F G: graph2): (F ∥ G)° ≡ F° ∥ G°.
+Lemma cnv2par (F G: graph2): (F ∥ G)° ≈ F° ∥ G°.
 Proof.
   rewrite /=/cnv2/par2/=.
   apply merge_seq_same'.
   apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma cnv2dot (F G: graph2): (F · G)° ≡ G° · F°.
+Lemma cnv2dot (F G: graph2): (F · G)° ≈ G° · F°.
 Proof.
   rewrite /=/cnv2/dot2/=. 
   irewrite (merge_iso2 (union_C F G))=>/=.
@@ -424,7 +436,7 @@ Proof.
   apply eqv_clot_eq; simpl; leqv.
 Qed.
 
-Lemma par2oneone: 1 ∥ 1 ≡ one2.
+Lemma par2oneone: 1 ∥ 1 ≈ one2.
 Proof.
   rewrite /=/par2/=.
   irewrite (merge_union_K_ll (F:=unit_graph) (K:=unit_graph) _ _ (k:=fun _ => tt))=>/=.
@@ -434,7 +446,7 @@ Proof.
   intros []; apply /eqquotP; eqv.
 Qed.
 
-Lemma dom2E (F: graph2): dom F ≡ 1 ∥ (F · top).
+Lemma dom2E (F: graph2): dom F ≈ 1 ∥ (F · top).
 Proof.
   symmetry. 
   irewrite par2C.
@@ -453,7 +465,7 @@ Proof.
   apply eqv_clot_trans with (unr (unr (tt: unit_graph))); eqv. 
 Qed.
 
-Lemma A10 (F G: graph2): 1 ∥ F·G ≡ dom (F ∥ G°).
+Lemma A10 (F G: graph2): 1 ∥ F·G ≈ dom (F ∥ G°).
 Proof.
   irewrite (par2C 1).
   rewrite /=/par2/dot2/dom2/cnv2.
@@ -469,7 +481,20 @@ Proof.
   eqv.
 Qed.
 
-Lemma topR (F: graph2): F·top ≡ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
+(* TOFIX: topL should be obtained from topR by duality *)
+Lemma topL (F: graph2): top·F ≈ point (union F unit_graph) (unr (tt: unit_graph)) (unl g_out).
+Proof.
+  rewrite /=/dot2/=.
+  irewrite (merge_iso2 (union_C _ _))=>/=.
+  irewrite (merge_iso2 (union_iso (@iso_id _ _) (@iso_two_swap _)))=>/=.
+  irewrite (merge_iso2 (union_iso (@iso_id _ _) iso_two_graph))=>/=.
+  irewrite (merge_iso2 (union_A _ _ _))=>/=.
+  setoid_rewrite (merge_union_K_ll (F:=union F _) _ _ (k:=fun x => unl g_in))=>//=.
+  apply merge_nothing. by constructor.
+  intros []. apply /eqquotP. eqv.
+Qed.
+
+Lemma topR (F: graph2): F·top ≈ point (union F unit_graph) (unl g_in) (unr (tt: unit_graph)).
 Proof.
   rewrite /=/dot2/=.
   irewrite (merge_iso2 (union_iso (@iso_id _ _) iso_two_graph))=>/=. 
@@ -479,10 +504,10 @@ Proof.
   intros []. apply /eqquotP. eqv. 
 Qed.
 
-Lemma A11 (F: graph2): F·top ≡ dom F·top.
+Lemma A11 (F: graph2): F·top ≈ dom F·top.
 Proof. now setoid_rewrite topR. Qed.
 
-Lemma A12' (F G: graph2): @g_in F = @g_out F -> F·G ≡ F·top ∥ G.
+Lemma A12' (F G: graph2): @g_in F = @g_out F -> F·G ≈ F·top ∥ G.
 Proof.
   intro H. rewrite /=/par2/dot2/=.
   irewrite' (merge_iso2 (union_merge_l _ _)) =>/=.
@@ -498,52 +523,52 @@ Proof.
   apply merge_seq_same'. rewrite H. apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma A12 (F G: graph2): (F ∥ 1)·G ≡ (F ∥ 1)·top ∥ G.
+Lemma A12 (F G: graph2): (F ∥ 1)·G ≈ (F ∥ 1)·top ∥ G.
 Proof.
   apply A12'.
   apply /eqquotP. apply eqv_clot_trans with (unr (tt: unit_graph)); eqv.
 Qed.
 
-Lemma dot2_iso2: Proper (iso2 ==> iso2 ==> iso2) dot2.
+(* TOFIX: those instance should not have to be declared *)
+Global Instance dot2_iso2: CProper (iso2 ==> iso2 ==> iso2) dot2.
 Proof.
   intros F F' f G G' g. rewrite /dot2.
   irewrite (merge_iso2 (union_iso f g))=>/=.
   apply merge_seq_same; by rewrite /= ?hom_in ?hom_out. 
 Qed.  
 
-Lemma par2_iso2: Proper (iso2 ==> iso2 ==> iso2) par2.
+Global Instance par2_iso2: CProper (iso2 ==> iso2 ==> iso2) par2.
 Proof.
   intros F F' f G G' g. rewrite /par2.
   irewrite (merge_iso2 (union_iso f g))=>/=.
   apply merge_seq_same; by rewrite /= ?hom_in ?hom_out. 
 Qed.
 
-Lemma cnv2_iso2: Proper (iso2 ==> iso2) cnv2.
+Global Instance cnv2_iso2: CProper (iso2 ==> iso2) cnv2.
 Proof. intros F F' f. eexists. constructor; apply f. Qed.
 
-Global Instance graph2_laws: ptt_laws graph2_ops.
-Proof.
-  constructor.
-  apply iso2_Equivalence.
-  apply dot2_iso2. 
-  apply par2_iso2. 
-  apply cnv2_iso2.
-  apply dom2E. 
-  apply par2A. 
-  apply par2C. 
-  apply dot2A. 
-  apply dot2one.
-  apply cnv2I.
-  apply cnv2par.
-  apply cnv2dot.
-  apply par2oneone.
-  apply A10.
-  apply A11.
-  apply A12.
-Qed.
+(* TOFIX: should not be need at all (derived in ptt.v) *)
+Global Instance dom2_iso2: CProper (iso2 ==> iso2) dom2.
+Proof. intros F F' f. eexists. constructor; apply f. Qed.
 
-Lemma topL (F: graph2): top·F ≡ point (union F unit_graph) (unr (tt: unit_graph)) (unl g_out).
-Proof. apply cnv_inj. by rewrite->cnvdot, cnvtop, topR. Qed.
+(* was [graph2_laws] *)
+Program Definition g2_ptt: ptt := {| ops := g2_ops |}.
+Next Obligation. apply CProper2, dot2_iso2. Qed.
+Next Obligation. apply CProper2, par2_iso2. Qed.
+Next Obligation. apply CProper1, cnv2_iso2. Qed.
+Next Obligation. exists. apply dom2E. Qed.
+Next Obligation. exists. apply par2A. Qed.
+Next Obligation. exists. apply par2C. Qed.
+Next Obligation. exists. apply dot2A. Qed.
+Next Obligation. exists. apply dot2one. Qed.
+Next Obligation. exists. apply cnv2I. Qed.
+Next Obligation. exists. apply cnv2par. Qed.
+Next Obligation. exists. apply cnv2dot. Qed.
+Next Obligation. exists. apply par2oneone. Qed.
+Next Obligation. exists. apply A10. Qed.
+Next Obligation. exists. apply A11. Qed.
+Next Obligation. exists. apply A12. Qed.
+Canonical g2_ptt.
 
 (** Lemmas for recognozing [top2] and [one2] *)
 
@@ -601,7 +626,10 @@ Qed.
 Lemma graph_of_big_par (T : eqType) (r : seq T) F : 
   graph_of_term (\big[@tm_par _/@tm_top _]_(x <- r) F x) ≈
   \big[par2/top2]_(x <- r) graph_of_term (F x).
-Proof. by elim: r => [|i r IH]; rewrite ?big_nil ?big_cons //=; setoid_rewrite IH. Qed.
+Proof.
+  elim: r => [|i r IH]; rewrite ?big_nil ?big_cons //=.
+  by setoid_rewrite IH.
+Qed.
 
 Lemma graph_of_big_pars (T : finType) (r : {set T}) F : 
   graph_of_term (\big[@tm_par _/@tm_top _]_(x in r) F x) ≈

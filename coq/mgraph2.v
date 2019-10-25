@@ -92,21 +92,6 @@ Proof.
   - intros F G H [h] [k]. constructor. etransitivity; eassumption.
 Qed.
 Canonical Structure g2_setoid: setoid := Setoid iso2prop_Equivalence. 
-Section CProper.
-Variables A B C: Type.
-Notation i R := (fun x y => inhabited (R x y)). 
-Variable R: A -> A -> Type.
-Variable S: B -> B -> Type.
-Variable T: C -> C -> Type.
-Variable f: A -> B.
-Hypothesis Hf: CProper (R ==> S) f.
-Lemma CProper1: Proper (i R ==> i S) f.
-Proof. intros x y [H]. exists. by apply Hf. Qed.
-Variable g: A -> B -> C.
-Hypothesis Hg: CProper (R ==> S ==> T) g.
-Lemma CProper2: Proper (i R ==> i S ==> i T) g.
-Proof. intros x y [E] u v [F]. exists. by apply Hg. Qed.
-End CProper.
 
 Tactic Notation "Iso2" uconstr(f) :=
   match goal with |- ?F ≃2 ?G => refine (@Iso2 F G f _ _)=>// end.

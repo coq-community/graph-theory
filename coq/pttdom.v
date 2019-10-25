@@ -36,7 +36,6 @@ Structure pttdom :=
     par_eqv: Proper (eqv ==> eqv ==> eqv) (@par ops);
     cnv_eqv: Proper (eqv ==> eqv) (@cnv ops);
     dom_eqv: Proper (eqv ==> eqv) (@dom ops);
-    (* domE: forall x: ops, dom x ≡ 1 ∥ x·top; *)
     parA: forall x y z: ops, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
     parC: forall x y: ops, x ∥ y ≡ y ∥ x;
     dotA: forall x y z: ops, x · (y · z) ≡ (x · y) · z;
@@ -46,8 +45,6 @@ Structure pttdom :=
     cnvdot: forall x y: ops, (x · y)° ≡ y° · x°;
     par11: 1 ∥ 1 ≡ one ops;
     A10: forall x y: ops, 1 ∥ x·y ≡ dom (x ∥ y°);
-    (* A11: forall x: ops, x · top ≡ dom x · top; *)
-    (* A12: forall x ops: X, (x∥1) · y ≡ (x∥1)·top ∥ y *)
     A13: forall x y: ops, dom(x·y) ≡ dom(x·dom y);
     A14: forall x y z: ops, dom x·(y∥z) ≡ dom x·y ∥ z;
   }.

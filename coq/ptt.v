@@ -1,83 +1,201 @@
-Require Export Setoid CMorphisms.
+Require Export Setoid Morphisms.
+From mathcomp Require Import all_ssreflect.
+Require Import edone preliminaries.
+Require Export structures.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+Set Bullet Behavior "Strict Subproofs". 
 
-Structure ptt_ops :=
-  { car:> Type;
-    weq: car -> car -> Type;
-    dot: car -> car -> car;
-    par: car -> car -> car;
-    cnv: car -> car;
-    dom: car -> car;
-    one: car;
-    top: car }.
-Arguments top [_].
-Arguments weq {_} _ _.
+(** * 2p algebras, tests, initial algebra of terms *)
 
-Bind Scope ptt_ops with car.
+(** ** 2p algebras *)
+
+(* operations are put apart so that the can get notations for them before stating/proving the laws  *)
+Structure ops_ :=
+  { setoid_of_ops:> setoid;
+    dot: setoid_of_ops -> setoid_of_ops -> setoid_of_ops;
+    par: setoid_of_ops -> setoid_of_ops -> setoid_of_ops;
+    cnv: setoid_of_ops -> setoid_of_ops;
+    dom: setoid_of_ops -> setoid_of_ops;
+    one: setoid_of_ops;
+    top: setoid_of_ops }.
+
+Bind Scope ptt_ops with setoid_of_ops.
+Delimit Scope ptt_ops with ptt.
+Open Scope ptt_ops.
 Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): ptt_ops.
 Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): ptt_ops.
 Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): ptt_ops.
 Notation "1"  := (one _): ptt_ops.
-Infix "≡" := weq (at level 79).
+Arguments top [_].
 
-Class ptt_laws (X: ptt_ops) :=
-  { weq_Equivalence:> @Equivalence X weq;
-    dot_weq:> Proper (weq ==> weq ==> weq) (@dot X);
-    par_weq:> Proper (weq ==> weq ==> weq) (@par X);
-    cnv_weq:> Proper (weq ==> weq) (@cnv X);
-    domE: forall x: X, dom x ≡ 1 ∥ x·top;
-    parA: forall x y z: X, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
-    parC: forall x y: X, x ∥ y ≡ y ∥ x;
-    dotA: forall x y z: X, x · (y · z) ≡ (x · y) · z;
-    dotx1: forall x: X, x · 1 ≡ x;
-    cnvI: forall x: X, x°° ≡ x;
-    cnvpar: forall x y: X, (x ∥ y)° ≡ x° ∥ y°;
-    cnvdot: forall x y: X, (x · y)° ≡ y° · x°;
-    par11: 1 ∥ 1 ≡ @one X;
-    A10: forall x y: X, 1 ∥ x·y ≡ dom (x ∥ y°);
-    A11: forall x: X, x · top ≡ dom x · top;
-    A12: forall x y: X, (x∥1) · y ≡ (x∥1)·top ∥ y }.
+(* 2p axioms *)
+Structure ptt :=
+  { ops:> ops_;
+    dot_eqv: Proper (eqv ==> eqv ==> eqv) (@dot ops);
+    par_eqv: Proper (eqv ==> eqv ==> eqv) (@par ops);
+    cnv_eqv: Proper (eqv ==> eqv) (@cnv ops);
+    domE: forall x: ops, dom x ≡ 1 ∥ x·top;
+    parA: forall x y z: ops, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
+    parC: forall x y: ops, x ∥ y ≡ y ∥ x;
+    dotA: forall x y z: ops, x · (y · z) ≡ (x · y) · z;
+    dotx1: forall x: ops, x · 1 ≡ x;
+    cnvI: forall x: ops, x°° ≡ x;
+    cnvpar: forall x y: ops, (x ∥ y)° ≡ x° ∥ y°;
+    cnvdot: forall x y: ops, (x · y)° ≡ y° · x°;
+    par11: 1 ∥ 1 ≡ one ops;
+    A10: forall x y: ops, 1 ∥ x·y ≡ dom (x ∥ y°);
+    A11: forall x: ops, x · top ≡ dom x · top;
+    A12: forall x y: ops, (x∥1) · y ≡ (x∥1)·top ∥ y
+  }.
+Existing Instances dot_eqv par_eqv cnv_eqv.
 
+(** ** basic derivable laws  *)
 Section derived.
- Context {X} {L:ptt_laws X}.
+ Variable X: ptt.
   
- Global Instance dom_weq: Proper (weq ==> weq) (@dom X).
- Proof. intros ?? H. now rewrite 2domE, H. Qed.
+ Global Instance dom_eqv: Proper (eqv ==> eqv) (@dom X).
+ Proof. intros ?? H. by rewrite 2!domE H. Qed.
 
  Lemma cnv1: 1° ≡ @one X.
  Proof.
-  rewrite <-dotx1. rewrite <-(cnvI 1) at 2.
-  now rewrite <-cnvdot, dotx1, cnvI.
+  rewrite -(dotx1 1°) -{2}(cnvI 1).
+  by rewrite -cnvdot dotx1 cnvI.
  Qed.
 
  Lemma dot1x (x: X): 1·x ≡ x.
- Proof. now rewrite <-cnvI, cnvdot, cnv1, dotx1, cnvI. Qed.
+ Proof. by rewrite -(cnvI (1·x)) cnvdot cnv1 dotx1 cnvI. Qed.
 
  Lemma parxtop (x: X): x ∥ top ≡ x.
  Proof.
-   (* generalize (A12 1 x). rewrite par11, 2dot1x,parC. *)
-   rewrite parC.
-   rewrite <-(dot1x top).
-   rewrite <-(dot1x x) at 2.
-   rewrite <-par11.
-   symmetry. apply A12.
+   symmetry. generalize (A12 1 x).
+   by rewrite par11 2!dot1x parC. 
  Qed.
 
  Lemma partopx (x: X): top ∥ x ≡ x.
- Proof. now rewrite parC, parxtop. Qed.
+ Proof. by rewrite parC parxtop. Qed.
 
  Lemma cnvtop: top° ≡ @top X.
  Proof.
-  rewrite <-parxtop. rewrite <-(cnvI top) at 2.
-  now rewrite <-cnvpar, partopx, cnvI.
+  rewrite -(parxtop top°) -{2}(cnvI top).
+  by rewrite -cnvpar partopx cnvI.
  Qed.
 
  Lemma cnv_inj (x y: X): x° ≡ y° -> x ≡ y.
- Proof. intro. rewrite <-(cnvI x), <-(cnvI y). now apply cnv_weq. Qed.
+ Proof. intro H. by rewrite -(cnvI x) -(cnvI y) H. Qed.
+
+ Lemma dotcnv (x y: X): x·y ≡ (y°·x°)°.
+ Proof. apply cnv_inj. by rewrite cnvdot cnvI. Qed.
+
+ Lemma A13 (x y: X): dom(x·y) ≡ dom(x·dom y).
+ Admitted.
+
+ Lemma A14 (x y z: X): dom x·(y∥z) ≡ dom x·y ∥ z.
+ Admitted.
+
+ (** ** tests *)
+ Definition is_test (x: X) := dom x ≡ x.
+ Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
+
+ Lemma is_test_alt (x: X): dom x ≡ x <-> x∥1 ≡ x.
+ Proof.
+   split=>E.
+   - rewrite -{1}E -{1}(dotx1 (dom x)) -A14.
+     by rewrite par11 dotx1. 
+   - by rewrite -E -{1}cnv1 -A10 dotx1 parC.
+ Qed.
+ 
+ Lemma domtst (a : test) : dom a ≡ a. 
+ Proof. apply testE. Qed.
+ 
+ Lemma tstpar1 (a : test) : a ∥ 1 ≡ a.
+ Proof. apply is_test_alt, domtst. Qed.
+
+ Lemma one_test: is_test 1. 
+ Proof. rewrite /is_test. by rewrite -{1}par11 -{2}cnv1 -A10 dotx1 par11. Qed.
+ Canonical Structure tst_one := Test one_test. 
+
+ Lemma dom_test x: is_test (dom x). 
+ Proof. rewrite /is_test. by rewrite -{1}[dom x]dot1x -A13 dot1x. Qed.
+ Canonical Structure tst_dom x := Test (dom_test x).
+ 
+ Lemma par_test (a: test) (u: X): is_test (a∥u).
+ Proof.
+   rewrite /is_test is_test_alt.
+   by rewrite -parA (parC u) parA tstpar1. 
+ Qed.
+ Canonical Structure tst_par a u := Test (par_test a u).
+
+ Lemma cnvtst (a: test): a° ≡ a.
+ Proof.
+   rewrite -tstpar1 cnvpar cnv1 -(dot1x (a°)) parC A10 cnvI parC.
+   apply domtst.
+ Qed.
+
+ Lemma cnv_test (a: test): is_test (a°).
+ Proof.
+   by rewrite /is_test is_test_alt cnvtst tstpar1. 
+ Qed.
+ Canonical Structure tst_cnv a := Test (cnv_test a).
+
+ Lemma tstpar (a: test) (x y: X): a·(x∥y) ≡ a·x ∥ y.
+ Proof. rewrite -domtst. apply A14. Qed.
+
+ Lemma pardot (a b: test): a ∥ b ≡ a·b.
+ Proof.
+   by rewrite -{2}(tstpar1 b) (parC _ 1) tstpar dotx1.
+ Qed.
+ 
+ Lemma dot_test (a b: test): is_test (a·b).
+ Proof. rewrite /is_test -pardot. apply domtst. Qed.
+ Canonical Structure tst_dot a b := Test (dot_test a b).
+ 
+ (** automatised inference of tests *)
+ Definition infer_test x y (e: elem_of y = x) := y.
+ Notation "[ x ]" := (@infer_test x _ erefl).
+
+ (** ** commutative monoid of  tests *)
+ Definition eqv_test (a b: test) := a ≡ b.
+ Arguments eqv_test _ _ /.
+ Lemma eqv_test_equiv: Equivalence eqv_test. 
+ Proof. 
+   split => [x|x y|x y z]; rewrite /eqv_test /=.
+   reflexivity. by symmetry. by transitivity (elem_of y).
+ Qed.
+ Canonical Structure ptt_test_setoid := Setoid eqv_test_equiv.
+ Lemma tst_dot_eqv: Proper (eqv ==> eqv ==> eqv) tst_dot.
+ Proof. intros [a] [b] ? [c] [d] ?. by apply dot_eqv. Qed.
+ Lemma tst_dotA: forall a b c: test, a·(b·c) ≡ (a·b)·c.
+ Proof. intros [a] [b] [c]. apply dotA. Qed.
+ Lemma tst_dotC: forall a b: test, a·b ≡ b·a.
+ Proof. intros. rewrite -2!pardot. apply parC. Qed.
+ Lemma tst_dotU: forall a: test, a·1 ≡ a.
+ Proof. intros [a]. apply dotx1. Qed.
+
+ (** ** label structure of a 2pdom algebra (Definition 4.3)  *)
+ 
+ (* dualised equality (to get the [labels] structure below) *)
+ Definition eqv' (x y: X) := x ≡ y°.
+ Arguments eqv' _ _ /.
+ Lemma eqv'_sym: Symmetric eqv'.
+ Proof. move=> x y /= H. apply cnv_inj. by rewrite cnvI H. Qed.
+ Lemma eqv01 x y z: x ≡ y -> eqv' y z -> eqv' x z.
+ Proof. by move=> /= ->. Qed.
+ Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
+ Proof. move=> /= -> ->. apply cnvI. Qed.
+ 
+ Canonical Structure ptt_labels: labels :=
+   Labels
+     tst_dot_eqv tst_dotA tst_dotC tst_dotU
+     eqv'_sym eqv01 eqv11.
 
 End derived.
+Coercion ptt_labels: ptt >-> labels. 
+Notation "[ x ]" := (@infer_test _ x%ptt _ erefl): ptt_ops.
+
+Arguments eqv : simpl never.
 
 Section terms.
  Variable A: Type.
@@ -90,7 +208,7 @@ Section terms.
  | tm_top: term
  | tm_var: A -> term.
  Section e.
- Variable (X: ptt_ops) (f: A -> X).
+ Variable (X: ops_) (f: A -> X).
  Fixpoint eval (u: term): X :=
    match u with
    | tm_dot u v => eval u · eval v
@@ -102,50 +220,45 @@ Section terms.
    | tm_var a => f a
    end.
  End e.
- Definition tm_weq (u v: term): Prop :=
-   forall X (L: ptt_laws X) (f: A -> X), inhabited (eval f u ≡ eval f v).
- Hint Unfold tm_weq.
- Canonical Structure tm_ops: ptt_ops :=
-   {| weq := tm_weq;
+ Definition tm_eqv (u v: term): Prop :=
+   forall (X: ptt) (f: A -> X), eval f u ≡ eval f v.
+ Hint Unfold tm_eqv.
+ Lemma tm_eqv_equivalence: Equivalence tm_eqv.
+ Proof.
+   constructor.
+     now intro.
+     intros ?? H X f. specialize (H X f). by symmetry. 
+     intros ??? H H' X f. specialize (H X f). specialize (H' X f). etransitivity. apply H. apply H'.
+ Qed.
+ Canonical Structure tm_setoid := Setoid tm_eqv_equivalence. 
+ Canonical Structure tm_ops_ :=
+   {| setoid_of_ops := tm_setoid;
       dot := tm_dot;
       par := tm_par;
       cnv := tm_cnv;
       dom := tm_dom;
       one := tm_one;
       top := tm_top |}.
- Global Instance tm_laws: ptt_laws tm_ops.
- Proof.
-   constructor.
-   - constructor.
-     now intro.
-     intros ?? H ? L f. specialize (H _ L f) as [H]. constructor. symmetry. apply H.
-     intros ? y ? H H' ? L f.
-     specialize (H _ L f) as [H].
-     specialize (H' _ L f) as [H'].
-     constructor. etransitivity. apply H. apply H'.
-   - intros u u' U v v' V X L f; simpl.
-     specialize (U _ L f) as [U].
-     specialize (V _ L f) as [V].
-     constructor. now apply dot_weq. 
-   - intros u u' U v v' V X L f; simpl.
-     specialize (U _ L f) as [U].
-     specialize (V _ L f) as [V].
-     constructor. now apply par_weq. 
-   - intros u u' U X L f; simpl.
-     specialize (U _ L f) as [U].
-     constructor. now apply cnv_weq. 
-   - intros x X L f; simpl. constructor. apply domE. 
-   - intros x y z X L f; simpl. constructor. apply parA. 
-   - intros x y X L f; simpl. constructor. apply parC. 
-   - intros x y z X L f; simpl. constructor. apply dotA. 
-   - intros x X L f; simpl. constructor. apply dotx1. 
-   - intros x X L f; simpl. constructor. apply cnvI. 
-   - intros x y X L f; simpl. constructor. apply cnvpar. 
-   - intros x y X L f; simpl. constructor. apply cnvdot. 
-   - intros X L f; simpl. constructor. apply par11. 
-   - intros x y X L f; simpl. constructor. apply A10. 
-   - intros x X L f; simpl. constructor. apply A11. 
-   - intros x y X L f; simpl. constructor. apply A12.
- Qed.
+ 
+ (* quotiented terms indeed form a 2p-algebra *)
+ Program Definition tm_ptt: ptt := {| ops := tm_ops_ |}.
+ Next Obligation. repeat intro; simpl. by apply dot_eqv. Qed.
+ Next Obligation. repeat intro; simpl. by apply par_eqv. Qed.
+ Next Obligation. repeat intro; simpl. by apply cnv_eqv. Qed.
+ Next Obligation. repeat intro; simpl. by apply domE. Qed.
+ Next Obligation. repeat intro; simpl. by apply parA. Qed.
+ Next Obligation. repeat intro; simpl. by apply parC. Qed.
+ Next Obligation. repeat intro; simpl. by apply dotA. Qed.
+ Next Obligation. repeat intro; simpl. by apply dotx1. Qed.
+ Next Obligation. repeat intro; simpl. by apply cnvI. Qed.
+ Next Obligation. repeat intro; simpl. by apply cnvpar. Qed.
+ Next Obligation. repeat intro; simpl. by apply cnvdot. Qed.
+ Next Obligation. repeat intro; simpl. by apply par11. Qed.
+ Next Obligation. repeat intro; simpl. by apply A10. Qed.
+ Next Obligation. repeat intro; simpl. by apply A11. Qed.
+ Next Obligation. repeat intro; simpl. by apply A12. Qed.
+ Canonical tm_ptt. 
+ 
+ Notation test := (test tm_ptt).
 End terms.
 Bind Scope ptt_ops with term.

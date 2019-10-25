@@ -54,7 +54,7 @@ Qed.
 Lemma par_component (G : graph) (H : graph2) :
   par2 (point (union G top2) (inr g_in) (inr g_out)) H ≈ point (union G H) (inr g_in) (inr g_out).
 Proof.
-  rewrite -> parC. 
+  setoid_rewrite par2C. 
   rewrite /=/par2/=.
   rewrite -> (merge_iso2 (union_A _ _ _)) =>/=.
   pose k (x : @two_graph sym) : union H G := if ~~ x then (unl g_in) else (unl g_out).
