@@ -1,3 +1,4 @@
 Makefile.coq
 *.conf
 .coqdeps.d
+depend-graph.*

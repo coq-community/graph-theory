@@ -1,0 +1,52 @@
+digraph dependencies {
+	subgraph { # preliminary infrastructure
+		node [style=filled; color="yellow"];
+		"edone";
+		"bounded";
+		"preliminaries";
+		"finmap_plus";
+		"set_tac";
+		"bij";
+		"finite_quotient";
+		"equiv";
+	}
+	subgraph { # general purpose graph lib
+		node [style=filled; color="orange"];
+		"digraph";   
+		"sgraph";	   
+		"treewidth"; 
+		"minor";	   
+		"menger";	   
+		"separators";		
+		"checkpoint";
+	}
+	subgraph { # 2p algebra of multigraphs, extraction (JAR19)
+		node [style=filled; color="red"];
+		"mgraph_jar";
+		"mgraph2_jar";
+		"skeleton";	
+		"mgraph2_tw2";	
+		"cp_minor";	
+		"extraction_def"; 
+		"extraction_iso"; 
+		"extraction_top"; 
+		"corollaries";	
+	}
+	subgraph { # 2pdom soundness and completeness (CPP20)
+		node [style=filled; color="violet"];
+		"structures";	
+		"ptt";
+		"pttdom";
+		"mgraph";
+		"mgraph2";
+		"rewriting"; 	
+		"reduction"; 	
+		"open_confluence";
+		"transfer"; 	
+		"completeness"; 	
+	}
+	subgraph {
+		rank="same";
+		"edone";
+		"bounded";
+	}
