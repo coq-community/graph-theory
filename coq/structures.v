@@ -63,7 +63,7 @@ Global Existing Instance Eqv.
 Definition eq_setoid (X: Type): setoid := Setoid (@eq_equivalence X).
 
 Lemma eqvxx (X : setoid) (x : X) : x ≡ x. reflexivity. Qed.
-Arguments eqvxx [X x].
+Arguments eqvxx {X x}.
 
 (** ** label structures (Definition 4.1) *)
 (* ingredients required to label graphs

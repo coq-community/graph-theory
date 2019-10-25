@@ -94,8 +94,8 @@ Proof. by rewrite imfsetU imfset1. Qed.
 
 
 Arguments fset1Ur [K x a B].
-Arguments fset1U1 [K x B].
-Arguments fset1U1 [K x B].
+Arguments fset1U1 {K x B}.
+Arguments fset1U1 {K x B}.
 
 (** Things that also depend on preliminaries.v *)
 Require Import Coq.Relations.Relation_Definitions.

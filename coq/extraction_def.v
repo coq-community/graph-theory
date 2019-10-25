@@ -155,7 +155,7 @@ Qed.
 
 Fact redirect_proof1 (T : finType) x (A : {set T}) : x \in x |: A. 
 Proof. by rewrite !inE eqxx. Qed.
-Arguments redirect_proof1 [T x A].
+Arguments redirect_proof1 {T x A}.
 
 (** subgraph induced by [i |: H] without i-selfloops and with output set
 to [o] *)
@@ -166,7 +166,7 @@ Proof. apply: consistent_setD. exact: induced_proof. Qed.
 
 Fact redirect_output_proof (T : finType) x y (B : {set T}) : x \in y |: (x |: B). 
 Proof. by rewrite !inE eqxx. Qed.
-Arguments redirect_output_proof [T x y B].
+Arguments redirect_output_proof {T x y B}.
 
 Definition redirect_to (G : graph2) (H : {set G}) (o:G) := 
   @point (induced (g_in |: (o |: H))) 

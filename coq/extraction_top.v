@@ -23,9 +23,9 @@ Open Scope ptt_ops.
 
 (** * Extraction from Disconnected Graphs *)
 
-Arguments top2 [sym].
-Arguments iso_id [sym G].
-Arguments iso_two_swap [sym].
+Arguments top2 {sym}.
+Arguments iso_id {sym G}.
+Arguments iso_two_swap {sym}.
 Arguments merge_union_K_ll [sym F K i o h] k.
 
 Lemma iso2_TGT (G : graph2) : top · G · top ≈ point (union G top2) (inr g_in) (inr g_out).

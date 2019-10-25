@@ -470,7 +470,7 @@ End BijT.
 
 Definition setT_bij (T : finType) : bij {x : T | x \in setT} T := 
   Eval hnf in subT_bij (@in_setT T).
-Arguments setT_bij [T].
+Arguments setT_bij {T}.
 
 Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentTT G)) G setT_bij setT_bij. 
 Proof. by []. Qed.
@@ -549,8 +549,8 @@ Arguments merge [sym] G r.
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity). 
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
-Arguments unit_graph [sym].
-Arguments two_graph [sym].
-Arguments iso_two_graph [sym].
+Arguments unit_graph {sym}.
+Arguments two_graph {sym}.
+Arguments iso_two_graph {sym}.
 Arguments consistentTT [sym].
 Prenex Implicits unit_graph two_graph iso_two_graph.

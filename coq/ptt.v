@@ -34,7 +34,7 @@ Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ 
 Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): ptt_ops.
 Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): ptt_ops.
 Notation "1"  := (one _): ptt_ops.
-Arguments top [_].
+Arguments top {_}.
 
 (* 2p axioms *)
 Structure ptt :=

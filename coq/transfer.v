@@ -105,7 +105,7 @@ Definition pack := Eval hnf in
   point pack' (Sub (p_in G) (@p_inP _ _ _ _)) (Sub (p_out G) (@p_outP _ _ _ _)).
 
 End Pack.
-Arguments pack [_] G [_] , [_] G graph_G.
+Arguments pack [_] G {_} , [_] G graph_G.
 
 (** ** Isomorphism and Commutation Properties *)
 
@@ -344,7 +344,7 @@ Qed.
 
 (** ** Commutation with open/pack *)
 
-Arguments freshP [E].
+Arguments freshP {E}.
 
 Lemma pack_add_edge' G e x y u (isG : is_graph G)(isG' : is_graph (G ∔ [e,x, u, y])) :
   e \notin eset G -> 
@@ -1065,7 +1065,7 @@ Hint Resolve in_vsetAV : vset.
 
 Lemma in_vsetAE (G : pre_graph) x y z u e : x \in vset G -> x \in vset (G ∔ [e,y,u,z]).
 Proof. by apply. Qed.
-Hint Resolve in_vsetAE.
+Hint Resolve in_vsetAE : vset.
 
 Lemma in_vsetAV' (G : pre_graph) z a : z \in vset (G ∔ [z,a]).
 Proof. by rewrite !inE eqxx. Qed.

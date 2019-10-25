@@ -695,7 +695,7 @@ Proof.
   apply: (iffP connectP) => [[p p1 p2]|]; last by firstorder.
   exists (shorten x p). by case/shortenP : p1 p2 => p' ? ? _ /esym ?.
 Qed.
-Arguments connectUP [T e x y].
+Arguments connectUP {T e x y}.
 
 Lemma sub_connect (T : finType) (e : rel T) : subrel e (connect e).
 Proof. exact: connect1. Qed.

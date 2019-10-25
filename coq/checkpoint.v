@@ -41,7 +41,7 @@ Section CheckPoints.
     - move => cp_z p. apply: contraTT cp_z. exact: cpNI.
     - case/cpPn => p _ av_z /(_ p). exact/negP.
   Qed.
-  Arguments cpP [x y z].
+  Arguments cpP {x y z}.
 
   Lemma cpTI x y z : (forall p : Path x y, irred p -> z \in p) -> z \in cp x y.
   Proof using. move => H. by apply/cpPn => [[p] /H ->]. Qed.  
@@ -565,7 +565,7 @@ Section CheckPoints.
   Lemma bagP (U : {set G}) x z : 
     reflect (forall y, y \in CP U -> x \in cp z y) (z \in bag U x).
   Proof. rewrite /bag -lock inE. exact: (iffP forall_inP). Qed.
-  Arguments bagP [U x z].
+  Arguments bagP {U x z}.
 
   (** was only used in the CP_tree lemma, but we keep it here *)
   Lemma bagPn (U : {set G}) x z : 

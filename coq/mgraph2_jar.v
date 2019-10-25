@@ -25,8 +25,8 @@ Record graph2 :=
   Graph2 { graph_of :> graph;
            g_in : graph_of;
            g_out : graph_of }.
-Arguments g_in [_].
-Arguments g_out [_].
+Arguments g_in {_}.
+Arguments g_out {_}.
 
 Notation point G := (@Graph2 G).
 
@@ -883,8 +883,8 @@ End alt.
 
 End pttGraph.
 
-Arguments g_in [_ _].
-Arguments g_out [_ _].
+Arguments g_in {_ _}.
+Arguments g_out {_ _}.
 Notation IO := ([set g_in; g_out]).
 Notation "G ≈ H" := (iso2 G H) (at level 45).
 Notation point G := (@Graph2 _ G).

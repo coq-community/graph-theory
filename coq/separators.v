@@ -19,7 +19,7 @@ Ltac notHyp b ::= assert_fails (assert b by assumption).
 
 (** TODO: using clauses to speed up make quick *)
 
-Arguments separatesP [G x y U].
+Arguments separatesP {G x y U}.
 
 Section Separators.
 Variable (G : sgraph).
@@ -431,7 +431,7 @@ Proof.
   - by rewrite [y](eqP (H _ _ )) ?inE ?H1 ?H2.
   - by rewrite inE [y]H.
 Qed.
-Arguments subsetIlP1 [T A B x].
+Arguments subsetIlP1 {T A B x}.
 
 Lemma predIpcatR (G : sgraph) (x y z : G) (p : Path x y) (q : Path y z) (S A : pred G) : 
   [predI pcat p q & S] \subset A -> [predI q & S] \subset A.

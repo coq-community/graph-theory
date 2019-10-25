@@ -561,7 +561,7 @@ Proof.
     case/exists_inP => z Z1 Z2. by exists z. 
   - split => //. apply/forallP => p. by move/exists_inP : (A p). 
 Qed.
-Arguments separatesP [x y U].
+Arguments separatesP {x y U}.
 
 Fact separatesNeq x y U : separates x y U -> x != y.
 Proof. 
