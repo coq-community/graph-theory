@@ -5,7 +5,7 @@ This library contains
 - a general purpose library about graph theory:
   . directed graphs, simple graphs, multigraphs
   . paths, trees, forests
-  . topological minors
+  . minors
   . tree decompositions
   . Menger's theorem and some of its corollaries (Hall's marriage theorem and König's theorem)
   . the excluded-minor characterisation of treewidth at most two graphs (as those excluding K4 as a minor)

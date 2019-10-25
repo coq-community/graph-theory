@@ -11,7 +11,7 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Topological minors, links with treewidth *)
+(** * Minors, links with treewidth *)
 
 (** H is a minor of G -- The order allows us to write [minor G] for the
 collection of [G]s minors *)
