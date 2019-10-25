@@ -36,7 +36,7 @@ clean: Makefile.coq
 	rm -f Makefile.coq .*.aux depend-graph.*
 
 Makefile.coq: _CoqProject
-	$(COQBIN)coq_makefile -f _CoqProject -arg -w -arg -notation-overridden -o Makefile.coq
+	$(COQBIN)coq_makefile -f _CoqProject -o Makefile.coq
 
 pack: Makefile.coq
 	tar -cvzf graphs.tar.gz Makefile _CoqProject coqdocjs $(COQMF_VFILES)
