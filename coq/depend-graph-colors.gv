@@ -20,17 +20,19 @@ digraph dependencies {
 		"separators";		
 		"checkpoint";
 	}
-	subgraph { # 2p algebra of multigraphs, extraction (JAR19)
-		node [style=filled; color="red"];
+	subgraph { # 2p algebra of multigraphs (to be removed, JAR19)
+		node [style=filled; color="crimson"];
 		"mgraph_jar";
 		"mgraph2_jar";
+	}
+	subgraph { # 2p algebra of multigraphs, extraction (JAR19)
+		node [style=filled; color="red"];
 		"skeleton";	
 		"mgraph2_tw2";	
 		"cp_minor";	
 		"extraction_def"; 
 		"extraction_iso"; 
 		"extraction_top"; 
-		"corollaries";	
 	}
 	subgraph { # 2pdom soundness and completeness (CPP20)
 		node [style=filled; color="violet"];
