@@ -19,7 +19,11 @@ Structure ops_ :=
     par: setoid_of_ops -> setoid_of_ops -> setoid_of_ops;
     cnv: setoid_of_ops -> setoid_of_ops;
     dom: setoid_of_ops -> setoid_of_ops;
-    one: setoid_of_ops }.
+    one: setoid_of_ops;
+    top: setoid_of_ops;         (* top is left uninterpreted in 2pdom *)
+  }.
+Arguments one {_}.
+Arguments top {_}.
 
 (* Declare Scope pttdom_ops. compat:coq-8.9*)
 Bind Scope pttdom_ops with setoid_of_ops.
@@ -28,7 +32,7 @@ Open Scope pttdom_ops.
 Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): pttdom_ops.
 Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): pttdom_ops.
 Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): pttdom_ops.
-Notation "1"  := (one _): pttdom_ops.
+Notation "1"  := (one): pttdom_ops.
 
 (* 2pdom axioms *)
 Structure pttdom :=
@@ -44,7 +48,7 @@ Structure pttdom :=
     cnvI: forall x: ops, x°° ≡ x;
     cnvpar: forall x y: ops, (x ∥ y)° ≡ x° ∥ y°;
     cnvdot: forall x y: ops, (x · y)° ≡ y° · x°;
-    par11: 1 ∥ 1 ≡ one ops;
+    par11: 1 ∥ 1 ≡ @one ops;
     A10: forall x y: ops, 1 ∥ x·y ≡ dom (x ∥ y°);
     A13: forall x y: ops, dom(x·y) ≡ dom(x·dom y);
     A14: forall x y z: ops, dom x·(y∥z) ≡ dom x·y ∥ z;
@@ -56,7 +60,7 @@ Section derived.
 
  Variable X: pttdom.
 
- Lemma cnv1: 1° ≡ one X.
+ Lemma cnv1: 1° ≡ @one X.
  Proof.
   rewrite <-dotx1. rewrite <-(cnvI 1) at 2.
   by rewrite <-cnvdot, dotx1, cnvI.
@@ -264,7 +268,9 @@ Section terms.
       par := tm_par;
       cnv := tm_cnv;
       dom := tm_dom;
-      one := tm_one |}.
+      one := tm_one;
+      top := tm_one;            (* not a typo: top is not used in 2pdom *)
+   |}.
  
  (* quotiented terms indeed form a 2pdom algebra *)
  Program Definition tm_pttdom: pttdom := {| ops := tm_ops_ |}.

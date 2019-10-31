@@ -464,8 +464,8 @@ End s.
 (* (in the initial pttdom algebra of terms) *)
 Section s'.
 Variable A: Type.
-Notation term := (term A).  
-Notation nterm := (nterm A).  
+Notation term := (pttdom.term A).  
+Notation nterm := (pttdom.nterm A).  
 Notation test := (test (tm_pttdom A)). 
 Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
 Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
@@ -479,7 +479,7 @@ Notation steps := (@steps (tm_pttdom A)).
 Canonical Structure tm_labels :=
   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
          (@tst_dot_eqv (tm_pttdom A)) (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A))
-         (@tst_dotU (tm_pttdom A)) (tm_setoid A) (@eqv' (tm_pttdom A))
+         (@tst_dotU (tm_pttdom A)) (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
          (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
 (* Eval hnf in pttdom_labels (tm_pttdom A). *)
 (* Check erefl: tm_setoid A = le _. *)
@@ -488,10 +488,10 @@ Canonical Structure tm_labels :=
 (** *** graphs of terms and normal terms *)
 
 (* function g^A from the end of Section 5 *)
-Definition graph_of_term: term -> graph2 := eval (fun a: A => @g2_var (flat_labels A) a). 
+Definition graph_of_term: term -> graph2 := pttdom.eval (fun a: A => @g2_var (flat_labels A) a). 
 
 (* function g^T from the end of Section 5 *)
-Definition tgraph_of_term: term -> tgraph2 := eval (fun a: A => g2_var (tm_var a)). 
+Definition tgraph_of_term: term -> tgraph2 := pttdom.eval (fun a: A => g2_var (pttdom.tm_var a)). 
 
 Definition tgraph_of_nterm (t: nterm): tgraph2 :=
   match t with

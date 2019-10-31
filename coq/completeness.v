@@ -11,7 +11,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable A: Type.
-Notation term := (term A).  
+Notation term := (pttdom.term A).  
 Notation nterm := (nterm A).  
 Notation test := (test (tm_pttdom A)). 
 Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
@@ -129,7 +129,7 @@ Proof.
 Qed.
 
 (* transferring isomorphisms on letter-labeled graphs to term-labeled graphs *)
-Lemma tgraph_graph (u: term): tgraph_of_term u ≃2 relabel2 (fun _ => tst_one _) (@tm_var _) (graph_of_term u).
+Lemma tgraph_graph (u: term): tgraph_of_term u ≃2 relabel2 (fun _ => tst_one _) (@pttdom.tm_var _) (graph_of_term u).
 Proof.
   have Hmon0: eqv_test (tst_one (tm_pttdom A)) (tst_one (tm_pttdom A)) by [].
   have Hmon2 (a b: unit): (tst_one (tm_pttdom A)) ≡ (1 ⊗ 1)%lbl by symmetry; apply dotx1.

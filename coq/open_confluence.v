@@ -105,7 +105,7 @@ Global Instance tm_inh_type : inh_type tm.
 exact: Build_inh_type (1%ptt).
 Defined.
 
-Notation pre_graph := (pre_graph test (car (setoid_of_ops (ops tm)))).
+Notation pre_graph := (pre_graph test (car (setoid_of_ops (pttdom.ops tm)))).
 Notation graph := (graph (pttdom_labels tm)).
 Notation graph2 := (graph2 (pttdom_labels tm)).
 

@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Export structures mgraph pttdom.
+Require Export structures mgraph ptt.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -154,8 +154,7 @@ Canonical Structure g2_ops: pttdom.ops_ :=
      cnv := g2_cnv;
      dom := g2_dom;
      one := g2_one;
-     (* top := g2_top *) |}.
-Notation top := g2_top.         (* TEMPORARY *)
+     top := g2_top |}.
 
 (** ** laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) *)
 (* mostly recasting the ones proved in [mgraph]  *)
@@ -346,7 +345,7 @@ Qed.
 Lemma par2top (F: graph2): F ∥ top ≃2 F. 
 Proof.
   rewrite /=/g2_par.
-  irewrite (merge_union_K_l (K:=top) _ _ (k:=fun b => if b then input else output))=>/=; try by repeat case.
+  irewrite (merge_union_K_l (K:=g2_top) _ _ (k:=fun b => if b then input else output))=>/=; try by repeat case.
   apply merge2_nothing. 
   by repeat constructor. 
   repeat case; apply /eqquotP; eqv. 
@@ -496,10 +495,10 @@ Proof.
   rewrite /=/g2_dom/g2_par/g2_dot.
   irewrite (merge_iso2 (union_merge_l _ _)).
   rewrite /map_pairs/map 2!union_merge_lEl 1!union_merge_lEr /fst/snd.
-  irewrite (merge_merge (G:=(F ⊎ top) ⊎ g2_one)
+  irewrite (merge_merge (G:=(F ⊎ g2_top) ⊎ g2_one)
                               (k:=[::(inl (inl input),inr tt); (inl (inr (inr tt)),inr tt)])) =>//.
   irewrite (merge_iso2 (iso_sym (union_A _ _ _))).
-  irewrite (merge_union_K_l (K:=top ⊎ g2_one) _ _ 
+  irewrite (merge_union_K_l (K:=g2_top ⊎ g2_one) _ _ 
                             (k:=fun x => match x with inl (inl tt) => output | _ => input end))=>/=.
   apply merge_nothing. 
   repeat (constructor =>//=).
@@ -543,11 +542,11 @@ Proof.
   intro H. rewrite /=/g2_par/g2_dot.
   irewrite' (merge_iso2 (union_merge_l _ _)).
   rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
-  irewrite' (merge_merge (G:=(F ⊎ top) ⊎ G)
+  irewrite' (merge_merge (G:=(F ⊎ g2_top) ⊎ G)
                               (k:=[::(inl (inl input),inr input);(inl (inr (inr tt)),inr output)])) =>//.
   irewrite' (merge_iso2 (union_C (_ ⊎ _) _)).
   irewrite' (merge_iso2 (union_A _ _ _))=>/=.
-  irewrite' (merge_union_K_l (F:=G ⊎ F) (K:=top) _ _ 
+  irewrite' (merge_union_K_l (F:=G ⊎ F) (K:=g2_top) _ _ 
                              (k:=fun x => if x then unr input else unl output))=>//.
   2: by case. 2: by repeat case; apply /eqquotP; rewrite H; eqv.
   irewrite (merge_iso2 (union_C F G)) =>/=.
@@ -561,6 +560,7 @@ Proof.
   apply /eqquotP. apply eqv_clot_trans with (inr tt); eqv.
 Qed.
 
+(*
 Lemma g2_A13 (F G: graph2): dom(F·G) ≃2 dom(F·dom G).
 Proof. reflexivity. Qed.
 
@@ -589,6 +589,7 @@ Qed.
 
 Lemma g2_A14 (F G H: graph2): dom F·(G∥H) ≃2 dom F·G ∥ H.
 Proof. by apply g2_A14'. Qed.
+ *)
 
 Lemma dot_iso2: CProper (iso2 ==> iso2 ==> iso2) g2_dot.
 Proof.
@@ -611,11 +612,11 @@ Lemma dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
 (* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
-Program Definition g2_pttdom: pttdom := {| ops := g2_ops |}.
+Program Definition g2_ptt: ptt := {| ops := g2_ops |}.
 Next Obligation. apply CProper2, dot_iso2. Qed.
 Next Obligation. apply CProper2, par_iso2. Qed.
 Next Obligation. apply CProper1, cnv_iso2. Qed.
-Next Obligation. apply CProper1, dom_iso2. Qed.
+Next Obligation. exists. apply dom2E. Qed.
 Next Obligation. exists. apply par2A. Qed.
 Next Obligation. exists. apply par2C. Qed.
 Next Obligation. exists. apply dot2A. Qed.
@@ -625,8 +626,28 @@ Next Obligation. exists. apply cnv2par. Qed.
 Next Obligation. exists. apply cnv2dot. Qed.
 Next Obligation. exists. apply par2oneone. Qed.
 Next Obligation. exists. apply g2_A10. Qed.
-Next Obligation. exists. apply g2_A13. Qed.
-Next Obligation. exists. apply g2_A14. Qed.
+Next Obligation. exists. apply g2_A11. Qed.
+Next Obligation. exists. apply g2_A12. Qed.
+Canonical g2_ptt.
+
+(* TODO should be inferred via ptt.pttdom_of, but required for below for applying [cnv_eqv] *)
+(* Canonical Structure g2_pttdom: pttdom := Eval hnf in ptt.pttdom_of g2_ptt. *)
+Program Definition g2_pttdom: pttdom := {| pttdom.ops := g2_ops |}.
+Next Obligation. apply dot_eqv_. Qed.
+Next Obligation. apply par_eqv_. Qed.
+Next Obligation. apply cnv_eqv_. Qed.
+Next Obligation. apply dom_eqv_. Qed.
+Next Obligation. apply parA_. Qed.
+Next Obligation. apply parC_. Qed.
+Next Obligation. apply dotA_. Qed.
+Next Obligation. apply dotx1_. Qed.
+Next Obligation. apply cnvI_. Qed.
+Next Obligation. apply cnvpar_. Qed.
+Next Obligation. apply cnvdot_. Qed.
+Next Obligation. apply par11_. Qed.
+Next Obligation. apply A10_. Qed.
+Next Obligation. apply A13_. Qed.
+Next Obligation. apply A14_. Qed.
 Canonical g2_pttdom.
 
 (** ** additional laws required for the completeness proof *)
