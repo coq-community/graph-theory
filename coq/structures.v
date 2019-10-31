@@ -111,11 +111,11 @@ Qed.
 (* variants of the above that are more useful for backward chaining *)
 Lemma eqvb_transR (X : labels) b b' (u v v' : le X) : 
   u ≡[b (+) b'] v' ->  v' ≡[b'] v ->  u ≡[b] v.
-Proof. move => A B. move:(eqvb_trans A B). by rewrite -addbA addbxx addbF. Qed.
+Proof. move => A B. move:(eqvb_trans A B). by rewrite -addbA addbb addbF. Qed.
 
 Lemma eqvb_transL (X : labels) b b' (u u' v : le X) : 
   u' ≡[b (+) b'] v ->  u ≡[b'] u' ->  u ≡[b] v.
-Proof. move => A B. move:(eqvb_trans B A). by rewrite addbC -addbA addbxx addbF. Qed.
+Proof. move => A B. move:(eqvb_trans B A). by rewrite addbC -addbA addbb addbF. Qed.
 
 Global Instance eqv_morphim (X: labels) : 
   Proper (eq ==> eqv ==> eqv ==> iff) (@eqv_ X).

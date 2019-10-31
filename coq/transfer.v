@@ -552,7 +552,7 @@ Lemma oiso2_incident (F G : pre_graph) (i : F ⩭2 G) (x : VT) (e : ET) :
 Proof.
   move => Vx Ee. rewrite /incident. apply/existsP/existsP. 
   - move => [b] e_x. exists (edir_of i e (+) b). rewrite oiso2_endpoint //.
-    by rewrite addbA addbxx [addb _ _]/= (eqP e_x).
+    by rewrite addbA addbb [addb _ _]/= (eqP e_x).
   - move => [b] e_ix. exists (edir_of i e (+) b).
     rewrite oiso2_endpoint // in e_ix. move/eqP : e_ix. move/vfun_of_inj => -> //.
     rewrite -> endptP => //. exact: oiso2_graphL i.
@@ -577,7 +577,7 @@ Lemma oiso2_oarc (F G : pre_graph) (i : F ⩭2 G) e x y u :
 Proof.
   case => Ee [b] [A B C]. split; first exact: im_efun_of.
   exists (edir_of i e (+) b). 
-  rewrite !oiso2_endpoint // -addbN !addbA !addbxx !addFb A B. split => //.
+  rewrite !oiso2_endpoint // -addbN !addbA !addbb !addFb A B. split => //.
   exact: eqvb_trans (oiso2_le _ _ ) _.
 Qed.
 
@@ -645,7 +645,7 @@ Proof.
         move => q. rewrite ![elabel _]/=. rewrite [i.d _]/=. 
         move: (oiso2_le (OIso2 i) p1) => H. apply: eqvb_transR H => //=. 
         rewrite edir_bodyE efun_bodyE. rewrite (bool_irrelevance (fsetDl p) p1). 
-        rewrite (bool_irrelevance (fsetDl (valP [` p])) p1) addbxx. done.
+        rewrite (bool_irrelevance (fsetDl (valP [` p])) p1) addbb. done.
     + rewrite fsetD_bijE. apply: Q.
       move => q. apply/val_inj => /=. rewrite -(oiso2_input (OIso2 i)) /= vfun_bodyE. apply: p_inP. 
       move => r. set X := fsetDl _. by rewrite (bool_irrelevance X r).
@@ -715,7 +715,7 @@ Proof.
       case/fsetDP : (p) => p1 p2. rewrite ![elabel _]/=. rewrite [i.d _]/=. 
       move: (oiso2_le (OIso2 i) p1) => H. apply: eqvb_transR H => //=. 
       rewrite edir_bodyE efun_bodyE. rewrite (bool_irrelevance (fsetDl p) p1). 
-      rewrite (bool_irrelevance (fsetDl (valP [` p])) p1) addbxx. done.
+      rewrite (bool_irrelevance (fsetDl (valP [` p])) p1) addbb. done.
   - apply: val_inj => /=. rewrite -(oiso2_input (OIso2 i)) /= vfun_bodyE ?p_inP // => q.
     set q' := @p_inP _ _ _ _. by rewrite (bool_irrelevance q' q).
   - apply: val_inj => /=. rewrite -(oiso2_output (OIso2 i)) /= vfun_bodyE ?p_outP // => q.
