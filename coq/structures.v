@@ -132,6 +132,9 @@ Program Definition flat_labels (X: Type) :=
      le := eq_setoid X; eqv' _ _ := False |}.
 Next Obligation. by case x. Qed.
 Next Obligation. tauto. Qed.
+Lemma eq_unit (a b: unit): a = b.
+Proof. by case a; case b. Qed.
+Hint Resolve eq_unit: core.
 
 (* notations for vertex labels *)
 (* Declare Scope labels. compat:coq-8.9*)

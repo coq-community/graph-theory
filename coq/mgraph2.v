@@ -19,7 +19,6 @@ Set Bullet Behavior "Strict Subproofs".
 (* TODO:
  - input/output as a function from [bool]?
  - recheck status of [unr/unl]
- - encapsulate the fact that we also get a 2p algebra
  *)
 
 Section s.
@@ -325,7 +324,6 @@ Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Defined.
 Lemma merge2_two a b: merge2_seq (two_graph2 a b) [:: (inl tt,inr tt)] ≃2 unit_graph2 (a⊗b).
 Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Defined.
 
-
 (** ** 2p-graphs form a 2p-algebra *)
 
 (* TODO: for now the 2p laws are all proved in Type [iso2], 
@@ -524,6 +522,17 @@ Proof.
   eqv.
 Qed.
 
+(* TOFIX: topL should be obtained from topR by duality *)
+Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%lbl) (inr tt) (unl output).
+Proof.
+  rewrite /=/g2_dot.
+  irewrite (merge_iso2 (union_C _ _))=>/=.
+  etransitivity. refine (merge_iso2 (union_A _ _ _) _ _ _)=>/=.
+  irewrite (merge_union_K_l (F:=F ⊎ _) _ _ (k:=fun x => unl input))=>//=.
+  apply merge_nothing. by constructor.
+  intros []. apply /eqquotP. eqv.
+Qed.
+
 Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (inr tt).
 Proof.
   rewrite /=/g2_dot.
@@ -682,7 +691,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
     * by repeat constructor.
     * (repeat case)=>//=_; try eqv; apply eqv_clot_trans with (inr tt); eqv.
   - by case. 
-  - move=>d. repeat case=>//=. by case d. 
+  - move=>d. by repeat case. 
   - by repeat case. 
   - repeat case=>//=. rewrite eq_refl/=.
     rewrite -big_filter filter_index_enum /=; 
@@ -690,7 +699,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
     by rewrite monU.
 Qed.
 
-(* needed in open.v *)
+(* TODO: no longer needed in open_confluence.v, shall we keep it? *)
 
 Notation IO := [set input;output].
 
@@ -727,6 +736,51 @@ Defined.
 Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :
   @iso2_del_edges2 F G i EF EG h =1 i.
 Proof. done. Qed.
+
+
+(* lemmas for term extraction *)
+
+Lemma big_par_iso2 (T : eqType) (s : seq T) idx F G : 
+  (forall x, x \in s -> F x ≃2 G x) ->
+  \big[g2_par/idx]_(x <- s) F x ≃2 \big[g2_par/idx]_(x <- s) G x.
+Proof.
+  move => A. 
+  elim: s A => [_|i s IH (* /all_cons [A B] *) E]. 
+  by rewrite !big_nil. 
+  rewrite !big_cons. apply: par_iso2; auto.
+  apply E, mem_head. apply IH=>x Hx. apply E. by apply mem_tail. 
+Qed.
+
+(** Extensionality lemma for [subgraph_for], the general construction
+underlying bag and interval subgraphs used in the extraction
+function. *)
+Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
+  (C1 : @consistent _ G V1 E1) (C2: consistent V2 E2) :
+  V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->
+  point (subgraph_for C1) i1 o1 ≃2 point (subgraph_for C2) i2 o2.
+Proof.
+  move => eq_V eq_E eq_i eq_o. subst.
+  move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
+  unshelve Iso2 (@Iso _ (subgraph_for C1) (subgraph_for C2) bij_id bij_id xpred0 _).
+  split=>//e b//. admit. 
+    (* rewrite bool_irrelevance ...  *)
+Qed.
+
+(** TODO: [G[V1,E1] ∥ G[V2,E2] ≈ G[V1 :|: V2, E1 :|: E2]] *)
+
+(** recognizing the full subgraph *)
+Lemma iso2_subgraph_forT (G : graph2) (V : {set G}) (E : {set edge G}) (con : consistent V E) i o :
+  (forall x, x \in V) -> (forall e, e \in E) -> val i = input -> val o = output ->
+  point (subgraph_for con) i o ≃2 G. 
+Proof.
+  move => HV HE Hi Ho.
+  have ? : V = [set: G] by apply/setP => z; rewrite inE HV.
+  have ? : E = [set: edge G] by apply/setP => z; rewrite inE HE.
+  subst.
+  transitivity (point (subgraph_for (@consistentTT _ G)) i o).
+  - exact: subgraph_for_iso.
+  - irewrite (iso_iso2 (iso_subgraph_forT _)). rewrite /= Ho Hi. by case G. 
+Qed.
 
 End s. 
 

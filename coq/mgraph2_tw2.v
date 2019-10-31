@@ -1,7 +1,7 @@
 Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
 Require Import edone set_tac finite_quotient preliminaries digraph sgraph treewidth minor equiv.
-Require Import structures mgraph_jar ptt mgraph2_jar skeleton.
+Require Import structures mgraph ptt mgraph2 skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,9 +9,9 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 Section Subalgebra.
-Variable sym : eqType.
-Notation graph := (@graph sym).
-Notation graph2 := (@graph2 sym).
+Variable L : labels.
+Notation graph := (graph L).
+Notation graph2 := (graph2 L).
 
 Implicit Types (G H : graph) (U : sgraph) (T : forest).
 
@@ -22,7 +22,7 @@ Open Scope implicit_scope.
 Arguments sdecomp T G B : clear implicits.
 
 Definition compatible (T : forest) (G : graph2) (B : T -> {set G}) := 
-  exists t, (g_in \in B t) && (g_out \in B t).
+  exists t, (input \in B t) && (output \in B t).
 
 Lemma sdecomp_sskel (T : forest) (G : graph2) (B : T -> {set G}) :
   sdecomp T (sskeleton G) B <-> (sdecomp T G B /\ compatible B).
@@ -30,9 +30,9 @@ Proof.
   split. 
   - case => [D1 D2 D3]. split. split => //. 
     + move => x y /= xy. apply: D2. by rewrite /edge_rel/= xy. 
-    + case: (altP (g_in =P g_out :> skeleton G)) => E. 
-      * case: (D1 g_in) => t Ht. exists t. by rewrite -E !Ht.
-      * suff: (g_in : sskeleton G) -- g_out by apply: D2. by rewrite /edge_rel/= E !eqxx.
+    + case: (altP (input =P output :> skeleton G)) => E. 
+      * case: (D1 input) => t Ht. exists t. by rewrite -E !Ht.
+      * suff: (input : sskeleton G) -- output by apply: D2. by rewrite /edge_rel/= E !eqxx.
   - move => [[D1 D2 D3] C]. split => //= x y. case/or3P; first exact: D2.
     + case/and3P => ? /eqP E1 /eqP E2. by subst. 
     + case/and3P => ? /eqP E1 /eqP E2. subst. 
@@ -66,7 +66,7 @@ Qed.
 Section Quotients. 
   Variables (G1 G2 : graph2).
   
-  Let P : {set union G1 G2} := [set inl g_in; inl g_out; inr g_in; inr g_out].
+  Let P : {set union G1 G2} := [set inl input; inl output; inr input; inr output].
 
   Definition admissible (eqv : rel (union G1 G2)) := 
     forall x y, eqv x y -> x = y \/ [set x;y] \subset P.
@@ -132,22 +132,22 @@ Section Quotients.
   Lemma decomp_par2 (T1 T2 : forest) D1 D2 : 
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
-    exists T D, [/\ sdecomp T (sskeleton (par2 G1 G2)) D & width D <= 3].
+    exists T D, [/\ sdecomp T (sskeleton (G1 ∥ G2)) D & width D <= 3].
   Proof using.
     move => dec1 dec2 W1 W2.
-    case: (decomp_quot (e:=eqv_clot [:: (inl g_in, inr g_in); (inl g_out, inr g_out)])
+    case: (decomp_quot (e:=eqv_clot [:: (inl input, inr input); (inl output, inr output)])
                        dec1 dec2 W1 W2 _ _).
     - apply admissible_eqv_clot. case => u v. 
       rewrite !inE /= !xpair_eqE => /orP [] /andP [/eqP -> /eqP->]; by rewrite !eqxx.
-    - pose P' : {set union G1 G2} := [set inl g_in; inl g_out].
+    - pose P' : {set union G1 G2} := [set inl input; inl output].
       apply: (@leq_trans #|P'|); last by rewrite cards2; by case (_ != _).
-      apply: (@leq_trans #|[set (\pi x : par2 G1 G2) | x in P']|); last exact: leq_imset_card.
+      apply: (@leq_trans #|[set (\pi x : G1 ∥ G2) | x in P']|); last exact: leq_imset_card.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. case/setUP : H1 => H1; first case/setUP : H1 => H1.
       * by rewrite mem_imset.
-      * move/set1P : H1 => ->. apply/imsetP. exists (inl g_in); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (inl input); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
-      * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (inl output); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
@@ -157,20 +157,20 @@ Section Quotients.
   Lemma decomp_dot2 (T1 T2 : forest) D1 D2 : 
     sdecomp T1 (sskeleton G1) D1 -> sdecomp T2 (sskeleton G2) D2 -> 
     width D1 <= 3 -> width D2 <= 3 ->
-    exists T D, [/\ sdecomp T (sskeleton (dot2 G1 G2)) D & width D <= 3].
+    exists T D, [/\ sdecomp T (sskeleton (G1 · G2)) D & width D <= 3].
   Proof using.
     move => dec1 dec2 W1 W2.
-    case: (decomp_quot (e:=eqv_clot [:: (inl g_out, inr g_in)]) dec1 dec2 W1 W2 _ _).
+    case: (decomp_quot (e:=eqv_clot [:: (inl output, inr input)]) dec1 dec2 W1 W2 _ _).
     - apply admissible_eqv_clot. case => u v.
       rewrite !inE /= !xpair_eqE => /andP [/eqP -> /eqP->]; by rewrite !eqxx.
-    - pose P' : {set union G1 G2} := [set inl g_in; inl g_out; inr g_out].
+    - pose P' : {set union G1 G2} := [set inl input; inl output; inr output].
       apply: (@leq_trans #|P'|); last apply cards3.
-      apply: (@leq_trans #|[set (\pi x : dot2 G1 G2) | x in P']|); last exact: leq_imset_card.
+      apply: (@leq_trans #|[set (\pi x : G1 · G2) | x in P']|); last exact: leq_imset_card.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. move: H1. 
       rewrite /P -!setUA [[set _;_]]setUC !setUA. case/setUP => H1.
       * by rewrite mem_imset.
-      * move/set1P : H1 => ->. apply/imsetP. exists (inl g_out); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (inl output); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
@@ -180,14 +180,14 @@ Section Quotients.
 End Quotients.
 
 Lemma decomp_cnv (G : graph2) T D : 
-  sdecomp T (sskeleton G) D -> sdecomp T (sskeleton (cnv2 G)) D.
+  sdecomp T (sskeleton G) D -> sdecomp T (sskeleton (G°)) D.
 Proof. 
   move/sdecomp_sskel => [dec cmp]. apply/sdecomp_sskel; split => //. 
   move: cmp => [t] H. exists t => /=. by rewrite andbC.
 Qed.
 
 Lemma decomp_dom (G : graph2) T D : 
-  sdecomp T (sskeleton G) D -> sdecomp T (sskeleton (dom2 G)) D.
+  sdecomp T (sskeleton G) D -> sdecomp T (sskeleton (dom G)) D.
 Proof. 
   move/sdecomp_sskel => [dec cmp]. apply/sdecomp_sskel; split => //. 
   move: cmp => [t] /andP [H _]. exists t => /=. by rewrite !H. 
@@ -199,32 +199,37 @@ Theorem eval_TW2 A (f: A -> graph2):
 Proof.
   move => Hf. elim => [u IHu v IHv | u IHu v IHv | u IHu | u IHu | | | a].
   - move: IHu IHv => [T1] [D1] [? ?] [T2] [D2] [? ?].
-    simpl graph_of_term. exact: (decomp_dot2 (D1 := D1) (D2 := D2)).
+    exact: (decomp_dot2 (D1 := D1) (D2 := D2)).
   - move: IHu IHv => [T1] [D1] [? ?] [T2] [D2] [? ?].
-    simpl graph_of_term. exact: (decomp_par2 (D1 := D1) (D2 := D2)).
+    exact: (decomp_par2 (D1 := D1) (D2 := D2)).
   - move: IHu => [T] [D] [D1 D2]. exists T. exists D. split => //. 
     exact: decomp_cnv. 
   - move: IHu => [T] [D] [D1 D2]. exists T. exists D. split => //. 
     exact: decomp_dom. 
   - apply: decomp_small. by rewrite card_unit.
-  - apply: decomp_small. by rewrite card_bool.
+  - apply: decomp_small. by rewrite card_sum card_unit.
   - apply Hf. 
 Qed.
 
-Theorem graph_of_TW2 (u : term sym) : 
-  exists T D, [/\ sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].
+End Subalgebra.
+
+Section s.
+Variable A: Type.
+Let graph_of_term: term A -> graph2 (flat_labels A) := eval (@g2_var (flat_labels A)).
+Theorem graph_of_TW2 (u : term A) : 
+  exists T D, [/\ @sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].
 Proof.
   apply eval_TW2 => a.
-  apply: decomp_small. by rewrite card_bool.  
+  apply: decomp_small. by rewrite card_sum card_unit.  
 Qed.
 
-Lemma sskel_K4_free (u : term sym) : K4_free (sskeleton (graph_of_term u)).
+Lemma sskel_K4_free (u : term A) : K4_free (sskeleton (graph_of_term u)).
 Proof.
   case: (graph_of_TW2 u) => T [B] [B1 B2]. 
   exact: TW2_K4_free B1 B2.
 Qed.
 
-Lemma skel_K4_free (u : term sym) : K4_free (skeleton (graph_of_term u)).
+Lemma skel_K4_free (u : term A) : K4_free (skeleton (graph_of_term u)).
 Proof.
   apply: minor_K4_free (@sskel_K4_free u).
   exact: sub_minor (skel_sub _).
@@ -232,4 +237,4 @@ Qed.
 
 (* TODO: define the subalgebra as a ptt_algebra? (with sigma types) *)
 
-End Subalgebra.
+End s.

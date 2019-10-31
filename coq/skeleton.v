@@ -2,7 +2,7 @@ Require Import Setoid Morphisms.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient bij preliminaries digraph sgraph treewidth minor checkpoint.
-Require Import structures mgraph_jar mgraph2_jar.
+Require Import structures mgraph mgraph2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -14,8 +14,8 @@ Set Bullet Behavior "Strict Subproofs".
 (** * Skeletons *)
 
 Section Skeleton.
-Variable (sym : eqType).
-Notation graph := (@graph sym).
+Variable (L : labels).
+Notation graph := (graph L).
 
 Definition adjacent (G : graph) (x y : G) :=
   [exists e, e \in edges x y :|: edges y x].
@@ -75,7 +75,7 @@ Proof.
     + move => {x y A} x y H xy. 
       case: H => [|x0 [y0] [? ? /andP [E A]]]; first by rewrite eq_sym.
       exists y0; exists x0. by rewrite /edge_rel/=/sk_rel eq_sym adjacent_sym A E. 
-    + move => e0. exists (@source _ G e0). exists (@target _ G e0).
+    + move => e0. exists (@endpoint _ G false e0). exists (@endpoint _ G true e0).
       split => // ; last apply/andP;split => //. 
       * apply: contraNN xy => /eqP H. by rewrite eqmodE H.
       * apply/existsP; exists e0. by rewrite !inE !eqxx.
@@ -96,10 +96,11 @@ Proof.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel/=/sk_rel. 
     rewrite bij_eq ?He //=. apply/existsP; exists (h.e e). 
-      by rewrite !inE !source_iso !target_iso !eqxx.
+    rewrite !inE !endpoint_iso /=.
+    case (h.d e)=>/=; by rewrite !eqxx. 
 Qed.
 
-Instance skel_iso: CProper (@iso sym ==> diso) skeleton.
+Instance skel_iso: CProper (iso ==> diso) skeleton.
 Proof.
   intros F G h. exists (iso_v h). apply: hom_skel. apply: (hom_skel (iso_sym h)).
 Defined.
@@ -114,22 +115,22 @@ Arguments pi_hom [G] e.
 End Skeleton.
 
 Coercion skeleton : graph >-> sgraph.
-Arguments sk_rel [sym G] / _ _.
+Arguments sk_rel [L G] / _ _.
 
 Section SSkeleton.
-Variable (sym : eqType).
-Notation graph := (@graph sym).
-Notation graph2 := (@graph2 sym).
+Variable (L : labels).
+Notation graph := (graph L).
+Notation graph2 := (graph2 L).
 
 
 (** ** Strong skeletons *)
 
-Definition sskeleton (G : graph2) := @add_edge (skeleton G) g_in g_out.
+Definition sskeleton (G : graph2) := @sgraph.add_edge (skeleton G) input output.
 
 Lemma sskelP (G : graph2) (P : G -> G -> Prop) : 
   Symmetric P -> 
   (forall e : edge G, source e != target e -> P (source e) (target e)) ->
-  (g_in != g_out :> G -> P g_in g_out) ->
+  (input != output :> G -> P input output) ->
   (forall x y : sskeleton G, x -- y -> P x y).
 Proof. 
   move => S H IO x y. case/orP. exact: skelP. 
@@ -148,22 +149,24 @@ Proof. exists id => //= x y H _. exact: subrelUl. Qed.
 Lemma hom2_sskel (G1 G2 : graph2) (h: iso2 G1 G2) :
   forall x y, @edge_rel (sskeleton G1) x y -> @edge_rel (sskeleton G2) (h x) (h y).
 Proof.
+  (* TODO: reuse [hom_skel] above? *)
   have B: bijective h by exists h^-1; apply (iso_v h).
   apply sskelP.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /= /edge_rel //=. 
     rewrite /= bij_eq ?He //=. apply/existsP; exists (h.e e).
-      by rewrite !inE !source_iso !target_iso !eqxx.
-  - move => H. by rewrite /edge_rel /= bij_eq // H iso_in iso_out !eqxx.
+    rewrite !inE !endpoint_iso.
+    case (h.d e)=>/=; by rewrite !eqxx. 
+  - move => H. by rewrite /edge_rel /= bij_eq // H iso2_input iso2_output !eqxx.
 Qed.
 
-Instance sskel_iso2: CProper (@iso2 sym ==> diso) sskeleton.
+Instance sskel_iso2: CProper (iso2 ==> diso) sskeleton.
 Proof.
   intros F G h. exists (iso_v h). exact: hom2_sskel. exact:(hom2_sskel (iso2_sym h)).
 Defined.
 
 Lemma decomp_iso2 (G1 G2 : graph2) (T : forest) B1 : 
-  @sdecomp T (sskeleton G1) B1 -> G1 ≈ G2 -> 
+  @sdecomp T (sskeleton G1) B1 -> G1 ≃2 G2 -> 
   exists2 B2, @sdecomp T (sskeleton G2) B2 & width B2 = width B1.
 Proof.
   move => dec iso. apply: decomp_iso dec _. exact: sskel_iso2. 
@@ -190,7 +193,7 @@ Proof.
 Qed.
 
 Lemma sskeleton_subgraph_for (G : graph2) (V : {set G}) (E : {set edge G})
-  (con : consistent V E) (i o : sig [eta mem V]) : val i = g_in -> val o = g_out ->
+  (con : consistent V E) (i o : sig [eta mem V]) : val i = input -> val o = output ->
   sgraph.subgraph (sskeleton (point (subgraph_for con) i o)) (sskeleton G).
 Proof.
   rewrite {2}/sskeleton/= => <- <-.
@@ -202,10 +205,10 @@ Proof.
 Qed.
 
 Lemma sskeleton_adjacent (G : graph) (i o : G) :
-  adjacent i o -> diso (skeleton G) (sskeleton (point G i o)).
+  adjacent i o -> diso G (sskeleton (point G i o)).
 Proof.
   move=> Aio.
-  exists (bij_id: bij (skeleton G) (sskeleton (point G i o))) => /=. 
+  exists (bij_id: bij G (sskeleton (point G i o))) => /=. 
   by move=>x y; rewrite {2}/edge_rel/= => ->.
   rewrite /is_dhom. apply sskelP.
   - move=> x y. by rewrite sg_sym.
@@ -216,16 +219,17 @@ Qed.
 (** We treat [remove_edges] separately from [subgraph_for] since
 removing only edges allows us to avoid the sigma-type on for the
 vertices *)
+(* TODO: reuse the one in mgraph? *)
 Definition remove_edges (G : graph) (E : {set edge G}) := 
   {| vertex := G;
      edge := [finType of { e : edge G | e \notin E }];
-     source e := source (val e);
-     target e := target (val e);
-     label e := label (val e) |}.
+     endpoint b e := endpoint b (val e);
+     vlabel x := vlabel x;
+     elabel e := elabel (val e) |}.
 
 Lemma remove_loops (G : graph) (E : {set edge G}) :
   {in E, forall e, source e = target e} ->
-  diso (skeleton G) (skeleton (remove_edges E)).
+  diso G (remove_edges E).
 Proof.
   move=> Eloops.
   have Esame x y : x != y -> @edges _ (remove_edges E) x y = val @^-1: @edges _ G x y.
@@ -274,11 +278,11 @@ Proof.
 Qed.
 
 Lemma sskeleton_remove_io (G : graph2) (E : {set edge G}) :
-  E \subset @edge_set _ G [set g_in; g_out] ->
-  diso (sskeleton (point (remove_edges E) g_in g_out)) (sskeleton G).
+  E \subset @edge_set _ G IO ->
+  diso (sskeleton (point (remove_edges E) input output)) (sskeleton G).
 Proof.
   move=> E_subIO. 
-  exists (bij_id: bij (sskeleton (point (remove_edges E) g_in g_out)) (sskeleton G)) => //.  
+  exists (bij_id: bij (sskeleton (point (remove_edges E) input output)) (sskeleton G)) => //.  
   all: rewrite /is_dhom; apply sskelP.
   - move=> x y. by rewrite sg_sym.
   - move=> e sNt. apply/orP; left. rewrite /edge_rel/=/sk_rel sNt /=. exact: adjacent_edge.
@@ -306,7 +310,7 @@ Proof. by rewrite /interval_edges interval_sym setUC. Qed.
 
 Lemma igraph_proof (G : graph) (x y : skeleton G) :
   consistent (interval x y) (interval_edges x y).
-Proof. move=> e. rewrite inE =>/andP[_]. by rewrite inE =>/andP. Qed.
+Proof. move=> e. rewrite inE =>[b]. rewrite inE =>/andP. Admitted.
 
 Definition igraph (G : graph) (x y : skeleton G) :=
   @point (subgraph_for (@igraph_proof G x y))
@@ -314,15 +318,15 @@ Definition igraph (G : graph) (x y : skeleton G) :=
          (Sub y (intervalR x y)).
 
 Definition bgraph (G : graph) (U : {set G}) (x:G) :=
-  @point (induced (@bag (skeleton G) U x))
-         (Sub x (@bag_id (skeleton G) U x))
-         (Sub x (@bag_id (skeleton G) U x)).
+  @point (induced (@bag G U x))
+         (Sub x (@bag_id G U x))
+         (Sub x (@bag_id G U x)).
 
-Lemma bgraph_eq_io (G : graph) (U : {set G}) (x : G) : g_in = g_out :> @bgraph G U x.
+Lemma bgraph_eq_io (G : graph) (U : {set G}) (x : G) : input = output :> @bgraph G U x.
 Proof. by []. Qed.
 
 Lemma interval_bag_edges_disj (G : graph) (U : {set G}) (x y : G) :
-  connected [set: skeleton G] -> x \in @CP G U -> y \in @CP G U ->
+  connected [set: skeleton G] -> x \in @CP (skeleton G) U -> y \in @CP (skeleton G) U ->
   [disjoint edge_set (@bag G U x) & @interval_edges G x y].
 Proof.
   move=> G_conn x_cp y_cp. rewrite -setI_eq0 -subset0. apply/subsetP => e.
@@ -554,7 +558,7 @@ Qed.
 
 Lemma consistent_setD (G : graph) V E E' : 
   @consistent _ G V E -> consistent V (E :\: E').
-Proof. move => con_E e /setDP [? _]. exact: con_E. Qed.
+Proof. move => con_E e b /setDP [? _]. exact: con_E. Qed.
 
 (* Is this the most general type? *)
 Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
@@ -642,22 +646,24 @@ Proof. apply: iso_subgraph; exact: iso_pointxx. Qed.
 Lemma sub_sub (G H : graph) : 
   subgraph G H -> sgraph.subgraph G H.
 Proof.
-  intros (hv&he&hom&inj_hv&inj_he). 
+  intros (hv&he&hd&hom&inj_hv&inj_he). 
   exists hv => // x y xy _. move: x y xy. 
   apply skelP; first by move=> x y; rewrite sg_sym.
-  move=> e sNt. by rewrite /edge_rel/= (inj_eq inj_hv) sNt -source_hom -target_hom adjacent_edge.
-Qed.
+  move=> e sNt. (* by *) rewrite /edge_rel/= (inj_eq inj_hv) sNt (* -source_hom -target_hom adjacent_edge *).
+Admitted.
 
-Definition flesh_out_graph (G : sgraph) sym0 (z : G) : graph2 :=
+Definition flesh_out_graph (G : sgraph) sym0 tt (z : G) : graph2 :=
   {| graph_of :=
        {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];
-          source := fst \o val; target := snd \o val; label := fun _ => sym0 |} ;
-     g_in := z; g_out := z |}.
+          endpoint b e := if b then snd (val e) else fst (val e);
+          vlabel _ := tt;
+          elabel := fun _ => sym0 |} ;
+     input := z; output := z |}.
 
-Lemma flesh_out (G : sgraph) (sym0 : sym) (z : G) :
+Lemma flesh_out (G : sgraph) (sym0 : le L) (tt: lv L) (z : G) :
   { G' & (diso (sskeleton G') G * diso (skeleton G') G)%type}.
 Proof.
-  pose G' := flesh_out_graph sym0 z. exists G'.
+  pose G' := flesh_out_graph sym0 tt z. exists G'.
   suff iso : diso (skeleton G') G.
   { split=> //. rewrite <-iso. exact: iso_pointxx. }
   exists (bij_id : bij (skeleton G') G) => x y; rewrite /sk_rel.
@@ -681,8 +687,8 @@ Proof.
 Qed.
 Opaque merge.
 
-Arguments unl [sym G H] x : simpl never.
-Arguments unr [sym G H] x : simpl never.
+Arguments unl [L G H] x : simpl never.
+Arguments unr [L G H] x : simpl never.
 
 Lemma edge_set_component (G : graph) (C : {set skeleton G}) (e : edge G) : 
   C \in @components G [set: G] -> (source e \in C) = (target e \in C).
@@ -754,7 +760,7 @@ Qed.
 Lemma component_can_e' : cancel component_e' component_e.
 Proof. move => x; rewrite /component_e/component_e'; by case (decE _). Qed.
 
-Lemma component_hom : is_hom component_v component_e.
+Lemma component_hom : is_hom component_v component_e xpred0.
 Proof. repeat split; by case. Qed.
 
 Definition iso_component : iso (union (induced C) (induced (~: C))) G := 
