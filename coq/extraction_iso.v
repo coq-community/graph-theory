@@ -195,20 +195,186 @@ Qed.
 they currently need [par2_alt, par2_eqv_equivalence], if we can avoid it that could be better
 
 *)
+Section alt.
+ Variables F G: graph2.
+
+ Definition par2_eqv : rel (union F G) :=
+   fun x y => (x == y) ||
+     if (input != output :> F) && (input != output :> G)
+     then [set x; y] \in [set [set inl input; inr input]; [set inl output; inr output]]
+     else [set x; y] \subset [set inl input; inl output; inr input; inr output].
+
+ Definition par2_eqv_refl : reflexive par2_eqv.
+ Proof. by move=> ?; rewrite /par2_eqv eqxx. Qed.
+
+ Lemma par2_eqv_sym : symmetric par2_eqv.
+ Proof. move=> x y. by rewrite /par2_eqv [[set y; x]]setUC [y == x]eq_sym. Qed.
+
+ Definition par2_eqv_trans : transitive par2_eqv.
+ Proof.
+   move=> y x z. rewrite /par2_eqv.
+   case/altP: (x =P y) => [<-//|xNy/=]. case/altP: (y =P z) => [<-->//=|yNz/=]. 
+   case/boolP: ((input != output :> F) && (input != output :> G)).
+   - rewrite !inE -(implyNb (x == z)).
+     case/andP=> /negbTE iNo1 /negbTE iNo2 Hxy Hyz. apply/implyP=> xNz.
+     move: Hxy xNy. rewrite 2!eqEcard 2!subUset 4!sub1set !inE.
+     case/orP => /andP[]/andP[] /orP[]/eqP ? /orP[]/eqP ? _; subst=> // _.
+     all: move: Hyz xNz yNz; rewrite 2!eqEcard 2!subUset 4!sub1set !inE.
+     all: rewrite ?eqxx ?sum_eqE ?[output == input]eq_sym ?iNo1 ?iNo2 ?orbT ?orbF /=.
+     all: case/andP => /orP[]/eqP-> _; by rewrite !eqxx.
+   - rewrite -implyNb => _ Hxy Hyz. apply/implyP=> xNz.
+     rewrite subUset !sub1set. apply/andP; split.
+     + apply: (subsetP Hxy). by rewrite !inE eqxx.
+     + apply: (subsetP Hyz). by rewrite !inE eqxx.
+ Qed.
+
+ Canonical par2_eqv_equivalence :=
+   EquivRel par2_eqv par2_eqv_refl par2_eqv_sym par2_eqv_trans.
+
+ Lemma par2_eqv_io :
+   (par2_eqv (inl input) (inr input)) * (par2_eqv (inl output) (inr output)).
+ Proof.
+   rewrite /par2_eqv/=. case: ifP => _.
+   - by rewrite !inE !eqxx.
+   - by rewrite !subUset !sub1set !inE !eqxx.
+ Qed.
+
+ Definition par2_eq (x y : union F G) :=
+   match x,y with
+   | inl x, inr y => (x == input) && (y == input) || (x == output) && (y == output)
+   | _,_ => false
+   end.
+
+ Lemma set2_in_sym (T : finType) (x y a b : T) (e : rel T) :  
+   x != y -> symmetric e -> e a b -> [set x;y] == [set a;b] -> e x y.
+ Proof.
+   move => xDy sym_e e_ab E. move: E xDy. rewrite eqEsubset !subUset !sub1set -andbA.
+   case/and3P => /set2P[->|->] /set2P[->|->] _; by rewrite ?eqxx // sym_e.
+ Qed.
+
+ Hint Resolve equiv_of_sym : core.
+ Ltac sub := apply: sub_equiv_of => /=; by rewrite !eqxx.
+
+ Lemma par2_equiv_of : par2_eqv =2 equiv_of par2_eq.
+ Proof using.
+   move=> x y. apply/idP/idP.
+   - rewrite /par2_eqv. case/altP: (x =P y) => [<- _|xNy]/=; first exact: equiv_of_refl.
+     case: ifP => [_|/negbT].
+     + rewrite !inE. case/orP; apply: set2_in_sym => //; sub.
+     + rewrite negb_and 2!negbK. case/orP=> [/eqP Eio1|/eqP Eio2].
+       * rewrite -Eio1 setUid => Exy.
+         have Rio2 : equiv_of par2_eq (inr output) (inr input). 
+         { apply: (@equiv_of_trans _ _ (inl input)); first rewrite equiv_of_sym Eio1; sub. }
+         move: Exy xNy; rewrite subUset 2!sub1set !inE -2!orbA.
+         case/andP=> /or3P[]/eqP-> /or3P[]/eqP->.
+         all: rewrite ?eqxx // ?[equiv_of _ _ (inl _)]equiv_of_sym => _.
+         all: try solve [apply: (@sub_equiv_of _ _ (inl _));
+                         by rewrite /par2_eq -?Eio1 !eqxx].
+         by rewrite equiv_of_sym.
+       * rewrite -setUA -Eio2 setUid => Exy.
+         have Rio2 : equiv_of par2_eq (inl output) (inl input).
+         { apply: (@equiv_of_trans _ _ (inr output)); last rewrite equiv_of_sym -Eio2;
+           by apply: sub_equiv_of; rewrite /par2_eq !eqxx. }
+         move: Exy xNy; rewrite subUset 2!sub1set !inE -2!orbA.
+         case/andP=> /or3P[]/eqP-> /or3P[]/eqP->.
+         all: rewrite ?eqxx // ?[equiv_of _ (inr _) _]equiv_of_sym => _.
+         all: try solve [apply: (@sub_equiv_of _ _ (inl _));
+                         by rewrite /par2_eq -?Eio2 !eqxx].
+         by rewrite equiv_of_sym.
+   - apply: equiv_of_sub; auto using par2_eqv_refl,par2_eqv_sym,par2_eqv_trans.
+     move => {x y} [x|x] [y|y] => //=. 
+     by case/orP; case/andP => /eqP-> /eqP->; rewrite par2_eqv_io.
+ Qed.
+
+ Lemma par2_eqv_ii x y : 
+   x = input :> F -> y = input :> G ->
+   par2_eqv (inl x) (inr y).
+ Proof.
+   move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
+     by rewrite /par2_eq !eqxx. 
+ Qed.
+ 
+ Lemma par2_eqv_oo x y : 
+   x = output :> F -> y = output :> G ->
+   par2_eqv (inl x) (inr y).
+ Proof.
+   move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
+     by rewrite /par2_eq !eqxx. 
+ Qed.
+
+ Transparent union.
+ Lemma par2_LR x y :
+   inl x = inr y %[mod par2_eqv_equivalence] ->
+   x = input /\ y = input \/ x = output /\ y = output.
+ Proof.
+   move/eqquotP. rewrite /=/par2_eqv /eq_op/= -!/eq_op. case: ifP => i_o.
+   - rewrite !inE !eqEsubset. case/orP=> /andP[H _]; move: H.
+     all: rewrite subUset !sub1set !inE /eq_op/= orbF =>/andP[/eqP-> /eqP->].
+     + by left.
+     + by right.
+   - move/negbT: i_o. rewrite negb_and !negbK. case/orP=> /eqP<-.
+     all: rewrite subUset !sub1set !inE /eq_op/= !orbF orbb.
+     + case/andP=> /eqP-> /orP[]/eqP->; by [left | right].
+     + case/andP=> /orP[]/eqP-> /eqP->; by [left | right].
+ Qed.
+ Opaque union.
+
+ Lemma par2_injL x y : 
+   input != output :> G -> 
+   inl x = inl y %[mod par2_eqv_equivalence] ->
+   x = y.
+ Proof.
+   move=> iNo2 /eqquotP/=. rewrite /par2_eqv/= iNo2 andbT sum_eqE.
+   case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
+   - rewrite !inE !eqEsubset ![[set inl x; inl y] \subset _]subUset !sub1set !inE.
+     rewrite /eq_op/= !orbF. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
+   - by rewrite subUset !sub1set !inE /eq_op/= !orbF !orbb => /andP[/eqP-> /eqP->].
+ Qed.
   
+ Lemma par2_injR x y : 
+   input != output :> F -> 
+   inr x = inr y %[mod par2_eqv_equivalence] ->
+   x = y.
+ Proof.
+   move=> iNo2 /eqquotP/=. rewrite /par2_eqv/= iNo2 /= sum_eqE.
+   case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
+   - rewrite !inE !eqEsubset ![[set inr x; inr y] \subset _]subUset !sub1set !inE.
+     rewrite /eq_op/=. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
+   - by rewrite subUset !sub1set !inE /eq_op/= !orbb => /andP[/eqP-> /eqP->].
+ Qed.
+ 
+ Definition par2' := point (merge (F ⊎ G) par2_eqv_equivalence) (\pi inl input) (\pi inl output).
+
+ Lemma par2_eqE: rel_of_pairs [::(unl input,unr input);(unl output,unr output)] =2 par2_eq.
+ Proof. 
+   move => [x|x] [y|y]; rewrite /rel_of_pairs /par2_eq/= !inE /unl /unr //.
+  by rewrite !xpair_eqE.
+ Qed.
+
+ Hint Resolve id_bij : core.
+
+ Lemma par2_eqvE: eqv_clot [::(unl input,unr input);(unl output,unr output)] =2 par2_eqv.
+ Proof. 
+   move => x y. rewrite eqv_clotE par2_equiv_of.
+   apply: (lift_equiv (h := id)) => //. exact: par2_eqE.
+ Qed.
+
+ Lemma par2_alt: F ∥ G ≃2 par2'.
+ Proof. apply: merge_same=>//=. apply par2_eqvE. eqv. Qed.
+
+End alt.
+
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : input \in C) (Co : output \in C) (Di : input \in D) (Do : output \in D) :
   C :&: D \subset IO -> C :|: D = setT -> 
   edge_set C :&: edge_set D = set0 -> edge_set C :|: edge_set D = setT ->
   G ≃2 point (induced C) (Sub input Ci) (Sub output Co)
     ∥ point (induced D) (Sub input Di) (Sub output Do).
-Admitted.
-(*
 Proof.
   move => subIO fullCD disjE fullE. symmetry. setoid_rewrite par2_alt.
   set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
 
-  have injL (x y : G1) : inl x = inl y %[mod @par2_eqv_equivalence _ G1 G2] -> x = y.
+  have injL (x y : G1) : inl x = inl y %[mod par2_eqv_equivalence G1 G2] -> x = y.
   { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
@@ -216,7 +382,7 @@ Proof.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  have injR (x y : G2) : inr x = inr y %[mod @par2_eqv_equivalence _ G1 G2] -> x = y.
+  have injR (x y : G2) : inr x = inr y %[mod par2_eqv_equivalence G1 G2] -> x = y.
   { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
@@ -246,8 +412,8 @@ Proof.
     | inl p => inl (Sub e p)
     | inr p => inr (Sub e p)
     end.
-  apply Iso2'' with f g h k. 
-  - rewrite /f/g=>x.
+  have fg: cancel f g. {
+    rewrite /f/g=>x.
     case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
       * rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
@@ -266,13 +432,17 @@ Proof.
         rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
         rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
         by rewrite /= !orbF !andbT !andbb.
-      * rewrite -[x]reprK Ex. congr (\pi (inr _)). exact: val_inj.
-  - rewrite /f/g=>x. case: (decV x) => Hx; case: piP => -[]y.
-      * by move=> /injL<-.
-      * by case/inLR=> -[]/valE/=->->.
-      * by case/inRL=> -[->]/valE/=->.
-      * by move=> /injR<-.
-  - rewrite /h/k=>e. case:e=> [e|e].
+      * rewrite -[x]reprK Ex. congr (\pi (inr _)). exact: val_inj. (* LOOOOONG *)
+  }
+  have gf: cancel g f. {
+    rewrite /f/g=>x. case: (decV x) => Hx; case: piP => -[]y.
+    * by move=> /injL<-.
+    * by case/inLR=> -[]/valE/=->->.
+    * by case/inRL=> -[->]/valE/=->.
+    * by move=> /injR<-.
+  }
+  have hk: cancel h k. {
+    rewrite /h/k=>e. case:e=> [e|e].
     + have He : val e \in edge_set C := valP e.
       case: (decE _) => H; first by congr inl; exact: val_inj.
       suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
@@ -281,28 +451,25 @@ Proof.
       case: (decE _) => H; last by congr inr; exact: val_inj.
       suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
       by rewrite in_setI He H.
-  - rewrite /h/k=>e. by case: (decE e).
-  - case => [e|e]; split => //.
+  }
+  have kh: cancel k h. {
+    rewrite /h/k=>e. by case: (decE e).
+  }
+  unshelve Iso2 (@Iso _ _ _ (Bij fg gf) (Bij hk kh) xpred0 _)=>/=. 
+  - split=>//=; case => [e|e]//b. 
     + rewrite /f/h. case: piP => [[y|y]] /=. 
       * by move/injL <-. 
-      * by move/(@par2_LR _ G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
+      * by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
     + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/injL <-. 
-      * by move/(@par2_LR _ G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
-    + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/esym/(@par2_LR _ G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
-      * by move/injR <-. 
-    + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/esym/(@par2_LR _ G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
+      * by move/esym/(@par2_LR G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
       * by move/injR <-. 
   - rewrite /f. case: piP => [[y|y]] /=. 
     + by move/injL<-.
-    + by move/(@par2_LR _ G1 G2) => [[_ ->]|[/valE/= -> ->]]. 
+    + by move/(@par2_LR G1 G2) => [[_ ->]|[/valE/= -> ->]]. 
   - rewrite /f. case: piP => [[y|y]] /=. 
     + by move/injL<-.
-    + by move/(@par2_LR _ G1 G2) => [[/valE/= -> ->]|[_ ->]].
+    + by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[_ ->]].
 Qed.
- *)
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] -> input == output :> G ->
@@ -370,11 +537,11 @@ Definition sym2_ (G : graph2) (e : edge G) :=
 Definition sym2b (a : sym) (b : bool) : graph2 :=
   if b then @g2_var (flat_labels sym) a else (@g2_var (flat_labels sym) a)°.
 
-(* Definition sym2b' (a : sym) (b : bool) : graph2 := *)
-(*   point (edge_graph a) (~~b) (b).  *)
+Definition sym2b' (a : sym) (b : bool) : graph2 :=
+  point (@edge_graph (flat_labels _) mon0 a mon0) (if b then inl tt else inr tt) (if b then inr tt else inl tt).
 
-(* Lemma sym_eqv (a : sym) (b : bool) : sym2b a b = sym2b' a b. *)
-(* Proof. by case: b. Qed. *)
+Lemma sym_eqv (a : sym) (b : bool) : sym2b a b = sym2b' a b.
+Proof. by case: b. Qed.
 
 (** "false" is the input and "true" is the output *)
 Definition edges2_graph (As : seq (sym*bool)) : graph := 
@@ -401,8 +568,6 @@ Qed.
 
 Lemma edges2_cons (a : sym) (b : bool) (Ar : seq (sym * bool)) : 
   edges2 ((a, b) :: Ar) ≃2 sym2b a b ∥ edges2 Ar.
-Admitted.
-(*
 Proof.
   setoid_rewrite par2_alt.
   rewrite sym_eqv. (* this makes h actually typecheck *)
@@ -416,51 +581,55 @@ Proof.
     | inr x => x end.
   pose h (x : edge E1) : edge E2 := 
     match ord_0Vp x with 
-    | inl e => inl tt
+    | inl e => inl None
     | inr (exist o H) => inr o
     end.
   pose k (e : edge E2) : edge E1 := 
-    match e with inl tt => ord0 | inr i => lift ord0 i end.
-  apply Iso2'' with f g h k.
-  - rewrite /f/g=>x.
+    match e with inl _ => ord0 | inr i => lift ord0 i end.
+  have fg: cancel f g. {
+    rewrite /f/g=>x.
     case: piP => [] [y|y] /= /esym Hy.
-    * move/(@par2_LR _ (sym2b' a b) (edges2 Ar)) : Hy.
+    * move/(@par2_LR (sym2b' a b) (edges2 Ar)) : Hy.
       case => [[-> ->]|[-> ->]]; by destruct b.
-    * move/(@par2_injR _ (sym2b' a b) (edges2 Ar)) : Hy. apply. 
+    * move/(@par2_injR (sym2b' a b) (edges2 Ar)) : Hy. apply. 
         by destruct b.
-  - rewrite /f/g=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
+  }
+  have gf: cancel g f. {
+    rewrite /f/g=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
       rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqquotP => /=. 
-      destruct b;destruct y => //=;
+      destruct b;destruct y as [[]|[]] => //=;
       solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
-  - rewrite /h/k=>x. case: (ord_0Vp x) => [-> //|[o' Ho']].
+  }
+  have hk: cancel h k. {
+    rewrite /h/k=>x. case: (ord_0Vp x) => [-> //|[o' Ho']].
       apply: ord_inj. by rewrite lift0.
-  - rewrite /h/k. case=> [[]|x]. 
+  }
+  have kh: cancel k h. {
+    rewrite /h/k. case=> [[[[]|[]]|]|x]. 
       by case: (ord_0Vp ord0) => [|[o' Ho']].
       case: (ord_0Vp _) => [|[o']]. 
     * move/(f_equal (@nat_of_ord _)). by rewrite lift0.
     * move/eqP. rewrite lift0 eqSS => /eqP E. 
       congr inr. exact: ord_inj.
-  - move => e. split.
-    * rewrite [source]lock /= -lock. rewrite /h /=.
-      case: (ord_0Vp e) => [E|[o' Ho']].
-      + rewrite E /f /=. destruct b eqn: def_b.
-        all: symmetry; apply/eqquotP => //=.
-        exact: par2_eqv_ii.
-        exact: par2_eqv_oo.
-      + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
-    * rewrite [target]lock /= -lock. rewrite /h /=.
-      case: (ord_0Vp e) => [E|[o' Ho']].
-      + rewrite E /f /=. destruct b eqn: def_b.
-        all: symmetry; apply/eqquotP => //=.
-        exact: par2_eqv_oo.
-        exact: par2_eqv_ii.
-      + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
-    * rewrite /h/=. case: (ord_0Vp e) => [-> //|[o' Ho']].
-        by rewrite (tnth_cons Ho'). 
+  }
+  unshelve Iso2 (@Iso _ _ _ (Bij fg gf) (Bij hk kh) xpred0 _)=>/=. 
+  - split=>//e.
+    -- move=>d.
+       rewrite [endpoint]lock /= -lock. rewrite /h /=.
+       case: (ord_0Vp e) => [E|[o' Ho']].
+    + rewrite E /f /=. destruct b eqn: def_b.
+      all: symmetry; apply/eqquotP => //=; case d=>/=; subst=>/=;
+                                           rewrite /par2_eqv/=!inE/=; admit.       
+    (* maybe the case distinction on [d] is not necessary?
+       old proof was using 
+       exact: par2_eqv_ii   and   exact: par2_eqv_oo. 
+     *)
+    + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
+    -- rewrite /h/=. case: (ord_0Vp e) => [-> //|[o' Ho']].
+        by rewrite (tnth_cons Ho').  
   - rewrite /f /=. symmetry. apply/eqquotP => //=. exact: par2_eqv_ii.
   - rewrite /f /=. symmetry. apply/eqquotP => //=. exact: par2_eqv_oo.
 Qed.
- *)
 
 Lemma edges2_big (As : seq (sym * bool)) : 
   edges2 As ≃2 \big[@g2_par _/top]_(x <- As) sym2b x.1 x.2.
@@ -481,8 +650,6 @@ Proof. by rewrite inE => /andP[/eqP -> /eqP ->]. Qed.
 Lemma split_io_edges (G : graph2) : 
   let E : {set edge G} := edges input output :|: edges output input in
   G ≃2 edges2 [seq strip e | e in E] ∥ point (remove_edges E) input output.
-Admitted.
-(*
 Proof.
   move => E. setoid_rewrite par2_alt.
   set G' := par2' _ _.
@@ -508,22 +675,28 @@ Proof.
     | inl i => (tnth (in_tuple (enum E)) (cast_ord cast i))
     | inr e => val e
     end.
-  apply Iso2'' with f g h k.
-  - rewrite /f/g=>x/=.
+  have fg: cancel f g. {
+    rewrite /f/g=>x/=.
     case: piP => /= [[y|y]] /esym Hy.
-    * move/(@par2_LR _ (edges2 [seq strip e | e in E]) 
+    * move/(@par2_LR (edges2 [seq strip e | e in E]) 
                      (point (remove_edges E) input output)) : Hy.
         by case => [][-> ->]. 
-    * exact: (@par2_injR _ (edges2 [seq strip e | e in E]) 
+    * exact: (@par2_injR (edges2 [seq strip e | e in E]) 
                          (point (remove_edges E) input output)).
-  - rewrite /f/g=>x/=. case def_y : (repr x) => [y|y].
+  }
+  have gf: cancel g f. {
+    rewrite /f/g=>x/=. case def_y : (repr x) => [y|y].
     * rewrite -[x]reprK def_y. symmetry. apply/eqquotP => /=. 
       destruct y => //=; solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
     * by rewrite -def_y reprK. 
-  - rewrite /h/k=>e/=. 
+  }
+  have hk: cancel h k. {
+    rewrite /h/k=>e/=. 
     case: {-}_ / boolP => p //. 
       by rewrite /cast_ord /tnth nth_index //= ?mem_enum.
-  - rewrite /h/k. case => [i|e]/=. 
+  }
+  have kh: cancel k h. {
+    rewrite /h/k. case => [i|e]/=. 
     * case: {-}_/ boolP => p //.
       -- move: (h_proof _ _) => A. 
          congr inl. apply: val_inj => /=. 
@@ -532,24 +705,25 @@ Proof.
     * rewrite /h. case: {-}_/ boolP => p //.
       -- case:notF. by rewrite (negbTE (valP e)) in p.
       -- congr inr. exact: val_inj.
-  - move => e /=. rewrite /h. case: {-}_ / boolP => p //. split. 
-    * symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
-      rewrite tnth_map_in ?mem_enum //. 
-      move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
-      + apply: par2_eqv_ii => //. by rewrite (edges_st A). 
-      + apply: par2_eqv_oo => //. by rewrite (edges_st B).
-    * symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
-      rewrite tnth_map_in ?mem_enum //. 
-      move: p. rewrite inE /strip. case: ifP => /= [A _|A B].
-      + apply: par2_eqv_oo => //. by rewrite (edges_st A). 
-      + apply: par2_eqv_ii => //. by rewrite (edges_st B).
-    * rewrite tnth_map_in ?mem_enum // /strip. by case: ifP.
+  }
+  unshelve Iso2 (@Iso _ _ _ (Bij fg gf) (Bij hk kh) xpred0 _)=>/=. 
+  - split=>//e.
+    -- move=>d/=. rewrite /h. case: {-}_ / boolP => p //. 
+       symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
+       rewrite tnth_map_in ?mem_enum //. 
+       move: p. rewrite inE /strip. case: ifP => /= [A _|A B]; case d=>/=; admit.
+    (* like above, case distinction on [d] possibly not necessary,
+       old proof was proceeding as follows 
+    + apply: par2_eqv_ii => //. by rewrite (edges_st A). 
+    + apply: par2_eqv_oo => //. by rewrite (edges_st B).
+     *)
+    -- rewrite /h/=. case: {-}_ / boolP => p //.
+       rewrite tnth_map_in ?mem_enum // /strip. by case: ifP.
   - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_ii.
   - rewrite /= /f. symmetry. apply/eqquotP => /=. 
     exact: par2_eqv_oo.
 Qed.
-*)
 
 Lemma componentless_top (G : graph2) : 
   input != output :> G -> @components G (~: IO) == set0 -> 
