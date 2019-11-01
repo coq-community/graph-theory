@@ -105,21 +105,22 @@ Lemma merge_subgraph_dot (G : graph2) (V1 V2 : {set G}) (E1 E2 : {set edge G})
         (Sub (val o2) (union_bij_proofR _ (valP o2))).
 Proof.
   move => Eoi disE12 cap12. rewrite /=/g2_dot.
-  etransitivity. refine (iso_iso2 (merge_subgraph_iso _ disE12) _ _).
-  2: {
-    rewrite /=. rewrite !quot_sameE. (* super looong *)
-    etransitivity. apply merge_nothing. 2: apply: subgraph_for_iso => //.
-    repeat constructor. exact: val_inj.
-    - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
-      + by move/eqv_clot_injL => ->.
-      + move/eqv_clot_LR => [-> ->]. by symmetry. 
-    - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
-      + move/esym/eqv_clot_LR => [-> ->]. done.
-      + by move/eqv_clot_injR => ->.
-  }
+  setoid_rewrite-> (iso_iso2 (merge_subgraph_iso _ disE12)).
+  rewrite /=. rewrite !quot_sameE. (* super looong *)
+  rewrite-> merge_nothing. 2: repeat constructor; exact: val_inj.
+  apply: subgraph_for_iso => //.
+  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
+    + by move/eqv_clot_injL => ->.
+    + move/eqv_clot_LR => [-> ->]. by symmetry. 
+  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
+    + move/esym/eqv_clot_LR => [-> ->]. done.
+    + by move/eqv_clot_injR => ->.
+  Unshelve.
   move => x inV1 inV2. move: (inV1) (inV2). rewrite (cap12 _ inV1 inV2) {2 4}Eoi /= =>  ? ?. 
   rewrite !valK'. apply/eqquotP. exact: eqv_clot_hd.
 Qed. (* QED takes forever, opacity problem? *)
+
+(** TODO: [G[V1,E1] ∥ G[V2,E2] ≈ G[V1 :|: V2, E1 :|: E2]] *)
 
 (** These two lemmas make use of [merge_subgraph_dot], drastically
 simplifying their proofs (compared to the proofs underlying the ITP
@@ -129,28 +130,26 @@ Lemma split_pip (G : graph2) :
   connected [set: skeleton G] -> input != output :> G ->
   G ≃2 @bgraph _ G IO input · (@igraph _ G input output · @bgraph _ G IO output).
 Proof.
-  (* TODO: go back to setoid_rewrite and reorder proof *)
   move => conn_G Dio. symmetry.
-  etransitivity. apply dot2A. 
-  rewrite /= {1}/bgraph /igraph /induced. 
   have [Hi Ho] : input \in @CP (skeleton G) IO /\ output \in @CP (skeleton G) IO
     by split; apply: CP_extensive; rewrite !inE eqxx.
-  etransitivity. apply dot_iso2. 2: reflexivity. apply merge_subgraph_dot => //=.
-  exact: interval_bag_edges_disj.
-  move => x. exact: (@bag_interval_cap G).
+  rewrite-> dot2A. rewrite /= {1}/bgraph /igraph /induced.
+  setoid_rewrite merge_subgraph_dot=>//=.
+  2: exact: interval_bag_edges_disj.
+  2: move => x; exact: (@bag_interval_cap G).
   rewrite /bgraph/induced.
-  etransitivity. apply merge_subgraph_dot => //=.
-  apply: disjointsU. exact: bag_edges_disj. 
-  rewrite disjoint_sym interval_edges_sym. exact: interval_bag_edges_disj.
-  move => x A B. rewrite inE (disjointFl (bag_disj conn_G _ _ Dio)) //= interval_sym in A.
-    exact: (@bag_interval_cap G) B A. 
+  setoid_rewrite-> merge_subgraph_dot => //=.
   move: (union_bij_proofL _ _) => Pi.
   move: (union_bij_proofR _ _) => Po.
   move: (consistentU _ _) => con1.
   apply iso2_subgraph_forT => //=. 
   move => x. move: (sinterval_bag_cover conn_G Dio). 
     have: x \in [set: G] by []. rewrite /interval; set_tac.
-  move => e. by rewrite -(interval_bag_edge_cover).
+  move => e. by rewrite -(interval_bag_edge_cover).  
+  apply: disjointsU. exact: bag_edges_disj. 
+  rewrite disjoint_sym interval_edges_sym. exact: interval_bag_edges_disj.
+  move => x A B. rewrite inE (disjointFl (bag_disj conn_G _ _ Dio)) //= interval_sym in A.
+    exact: (@bag_interval_cap G) B A. 
 Qed.
 
 Lemma split_cp (G : graph2) (u : skeleton G) :
@@ -164,18 +163,14 @@ Proof.
   { apply: contraTneq proper_u => <-. by rewrite setUid cpxx setDv inE. }
   have [? ? ?] : [/\ input \in @CP G IO, output \in @CP G IO & u \in @CP G IO].
   { split; rewrite CP_set2 ?(@mem_cpl G) //; by [rewrite cp_sym (@mem_cpl G)|set_tac]. }
-  etransitivity. apply dot2A. rewrite /= {1}/igraph /bgraph /induced.
-  etransitivity. apply dot_iso2. 2: reflexivity. apply merge_subgraph_dot=>//. 
-  by rewrite disjoint_sym interval_edges_sym interval_bag_edges_disj. 
-  move => x A B. rewrite interval_sym in A. exact: (@bag_interval_cap G) B A.
+  rewrite-> dot2A. rewrite /= {1}/igraph /bgraph /induced.
+  setoid_rewrite-> merge_subgraph_dot=>//. 
+  2: by rewrite disjoint_sym interval_edges_sym interval_bag_edges_disj. 
+  2: move => x A B; rewrite interval_sym in A; exact: (@bag_interval_cap G) B A.
   move: (union_bij_proofL _ _) => Pi.
   move: (union_bij_proofR _ _) => Po.
   move: (consistentU _ _) => con1.
-  rewrite /igraph. etransitivity. apply merge_subgraph_dot=>//.
-  apply: disjointsU. apply: interval_edges_disj_cp. by set_tac.
-  apply: interval_bag_edges_disj => //. 
-  move => x. case/setUP. apply: (@interval_interval_cap G). by set_tac.
-    exact: (@bag_interval_cap G).
+  rewrite /igraph. setoid_rewrite merge_subgraph_dot=>//.
   apply iso2_subgraph_forT=>//.
   - move => x. 
     have: x \in @interval G input output. 
@@ -188,10 +183,18 @@ Proof.
     { move: (interval_bag_edge_cover conn_G Dio).
       by rewrite (eqP Ei0) (eqP Eo0) set0U setU0 => <-. }
     by rewrite (interval_cp_edge_cover conn_G proper_u). 
+  - apply: disjointsU. apply: interval_edges_disj_cp. by set_tac.
+    apply: interval_bag_edges_disj => //. 
+  - move => x. case/setUP. apply: (@interval_interval_cap G). by set_tac.
+    exact: (@bag_interval_cap G).
 Qed.
 
 (* TODO: prove a lemma corresponding to [merge_subgraph_dot] for
-[par2] and simplify the proofs below *)
+[par2] and simplify the proofs below 
+
+they currently need [par2_alt, par2_eqv_equivalence], if we can avoid it that could be better
+
+*)
   
 Lemma iso_split_par2 (G : graph2) (C D : {set G}) 
   (Ci : input \in C) (Co : output \in C) (Di : input \in D) (Do : output \in D) :
@@ -464,7 +467,7 @@ Lemma edges2_big (As : seq (sym * bool)) :
 Proof.
   elim: As => [|[a b] Ar IH].
   - rewrite big_nil. apply edges2_nil.
-  - rewrite big_cons. etransitivity. apply edges2_cons. apply par_iso2=>//. 
+  - rewrite big_cons. rewrite -> edges2_cons. by apply par_iso2. 
 Qed. 
 
 Definition strip (G : graph2) (e : edge G) := 
@@ -579,10 +582,8 @@ Lemma edges2_graph_of (G : graph2) :
   edges2 [seq strip e | e in @edges _ G input output :|: edges output input] ≃2 
   graph_of_term (\big[@tm_par _/@tm_top _]_(e in (@edges _ G input output :|: edges output input)) tm_ e).
 Proof.
-  etransitivity. apply edges2_big. rewrite big_map.
-  (* setoid_rewrite graph_of_big_pars. -- breaks with u+v<=k constraint error *)
-  etransitivity. 2: eapply iso2_sym. 2: eapply graph_of_big_pars.  
-  rewrite -big_enum_in.
+  rewrite->edges2_big. rewrite big_map.
+  rewrite->graph_of_big_pars. rewrite -big_enum_in.
   set s := enum _. 
   apply: big_par_iso2.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges input _). 
@@ -590,8 +591,6 @@ Qed.
 
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> G ≃2 graph_of_term (term_of G).
-Admitted.
-(*
 Proof.
   elim: (wf_leq (@term_of_measure sym) G) => {G} G _ IH CK4F_G.
   rewrite term_of_eq // /term_of_rec. 
@@ -615,7 +614,7 @@ Proof.
         exact: componentless_one.
     + setoid_rewrite split_io_edges at 1. set E := edges _ _ :|: edges _ _.
       have Eio : E = edge_set IO. by rewrite /E (eqP C1) !setUid edge_set1.
-      rewrite -{1}Eio {2}Eio. apply: par2_iso2; first exact: edges2_graph_of.
+      rewrite -{1}Eio {2}Eio. apply: par_iso2; first exact: edges2_graph_of.
       apply: IH; [exact: measure_remove_edges | exact: CK4F_remove_loops].
   - case: ifP => [C2|/negbT C2].
     + (* parallel split *)
@@ -623,7 +622,7 @@ Proof.
       case: (boolP (_ == set0)) => C3.
       * case: pickP => [C HC|]. 
         -- rewrite EC in HC. setoid_rewrite (split_component _ HC) at 1=> //=.  
-           apply: par2_iso2. 
+           apply: par_iso2. 
            ++ apply IH; rewrite -EC in HC.
               exact: measure_lens. exact: CK4F_lens.
            ++ apply IH; rewrite -EC in HC. 
@@ -639,7 +638,7 @@ Proof.
            setoid_rewrite par2top=>//.
            rewrite lens_io_set//.
            exact: edges2_graph_of. 
-        -- setoid_rewrite split_io_edges at 1. apply: par2_iso2. 
+        -- setoid_rewrite split_io_edges at 1. apply: par_iso2. 
            ++ rewrite lens_io_set //. exact: edges2_graph_of.
            ++ setoid_rewrite <-IH; rewrite lens_io_set // -lens_io_set //. 
               exact: measure_remove_edges.
@@ -663,13 +662,12 @@ Proof.
           apply/eqP. apply/setP => x. by rewrite C inE. }
         rewrite /=. 
         setoid_rewrite (split_cp (proj1 CK4F_G) Hz) at 1 => //.
-        setoid_rewrite dot2A. repeat apply: dot2_iso2.
+        setoid_rewrite dot2A. repeat apply: dot_iso2.
         -- apply IH=> //. exact: measure_split_cpL. exact: CK4F_split_cpL.
         -- suff ? : z \in @CP G IO. { apply IH => //; by apply rec_bag. }
            case/setDP : Hz => Hz _. apply/bigcupP; exists (input,output) => //. 
            by rewrite !inE !eqxx.
         -- apply IH=> //. exact: measure_split_cpR. exact: CK4F_split_cpR.
 Qed.
-*)
 End ExtractionIso.
 

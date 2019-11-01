@@ -26,52 +26,34 @@ Open Scope ptt_ops.
 Arguments iso_id {L G}.
 Arguments merge_union_K_l [L F K i o h] k.
 
-Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ (@g2_top _)) (inr input) (inr output).
-Admitted.
-(*
+Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ g2_top _) (inr input) (inr output).
 Proof. 
-  rewrite -> topL, topR => /=. 
-  rewrite -> (iso_iso2 (iso_sym (union_A _ _ _))) => /=.
-  (* rewrite -> (iso_iso2 (union_iso iso_id (iso_sym (iso_two_graph)))). *)
-  (* possibly we are already done here with the new def of two_graph *)
-  by rewrite -> (iso_iso2 (union_iso iso_id (two_graph_swap _ _))).
+  rewrite-> topL, topR => /=. 
+  Iso2 (iso_sym (union_A _ _ _)).
 Qed.
- *)
 
 Lemma iso2_GTG (G H : graph2) : 
   G · top · H ≃2 point (G ⊎ H) (unl input) (unr output).
-Admitted.
-(*
 Proof.
-  rewrite -> topR. 
-  rewrite /=/dot2/=. 
-  rewrite -> (merge_iso2 (iso_sym (union_A _ _ _))) => /=.
-  rewrite -> (merge_iso2 (union_iso iso_id (union_C _ _))) => /=.
-  rewrite -> (merge_iso2 (union_A _ _ _)) => /=.
-  apply: iso2_comp. apply: (merge_union_K_ll (fun _ : unit_graph => unr input)). 
-  - done.
-  - case. apply/eqquotP. by eqv.
-  - rewrite /=. apply: merge_nothing. by repeat constructor.
+  rewrite-> topR. 
+  setoid_rewrite-> (merge_iso2 (iso_sym (union_A _ _ _))) => /=.
+  setoid_rewrite-> (merge_iso2 (union_iso iso_id (union_C _ _))) => /=.
+  rewrite-> (merge_iso2 (union_A _ _ _)) => /=.
+  rewrite-> (merge_union_K_l (fun _ => unr input))=>//. 
+  2: case; apply/eqquotP; by eqv.
+  apply: merge_nothing. by repeat constructor.
 Qed.
-*)
 
 Lemma par_component (G : graph) (H : graph2) :
   point (G ⊎ g2_top _) (inr input) (inr output) ∥ H ≃2 point (G ⊎ H) (inr input) (inr output).
-Admitted.
-(*
 Proof.
-  setoid_rewrite par2C. 
-  rewrite /=/par2/=.
-  rewrite -> (merge_iso2 (union_A _ _ _)) =>/=.
-  pose k (x : @two_graph sym) : union H G := if ~~ x then (unl input) else (unl output).
-  apply: iso2_comp. apply: (merge_union_K_ll k). 
-  - by case. 
-  - move => [|]; rewrite /k/=; apply/eqquotP; eqv. 
-  - rewrite /k /=. 
-    apply: iso2_comp. apply: merge_nothing; first by repeat constructor.
-    by rewrite -> (iso_iso2 (union_C _ _)).
+  rewrite-> par2C. 
+  setoid_rewrite-> (merge_iso2 (union_A _ _ _)) =>/=.
+  rewrite-> (merge_union_K_l (fun x: two_graph _ _ => if x then unl input else unl output))=>//=.
+  setoid_rewrite-> (merge_iso2 (union_C _ _)) =>/=.
+  apply merge_nothing. by repeat constructor. by case.
+  move => [[]|[]] /=; apply/eqquotP; eqv. 
 Qed.
- *)
 
 Notation induced2 := component.
 
@@ -98,15 +80,11 @@ Proof.
   set C := component_of _.
   rewrite /component1.
   set G1 := point _ _ _. set G2 := point _ _ _.
-Admitted.
-(*
-  rewrite -> dot2A,iso2_TGT. simpl. rewrite -> par_component.
+  rewrite -> dot2A,iso2_TGT. simpl. setoid_rewrite -> par_component.
   rewrite /G1 /G2 /=.
   have comp_C : C \in @components G [set: G]. apply: component_of_components.
-  apply: iso2_comp. apply: (iso_iso2 (iso_component comp_C)).
-  rewrite /=. by rewrite -point_io.
+  Iso2 (iso_component comp_C).
 Qed.
- *)
 
 Lemma iso_disconnected_io (G : graph2) : 
   (forall x : G, (x \in @component_of G input) || (x \in @component_of G output)) -> 
@@ -114,8 +92,6 @@ Lemma iso_disconnected_io (G : graph2) :
   G ≃2 @component1 G input · (top · @component1 G output). 
 Proof.
   move => no_comp dis_io. symmetry.
-Admitted.
-(*
   rewrite -> dot2A. rewrite -> iso2_GTG. 
   rewrite {1}/component1. rewrite /=.
   move: (in_component_of _) => I1. move: (in_component_of _) => I2.
@@ -126,10 +102,8 @@ Admitted.
     - move/(_ z) : no_comp. by case: (z \in _). }
   rewrite E in I2 *. 
   move: (@component_of_components G input) => comp_i.
-  rewrite -> (iso_iso2 (iso_component comp_i)) => /=. 
-  by rewrite -point_io.
+  Iso2 (iso_component comp_i).
 Qed.
- *)
 
 Lemma CK4F_component (G : graph2) (x : G) :  
   K4_free (sskeleton G) -> CK4F (component1 x).
@@ -146,7 +120,6 @@ Definition term_of_rec' (t : graph2 -> term sym) (G : graph2) :=
     if output \in @component_of G input 
     then term_of G
     else term_of (@component1 G input) · (top · term_of (@component1 G output)).
-
 
 Definition term_of' := Fix top (fun G : graph2 => #|G|) term_of_rec'.
 
@@ -176,8 +149,6 @@ Qed.
 Theorem term_of_iso' (G : graph2) : 
   K4_free (sskeleton G) -> G ≃2 graph_of_term (term_of' G).
 Proof.
-Admitted.
-(*
   pattern G. apply: (nat_size_ind (f := fun G : graph2 => #|G|)) => {G} G IH K4F_G.
   rewrite term_of_eq' /term_of_rec'. case: pickP => [x /andP [X1 X2]|H].
   - rewrite /=. rewrite <- term_of_iso, <- IH.
@@ -197,7 +168,6 @@ Admitted.
       apply/subsetP => x _. move/(_ x) : H. apply: contraFT => H.
       rewrite !(component_exchange x) H /=. by rewrite (same_component E).
 Qed.
-*)
 
 Corollary minor_exclusion_2p (G : graph2) :
   K4_free (sskeleton G) <-> 

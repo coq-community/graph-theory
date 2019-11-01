@@ -123,6 +123,7 @@ Section terms.
       top := tm_top |}.
  
  (* quotiented terms indeed form a 2p-algebra *)
+ (*
  Program Definition tm_ptt: ptt := {| ops := tm_ops_ |}.
  Next Obligation. repeat intro; simpl. by apply dot_eqv_. Qed.
  Next Obligation. repeat intro; simpl. by apply par_eqv_. Qed.
@@ -140,6 +141,6 @@ Section terms.
  Next Obligation. repeat intro; simpl. by apply A11. Qed.
  Next Obligation. repeat intro; simpl. by apply A12. Qed.
  Canonical tm_ptt. 
-
+  *)
 End terms.
 Bind Scope ptt_ops with term.

@@ -1,6 +1,8 @@
 - port term extraction (ITP18/JAR19) to the more general notion of graphs introduced for CPP20
   (so that we can remove files mgraph_jar.v and mgraph2_jar.v, which are subsumed by mgraph.v and mgraph2.v)
 
+- solve rewriting/setoid_rewriting/Type/irewrite...
+
 - get completeness for 2p algebra axioms by extending the rewrite system
 
 - develop the equational theories of 2p and 2pdom algebra in a modular way

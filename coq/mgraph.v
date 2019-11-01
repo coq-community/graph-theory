@@ -155,7 +155,8 @@ Qed.
 (** ** Isomorphisms *)
 
 (* Definition 4.8 *)
-Record iso (F G: graph): Type :=
+Universe S.
+Record iso (F G: graph): Type@{S} :=
   Iso { iso_v:> bij F G;
         iso_e: bij (edge F) (edge G);
         iso_d: edge F -> bool;

@@ -61,7 +61,8 @@ Definition edge_graph2 a u b := two_graph2 a b ∔ [inl tt, u, inr tt].
 
 (** ** Isomorphisms of 2p-graphs *)
 
-Record iso2 (F G: graph2): Type :=
+Universe S2.
+Record iso2 (F G: graph2): Type@{S2} :=
   Iso2 { iso2_iso:> F ≃ G;
          iso2_input: iso2_iso input = input;
          iso2_output: iso2_iso output = output }.
@@ -160,17 +161,17 @@ Canonical Structure g2_ops: pttdom.ops_ :=
 
 (* isomorphisms about [unit_graph2] *)
 
-Lemma unit_graph2_iso: CProper (eqv ==> iso2) unit_graph2.
+Global Instance unit_graph2_iso: CProper (eqv ==> iso2) unit_graph2.
 Proof. intros a b e. Iso2 (unit_graph_iso e). Defined.
 
 (* isomorphisms about [two_graph2] *)
 
-Lemma two_graph2_iso: CProper (eqv ==> eqv ==> iso2) two_graph2.
+Global Instance two_graph2_iso: CProper (eqv ==> eqv ==> iso2) two_graph2.
 Proof. intros a b ab c d cd. Iso2 (union_iso (unit_graph_iso ab) (unit_graph_iso cd)). Defined.
 
 (* isomorphisms about [two_vertex2] *)
 
-Lemma add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) add_vertex2.
+Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) add_vertex2.
 Proof.
   move => F G FG u v uv.
   Iso2 (union_iso FG (unit_graph_iso uv))=>/=; f_equal; apply FG.
@@ -199,7 +200,7 @@ Proof. Iso2 (add_edge_vlabel _ _ _). Defined.
 
 (* isomorphisms about [edge_graph2] *)
 
-Lemma edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) edge_graph2.
+Global Instance edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) edge_graph2.
 Proof. intros a b ab u v uv c d cd. refine (add_edge2_iso' (two_graph2_iso ab cd) _ _ uv). Defined.
 
 (* isomorphisms about [add_vlabel2] *)
@@ -600,24 +601,24 @@ Lemma g2_A14 (F G H: graph2): dom F·(G∥H) ≃2 dom F·G ∥ H.
 Proof. by apply g2_A14'. Qed.
  *)
 
-Lemma dot_iso2: CProper (iso2 ==> iso2 ==> iso2) g2_dot.
+Global Instance dot_iso2: CProper (iso2 ==> iso2 ==> iso2) g2_dot.
 Proof.
   intros F F' f G G' g. rewrite /g2_dot.
   irewrite (merge_iso2 (union_iso f g))=>/=.
   apply merge_same; by rewrite /= ?iso2_input ?iso2_output. 
 Qed.  
 
-Lemma par_iso2: CProper (iso2 ==> iso2 ==> iso2) g2_par.
+Global Instance par_iso2: CProper (iso2 ==> iso2 ==> iso2) g2_par.
 Proof.
   intros F F' f G G' g. rewrite /g2_par.
   irewrite (merge_iso2 (union_iso f g))=>/=.
   apply merge_same; by rewrite /= ?iso2_input ?iso2_output. 
 Qed.
 
-Lemma cnv_iso2: CProper (iso2 ==> iso2) g2_cnv.
+Global Instance cnv_iso2: CProper (iso2 ==> iso2) g2_cnv.
 Proof. intros F F' f. eexists; apply f. Qed.
 
-Lemma dom_iso2: CProper (iso2 ==> iso2) g2_dom.
+Global Instance dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
 (* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
@@ -766,8 +767,6 @@ Proof.
     (* rewrite bool_irrelevance ...  *)
 Qed.
 
-(** TODO: [G[V1,E1] ∥ G[V2,E2] ≈ G[V1 :|: V2, E1 :|: E2]] *)
-
 (** recognizing the full subgraph *)
 Lemma iso2_subgraph_forT (G : graph2) (V : {set G}) (E : {set edge G}) (con : consistent V E) i o :
   (forall x, x \in V) -> (forall e, e \in E) -> val i = input -> val o = output ->
@@ -834,7 +833,7 @@ Section h.
     Graph (@endpoint _ G) (fv \o (@vlabel _ G)) (fe \o (@elabel _ G)).
   Hypothesis Hfv: Proper (eqv ==> eqv) fv.
   Hypothesis Hfe: forall b, Proper (eqv_ b ==> eqv_ b) fe.
-  Lemma relabel_iso: CProper (iso ==> iso) relabel.
+  Global Instance relabel_iso: CProper (iso ==> iso) relabel.
   Proof.
     intros G H h. Iso h h.e h.d. split.
     - apply h.
@@ -864,7 +863,7 @@ Section h.
 
   Definition relabel2 (G: graph2 X): graph2 Y :=
     point (relabel G) input output.
-  Lemma relabel2_iso: CProper (iso2 ==> iso2) relabel2.
+  Global Instance relabel2_iso: CProper (iso2 ==> iso2) relabel2.
   Proof. intros G H h. Iso2 (relabel_iso h); apply h. Defined.
   Lemma relabel2_dot (F G: graph2 X): relabel2 (F · G) ≃2 relabel2 F · relabel2 G.
   Proof.
