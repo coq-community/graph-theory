@@ -70,23 +70,29 @@ Arguments eqvxx {X x}.
    - eqv' x y = eqv x y° (when we have an involution _°)
    - eqv' _ _ = False    (otherwise)
  *)
+
+Class monoidLaws {X : setoid} (mon0 : X) (mon2 : X -> X -> X) :=
+  MonoidLaws {
+      mon_eqv: Proper (eqv ==> eqv ==> eqv) mon2;
+      monA: forall x y z, mon2 x (mon2 y z) ≡ mon2 (mon2 x y) z;
+      monC: forall x y, mon2 x y ≡ mon2 y x;
+      monU: forall x, mon2 x mon0 ≡ x
+    }.
+Global Existing Instance mon_eqv.  
+
 Structure labels :=
   Labels {
       lv: setoid;
       mon0: lv;
       mon2: lv -> lv -> lv;
-      mon_eqv: Proper (eqv ==> eqv ==> eqv) mon2;
-      monA: forall x y z, mon2 x (mon2 y z) ≡ mon2 (mon2 x y) z;
-      monC: forall x y, mon2 x y ≡ mon2 y x;
-      monU: forall x, mon2 x mon0 ≡ x;
-                           
+      lv_monoid: monoidLaws mon0 mon2;
       le: setoid;
       eqv': relation le;
       Eqv'_sym: Symmetric eqv';
       eqv01: forall x y z, eqv  x y -> eqv' y z -> eqv' x z;
       eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z;
     }.
-Global Existing Instance mon_eqv.
+Global Existing Instance lv_monoid.
 Arguments mon0 {_}.
 Arguments mon2 {_}.
 Arguments eqv' {_}.
@@ -128,10 +134,15 @@ Qed.
 
 (* label structure for letter-labeled graphs (Definition 4.2) *)
 Program Definition flat_labels (X: Type) :=
-  {| lv := eq_setoid unit; mon0:=tt; mon2 _ _ :=tt;
-     le := eq_setoid X; eqv' _ _ := False |}.
-Next Obligation. by case x. Qed.
+  {| lv := eq_setoid unit;
+     mon0:=tt; 
+     mon2 _ _ :=tt;
+     le := eq_setoid X; 
+     eqv' _ _ := False 
+  |}.
+Next Obligation. split => //; by case. Qed.
 Next Obligation. tauto. Qed.
+
 
 (* notations for vertex labels *)
 (* Declare Scope labels. compat:coq-8.9*)
@@ -143,16 +154,18 @@ Notation "1" := mon0: labels.
 (** ** BigOps over the label monoid *)
 
 Section Theory.
-Variable L : labels.
-Local Open Scope labels.
+Variables (X : setoid) (mon0 : X) (mon2 : X -> X -> X).
+Context {X_laws : monoidLaws mon0 mon2}.
+Notation "1" := mon0.
+Infix "⊗" := mon2 (left associativity, at level 25).
 
-Lemma monUl (x : lv L) : 1 ⊗ x ≡ x. by rewrite monC monU. Qed.
+Lemma monUl (x : X) : 1 ⊗ x ≡ x. by rewrite monC monU. Qed.
 
-Lemma big_mkcond (I : eqType) (r : seq I) (P : pred I) (F : I -> lv L) :
+Lemma big_mkcond (I : eqType) (r : seq I) (P : pred I) (F : I -> X) :
   \big[mon2/1]_(i <- r | P i) F i ≡ \big[mon2/1]_(i <- r) (if P i then F i else 1).
 Proof. rewrite unlock. elim: r => //= i r H. by case P; rewrite H ?monUl. Qed.
 
-Lemma big_cat (I : eqType) (r1 r2 : seq I) (P : pred I) (F : I -> lv L) :
+Lemma big_cat (I : eqType) (r1 r2 : seq I) (P : pred I) (F : I -> X) :
       \big[mon2/1]_(i <- (r1 ++ r2) | P i) F i ≡
       (\big[mon2/1]_(i <- r1 | P i) F i) ⊗ (\big[mon2/1]_(i <- r2 | P i) F i).
 Proof.
@@ -160,7 +173,7 @@ rewrite !(big_mkcond _ P). elim: r1 => /= [|i r1 IH]; first by rewrite big_nil m
 by rewrite !big_cons IH monA.
 Qed.
 
-Lemma perm_big (I : eqType) r1 r2 (P : pred I) (F : I -> lv L) :
+Lemma perm_big (I : eqType) r1 r2 (P : pred I) (F : I -> X) :
   perm_eq r1 r2 ->
   \big[mon2/1]_(i <- r1 | P i) F i ≡ \big[mon2/1]_(i <- r2 | P i) F i.
 Proof.
@@ -175,7 +188,7 @@ rewrite !count_cat /= addnCA. apply: addnI.
 Qed.
 
 Lemma eqv_map (I1 I2 : finType) (r1 : seq I1) (P1 : pred I1) (P2 : pred I2) 
-  (f : I1 -> I2) (F1 : I1 -> lv L) (F2 : I2 -> lv L) :
+  (f : I1 -> I2) (F1 : I1 -> X) (F2 : I2 -> X) :
    (forall x, P1 x = P2 (f x)) -> (forall i : I1, P1 i -> F1 i ≡ F2 (f i)) -> 
    \big[mon2/1]_(i <- r1 | P1 i) F1 i ≡ \big[mon2/1]_(i <- map f r1 | P2 i) F2 i.
 Proof.
@@ -185,12 +198,12 @@ Proof.
 Qed.
 
 Lemma eqv_big_bij (I1 I2 : finType) (f : I1 -> I2) 
-   (r1 : seq I1) (r2 : seq I2) (P1 : pred I1) (P2 : pred I2) (F1 : I1 -> lv L) (F2 : I2 -> lv L) :
+   (r1 : seq I1) (r2 : seq I2) (P1 : pred I1) (P2 : pred I2) (F1 : I1 -> X) (F2 : I2 -> X) :
    perm_eq r2 (map f r1) -> (forall x, P1 x = P2 (f x)) -> (forall i : I1, P1 i -> F1 i ≡ F2 (f i)) -> 
    \big[mon2/1]_(i <- r1 | P1 i) F1 i ≡ \big[mon2/1]_(i <- r2 | P2 i) F2 i.
 Proof. move => pr HP HF. rewrite (perm_big _ _ pr). exact: eqv_map. Qed.
 
-Lemma big_split I r (P : pred I) (F1 F2 : I -> lv L) :
+Lemma big_split I r (P : pred I) (F1 F2 : I -> X) :
   \big[mon2/1]_(i <- r | P i) (F1 i ⊗ F2 i) ≡
   (\big[mon2/1]_(i <- r | P i) F1 i) ⊗ \big[mon2/1]_(i <- r | P i) F2 i.
 Proof.
@@ -198,16 +211,16 @@ Proof.
   rewrite -!monA. apply: mon_eqv => //. by rewrite monA [_ ⊗ y]monC monA.
 Qed.
 
-Lemma eqv_bigr (I : Type) (r : seq I) (P : pred I) (F1 F2 : I -> lv L) :
+Lemma eqv_bigr (I : Type) (r : seq I) (P : pred I) (F1 F2 : I -> X) :
     (forall i : I, P i -> F1 i ≡ F2 i) -> \big[mon2/1]_(i <- r | P i) F1 i ≡ \big[mon2/1]_(i <- r | P i) F2 i.
 Proof. elim/big_rec2 : _ => // i x y Pi H1 H2. by rewrite H2 ?H1. Qed.
 
-Lemma eqv_bigl I r (P1 P2 : pred I) (F : I -> lv L) :
+Lemma eqv_bigl I r (P1 P2 : pred I) (F : I -> X) :
   P1 =1 P2 ->
   \big[mon2/1]_(i <- r | P1 i) F i ≡ \big[mon2/1]_(i <- r | P2 i) F i.
 Proof. by move=> eqP12; rewrite -!(big_filter r) (eq_filter eqP12). Qed.
 
-Lemma bigID (I:eqType) r (a P : pred I) (F : I -> lv L) :
+Lemma bigID (I:eqType) r (a P : pred I) (F : I -> X) :
   \big[mon2/1]_(i <- r | P i) F i ≡
   (\big[mon2/1]_(i <- r | P i && a i) F i) ⊗ \big[mon2/1]_(i <- r | P i && ~~ a i) F i.
 Proof.
@@ -216,15 +229,15 @@ Proof.
 Qed.
 Arguments bigID [I r] a P F.
 
-Lemma big_pred1_eq (I : finType) (i : I) (F : I -> lv L) :
+Lemma big_pred1_eq (I : finType) (i : I) (F : I -> X) :
   \big[mon2/1]_(j | j == i) F j ≡ F i.
 Proof. rewrite -big_filter filter_index_enum enum1. (* big_seq1. *) by rewrite big_cons big_nil monU. Qed.
 
-Lemma big_pred1 (I : finType) i (P : pred I) (F : I -> lv L) :
+Lemma big_pred1 (I : finType) i (P : pred I) (F : I -> X) :
   P =1 pred1 i -> \big[mon2/1]_(j | P j) F j ≡ F i.
 Proof.  move/(eq_bigl _ _)->; apply: big_pred1_eq. Qed.
 
-Lemma bigD1 (I : finType) j (P : pred I) (F : I -> lv L) : 
+Lemma bigD1 (I : finType) j (P : pred I) (F : I -> X) : 
   P j -> \big[mon2/1]_(i | P i) F i ≡ F j ⊗ \big[mon2/1]_(i | P i && (i != j)) F i.
 Proof.
   move=> Pj; rewrite (bigID (pred1 j)); apply mon_eqv => //.
@@ -232,7 +245,7 @@ Proof.
 Qed.
 Arguments bigD1 [I] j [P F].
 
-Lemma reindex_onto (I J : finType) (h : J -> I) h' (P : pred I) (F : I -> lv L) :
+Lemma reindex_onto (I J : finType) (h : J -> I) h' (P : pred I) (F : I -> X) :
    (forall i, P i -> h (h' i) = i) ->
   \big[mon2/1]_(i | P i) F i ≡
   \big[mon2/1]_(j | P (h j) && (h' (h j) == j)) F (h j).
@@ -249,7 +262,7 @@ Qed.
 Arguments reindex_onto [I J] h h' [P F].
 
 
-Lemma reindex (I J : finType) (h : J -> I) (P : pred I) (F : I -> lv L) :
+Lemma reindex (I J : finType) (h : J -> I) (P : pred I) (F : I -> X) :
     {on [pred i | P i], bijective h} ->
   \big[mon2/1]_(i | P i) F i ≡ \big[mon2/1]_(j | P (h j)) F (h j).
 Proof.
@@ -258,12 +271,12 @@ by apply eqv_bigl => j; rewrite !inE; case Pi: (P _); rewrite //= hK ?eqxx.
 Qed.
 Arguments reindex [I J] h P F.
 
-Lemma eqv_big I (r:seq I) (P1 P2 : pred I) (F1 F2 : I -> lv L) :
+Lemma eqv_big I (r:seq I) (P1 P2 : pred I) (F1 F2 : I -> X) :
   P1 =1 P2 -> (forall i, P1 i -> F1 i ≡ F2 i) ->
   \big[mon2/1]_(i <- r | P1 i) F1 i ≡ \big[mon2/1]_(i <- r | P2 i) F2 i.
 Proof. by move/eqv_bigl <-; move/eqv_bigr->. Qed.
 
-Lemma partition_big (I J : finType) (P : pred I) p (Q : pred J) (F : I -> lv L) :
+Lemma partition_big (I J : finType) (P : pred I) p (Q : pred J) (F : I -> X) :
     (forall i, P i -> Q (p i)) ->
       \big[mon2/1]_(i | P i) F i ≡
          \big[mon2/1]_(j | Q j) \big[mon2/1]_(i | P i && (p i == j)) F i.
@@ -281,7 +294,7 @@ Qed.
 
 
 (* TODO: eliminate [i1] and [i2], which are only used as defaults for reindexing *)
-Lemma big_sum (I1 I2 : finType) (i1 : I1) (i2 : I2) (P : pred (I1 + I2)) (F : (I1 + I2) -> lv L) : 
+Lemma big_sum (I1 I2 : finType) (i1 : I1) (i2 : I2) (P : pred (I1 + I2)) (F : (I1 + I2) -> X) : 
   \big[mon2/1]_(x | P x) F x ≡ 
   (\big[mon2/1]_(x | P (inl x)) F (inl x)) ⊗ (\big[mon2/1]_(x | P (inr x)) F (inr x)).
 Proof.
@@ -293,12 +306,12 @@ Proof.
 Qed.
 Arguments big_sum [I1 I2] i1 i2 P F.
 
-Lemma big_seq1 I (i : I) (F : I -> lv L) : \big[mon2/1]_(j <- [:: i]) F j ≡ F i.
+Lemma big_seq1 I (i : I) (F : I -> X) : \big[mon2/1]_(j <- [:: i]) F j ≡ F i.
 Proof. by rewrite unlock /= monU. Qed.
 
 End Theory.
-Arguments reindex_onto [L I J] h h' [P F].
-Arguments reindex [L I J] h [P F].
-Arguments bigD1 [L I] j [P F].
-Arguments partition_big [L I J P] p Q [F].
-Arguments big_pred1 [L I] i P F.
+Arguments reindex_onto [X mon0 mon2 _ I J] h h' [P F].
+Arguments reindex [X mon0 mon2 _ I J] h [P F].
+Arguments bigD1 [X mon0 mon2 _ I] j [P F].
+Arguments partition_big [X mon0 mon2 _ I J P] p Q [F].
+Arguments big_pred1 [X mon0 mon2 _ I] i P F.

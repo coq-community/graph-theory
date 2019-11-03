@@ -168,7 +168,7 @@ Section derived.
  
  Canonical Structure pttdom_labels: labels :=
    Labels
-     tst_dot_eqv tst_dotA tst_dotC tst_dotU
+     (MonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
      eqv'_sym eqv01 eqv11.
 
 Implicit Types (u v x y z : X) (a b : test).
