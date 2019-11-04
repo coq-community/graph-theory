@@ -30,6 +30,7 @@ Notation graph := (graph L).
 Local Open Scope labels.
 
 (* 2p-graphs  *)
+Set Primitive Projections.
 Record graph2 :=
   Graph2 {
       graph_of:> graph;

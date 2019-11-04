@@ -26,6 +26,7 @@ Notation Le := (le L).
 Local Open Scope labels.
 
 (* labelled directed multigraphs (not pointed, Definition 4.4) *)
+Set Primitive Projections.
 Record graph: Type :=
   Graph {
       vertex:> finType;
@@ -33,6 +34,7 @@ Record graph: Type :=
       endpoint: bool -> edge -> vertex; (* source and target functions *)
       vlabel: vertex -> Lv;
       elabel: edge -> Le }.
+Unset Primitive Projections.
 Notation source := (endpoint false).
 Notation target := (endpoint true).
 (* note: 

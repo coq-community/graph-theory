@@ -41,10 +41,10 @@ Proof.
     match e with inl e |inr e => vfun e end.
   unshelve Iso2 (@Iso _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
   - rewrite /f/f'/= => x.
-    case: (boolP (x == input)) => [/eqP <-|/=]; first by rewrite eqxx.
+    case: (boolP (x == input)) => [/eqP <-|/=]//. 
     move: (A x). case/setUP => /set1P => -> //. by rewrite eqxx.
   - rewrite /f/f'/= => x.
-    case: (boolP (x == inl tt)) => [/eqP <-|/=]; first by rewrite eqxx.
+    case: (boolP (x == inl tt)) => [/eqP <-|/=]//. by rewrite eqxx.
     case: x => // [[]] _. by rewrite eq_sym (negbTE Dio).
   - by [].
   - by case=>[[]|[]]. 
@@ -614,12 +614,11 @@ Proof.
   }
   unshelve Iso2 (@Iso _ _ _ (Bij fg gf) (Bij hk kh) xpred0 _)=>/=. 
   - split=>//e.
-    -- move=>d.
-       rewrite [endpoint]lock /= -lock. rewrite /h /=.
+    -- move=>d. rewrite /h/=. 
        case: (ord_0Vp e) => [E|[o' Ho']].
     + rewrite E /f /=. destruct b eqn: def_b.
       all: symmetry; apply/eqquotP => //=; case d=>/=; subst=>/=;
-                                           rewrite /par2_eqv/=set2C !inE eqxx//.
+                                           rewrite /par2_eqv/=set2C !inE//= eqxx//.
     + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
     -- rewrite /h/=. case: (ord_0Vp e) => [-> //|[o' Ho']].
         by rewrite (tnth_cons Ho').  
