@@ -1,5 +1,10 @@
 time make (on damien's machine, cpufreqd performance, without -j.. to avoid (lack of) luck due to parallelism)
 
+d22d156145ba9cbf6bc837bffdc5e6a528cfc9ea (unif 2019/11/05 with unl/unr)
+real	5m2,643s
+user	4m59,859s
+sys	0m2,774s
+
 d32f359ca54b9f71e7f676ab9e17bf37af4a5743 (unif 2019/11/04 with prim records for bij/iso/... and graphs)
 real	5m12,219s
 user	5m9,422s
