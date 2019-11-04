@@ -1,0 +1,21 @@
+time make (on damien's machine, cpufreqd performance, without -j.. to avoid (lack of) luck due to parallelism)
+
+a4a6a048b53ca3fc16f9b62e8b17e30d7f44c0ca (unif 2019/11/04 with prim records for bij/iso/...)
+real	7m45,750s
+user	7m42,735s
+sys	0m2,961s
+
+eb7064b106aa47308b21e71b49e0f357a62ed245 (unif 2019/11/04)
+real	7m23,718s
+user	7m21,065s
+sys	0m2,623s
+
+daf0637a42ee8c6e5937edc58956f86eddd44a38 (rewriting 2019/11/03)
+real	5m57,358s
+user	5m53,891s
+sys	0m3,453s
+
+e2c2be27923325084b2593e1069ab29173714e58 (rewriting 2019/11/01)
+real	5m43,114s
+user	5m40,297s
+sys	0m2,792s
