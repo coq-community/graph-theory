@@ -734,7 +734,7 @@ Definition edges x y :=
   [set e | (source e == x) && (target e == y)].
 
 Definition edge_set (S : {set G}) :=
-  (* TODO: forall b, endpoint b e \in S *)
+  (* DPtoCD: forall b, endpoint b e \in S *)
   [set e | (source e \in S) && (target e \in S)].
 
 Lemma edge_set1 x : edge_set [set x] = edges x x.

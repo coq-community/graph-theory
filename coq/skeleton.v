@@ -310,7 +310,10 @@ Proof. by rewrite /interval_edges interval_sym setUC. Qed.
 
 Lemma igraph_proof (G : graph) (x y : skeleton G) :
   consistent (interval x y) (interval_edges x y).
-Proof. move=> e. rewrite inE =>[b]. rewrite inE =>/andP. Admitted.
+Proof.
+  move=> e. rewrite inE =>[b]. rewrite inE =>/andP [_ H].
+  rewrite /edge_set in_set in H. move: H=>/andP[? ?]. by case b. 
+Qed.
 
 Definition igraph (G : graph) (x y : skeleton G) :=
   @point (subgraph_for (@igraph_proof G x y))
@@ -649,8 +652,13 @@ Proof.
   intros (hv&he&hd&hom&inj_hv&inj_he). 
   exists hv => // x y xy _. move: x y xy. 
   apply skelP; first by move=> x y; rewrite sg_sym.
-  move=> e sNt. (* by *) rewrite /edge_rel/= (inj_eq inj_hv) sNt (* -source_hom -target_hom adjacent_edge *).
-Admitted.
+  move=> e sNt. (* by *) rewrite /edge_rel/= (inj_eq inj_hv) sNt.
+  generalize (endpoint_hom (is_hom:=hom) e false).
+  generalize (endpoint_hom (is_hom:=hom) e true).
+  case (hd e)=>/= <- <-.
+  by rewrite adjacent_sym adjacent_edge. 
+  by apply adjacent_edge. 
+Qed.
 
 Definition flesh_out_graph (G : sgraph) sym0 tt (z : G) : graph2 :=
   {| graph_of :=

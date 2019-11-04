@@ -619,11 +619,7 @@ Proof.
        case: (ord_0Vp e) => [E|[o' Ho']].
     + rewrite E /f /=. destruct b eqn: def_b.
       all: symmetry; apply/eqquotP => //=; case d=>/=; subst=>/=;
-                                           rewrite /par2_eqv/=!inE/=; admit.       
-    (* maybe the case distinction on [d] is not necessary?
-       old proof was using 
-       exact: par2_eqv_ii   and   exact: par2_eqv_oo. 
-     *)
+                                           rewrite /par2_eqv/=set2C !inE eqxx//.
     + rewrite /=(tnth_cons Ho'). by case: (tnth _ _) => a' b'.
     -- rewrite /h/=. case: (ord_0Vp e) => [-> //|[o' Ho']].
         by rewrite (tnth_cons Ho').  
@@ -711,12 +707,13 @@ Proof.
     -- move=>d/=. rewrite /h. case: {-}_ / boolP => p //. 
        symmetry. apply/eqquotP => /=. move: (h_proof _ _) => He. 
        rewrite tnth_map_in ?mem_enum //. 
-       move: p. rewrite inE /strip. case: ifP => /= [A _|A B]; case d=>/=; admit.
-    (* like above, case distinction on [d] possibly not necessary,
-       old proof was proceeding as follows 
-    + apply: par2_eqv_ii => //. by rewrite (edges_st A). 
-    + apply: par2_eqv_oo => //. by rewrite (edges_st B).
-     *)
+       move: p. rewrite inE /strip.
+       case: ifP => /= [A _|_ A];
+        case d=>/=; rewrite /=(edges_st A) equiv_sym/=.
+         by apply: par2_eqv_oo.
+         by apply: par2_eqv_ii.
+         by apply: par2_eqv_ii.
+         by apply: par2_eqv_oo.
     -- rewrite /h/=. case: {-}_ / boolP => p //.
        rewrite tnth_map_in ?mem_enum // /strip. by case: ifP.
   - rewrite /= /f. symmetry. apply/eqquotP => /=. 
