@@ -37,10 +37,7 @@ transfer.v
 completeness.v
 
 ## extraction for of 2p terms from TW2 graphs (ITP18 / JAR19)
-## the *_jar files are obsolete, reverse dependencies need to be ported
 ptt.v
-#mgraph_jar.v
-#mgraph2_jar.v
 skeleton.v
 mgraph2_tw2.v
 extraction_def.v
