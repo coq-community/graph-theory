@@ -755,6 +755,7 @@ Qed.
 (** Extensionality lemma for [subgraph_for], the general construction
 underlying bag and interval subgraphs used in the extraction
 function. *)
+
 Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
   (C1 : @consistent _ G V1 E1) (C2: consistent V2 E2) :
   V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->
@@ -763,8 +764,8 @@ Proof.
   move => eq_V eq_E eq_i eq_o. subst.
   move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
   unshelve Iso2 (@Iso _ (subgraph_for C1) (subgraph_for C2) bij_id bij_id xpred0 _).
-  split=>//e b//. admit. 
-    (* rewrite bool_irrelevance ...  *)
+  split=>//e b//=.
+  apply /eqP. by rewrite sub_val_eq SubK. (* TODO: better way? old proof was using bool_irrelevance *)
 Qed.
 
 (** recognizing the full subgraph *)

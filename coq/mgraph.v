@@ -866,72 +866,6 @@ Proof.
   - case => e He /=. exact: elabel_iso.
 Defined.
 
-(** ** Merging Subgraphs *)
-
-(** This construction allows transforming a quotient on [G[V1,E1] + G[V2,E2]] 
-    into a quotient on [G[V1 :|: V2, E1 :|: E2]], provided the edge sets are
-    disjoint and the quotient merges all duplicated verices (i.e., those
-    occurring both in [V1] and in [V2]. The underlying function on vertices from 
-    [G[V1,E1] + G[V2,E2]] to [G[V1 :|: V2, E1 :|: E2]] simply drops the inl/inr.
-    For the converse direction, we inject into [G[V1,E1]] if possible and otherwise 
-    into [G[V1,E2]]. Note that this only yields a bijection after quotienting. *)
-
-Section MergeSubgraph.
-  Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
-            (con1 : consistent V1 E1) (con2 : consistent V2 E2)
-            (h : pairs (union (subgraph_for con1) (subgraph_for con2))).
-
-  Lemma consistentU : consistent (V1 :|: V2) (E1 :|: E2).
-  Proof using con1 con2. 
-    move => e b. case/setUP => E. 
-    - by rewrite !inE con1.
-    - by rewrite !inE con2. 
-  Qed.    
-
-  Hypothesis eqvI : forall x (inU : x \in V1) (inV : x \in V2), 
-      inl (Sub x inU) = inr (Sub x inV) %[mod eqv_clot h].
-
-  Hypothesis disE : [disjoint E1 & E2].
-
-  Local Notation G1 := (subgraph_for con1).
-  Local Notation G2 := (subgraph_for con2).
-  Local Notation G12 := (subgraph_for consistentU).
-
-  Definition h' := map_pairs (@union_bij_fwd _ _ _) h.
-  Lemma eqv_clot_union_rel : merge_union_rel (eqv_clot h) =2 eqv_clot h'.
-  Proof.
-    move => x y. rewrite /merge_union_rel /h' map_equivE. apply/idP/idP.
-    - have aux z : union_bij_fwd (union_bij_bwd z) = z %[mod eqv_clot (map_pairs (@union_bij_fwd _ _ _) h)].
-      { apply/eqquotP. case: union_bij_bwdP => *; apply: eq_equiv; by apply: val_inj. }
-      move => H. apply/eqquotP. rewrite -[_ x]aux -[_ y]aux. apply/eqquotP.
-      move: H. apply: eqv_clot_map'.
-    - rewrite eqv_clotE. apply: equiv_ofE => /= {x y} x y. 
-      rewrite /rel_of_pairs/=. case/mapP => /= [[u v]] in_h [-> ->].
-      apply/eqquotP. rewrite 2!(union_bij_fwd_can' eqvI). apply/eqquotP.
-      exact: eqv_clot_pair.
-  Qed.
-
-  Definition merge_subgraph_v : bij (merge_seq (union G1 G2) h) (merge_seq G12 h') :=
-    Eval hnf in (bij_comp (merge_union_bij eqvI) (quot_same eqv_clot_union_rel)).
-
-  Definition merge_subgraph_e : bij (edge G1 + edge G2) (edge G12) := 
-    union_bij disE.
-
-  Lemma merge_subgraph_hom : is_hom merge_subgraph_v merge_subgraph_e xpred0.
-  Proof.
-    rewrite /merge_subgraph_e /merge_subgraph_v. 
-    split.
-    - case=> x b /=; rewrite merge_unionE quot_sameE; congr pi; exact: val_inj.
-    - move=> x=>/=. admit.      (* yet another bigop lemma... *)
-    - case=> e //.
-  Qed.
-
-  Definition merge_subgraph_iso : iso (merge_seq (union G1 G2) h) (merge_seq G12 h') := 
-    Iso merge_subgraph_hom.
-
-End MergeSubgraph.
-
-
 End s. 
 
 Notation source := (endpoint false).
@@ -971,3 +905,74 @@ Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
 Global Hint Resolve iso_id : core.  (* so that [by] gets it... *)
 
 Arguments edges_at [L G] x, [L] G x.
+
+
+
+
+(** ** Merging Subgraphs *)
+
+(** This construction allows transforming a quotient on [G[V1,E1] + G[V2,E2]] 
+    into a quotient on [G[V1 :|: V2, E1 :|: E2]], provided the edge sets are
+    disjoint and the quotient merges all duplicated verices (i.e., those
+    occurring both in [V1] and in [V2]. The underlying function on vertices from 
+    [G[V1,E1] + G[V2,E2]] to [G[V1 :|: V2, E1 :|: E2]] simply drops the inl/inr.
+    For the converse direction, we inject into [G[V1,E1]] if possible and otherwise 
+    into [G[V1,E2]]. Note that this only yields a bijection after quotienting. *)
+
+Section MergeSubgraph.
+  Variable A: Type.
+  Notation graph := (graph (flat_labels A)).
+  (* note: the lemma also holds for arbitrarily-labeled graphs when vertices in the intersection are labeled with idempotent elements *)
+  Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
+            (con1 : consistent V1 E1) (con2 : consistent V2 E2)
+            (h : pairs (subgraph_for con1 ⊎ subgraph_for con2)%G).
+
+  Lemma consistentU : consistent (V1 :|: V2) (E1 :|: E2).
+  Proof using con1 con2. 
+    move => e b. case/setUP => E. 
+    - by rewrite !inE con1.
+    - by rewrite !inE con2. 
+  Qed.    
+
+  Hypothesis eqvI : forall x (inU : x \in V1) (inV : x \in V2), 
+      inl (Sub x inU) = inr (Sub x inV) %[mod eqv_clot h].
+
+  Hypothesis disE : [disjoint E1 & E2].
+
+  Local Notation G1 := (subgraph_for con1).
+  Local Notation G2 := (subgraph_for con2).
+  Local Notation G12 := (subgraph_for consistentU).
+
+  Definition h' := map_pairs (@union_bij_fwd _ _ _) h.
+  Lemma eqv_clot_union_rel : merge_union_rel (eqv_clot h) =2 eqv_clot h'.
+  Proof.
+    move => x y. rewrite /merge_union_rel /h' map_equivE. apply/idP/idP.
+    - have aux z : union_bij_fwd (union_bij_bwd z) = z %[mod eqv_clot (map_pairs (@union_bij_fwd _ _ _) h)].
+      { apply/eqquotP. case: union_bij_bwdP => *; apply: eq_equiv; by apply: val_inj. }
+      move => H. apply/eqquotP. rewrite -[_ x]aux -[_ y]aux. apply/eqquotP.
+      move: H. apply: eqv_clot_map'.
+    - rewrite eqv_clotE. apply: equiv_ofE => /= {x y} x y. 
+      rewrite /rel_of_pairs/=. case/mapP => /= [[u v]] in_h [-> ->].
+      apply/eqquotP. rewrite 2!(union_bij_fwd_can' eqvI). apply/eqquotP.
+      exact: eqv_clot_pair.
+  Qed.
+
+  Definition merge_subgraph_v : bij (merge_seq (G1 ⊎ G2) h) (merge_seq G12 h') :=
+    Eval hnf in (bij_comp (merge_union_bij eqvI) (quot_same eqv_clot_union_rel)).
+
+  Definition merge_subgraph_e : bij (edge G1 + edge G2) (edge G12) := 
+    union_bij disE.
+
+  Lemma merge_subgraph_hom : is_hom merge_subgraph_v merge_subgraph_e xpred0.
+  Proof.
+    rewrite /merge_subgraph_e /merge_subgraph_v. 
+    split=>//.
+    - case=> x b /=; rewrite merge_unionE quot_sameE; congr pi; exact: val_inj.
+    - case=> e //.
+  Qed.
+
+  Definition merge_subgraph_iso : merge_seq (G1 ⊎ G2) h ≃ merge_seq G12 h' := 
+    Iso merge_subgraph_hom.
+
+End MergeSubgraph.
+
