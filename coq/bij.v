@@ -9,6 +9,7 @@ Unset Printing Implicit Defensive.
 
 (** * Bijections between Types  *)
 
+Set Primitive Projections.
 Record bij (A B: Type): Type := Bij
   { bij_fwd:> A -> B;
     bij_bwd: B -> A;

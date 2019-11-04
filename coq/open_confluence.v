@@ -115,6 +115,7 @@ Notation graph2 := (graph2 (pttdom_labels tm)).
 (** In open graphs, we have an equivalence of graphs that have the
 same underlying structure with different, but equivalent, labels *)
 
+Set Primitive Projections.
 Record eqvG (G H : pre_graph) : Prop := WeqG {
   sameV : vset G = vset H;
   sameE : eset G = eset H;

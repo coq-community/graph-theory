@@ -152,6 +152,7 @@ Qed.
 
 (* Definition 4.8 *)
 Universe S.
+Set Primitive Projections.
 Record iso (F G: graph): Type@{S} :=
   Iso { iso_v:> bij F G;
         iso_e: bij (edge F) (edge G);

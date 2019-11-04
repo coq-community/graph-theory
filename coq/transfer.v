@@ -150,6 +150,7 @@ Notation graph2 := (graph2 (pttdom_labels tm)).
 
 (** We define isomorphisms via packing *)
 
+Set Primitive Projections.
 Record oiso2 (G H : pre_graph) := 
   OIso2 { oiso2_graphL : is_graph G;
           oiso2_graphR : is_graph H;
@@ -597,8 +598,9 @@ Lemma oiso2_add_testE (F G : pre_graph) (i : F ⩭2 G) x a b Vx ab z :
   z \in vset F ->
   @oiso2_add_test F G i x a b Vx ab z = i z.
 Proof.
-  move => Vz. rewrite /= !vfun_bodyE //=. rewrite /oiso2_add_test/=.
-  case: i => isF isG i /=. by rewrite vfun_bodyE. 
+  move => Vz. rewrite /= !vfun_bodyE //=.
+  (* rewrite /oiso2_add_test/=. *)
+  (* case: i => isF isG i /=. by rewrite vfun_bodyE.  *)
 Qed.
 
 Arguments del_vertex2 [L] G z _.

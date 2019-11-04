@@ -62,6 +62,7 @@ Definition edge_graph2 a u b := two_graph2 a b ∔ [inl tt, u, inr tt].
 (** ** Isomorphisms of 2p-graphs *)
 
 Universe S2.
+Set Primitive Projections.
 Record iso2 (F G: graph2): Type@{S2} :=
   Iso2 { iso2_iso:> F ≃ G;
          iso2_input: iso2_iso input = input;

@@ -354,9 +354,7 @@ Proof.
     refine (cons_iso_steps _ (add_edge2_iso (merge_add_edgeL _ _ _) _ _ _)).
     rewrite !merge_add_edgeLE.
     refine (cons_iso_steps _ (add_edge2_iso (add_edge2_iso (merge_add_vertexL A) _ _ _) _ _ _)).
-    rewrite {1 2}merge_add_vertexLE.
-    rewrite {1 2}merge_add_vertexLE.
-    rewrite merge_add_vertexLE.
+    do 4 rewrite {1}merge_add_vertexLE.
     refine (cons_step_steps _ (step_v2 _ _ _ _ _)).
     apply iso_step.
     symmetry. apply merge_add_edgeL. 
