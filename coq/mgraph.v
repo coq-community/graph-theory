@@ -99,10 +99,6 @@ Definition edge_graph a u b := two_graph a b ∔ [inl tt, u, inr tt].
 Definition add_vertex G a := G ⊎ unit_graph a.
 Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
 
-
-Lemma addbxx x : x (+) x = false. 
-Proof. by rewrite -negb_eqb eqxx. Qed.
-
 (** ** Homomorphisms *)
 
 (* Definition 4.8  *)
@@ -147,7 +143,7 @@ Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
   is_hom hv^-1 he^-1 (hd \o he^-1).
 Proof.
   intro H. split.
-  move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK addbA addbxx. 
+  move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK addbA addbb. 
   move=>x/=. by rewrite -{2}(bijK' hv x) vlabel_hom.
   move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). rewrite -{3}(bijK' he e) bijK'. by symmetry. 
 Qed.
@@ -292,7 +288,6 @@ Proof.
   split=>//=. move=>v.
   case eq_op=>//. by rewrite monC monU.
 Defined.
-
 
 (** *** isomorphisms about [union] *)
 
@@ -796,7 +791,7 @@ Lemma incident_iso (F G : graph) (h : F ≃ G) (x : F) (e : edge F) :
   incident x e = incident (h x) (h.e e).
 Proof. 
   rewrite /incident. apply/existsP/existsP => [] [b] E; exists (h.d e (+) b).
-  - by rewrite endpoint_iso addbA addbxx addFb (eqP E).
+  - by rewrite endpoint_iso addbA addbb addFb (eqP E).
   - by rewrite endpoint_iso bij_eq in E. 
 Qed.
 

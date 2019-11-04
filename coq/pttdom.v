@@ -168,7 +168,7 @@ Section derived.
  
  Canonical Structure pttdom_labels: labels :=
    Labels
-     tst_dot_eqv tst_dotA tst_dotC tst_dotU
+     (MonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
      eqv'_sym eqv01 eqv11.
 
 Implicit Types (u v x y z : X) (a b : test).
@@ -212,7 +212,7 @@ Lemma eqvbN u v : u ≡[false] v -> u ≡ v. by []. Qed.
 Lemma eqvbT u v : u ≡[true] v -> u ≡ v°. by []. Qed.
 
 Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
-Proof. split; apply: eqvb_transL; by rewrite ?(addbN,addNb) addbxx //= cnvI. Qed.
+Proof. split; apply: eqvb_transL; by rewrite ?(addbN,addNb) addbb //= cnvI. Qed.
 
 Lemma infer_testE x x' (y y' : test) p p' : 
   (@infer_test x y p) ≡ (@infer_test x' y' p') <-> x ≡ x'.

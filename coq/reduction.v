@@ -478,9 +478,10 @@ Notation steps := (@steps (tm_pttdom A)).
 (* TODO: get rid of this hack... *)
 Canonical Structure tm_labels :=
   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
-         (@tst_dot_eqv (tm_pttdom A)) (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A))
-         (@tst_dotU (tm_pttdom A)) (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
-         (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
+          (MonoidLaws (@tst_dot_eqv (tm_pttdom A)) 
+                      (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A))) 
+          (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
+          (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
 (* Eval hnf in pttdom_labels (tm_pttdom A). *)
 (* Check erefl: tm_setoid A = le _. *)
 (* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
@@ -515,7 +516,7 @@ Proof.
     * apply iso_step. 
       etransitivity. apply dot2unit_l.
       etransitivity. apply add_vlabel2_edge.
-      apply edge_graph2_iso=>//. apply monC.
+      apply edge_graph2_iso=>//=. by rewrite monC.
     * apply iso_step. 
       etransitivity. apply dot2unit_r. apply add_vlabel2_edge. 
     * etransitivity. apply isop_step.

@@ -44,9 +44,6 @@ Qed.
 Lemma enum_unit (p : pred unit) : enum p = filter p [:: tt].
 Proof. by rewrite /enum_mem unlock. Qed.
 
-Lemma addbxx x : x (+) x = false. 
-Proof. by rewrite -negb_eqb eqxx. Qed.
-
 Lemma contraTnot b (P : Prop) : (P -> ~~ b) -> (b -> ~ P).
 Proof. by case: b => //= H _ /H. Qed.
 
