@@ -195,6 +195,8 @@ Qed.
 they currently need [par2_alt, par2_eqv_equivalence], if we can avoid it that could be better
 
 *)
+
+
 Section alt.
  Variables F G: graph2.
 
@@ -226,7 +228,7 @@ Section alt.
      rewrite subUset !sub1set. apply/andP; split.
      + apply: (subsetP Hxy). by rewrite !inE eqxx.
      + apply: (subsetP Hyz). by rewrite !inE eqxx.
- Qed.
+ Qed.                           (* LONG *)
 
  Canonical par2_eqv_equivalence :=
    EquivRel par2_eqv par2_eqv_refl par2_eqv_sym par2_eqv_trans.
@@ -269,17 +271,17 @@ Section alt.
          case/andP=> /or3P[]/eqP-> /or3P[]/eqP->.
          all: rewrite ?eqxx // ?[equiv_of _ _ (inl _)]equiv_of_sym => _.
          all: try solve [apply: (@sub_equiv_of _ _ (inl _));
-                         by rewrite /par2_eq -?Eio1 !eqxx].
+                         by rewrite /par2_eq -?Eio1 /= !eqxx].
          by rewrite equiv_of_sym.
        * rewrite -setUA -Eio2 setUid => Exy.
          have Rio2 : equiv_of par2_eq (inl output) (inl input).
          { apply: (@equiv_of_trans _ _ (inr output)); last rewrite equiv_of_sym -Eio2;
-           by apply: sub_equiv_of; rewrite /par2_eq !eqxx. }
+           by apply: sub_equiv_of; rewrite /par2_eq /= !eqxx. }
          move: Exy xNy; rewrite subUset 2!sub1set !inE -2!orbA.
          case/andP=> /or3P[]/eqP-> /or3P[]/eqP->.
          all: rewrite ?eqxx // ?[equiv_of _ (inr _) _]equiv_of_sym => _.
          all: try solve [apply: (@sub_equiv_of _ _ (inl _));
-                         by rewrite /par2_eq -?Eio2 !eqxx].
+                         by rewrite /par2_eq -?Eio2 /= !eqxx].
          by rewrite equiv_of_sym.
    - apply: equiv_of_sub; auto using par2_eqv_refl,par2_eqv_sym,par2_eqv_trans.
      move => {x y} [x|x] [y|y] => //=. 
@@ -291,7 +293,7 @@ Section alt.
    par2_eqv (inl x) (inr y).
  Proof.
    move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
-     by rewrite /par2_eq !eqxx. 
+     by rewrite /par2_eq /= !eqxx. 
  Qed.
  
  Lemma par2_eqv_oo x y : 
@@ -299,10 +301,9 @@ Section alt.
    par2_eqv (inl x) (inr y).
  Proof.
    move => -> ->. rewrite par2_equiv_of. apply: sub_equiv_of.
-     by rewrite /par2_eq !eqxx. 
+     by rewrite /par2_eq /= !eqxx. 
  Qed.
 
- Transparent union.
  Lemma par2_LR x y :
    inl x = inr y %[mod par2_eqv_equivalence] ->
    x = input /\ y = input \/ x = output /\ y = output.
@@ -317,20 +318,19 @@ Section alt.
      + case/andP=> /eqP-> /orP[]/eqP->; by [left | right].
      + case/andP=> /orP[]/eqP-> /eqP->; by [left | right].
  Qed.
- Opaque union.
 
  Lemma par2_injL x y : 
    input != output :> G -> 
    inl x = inl y %[mod par2_eqv_equivalence] ->
    x = y.
  Proof.
-   move=> iNo2 /eqquotP/=. rewrite /par2_eqv/= iNo2 andbT sum_eqE.
+   move=> iNo2 /eqquotP/=. rewrite /par2_eqv/= iNo2 /= andbT sum_eqE.
    case/orP=> [/eqP//|]. case: ifP => [iNo1 | /negbFE/eqP<-].
    - rewrite !inE !eqEsubset ![[set inl x; inl y] \subset _]subUset !sub1set !inE.
-     rewrite /eq_op/= !orbF. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
-   - by rewrite subUset !sub1set !inE /eq_op/= !orbF !orbb => /andP[/eqP-> /eqP->].
+     rewrite /eq_op !orbF /=. by case/orP=> /andP[]/andP[/eqP-> /eqP->].
+   - by rewrite subUset !sub1set !inE !orbF !orbb /eq_op /= => /andP[/eqP-> /eqP->].
  Qed.
-  
+
  Lemma par2_injR x y : 
    input != output :> F -> 
    inr x = inr y %[mod par2_eqv_equivalence] ->
@@ -345,15 +345,15 @@ Section alt.
  
  Definition par2' := point (merge (F ⊎ G) par2_eqv_equivalence) (\pi inl input) (\pi inl output).
 
- Lemma par2_eqE: rel_of_pairs [::(unl input,unr input);(unl output,unr output)] =2 par2_eq.
+ Lemma par2_eqE: rel_of_pairs [::(inl input,inr input);(inl output,inr output)] =2 par2_eq.
  Proof. 
-   move => [x|x] [y|y]; rewrite /rel_of_pairs /par2_eq/= !inE /unl /unr //.
+   move => [x|x] [y|y]; rewrite /rel_of_pairs /par2_eq/= !inE //.
   by rewrite !xpair_eqE.
  Qed.
 
  Hint Resolve id_bij : core.
 
- Lemma par2_eqvE: eqv_clot [::(unl input,unr input);(unl output,unr output)] =2 par2_eqv.
+ Lemma par2_eqvE: eqv_clot [::(inl input,inr input);(inl output,inr output)] =2 par2_eqv.
  Proof. 
    move => x y. rewrite eqv_clotE par2_equiv_of.
    apply: (lift_equiv (h := id)) => //. exact: par2_eqE.
@@ -374,7 +374,7 @@ Proof.
   move => subIO fullCD disjE fullE. symmetry. setoid_rewrite par2_alt.
   set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
 
-  have injL (x y : G1) : inl x = inl y %[mod par2_eqv_equivalence G1 G2] -> x = y.
+  have injL (x y : G1) : unl x = unl y %[mod par2_eqv_equivalence G1 G2] -> x = y.
   { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
@@ -382,7 +382,7 @@ Proof.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /andP[]/eqP->/eqP->.
     - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  have injR (x y : G2) : inr x = inr y %[mod par2_eqv_equivalence G1 G2] -> x = y.
+  have injR (x y : G2) : unr x = unr y %[mod par2_eqv_equivalence G1 G2] -> x = y.
   { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
     case/orP=> [/eqP|]; first exact: val_inj.
     case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
@@ -415,7 +415,7 @@ Proof.
   have fg: cancel f g. {
     rewrite /f/g=>x.
     case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
-      * rewrite -[x]reprK Ex. congr (\pi (inl _)). exact: val_inj.
+      * rewrite -[x]reprK Ex. congr (\pi (unl _)). exact: val_inj.
       * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
         rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
         rewrite /=/par2_eqv. case: ifPn => _; last first.
@@ -573,8 +573,8 @@ Proof.
   rewrite sym_eqv. (* this makes h actually typecheck *)
   set E1 := edges2 _.
   set E2 := par2' _ _.
-  pose f (x : E1) : E2 := \pi (inr x).
-    (* if x == input then \pi (inr input) else \pi (inr output). *) 
+  pose f (x : E1) : E2 := \pi (unr x).
+    (* if x == input then \pi (unr input) else \pi (unr output). *) 
   pose g (x : E2) : E1 :=
     match repr x with 
     | inl x => if x == input then input else output
@@ -595,7 +595,7 @@ Proof.
         by destruct b.
   }
   have gf: cancel g f. {
-    rewrite /f/g=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
+    rewrite /f/g/unr=>x. case Rx : (repr x) => [y|y]; last by rewrite -Rx reprK.
       rewrite -[x]reprK Rx => {x Rx}. symmetry. apply/eqquotP => /=. 
       destruct b;destruct y as [[]|[]] => //=;
       solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
@@ -650,7 +650,7 @@ Proof.
   set G' := par2' _ _.
   pose S := [seq strip e | e in E].
   pose n := size S.
-  pose f (x : G) : G' := \pi (inr x).
+  pose f (x : G) : G' := \pi (unr x).
   pose g (x : G') : G := 
     match repr x with 
     | inl x => if x then output else input
@@ -680,7 +680,7 @@ Proof.
                          (point (remove_edges E) input output)).
   }
   have gf: cancel g f. {
-    rewrite /f/g=>x/=. case def_y : (repr x) => [y|y].
+    rewrite /f/g/unr=>x/=. case def_y : (repr x) => [y|y].
     * rewrite -[x]reprK def_y. symmetry. apply/eqquotP => /=. 
       destruct y => //=; solve [exact: par2_eqv_oo|exact: par2_eqv_ii].
     * by rewrite -def_y reprK. 

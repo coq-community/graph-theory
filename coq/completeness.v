@@ -85,7 +85,7 @@ Proof.
   destruct 1 as [G H I|G' G H H' I S _]=>//L.
   - exfalso. setoid_rewrite (inhabits I: _ ≃2p _) in L.
     clear -S L. destruct L as [[L Li Lo]]. generalize (card_bij (iso_e L)).
-    destruct s; destruct S; simpl in *; (try by rewrite !card_option ?card_sum ?card_unit ?card_void); move=>_.
+    destruct s; destruct S; simpl in *; (try by rewrite !card_option ?card_sum ?card_unit ?card_void); rewrite /unl in Li, Lo; move=>_.
     * generalize (card_bij (iso_v L)). rewrite card_sum !card_unit addnC.
       have H: 0 < #|G|. apply /card_gt0P. by exists input.
       revert H. case #|G|; discriminate.
@@ -96,8 +96,8 @@ Proof.
         by injection L=>->.
     * have E: forall y, L (inr tt) <> L (inl y) by intros y H; generalize (bij_injective (f:=L) H). 
       case_eq (L (inr tt)); case.
-       generalize (E input). simpl. congruence. 
-       generalize (E output). simpl. congruence.
+       generalize (E input). simpl in *. congruence. 
+       generalize (E output). simpl in *. congruence.
     * generalize (endpoint_iso L false None). generalize (endpoint_iso L true None).
       have H: L.e None = None by case (L.e None)=>//; repeat case.
       rewrite H. case L.d; simpl; congruence.

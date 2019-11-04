@@ -41,7 +41,7 @@ Arguments output {_}.
 Notation point G := (@Graph2 G).
 
 (* basic operations *)
-Definition add_vertex2 (G: graph2) a := point (add_vertex G a) (inl input) (inl output).
+Definition add_vertex2 (G: graph2) a := point (add_vertex G a) (unl input) (unl output).
 Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge G x y u) input output.
 Definition add_vlabel2 (G: graph2) (x: G) a := point (add_vlabel G x a) input output.
 Definition merge2 (G: graph2) (r: equiv_rel G) := point (merge G r) (\pi input) (\pi output).
@@ -176,7 +176,7 @@ Proof. intros a b ab c d cd. Iso2 (union_iso (unit_graph_iso ab) (unit_graph_iso
 Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) add_vertex2.
 Proof.
   move => F G FG u v uv.
-  Iso2 (union_iso FG (unit_graph_iso uv))=>/=; f_equal; apply FG.
+  Iso2 (union_iso FG (unit_graph_iso uv))=>/=; rewrite /unl/=; f_equal; apply FG.
 Defined.
 
 (* isomorphisms about [add_edge2] *)
@@ -388,7 +388,7 @@ Proof.
   irewrite (merge_iso2 (union_iso iso_id (add_vlabel2_unit' output _)))=>/=.
   etransitivity. refine (merge_iso2 (union_add_vlabel_r _ _ _) _ _ _). simpl.
   etransitivity. refine (iso_iso2 (merge_add_vlabel _ _ _) _ _). simpl.
-  etransitivity. refine (iso_iso2 (add_vlabel_iso (merge_union_K_l (K:=g2_one) (inl input) (inl output) (k:=fun _ => output) _ _ _) _ _) _ _)=>//. 
+  etransitivity. refine (iso_iso2 (add_vlabel_iso (merge_union_K_l (K:=g2_one) (unl input) (unl output) (k:=fun _ => output) _ _ _) _ _) _ _)=>//. 
   case; apply /eqquotP; eqv.
   rewrite /=!merge_union_KE/=. 
   etransitivity. refine (add_vlabel2_iso (merge2_nothing _) _ _).
@@ -404,7 +404,7 @@ Proof.
      (G ⊎ unit_graph2 a) _
      (G [tst output <- a])
      (fun x => match x with inl y => y | inr tt => output end)
-     (fun x => inl x)
+     (fun x => unl x)
      sumxU _ _ _ _ _).
   6,7: by rewrite merge_surjE.
   - apply kernel_eqv_clot.
@@ -526,7 +526,7 @@ Proof.
 Qed.
 
 (* TOFIX: topL should be obtained from topR by duality *)
-Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%lbl) (inr tt) (unl output).
+Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%lbl) (@unr _ F (unit_graph _) tt) (unl output).
 Proof.
   rewrite /=/g2_dot.
   irewrite (merge_iso2 (union_C _ _))=>/=.
@@ -536,7 +536,7 @@ Proof.
   intros []. apply /eqquotP. eqv.
 Qed.
 
-Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (inr tt).
+Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (@unr _ F (unit_graph _) tt).
 Proof.
   rewrite /=/g2_dot.
   irewrite (merge_iso2 (union_iso iso_id (union_C _ _))).

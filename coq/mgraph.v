@@ -316,13 +316,13 @@ Proof.
   abstract by split; repeat case. 
 Defined.
  
-Lemma union_add_edge_l F G x u y: F ∔ [x, u, y] ⊎ G ≃ (F ⊎ G) ∔ [inl x, u, inl y].
+Lemma union_add_edge_l F G x u y: F ∔ [x, u, y] ⊎ G ≃ (F ⊎ G) ∔ [unl x, u, unl y].
 Proof.
   Iso bij_id (@sum_option_l _ _) xpred0.
   abstract by split; repeat case.
 Defined.
 
-Lemma union_add_edge_r F G x u y: F ⊎ G ∔ [x, u, y] ≃ (F ⊎ G) ∔ [inr x, u, inr y].
+Lemma union_add_edge_r F G x u y: F ⊎ G ∔ [x, u, y] ≃ (F ⊎ G) ∔ [unr x, u, unr y].
 Proof.
   etransitivity. apply union_C. 
   etransitivity. apply union_add_edge_l.
@@ -330,13 +330,13 @@ Proof.
   reflexivity.
 Defined.
 
-Lemma union_add_vlabel_l F G x a: F [tst x <- a] ⊎ G ≃ (F ⊎ G) [tst inl x <- a].
+Lemma union_add_vlabel_l F G x a: F [tst x <- a] ⊎ G ≃ (F ⊎ G) [tst unl x <- a].
 Proof. 
   Iso bij_id bij_id xpred0.
   abstract by split; repeat case.
 Defined.
 
-Lemma union_add_vlabel_r F G x a: F ⊎ G [tst x <- a] ≃ (F ⊎ G) [tst inr x <- a].
+Lemma union_add_vlabel_r F G x a: F ⊎ G [tst x <- a] ≃ (F ⊎ G) [tst unr x <- a].
 Proof.
   etransitivity. apply union_C. 
   etransitivity. apply union_add_vlabel_l.
@@ -569,13 +569,13 @@ Section union_merge_l.
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
-  Lemma union_merge_lEl (x: F): union_merge_l (inl (\pi x)) = \pi unl x.
+  Lemma union_merge_lEl (x: F): union_merge_l (@unl (merge_seq F l) _ (\pi x)) = \pi unl x.
   Proof. by rewrite /=union_quot_lEl quot_sameE. Qed.
   Lemma union_merge_lEr (x: G): union_merge_l (unr x) = \pi unr x.
   Proof. by rewrite /=union_quot_lEr quot_sameE. Qed.
   Lemma union_merge_l'E (x: F+G):
     union_merge_l^-1 (\pi x) =
-    match x with inl y => inl (\pi y) | inr y => inr y end.
+    match x with inl y => @unl (merge_seq F l) _ (\pi y) | inr y => unr y end.
   Proof. by rewrite /=quot_sameE union_quot_l'E. Qed.
 End union_merge_l.  
 Global Opaque union_merge_l.
@@ -595,7 +595,7 @@ Section union_merge_r.
     eapply iso_comp. apply (merge_iso (union_C _ _)).
     apply merge_same. abstract by rewrite map_map_pairs. 
   Defined.
-  Lemma union_merge_rEr (x: G): union_merge_r (inr (\pi x)) = \pi (unr x).
+  Lemma union_merge_rEr (x: G): union_merge_r (@unr _ (merge_seq G l) (\pi x)) = \pi (unr x).
   Proof.
     (* BUG: the second rewrite hangs if F and x are not given *)
     rewrite /=. rewrite (union_merge_lEl F _ x).

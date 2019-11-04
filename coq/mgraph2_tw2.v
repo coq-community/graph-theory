@@ -66,7 +66,7 @@ Qed.
 Section Quotients. 
   Variables (G1 G2 : graph2).
   
-  Let P : {set union G1 G2} := [set inl input; inl output; inr input; inr output].
+  Let P : {set union G1 G2} := [set unl input; unl output; unr input; unr output].
 
   Definition admissible (eqv : rel (union G1 G2)) := 
     forall x y, eqv x y -> x = y \/ [set x;y] \subset P.
@@ -135,19 +135,19 @@ Section Quotients.
     exists T D, [/\ sdecomp T (sskeleton (G1 ∥ G2)) D & width D <= 3].
   Proof using.
     move => dec1 dec2 W1 W2.
-    case: (decomp_quot (e:=eqv_clot [:: (inl input, inr input); (inl output, inr output)])
+    case: (decomp_quot (e:=eqv_clot [:: (unl input, unr input); (unl output, unr output)])
                        dec1 dec2 W1 W2 _ _).
     - apply admissible_eqv_clot. case => u v. 
       rewrite !inE /= !xpair_eqE => /orP [] /andP [/eqP -> /eqP->]; by rewrite !eqxx.
-    - pose P' : {set union G1 G2} := [set inl input; inl output].
+    - pose P' : {set union G1 G2} := [set unl input; unl output].
       apply: (@leq_trans #|P'|); last by rewrite cards2; by case (_ != _).
       apply: (@leq_trans #|[set (\pi x : G1 ∥ G2) | x in P']|); last exact: leq_imset_card.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. case/setUP : H1 => H1; first case/setUP : H1 => H1.
       * by rewrite mem_imset.
-      * move/set1P : H1 => ->. apply/imsetP. exists (inl input); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (unl input); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
-      * move/set1P : H1 => ->. apply/imsetP. exists (inl output); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (unl output); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
@@ -160,17 +160,17 @@ Section Quotients.
     exists T D, [/\ sdecomp T (sskeleton (G1 · G2)) D & width D <= 3].
   Proof using.
     move => dec1 dec2 W1 W2.
-    case: (decomp_quot (e:=eqv_clot [:: (inl output, inr input)]) dec1 dec2 W1 W2 _ _).
+    case: (decomp_quot (e:=eqv_clot [:: (unl output, unr input)]) dec1 dec2 W1 W2 _ _).
     - apply admissible_eqv_clot. case => u v.
       rewrite !inE /= !xpair_eqE => /andP [/eqP -> /eqP->]; by rewrite !eqxx.
-    - pose P' : {set union G1 G2} := [set inl input; inl output; inr output].
+    - pose P' : {set union G1 G2} := [set unl input; unl output; unr output].
       apply: (@leq_trans #|P'|); last apply cards3.
       apply: (@leq_trans #|[set (\pi x : G1 · G2) | x in P']|); last exact: leq_imset_card.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. move: H1. 
       rewrite /P -!setUA [[set _;_]]setUC !setUA. case/setUP => H1.
       * by rewrite mem_imset.
-      * move/set1P : H1 => ->. apply/imsetP. exists (inl output); first by rewrite !inE eqxx ?orbT.
+      * move/set1P : H1 => ->. apply/imsetP. exists (unl output); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
