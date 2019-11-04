@@ -15,6 +15,11 @@ real	7m23,718s
 user	7m21,065s
 sys	0m2,623s
 
+11d7684bcd295c4836548f60f739a0b18a8c3087 (rewriting 2019/11/04 with prim records for bij/iso/... and graphs)
+real	3m44,970s
+user	3m42,255s
+sys	0m2,697s
+
 daf0637a42ee8c6e5937edc58956f86eddd44a38 (rewriting 2019/11/03)
 real	5m57,358s
 user	5m53,891s
