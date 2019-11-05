@@ -273,22 +273,24 @@ Section terms.
    |}.
  
  (* quotiented terms indeed form a 2pdom algebra *)
- Program Definition tm_pttdom: pttdom := {| ops := tm_ops_ |}.
- Next Obligation. repeat intro; simpl. by apply dot_eqv. Qed.
- Next Obligation. repeat intro; simpl. by apply par_eqv. Qed.
- Next Obligation. repeat intro; simpl. by apply cnv_eqv. Qed.
- Next Obligation. repeat intro; simpl. by apply dom_eqv. Qed.
- Next Obligation. repeat intro; simpl. by apply parA. Qed.
- Next Obligation. repeat intro; simpl. by apply parC. Qed.
- Next Obligation. repeat intro; simpl. by apply dotA. Qed.
- Next Obligation. repeat intro; simpl. by apply dotx1. Qed.
- Next Obligation. repeat intro; simpl. by apply cnvI. Qed.
- Next Obligation. repeat intro; simpl. by apply cnvpar. Qed.
- Next Obligation. repeat intro; simpl. by apply cnvdot. Qed.
- Next Obligation. repeat intro; simpl. by apply par11. Qed.
- Next Obligation. repeat intro; simpl. by apply A10. Qed.
- Next Obligation. repeat intro; simpl. by apply A13. Qed.
- Next Obligation. repeat intro; simpl. by apply A14. Qed.
+ Definition tm_pttdom: pttdom.
+  refine (@Build_pttdom tm_ops_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+    abstract (repeat intro; simpl; by apply dot_eqv).
+    abstract (repeat intro; simpl; by apply par_eqv).
+    abstract (repeat intro; simpl; by apply cnv_eqv).
+    abstract (repeat intro; simpl; by apply dom_eqv).
+    abstract (repeat intro; simpl; by apply parA).
+    abstract (repeat intro; simpl; by apply parC).
+    abstract (repeat intro; simpl; by apply dotA).
+    abstract (repeat intro; simpl; by apply dotx1).
+    abstract (repeat intro; simpl; by apply cnvI).
+    abstract (repeat intro; simpl; by apply cnvpar).
+    abstract (repeat intro; simpl; by apply cnvdot).
+    abstract (repeat intro; simpl; by apply par11).
+    abstract (repeat intro; simpl; by apply A10).
+    abstract (repeat intro; simpl; by apply A13).
+    abstract (repeat intro; simpl; by apply A14).
+ Defined.
  Canonical tm_pttdom. 
  
  Notation test := (test tm_pttdom).

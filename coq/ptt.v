@@ -46,19 +46,23 @@ Section derived.
  Lemma A14_ (x y z: X): dom x·(y∥z) ≡ dom x·y ∥ z.
  Proof. by rewrite domE parC_ A12 (A12 _ y) parA_. Qed.
 
- Program Definition pttdom_of: pttdom := {| pttdom.ops := ops X |}.
- Next Obligation. apply parA_. Qed.
- Next Obligation. apply parC_. Qed.
- Next Obligation. apply dotA_. Qed.
- Next Obligation. apply dotx1_. Qed.
- Next Obligation. apply cnvI_. Qed.
- Next Obligation. apply cnvpar_. Qed.
- Next Obligation. apply cnvdot_. Qed.
- Next Obligation. apply par11_. Qed.
- Next Obligation. apply A10_. Qed.
- Next Obligation. apply A13_. Qed.
- Next Obligation. apply A14_. Qed.
- Canonical pttdom_of. 
+ Canonical Structure pttdom_of: pttdom := 
+   Build_pttdom 
+    (@dot_eqv_ X)
+    (@par_eqv_ X)
+    (@cnv_eqv_ X)
+    (dom_eqv_)
+    (@parA_ X)
+    (@parC_ X)
+    (@dotA_ X)
+    (@dotx1_ X)
+    (@cnvI_ X)
+    (@cnvpar_ X)
+    (@cnvdot_ X)
+    (@par11_ X)
+    (@A10_ X)
+    (A13_)
+    (A14_).
 
  Lemma parxtop (x: X): x ∥ top ≡ x.
  Proof.
@@ -122,25 +126,26 @@ Section terms.
       one := tm_one;
       top := tm_top |}.
  
- (* quotiented terms indeed form a 2p-algebra *)
- (*
- Program Definition tm_ptt: ptt := {| ops := tm_ops_ |}.
- Next Obligation. repeat intro; simpl. by apply dot_eqv_. Qed.
- Next Obligation. repeat intro; simpl. by apply par_eqv_. Qed.
- Next Obligation. repeat intro; simpl. by apply cnv_eqv_. Qed.
- Next Obligation. repeat intro; simpl. by apply domE. Qed.
- Next Obligation. repeat intro; simpl. by apply parA_. Qed.
- Next Obligation. repeat intro; simpl. by apply parC_. Qed.
- Next Obligation. repeat intro; simpl. by apply dotA_. Qed.
- Next Obligation. repeat intro; simpl. by apply dotx1_. Qed.
- Next Obligation. repeat intro; simpl. by apply cnvI_. Qed.
- Next Obligation. repeat intro; simpl. by apply cnvpar_. Qed.
- Next Obligation. repeat intro; simpl. by apply cnvdot_. Qed.
- Next Obligation. repeat intro; simpl. by apply par11_. Qed.
- Next Obligation. repeat intro; simpl. by apply A10_. Qed.
- Next Obligation. repeat intro; simpl. by apply A11. Qed.
- Next Obligation. repeat intro; simpl. by apply A12. Qed.
- Canonical tm_ptt. 
-  *)
+ (* quotiented terms indeed form a 2pdom algebra *)
+ Definition tm_ptt: ptt.
+  refine (@Build_ptt tm_ops_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+    abstract (repeat intro; simpl; by apply dot_eqv_).
+    abstract (repeat intro; simpl; by apply par_eqv_).
+    abstract (repeat intro; simpl; by apply cnv_eqv_).
+    abstract (repeat intro; simpl; by apply domE).
+    abstract (repeat intro; simpl; by apply parA_).
+    abstract (repeat intro; simpl; by apply parC_).
+    abstract (repeat intro; simpl; by apply dotA_).
+    abstract (repeat intro; simpl; by apply dotx1_).
+    abstract (repeat intro; simpl; by apply cnvI_).
+    abstract (repeat intro; simpl; by apply cnvpar_).
+    abstract (repeat intro; simpl; by apply cnvdot_).
+    abstract (repeat intro; simpl; by apply par11_).
+    abstract (repeat intro; simpl; by apply A10_).
+    abstract (repeat intro; simpl; by apply A11).
+    abstract (repeat intro; simpl; by apply A12).
+ Defined.
+ (* Canonical tm_ptt.  *)
+
 End terms.
 Bind Scope ptt_ops with term.

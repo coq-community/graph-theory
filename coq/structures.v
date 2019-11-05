@@ -80,7 +80,7 @@ Class monoidLaws {X : setoid} (mon0 : X) (mon2 : X -> X -> X) :=
     }.
 Global Existing Instance mon_eqv.  
 
-Structure labels :=
+Record labels :=
   Labels {
       lv: setoid;
       mon0: lv;
@@ -132,20 +132,17 @@ Proof.
   - symmetry in yy. apply: eqvb_transR yy. apply: eqvb_transL xx. by rewrite !addbF.
 Qed.
 
-(* label structure for letter-labeled graphs (Definition 4.2) *)
-Program Definition flat_labels (X: Type) :=
-  {| lv := eq_setoid unit;
-     mon0:=tt; 
-     mon2 _ _ :=tt;
-     le := eq_setoid X; 
-     eqv' _ _ := False 
-  |}.
-Next Obligation. split => //; by case. Qed.
-Next Obligation. tauto. Qed.
 Lemma eq_unit (a b: unit): a = b.
 Proof. by case a; case b. Qed.
 Hint Resolve eq_unit: core.
 
+(* label structure for letter-labeled graphs (Definition 4.2) *)
+Definition flat_labels (X: Type): labels.
+  refine (@Labels (eq_setoid unit) tt (fun _ _ => tt) _ (eq_setoid X) (fun _ _ => False) _ _ _).
+  abstract by split.
+  all: abstract by []. 
+Defined.
+  
 
 (* notations for vertex labels *)
 (* Declare Scope labels. compat:coq-8.9*)

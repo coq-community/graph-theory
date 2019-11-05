@@ -624,42 +624,46 @@ Global Instance dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
 (* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
-Program Definition g2_ptt: ptt := {| ops := g2_ops |}.
-Next Obligation. apply CProper2, dot_iso2. Qed.
-Next Obligation. apply CProper2, par_iso2. Qed.
-Next Obligation. apply CProper1, cnv_iso2. Qed.
-Next Obligation. exists. apply dom2E. Qed.
-Next Obligation. exists. apply par2A. Qed.
-Next Obligation. exists. apply par2C. Qed.
-Next Obligation. exists. apply dot2A. Qed.
-Next Obligation. exists. apply dot2one. Qed.
-Next Obligation. exists. apply cnv2I. Qed.
-Next Obligation. exists. apply cnv2par. Qed.
-Next Obligation. exists. apply cnv2dot. Qed.
-Next Obligation. exists. apply par2oneone. Qed.
-Next Obligation. exists. apply g2_A10. Qed.
-Next Obligation. exists. apply g2_A11. Qed.
-Next Obligation. exists. apply g2_A12. Qed.
+Definition g2_ptt: ptt.
+  refine (@Build_ptt g2_ops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+     abstract apply CProper2, dot_iso2. 
+     abstract apply CProper2, par_iso2. 
+     abstract apply CProper1, cnv_iso2. 
+     abstract (exists; apply dom2E).
+     abstract (exists; apply par2A).
+     abstract (exists; apply par2C).
+     abstract (exists; apply dot2A).
+     abstract (exists; apply dot2one).
+     abstract (exists; apply cnv2I).
+     abstract (exists; apply cnv2par).
+     abstract (exists; apply cnv2dot).
+     abstract (exists; apply par2oneone).
+     abstract (exists; apply g2_A10).
+     abstract (exists; apply g2_A11).
+     abstract (exists; apply g2_A12).
+Defined.
 Canonical g2_ptt.
 
 (* TODO should be inferred via ptt.pttdom_of, but required for below for applying [cnv_eqv] *)
 (* Canonical Structure g2_pttdom: pttdom := Eval hnf in ptt.pttdom_of g2_ptt. *)
-Program Definition g2_pttdom: pttdom := {| pttdom.ops := g2_ops |}.
-Next Obligation. apply dot_eqv_. Qed.
-Next Obligation. apply par_eqv_. Qed.
-Next Obligation. apply cnv_eqv_. Qed.
-Next Obligation. apply dom_eqv_. Qed.
-Next Obligation. apply parA_. Qed.
-Next Obligation. apply parC_. Qed.
-Next Obligation. apply dotA_. Qed.
-Next Obligation. apply dotx1_. Qed.
-Next Obligation. apply cnvI_. Qed.
-Next Obligation. apply cnvpar_. Qed.
-Next Obligation. apply cnvdot_. Qed.
-Next Obligation. apply par11_. Qed.
-Next Obligation. apply A10_. Qed.
-Next Obligation. apply A13_. Qed.
-Next Obligation. apply A14_. Qed.
+Definition g2_pttdom: pttdom.
+  refine (@Build_pttdom g2_ops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+     abstract apply dot_eqv_.
+     abstract apply par_eqv_.
+     abstract apply cnv_eqv_.
+     abstract apply dom_eqv_.
+     abstract apply parA_.
+     abstract apply parC_.
+     abstract apply dotA_.
+     abstract apply dotx1_.
+     abstract apply cnvI_.
+     abstract apply cnvpar_.
+     abstract apply cnvdot_.
+     abstract apply par11_.
+     abstract apply A10_.
+     abstract apply A13_.
+     abstract apply A14_.
+Defined.
 Canonical g2_pttdom.
 
 (** ** additional laws required for the completeness proof *)
