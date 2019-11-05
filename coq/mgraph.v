@@ -977,5 +977,22 @@ Section MergeSubgraph.
   Definition merge_subgraph_iso : merge_seq (G1 ⊎ G2) h ≃ merge_seq G12 h' := 
     Iso merge_subgraph_hom.
 
+  Lemma merge_subgraph_isoE x (inV1 : x \in V1) : 
+    merge_subgraph_iso (\pi (inl (Sub x inV1))) = \pi (Sub x (union_bij_proofL _ inV1)).
+  Proof. 
+    Set Printing All.
+    rewrite /=. 
+    (* 4000 lines goal *)
+    (* repeat (let F := fresh "F" in set F := [finType of _]).  *)
+    (* 300 lines goal, but only [F0] (60 lines) appears more than once (only three times) *)
+    (* So where does the rest disappear to ? *)
+    Time rewrite quot_sameE /=. 
+    (* takes 10x longer without the set F := ... *)
+    apply/eqquotP. rewrite -eqv_clot_union_rel. apply/eqquotP.
+    symmetry. rewrite -union_bij_bwd_can'. apply: union_bij_fwd_hom => //.
+    rewrite reprK /union_bij_bwd. case: setU_dec => // a.
+    by rewrite (bool_irrelevance inV1 a).
+  Time Qed. (* Takes 8x longer without the set F := ... *)
+
 End MergeSubgraph.
 
