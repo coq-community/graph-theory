@@ -74,12 +74,13 @@ Notation "G [tst  x <- a ]" := (@add_vlabel G x a) (at level 20, left associativ
 
 (* disjoint union (Definition 4.5)*)
 Definition union (F G : graph) : graph :=
-  {| vertex := [finType of F + G];
-     edge := [finType of edge F + edge G];
+  {| vertex := sum_finType F G;
+     edge := sum_finType (edge F) (edge G);
      endpoint b := sumf (@endpoint F b) (@endpoint G b);
      vlabel e := match e with inl e => vlabel e | inr e => vlabel e end;
      elabel e := match e with inl e => elabel e | inr e => elabel e end;
   |}.
+
 Infix "⊎" := union (at level 50, left associativity).
 
 Definition unl {G H: graph} (x: G): G ⊎ H := inl x.
@@ -88,7 +89,7 @@ Definition unr {G H: graph} (x: H): G ⊎ H := inr x.
 (* quotient (Definition 4.6): merging vertices according to an equivalence relation *)
 Definition merge (G: graph) (r : equiv_rel G) :=
   {| vertex := quot r;
-     edge := (edge G);
+     edge := edge G;
      endpoint b e := \pi (endpoint b e);
      vlabel c := \big[mon2/mon0]_(w | \pi w == c) vlabel w;
      elabel e := elabel e |}.
@@ -702,12 +703,12 @@ Section Subgraphs.
   Definition consistent := forall e b, e \in E -> endpoint b e \in V.
   Hypothesis in_V : consistent.
   
-  Definition sub_vertex := sig [eta mem V].
-  Definition sub_edge := sig [eta mem E].
+  Definition sub_vertex := sig_finType [eta mem V].
+  Definition sub_edge := sig_finType [eta mem E].
 
   Definition subgraph_for := 
-    {| vertex := [finType of sub_vertex];
-       edge := [finType of sub_edge];
+    {| vertex := sub_vertex;
+       edge := sub_edge;
        endpoint b e := Sub (endpoint b (val e)) (in_V b (valP e)); 
        vlabel x := vlabel (val x);
        elabel e := elabel (val e);
@@ -980,19 +981,12 @@ Section MergeSubgraph.
   Lemma merge_subgraph_isoE x (inV1 : x \in V1) : 
     merge_subgraph_iso (\pi (inl (Sub x inV1))) = \pi (Sub x (union_bij_proofL _ inV1)).
   Proof. 
-    Set Printing All.
-    rewrite /=. 
-    (* 4000 lines goal *)
-    (* repeat (let F := fresh "F" in set F := [finType of _]).  *)
-    (* 300 lines goal, but only [F0] (60 lines) appears more than once (only three times) *)
-    (* So where does the rest disappear to ? *)
-    Time rewrite quot_sameE /=. 
-    (* takes 10x longer without the set F := ... *)
+    rewrite /= quot_sameE. 
     apply/eqquotP. rewrite -eqv_clot_union_rel. apply/eqquotP.
     symmetry. rewrite -union_bij_bwd_can'. apply: union_bij_fwd_hom => //.
     rewrite reprK /union_bij_bwd. case: setU_dec => // a.
     by rewrite (bool_irrelevance inV1 a).
-  Time Qed. (* Takes 8x longer without the set F := ... *)
+  Qed. 
 
 End MergeSubgraph.
 
