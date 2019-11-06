@@ -105,20 +105,18 @@ Lemma merge_subgraph_dot (G : graph2) (V1 V2 : {set G}) (E1 E2 : {set edge G})
         (Sub (val o2) (union_bij_proofR _ (valP o2))).
 Proof.
   move => Eoi disE12 cap12. rewrite /=/g2_dot.
-  setoid_rewrite-> (iso_iso2 (merge_subgraph_iso _ disE12)).
-  rewrite /=. rewrite !quot_sameE. (* super looong *)
-  rewrite-> merge_nothing. 2: repeat constructor; exact: val_inj.
-  apply: subgraph_for_iso => //.
-  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
-    + by move/eqv_clot_injL => ->.
-    + move/eqv_clot_LR => [-> ->]. by symmetry. 
-  - rewrite /union_bij_fwd. case: piP => [[y|y]]. 
-    + move/esym/eqv_clot_LR => [-> ->]. done.
-    + by move/eqv_clot_injR => ->.
-  Unshelve.
-  move => x inV1 inV2. move: (inV1) (inV2). rewrite (cap12 _ inV1 inV2) {2 4}Eoi /= =>  ? ?. 
-  rewrite !valK'. apply/eqquotP. exact: eqv_clot_hd.
-Qed. (* QED takes forever, opacity problem? *)
+  set G12 := (point _ _ _ ⊎ point _ _ _)%G.
+  have eqvI (x : G) (inV1 : x \in V1) (inV2 : x \in V2)  :
+    inl (Sub x inV1) = inr (Sub x inV2) %[mod @eqv_clot G12 [:: (unl output, unr input)]].
+  { move: (inV1) (inV2). rewrite (cap12 _ inV1 inV2) {2 4}Eoi /= =>  ? ?. 
+    rewrite !valK'. apply/eqquotP. exact: eqv_clot_hd. }
+  set x0 := Sub (sval i1) (union_bij_proofL V2 (valP i1)).
+  rewrite /x0 /G12. 
+  apply: iso2_comp. apply: (iso_iso2 (merge_subgraph_iso eqvI disE12)).
+  rewrite !(merge_subgraph_isoE eqvI disE12 x0).
+  rewrite -> merge_nothing. 2: repeat constructor; exact: val_inj.  
+  apply: (iso_iso2' (h := iso_id)); apply: val_inj => /=; by rewrite val_insubd inE ?(valP i1) ?(valP o2).
+Qed.
 
 (** TODO: [G[V1,E1] ∥ G[V2,E2] ≈ G[V1 :|: V2, E1 :|: E2]] *)
 

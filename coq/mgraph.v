@@ -703,8 +703,8 @@ Section Subgraphs.
   Definition consistent := forall e b, e \in E -> endpoint b e \in V.
   Hypothesis in_V : consistent.
   
-  Definition sub_vertex := sig_finType [eta mem V].
-  Definition sub_edge := sig_finType [eta mem E].
+  Definition sub_vertex := sig_finType (fun x => x \in V).
+  Definition sub_edge := sig_finType (fun e => e \in E).
 
   Definition subgraph_for := 
     {| vertex := sub_vertex;
@@ -978,15 +978,21 @@ Section MergeSubgraph.
   Definition merge_subgraph_iso : merge_seq (G1 ⊎ G2) h ≃ merge_seq G12 h' := 
     Iso merge_subgraph_hom.
 
-  Lemma merge_subgraph_isoE x (inV1 : x \in V1) : 
-    merge_subgraph_iso (\pi (inl (Sub x inV1))) = \pi (Sub x (union_bij_proofL _ inV1)).
+  Lemma merge_subgraph_isoE x0 : 
+    (forall x, merge_subgraph_iso (\pi (inl x)) = \pi (insubd x0 (val x))) * 
+    (forall y, merge_subgraph_iso (\pi (inr y)) = \pi (insubd x0 (val y))).
   Proof. 
-    rewrite /= quot_sameE. 
-    apply/eqquotP. rewrite -eqv_clot_union_rel. apply/eqquotP.
-    symmetry. rewrite -union_bij_bwd_can'. apply: union_bij_fwd_hom => //.
-    rewrite reprK /union_bij_bwd. case: setU_dec => // a.
-    by rewrite (bool_irrelevance inV1 a).
-  Qed. 
+    split => [x|y]. 
+    all: rewrite /= !quot_sameE.
+    all: apply/eqquotP; rewrite -eqv_clot_union_rel; apply/eqquotP.
+    all: symmetry; rewrite -union_bij_bwd_can'; apply: union_bij_fwd_hom => //.
+    all: rewrite reprK /union_bij_bwd. 
+    - case: setU_dec; rewrite val_insubd !inE !(valP x) //=; try by case.
+      move => a. by rewrite valK'.
+    - case: setU_dec; rewrite !val_insubd !inE !(valP y) !orbT //=.
+      + move => a. by rewrite -{2}[y]valK' ?(valP y).
+      + case => a b /=. by rewrite valK'.
+  Qed.
 
 End MergeSubgraph.
 
