@@ -14,6 +14,7 @@ digraph dependencies {
 		node [style=filled; color="orange"];
 		"digraph";   
 		"sgraph";	   
+		"helly";	   
 		"treewidth"; 
 		"minor";	   
 		"menger";	   
@@ -49,4 +50,9 @@ digraph dependencies {
 		rank="same";
 		"edone";
 		"bounded";
+	}
+	subgraph {
+		rank="same";
+		"finmap_plus";
+		"finite_quotient";
 	}

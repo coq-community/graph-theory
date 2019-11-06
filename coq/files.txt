@@ -27,13 +27,12 @@ extraction_def: 	definition of the extraction function in the connected case
 extraction_iso: 	correctness of the extraction function (connected case)
 extraction_top: 	extension to the general case, TW2 = K4-free as a corollary
 
-     mgraph           ptt     checkpoint  separators
-     mgraph2                        cp_minors
-        skeleton
-              mgraph2_tw2 
-	       	        extraction_def
-	     	        extraction_iso
-	     	        extraction_top
+        mgraph      ptt   checkpoint  separators
+        mgraph2    /            cp_minors
+           skeleton             /
+    mgraph2_tw2   extraction_def
+       	         extraction_iso
+   	  extraction_top
 
 *** CPP20 submission
 structures:		setoids, bisetoids, monoids
