@@ -91,7 +91,6 @@ Qed.
 Lemma hom_skel (G1 G2 : graph) (h: iso G1 G2) :
   forall x y, @edge_rel (skeleton G1) x y -> @edge_rel (skeleton G2) (h x) (h y).
 Proof.
-  have B: bijective h by exists h^-1; apply (iso_v h). 
   apply skelP. 
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel/=/sk_rel. 
@@ -150,7 +149,6 @@ Lemma hom2_sskel (G1 G2 : graph2) (h: iso2 G1 G2) :
   forall x y, @edge_rel (sskeleton G1) x y -> @edge_rel (sskeleton G2) (h x) (h y).
 Proof.
   (* TODO: reuse [hom_skel] above? *)
-  have B: bijective h by exists h^-1; apply (iso_v h).
   apply sskelP.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /= /edge_rel //=. 

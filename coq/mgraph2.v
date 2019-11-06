@@ -709,13 +709,13 @@ Definition del_vertex2 (G : graph2) (z : G) (Hz : z \notin IO) :=
   point (del_vertex z) (Sub input (del_vertex_proof1 Hz)) (Sub output (del_vertex_proof2 Hz)).
 Arguments del_vertex2 : clear implicits.
 
-Lemma del_vertex2_iso' (F G : graph2) (i : F ≃2 G) 
+Lemma del_vertex2_iso (F G : graph2) (i : F ≃2 G) 
   (z : F) (z' : G) (Hz : z \notin IO) (Hiz : z' \notin IO) :
   i z = z' -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
 Proof.
-  move => E. apply (@iso_iso2' _ _ (del_vertex_iso' E)). 
-  - abstract(rewrite del_vertex_isoE'; apply: val_inj; exact: iso2_input).
-  - abstract(rewrite del_vertex_isoE'; apply: val_inj; exact: iso2_output). 
+  move => E. Iso2 (del_vertex_iso E).
+  - abstract apply val_inj, iso2_input. 
+  - abstract apply val_inj, iso2_output. 
 Defined.
 
 Definition del_edges2 (G : graph2) (E : {set edge G}) := 
@@ -727,12 +727,8 @@ Lemma iso2_del_edges2 (F G : graph2) (i : F ≃2 G)
 Proof.
   move => E.
   have EE : ~: EG = [set i.e e | e in ~: EF] by rewrite -bij_imsetC E. 
-  apply: (@iso_iso2' _ _ (del_edges_iso' EE)). exact: iso2_input. exact: iso2_output. 
+  Iso2 (del_edges_iso EE)=>/=. exact: iso2_input. exact: iso2_output. 
 Defined.
-
-Lemma iso2_del_edges2E (F G : graph2) (i : F ≃2 G) EF EG h :
-  @iso2_del_edges2 F G i EF EG h =1 i.
-Proof. done. Qed.
 
 
 (* lemmas for term extraction *)
@@ -760,8 +756,7 @@ Proof.
   move => eq_V eq_E eq_i eq_o. subst.
   move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
   unshelve Iso2 (@Iso _ (subgraph_for C1) (subgraph_for C2) bij_id bij_id xpred0 _).
-  split=>//e b//=.
-  apply /eqP. by rewrite sub_val_eq SubK. (* TODO: better way? old proof was using bool_irrelevance *)
+  split=>//e b//=. by apply val_inj. 
 Qed.
 
 (** recognizing the full subgraph *)

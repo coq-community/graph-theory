@@ -57,7 +57,6 @@ Proof. apply /eqquotP. by rewrite reprK. Qed.
 Lemma piK' (T: finType) (e: equiv_rel T) (x: T): e x (repr (pi e x)).
 Proof. rewrite equiv_sym; apply piK. Qed.
 
-(* TODO: only used once in skeleton ; remove? *)
 Lemma eqmodE (T: finType) (e: equiv_rel T) (x y : T): (x == y %[mod e]) = e x y.
 by apply/eqP/idP => /(eqquotP e). Qed.
 
@@ -69,10 +68,6 @@ Proof. constructor. by rewrite reprK. Qed.
 
 Lemma pi_surj (T : finType) (e : equiv_rel T) : surjective (pi e).
 Proof. move => y. exists (repr y). by rewrite reprK. Qed.
-
-Lemma mod_exchange (T : finType) (e1 e2 : equiv_rel T) x y : 
-  e1 =2 e2 -> x = y %[mod e2] -> x = y %[mod e1].
-Proof. move => E M1. apply/eqquotP. rewrite E. by apply/eqquotP. Qed.
 
 
 (** Lifting a function between finite types to a function between quotients *)
@@ -128,9 +123,10 @@ Section t.
     abstract by move=>x; rewrite -{2}(reprK x); apply /eqquotP; rewrite H; apply piK. 
     abstract by move=>x; rewrite -{2}(reprK x); apply /eqquotP; rewrite -H; apply piK. 
   Defined.
-  Lemma quot_sameE (x: S): 
-    (quot_same (\pi x) = \pi x) * (quot_same^-1 (\pi x) = \pi x).
-  Proof. split; apply/eqquotP;[rewrite -H|rewrite H]; exact: piK. Qed.
+  Lemma quot_sameE (x: S): quot_same (\pi x) = \pi x.
+  Proof. apply/eqquotP; rewrite -H; exact: piK. Qed.
+  Lemma quot_sameE' (x: S): quot_same^-1 (\pi x) = \pi x.
+  Proof. apply/eqquotP; rewrite H; exact: piK. Qed.
 End t.
 Global Opaque quot_same. 
 
@@ -154,9 +150,13 @@ Section quot_kernel.
  Proof. intro. rewrite -{2}(reprK x); apply /eqquotP. by apply/Hr. Qed.
  Lemma quot_kernel_can': cancel (fun b => \pi f' b) (fun c => f (@repr _ r c)).
  Proof. intro. by rewrite surj_repr_pi. Qed.
- Definition quot_kernel: bij (quot r) B := Bij quot_kernel_can quot_kernel_can'. 
+ Definition quot_kernel: bij (quot r) B := Bij quot_kernel_can quot_kernel_can'.
+ Lemma quot_kernelE x: quot_kernel (\pi x) = f x.
+ Proof. exact: surj_repr_pi. Qed.
+ Lemma quot_kernelE' x: quot_kernel^-1 x = \pi f' x.
+ Proof. by []. Qed.
 End quot_kernel.
-
+Global Opaque quot_kernel.
 
 Section map_equiv.
   Variables (S T: Type) (h: T -> S) (e: equiv_rel S).
@@ -180,8 +180,7 @@ Section b.
                         rewrite map_equivE bijK; apply piK. 
   Defined.
   Lemma quot_bijE (x: S): quot_bij (\pi x) = \pi h x.
-  Proof. simpl. apply /eqquotP. rewrite map_equivE 2!bijK. apply piK. Qed.
-  
+  Proof. simpl. apply /eqquotP. rewrite map_equivE 2!bijK. apply piK. Qed.  
   Lemma quot_bijE' (x: T): quot_bij^-1 (\pi x) = \pi h^-1 x.
   Proof.  apply/eqquotP. rewrite -map_equivE. apply piK. Qed.
 End b.
@@ -251,7 +250,7 @@ Section union_quot_l.
   Proof. simpl. apply /eqquotP. apply piK. Qed.
   Lemma union_quot_lEr (x: T): union_quot_l (inr x) = \pi (inr x).
   Proof. simpl. apply /eqquotP=>//=. Qed.
-  Lemma union_quot_l'E (x: S+T):
+  Lemma union_quot_lE' (x: S+T):
     union_quot_l^-1 (\pi x) =
     match x with inl y => inl (\pi y) | inr y => inr y end.
   Proof.
@@ -263,6 +262,7 @@ End union_quot_l.
 Global Opaque union_quot_l.
 
 Section union_quot_r.
+  (* unused for now *)
   Variables (S T: finType) (e: equiv_rel T).
   Definition union_equiv_r: equiv_rel (S+T) := map_equiv sumC (union_equiv_l _ e).
   Definition union_quot_r: bij (S + quot e) (quot union_equiv_r).
@@ -300,23 +300,16 @@ Section quot_union_K.
         move: H=>/eqquotP H. rewrite kh in H.
         apply /eqquotP. rewrite /=map_equivE. by apply /eqquotP.
   Defined.
-  Lemma quot_union_KEl (x: S): quot_union_K (\pi inl x) = \pi x.
+  Lemma quot_union_KE (x: S+K): quot_union_K (\pi x) = \pi (sum_left k x).
   Proof.
-    simpl. generalize (piK e (inl x)).
-    case (repr (pi e (inl x))) => y H//=.
-      by apply /eqquotP=>//.
+    simpl. generalize (piK e x).
+    case (repr (pi e x)); case x => z y H/=. 
+      by apply /eqquotP.
       move: H=>/eqquotP H. rewrite kh in H.
       apply /eqquotP. rewrite /=map_equivE. by apply /eqquotP.
+      all: apply /eqquotP; rewrite /=map_equivE; apply /eqquotP;
+        rewrite -!kh; by apply /eqquotP.
   Qed.
-  Lemma quot_union_KEr (x: K): quot_union_K (\pi inr x) = \pi (k x).
-  Proof.
-    simpl. generalize (piK e (inr x)).
-    case (repr (pi e (inr x))) => y H//=; apply /eqquotP; rewrite /=map_equivE; apply /eqquotP;
-    rewrite -!kh; by apply /eqquotP.
-  Qed.
-  (* TODO: inline two previous lemmas? *)
-  Lemma quot_union_KE (x: S+K): quot_union_K (\pi x) = \pi (sum_left k x).
-  Proof. case x. apply quot_union_KEl. apply quot_union_KEr. Qed.
 End quot_union_K.
 Global Opaque quot_union_K.
 
@@ -339,7 +332,7 @@ Proof. apply/subsetP. exact: subsetUl. Qed.
 Lemma union_bij_proofR x : x \in V -> x \in U :|: V.
 Proof. apply/subsetP. exact: subsetUr. Qed.
 
-Definition union_bij_fwd (x : sig U + sig V) : sig (U :|: V) :=
+Definition merge_union_fwd (x : sig U + sig V) : sig (U :|: V) :=
   match x with 
   | inl x => Sub (val x) (union_bij_proofL (valP x))
   | inr x => Sub (val x) (union_bij_proofR (valP x))
@@ -348,46 +341,46 @@ Definition union_bij_fwd (x : sig U + sig V) : sig (U :|: V) :=
 Lemma setU_dec x : x \in U :|: V -> ((x \in U) + (x \notin U)*(x \in V))%type.
 Proof. case E : (x \in U); last rewrite !inE E; by [left|right]. Qed.
 
-Definition union_bij_bwd (x : sig (U :|: V)) : sig U + sig V :=
+Definition merge_union_bwd (x : sig (U :|: V)) : sig U + sig V :=
   match setU_dec (valP x) with 
   | inl p => inl (Sub (val x) p) 
   | inr p => inr (Sub (val x) p.2) 
   end.
 
-Inductive union_bij_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
-| union_bij_bwdL x (inU : x \in U) (inUV : x \in U :|: V) : 
-    union_bij_bwd_spec (Sub x inUV) (inl (Sub x inU))
-| union_bij_bwdR x (inV : x \in V) (inUV : x \in U :|: V) : 
-    x \notin U -> union_bij_bwd_spec (Sub x inUV) (inr (Sub x inV)).
+Inductive merge_union_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
+| merge_union_bwdL x (inU : x \in U) (inUV : x \in U :|: V) : 
+    merge_union_bwd_spec (Sub x inUV) (inl (Sub x inU))
+| merge_union_bwdR x (inV : x \in V) (inUV : x \in U :|: V) : 
+    x \notin U -> merge_union_bwd_spec (Sub x inUV) (inr (Sub x inV)).
 
-Lemma union_bij_bwdP x : union_bij_bwd_spec x (union_bij_bwd x).
+Lemma merge_union_bwdP x : merge_union_bwd_spec x (merge_union_bwd x).
 Proof.
-  rewrite /union_bij_bwd. 
+  rewrite /merge_union_bwd. 
   case: (setU_dec _) => p.
-  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). exact: union_bij_bwdL. 
+  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). exact: merge_union_bwdL. 
     by rewrite valK'.
-  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). apply: union_bij_bwdR. 
+  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). apply: merge_union_bwdR. 
     by rewrite p.  by rewrite valK'.
 Qed.
 
-Definition union_bij_bwdEl x (p : x \in U :|: V) (inU : x \in U) : 
-  union_bij_bwd (Sub x p) = inl (Sub x inU).
+Definition merge_union_bwdEl x (p : x \in U :|: V) (inU : x \in U) : 
+  merge_union_bwd (Sub x p) = inl (Sub x inU).
 Proof.
-  rewrite /union_bij_bwd. case: (setU_dec _) => p'. 
+  rewrite /merge_union_bwd. case: (setU_dec _) => p'. 
   - rewrite /=. congr inl. exact: val_inj.
   - exfalso. move: p'. rewrite /= inU. by case.
 Qed.
-Arguments union_bij_bwdEl [x p].
+Arguments merge_union_bwdEl [x p].
 
-Definition union_bij_bwdEr x (p : x \in U :|: V) (inV : x \in V) : 
+Definition merge_union_bwdEr x (p : x \in U :|: V) (inV : x \in V) : 
   x \notin U -> 
-  union_bij_bwd (Sub x p) = inr (Sub x inV).
+  merge_union_bwd (Sub x p) = inr (Sub x inV).
 Proof.
-  move => xNU. rewrite /union_bij_bwd. case: (setU_dec _) => p'. 
+  move => xNU. rewrite /merge_union_bwd. case: (setU_dec _) => p'. 
   - exfalso. move: p'. by rewrite /= (negbTE xNU). 
   - rewrite /=. congr inr. exact: val_inj.
 Qed.
-Arguments union_bij_bwdEr [x p].
+Arguments merge_union_bwdEr [x p].
 
 Hint Extern 0 (is_true (sval _ \in _)) => exact: valP : core.
 Hint Extern 0 (is_true (val _ \in _)) => exact: valP : core.
@@ -395,66 +388,56 @@ Hint Extern 0 (is_true (val _ \in _)) => exact: valP : core.
 Section Disjoint.
   Hypothesis disUV : [disjoint U & V].
 
-  Lemma union_bij_fwd_can : cancel union_bij_fwd union_bij_bwd.
+  Lemma merge_disjoint_union_can : cancel merge_union_fwd merge_union_bwd.
   Proof. 
     move => [x|x] /=. 
-    - by rewrite union_bij_bwdEl // valK'.
-    - by rewrite union_bij_bwdEr ?valK' // (disjointFl disUV).
+    - by rewrite merge_union_bwdEl // valK'.
+    - by rewrite merge_union_bwdEr ?valK' // (disjointFl disUV).
   Qed.
   
-  Lemma union_bij_bwd_can : cancel union_bij_bwd union_bij_fwd.
-  Proof. move => x. case: union_bij_bwdP => //= {x} x *; exact: val_inj. Qed.
+  Lemma merge_disjoint_union_can' : cancel merge_union_bwd merge_union_fwd.
+  Proof. move => x. case: merge_union_bwdP => //= {x} x *; exact: val_inj. Qed.
 
-  Definition union_bij := Bij union_bij_fwd_can union_bij_bwd_can.
-
-  Lemma union_bijE :
-    (forall x, union_bij (inl x) = Sub (val x) (union_bij_proofL (valP x)))*
-    (forall x, union_bij (inr x) = Sub (val x) (union_bij_proofR (valP x))).
-  Proof. done. Qed.
+  Definition merge_disjoint_union := Bij merge_disjoint_union_can merge_disjoint_union_can'.
 
 End Disjoint.
 
 Section NonDisjoint.
   Variables (e : equiv_rel (sig U + sig V)).
-  Definition merge_union_rel := map_equiv union_bij_bwd e.
+  Definition merge_union_rel := map_equiv merge_union_bwd e.
 
   Hypothesis eqvI : forall x (inU : x \in U) (inV : x \in V), 
       inl (Sub x inU) = inr (Sub x inV) %[mod e].
 
-  Lemma union_bij_fwd_can' x : union_bij_bwd (union_bij_fwd x) = x %[mod e].
+  Lemma merge_union_can x : merge_union_bwd (merge_union_fwd x) = x %[mod e].
   Proof.
     case: x => /= => x. 
-    - by rewrite union_bij_bwdEl valK'.
-    - case: (boolP (val x \in U)) => H. rewrite (union_bij_bwdEl H). 
+    - by rewrite merge_union_bwdEl valK'.
+    - case: (boolP (val x \in U)) => H. rewrite (merge_union_bwdEl H). 
       + case: x H => x p H. exact: eqvI.
-      + by rewrite (union_bij_bwdEr _ H) // valK'.
+      + by rewrite (merge_union_bwdEr _ H) // valK'.
   Qed.
 
-  Lemma union_bij_bwd_can' x : union_bij_fwd (union_bij_bwd x) = x %[mod merge_union_rel].
-  Proof. case: union_bij_bwdP => {x} *; congr pi; exact: val_inj. Qed.
+  Lemma merge_union_can' x : merge_union_fwd (merge_union_bwd x) = x %[mod merge_union_rel].
+  Proof. case: merge_union_bwdP => {x} *; congr pi; exact: val_inj. Qed.
 
-  Lemma union_bij_fwd_hom : 
-    {homo union_bij_fwd : x y / x = y %[mod e] >-> x = y %[mod merge_union_rel]}.
+  Lemma merge_union_fwd_hom : 
+    {homo merge_union_fwd : x y / x = y %[mod e] >-> x = y %[mod merge_union_rel]}.
   Proof.
     move => x y H. apply/eqquotP. rewrite map_equivE. apply/eqquotP. 
-    by rewrite !union_bij_fwd_can'.
+    by rewrite !merge_union_can.
   Qed.
 
-  Lemma union_bij_bwd_hom : 
-    {homo union_bij_bwd : x y / x = y %[mod merge_union_rel] >-> x = y %[mod e]}.
+  Lemma merge_union_bwd_hom : 
+    {homo merge_union_bwd : x y / x = y %[mod merge_union_rel] >-> x = y %[mod e]}.
   Proof. move => x y /eqquotP. rewrite map_equivE. by move/eqquotP. Qed.
 
-  Definition merge_union_bij : bij (quot e) (quot merge_union_rel) := 
-    Eval hnf in bij_quot union_bij_fwd_hom union_bij_bwd_hom
-                             union_bij_fwd_can' union_bij_bwd_can'.
+  Definition merge_union : bij (quot e) (quot merge_union_rel) := 
+    bij_quot merge_union_fwd_hom merge_union_bwd_hom merge_union_can merge_union_can'.
 
-  Lemma merge_unionEl x : 
-    merge_union_bij (\pi (inl x)) = \pi (Sub (val x) (union_bij_proofL (valP x))).
+  Lemma merge_unionE x: merge_union (\pi x) = \pi merge_union_fwd x.
   Proof. exact: bij_quotE. Qed.
-  Lemma merge_unionEr x : 
-    merge_union_bij (\pi (inr x)) = \pi (Sub (val x) (union_bij_proofR (valP x))).
-  Proof. exact: bij_quotE. Qed.
-  Definition merge_unionE := (merge_unionEl,merge_unionEr).
 End NonDisjoint.
 
 End sig_sum_bij.
+Global Opaque merge_union.

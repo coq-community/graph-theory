@@ -310,7 +310,7 @@ Proof.
   rewrite (@merge_isoE _ _ _ (union_iso iso_id (union_C (unit_graph a) H)) _).
   rewrite (@merge_isoE _ _ _ (union_A G H (unit_graph a)) _).
   rewrite merge_same'E.
-  rewrite union_merge_l'E. 
+  rewrite union_merge_lE'. 
   by case x=>[y|[]].
 Qed.
 
@@ -339,7 +339,7 @@ Lemma merge_step (G' G H: graph2) (l : pairs (G+H)) :
   steps (point (merge_seq (G ⊎ H) l) (\pi (unl input)) (\pi (unr output)))
         (point (merge_seq (G' ⊎ H) (replace_ioL l)) (\pi (unl input)) (\pi (unr output))).
 Proof.
-  move => A B. destruct B. (* why does case fail? (DAMIEN: it no longer fails...) *)
+  move => A B. destruct B.
   - refine (cons_iso_steps _ (merge_add_vertexL A)).
     apply (one_step (step_v0 _ _)).
     

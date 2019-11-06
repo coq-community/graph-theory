@@ -190,8 +190,23 @@ Admitted.
 Definition subset_bij := Bij subset_can_fwd subset_can_bwd.
 End SubsetBij.
 
+Section BijT.
+Variables (T : finType) (P : pred T).
+Hypothesis inP : forall x, P x.
+Definition subT_bij : bij {x : T | P x} T.
+Proof. exists val (fun x => Sub x (inP x)). 
+       abstract (case => x Px; exact: val_inj).
+       abstract done.
+Defined.
+End BijT.
+
+Definition setT_bij (T : finType) : bij {x : T | x \in setT} T := 
+  Eval hnf in subT_bij (@in_setT T).
+Arguments setT_bij {T}.
+
 
 (** Useful to obtain bijections with good simplification properties *)
+(* not used for now *)
 Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
   f =1 i -> f_inv =1 i^-1 -> bij A B.
 Proof.
