@@ -1,5 +1,10 @@
 time make (on damien's machine, cpufreqd performance, without -j.. to avoid (lack of) luck due to parallelism)
 
+83ecf70a5e229cbe746b2c1bac42653693734d46 (pass on bijections)
+real	2m48,304s
+user	2m45,682s
+sys	0m2,622s
+
 4ed9804e14d46bc330dc8cc204e99f2b51a524a5 (almost no clones)
 real	3m10,895s
 user	3m8,308s
