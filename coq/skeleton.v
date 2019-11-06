@@ -222,7 +222,7 @@ vertices *)
 (* TODO: reuse the one in mgraph? *)
 Definition remove_edges (G : graph) (E : {set edge G}) := 
   {| vertex := G;
-     edge := [finType of { e : edge G | e \notin E }];
+     edge := sig_finType (fun e : edge G => e \notin E );
      endpoint b e := endpoint b (val e);
      vlabel x := vlabel x;
      elabel e := elabel (val e) |}.
@@ -662,7 +662,7 @@ Qed.
 
 Definition flesh_out_graph (G : sgraph) sym0 tt (z : G) : graph2 :=
   {| graph_of :=
-       {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];
+       {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];(* TODO: avoid clones? *)
           endpoint b e := if b then snd (val e) else fst (val e);
           vlabel _ := tt;
           elabel := fun _ => sym0 |} ;

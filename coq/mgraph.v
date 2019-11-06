@@ -55,7 +55,7 @@ Definition unit_graph a := Graph (fun _ => vfun) (fun _: unit => a) vfun.
 
 (* adding an edge to a graph *)
 Definition add_edge (G: graph) (x y: G) (u: Le): graph :=
-  @Graph (vertex G) [finType of option (edge G)]
+  @Graph (vertex G) (option_finType (edge G))
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
          (@vlabel G)
          (fun e => match e with Some e => elabel e | None => u end).
@@ -718,9 +718,13 @@ Section Subgraphs.
   Proof. exists val, val, xpred0. split => //=. split; exact: val_inj. Qed.
 
   (* edge deletion is treated as a special case, because this avoids the change in the vertex type *)
+  (* TODO: would be more natural to have a 'restrict_edges' operations 
+     (same as del_edge, without set complement on E)  
+     and maybe also define [restrict_vertices], which would assume that removed vertices have no incident edge, and [subgraph_for] be defined in terms of [restrict_edges] and [restrict_vertices]
+   *)
   Definition del_edges := 
-    {| vertex := [finType of G];
-       edge := [finType of {e | e \in ~: E}];
+    {| vertex := G;
+       edge := sig_finType (fun e: edge G => e \in ~: E);
        endpoint b e := endpoint b (val e); 
        vlabel x := vlabel x;
        elabel e := elabel (val e); |}.

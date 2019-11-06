@@ -545,8 +545,8 @@ Proof. by case: b. Qed.
 
 (** "false" is the input and "true" is the output *)
 Definition edges2_graph (As : seq (sym*bool)) : graph := 
-  {| vertex := [finType of bool];
-     edge := [finType of 'I_(size As)];
+  {| vertex := bool_finType;
+     edge := ordinal_finType (size As);
      elabel e := (tnth (in_tuple As) e).1 : le (flat_labels sym);
      vlabel _ := mon0;
      endpoint b e := (~~b) (+) (tnth (in_tuple As) e).2 |}.

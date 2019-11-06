@@ -39,7 +39,7 @@ End QUOT.
 Module Export quot: QUOT.
 Section s.
   Variables (T: finType) (e: equiv_rel T).
-  Definition quot: finType := [finType of {eq_quot e}].
+  Definition quot: finType := [finType of {eq_quot e}]. (* TODO: avoid clones? (under module abstraction anyway *)
   Definition pi (x: T): quot := \pi x.
   Definition repr(x: quot): T := repr x.
   Lemma reprK: cancel repr pi.
