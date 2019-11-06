@@ -498,10 +498,6 @@ Definition tgraph_of_nterm (t: nterm): tgraph2 :=
   | nt_conn a u b => edge_graph2 a u b
   end.
 
-Arguments mon2 : simpl never.
-Arguments eqv : simpl never.
-
-
 (* reduction lemma (Proposition 7.2) *)
 Proposition reduce (u: term): steps (tgraph_of_term u) (tgraph_of_nterm (nt u)).
 Proof.
@@ -514,7 +510,7 @@ Proof.
     * apply iso_step. 
       etransitivity. apply dot2unit_l.
       etransitivity. apply add_vlabel2_edge.
-      apply edge_graph2_iso=>//=. by rewrite monC.
+      apply edge_graph2_iso=>//=. by apply: monC.
     * apply iso_step. 
       etransitivity. apply dot2unit_r. apply add_vlabel2_edge. 
     * etransitivity. apply isop_step.
@@ -523,7 +519,7 @@ Proof.
       exists. apply dot_edges. 
       apply isop_step. exists.
       apply (add_edge2_iso' iso2_id).
-      apply dot_eqv=>//. rewrite dotA. apply dot_eqv=>//. 
+      by rewrite !dotA. 
 
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
     case (nt u1)=>[a|a u b];
@@ -535,7 +531,7 @@ Proof.
       rewrite parC. exists. apply par2edgeunit.
       apply isop_step. exists.
       etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
-      change (c·[d·a]·[1∥v] ≡ a ∥ c·v·d). exact: reduce_shuffle.
+      exact: reduce_shuffle.
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_e0 (G:=unit_graph2 [a·(b·c)]) tt u).

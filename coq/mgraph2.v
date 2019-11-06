@@ -338,14 +338,12 @@ Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Defined.
 
 Lemma par2C (F G: graph2): F ∥ G ≃2 G ∥ F.
 Proof.
-  rewrite /=/g2_par.
   irewrite (merge_iso2 (union_C F G)) =>/=.
   apply merge_same. apply eqv_clot_eq; leqv. eqv. eqv. 
 Qed.
 
 Lemma par2top (F: graph2): F ∥ top ≃2 F. 
 Proof.
-  rewrite /=/g2_par.
   irewrite (merge_union_K_l (K:=g2_top) _ _ (k:=fun b => if b then input else output))=>/=; try by repeat case.
   apply merge2_nothing. 
   by repeat constructor. 
@@ -355,11 +353,11 @@ Qed.
 Lemma par2A (F G H: graph2): F ∥ (G ∥ H) ≃2 (F ∥ G) ∥ H.
 Proof.
   irewrite (merge_iso2 (union_merge_r _ _)).
-  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /fst/snd.
+  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /=.
   irewrite (merge_merge (G:=F ⊎ (G ⊎ H))
                         (k:=[::(unl input,unr (unl input)); (unl output,unr (unr output))]))=>//.
   irewrite' (merge_iso2 (union_merge_l _ _)).
-  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
+  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /=.
   irewrite' (merge_merge (G:=(F ⊎ G) ⊎ H)
                               (k:=[::(unl (unl input),unr input); (unl (unr output),unr output)]))=>//.
   irewrite (merge_iso2 (union_A _ _ _)).
@@ -384,15 +382,14 @@ Proof.
   (* a bit messy because [merge_union_K] only allows us to kill mon0-labelled vertices
      (a more general version of [merge_union_K] is possible, but requires updating the 
      labels of several vertices at once *)
-  rewrite /=/g2_dot.
-  irewrite (merge_iso2 (union_iso iso_id (add_vlabel2_unit' output _)))=>/=.
+  irewrite (merge_iso2 (union_iso iso_id (add_vlabel2_unit' output _))). simpl.
   etransitivity. refine (merge_iso2 (union_add_vlabel_r _ _ _) _ _ _). simpl.
   etransitivity. refine (iso_iso2 (merge_add_vlabel _ _ _) _ _). simpl.
   etransitivity. refine (iso_iso2 (add_vlabel_iso (merge_union_K_l (K:=g2_one) (unl input) (unl output) (k:=fun _ => output) _ _ _) _ _) _ _)=>//. 
-  case; apply /eqquotP; eqv.
-  rewrite /=!merge_union_KE/=. 
+  case; apply /eqquotP; eqv. simpl. 
+  rewrite !merge_union_KE/=. 
   etransitivity. refine (add_vlabel2_iso (merge2_nothing _) _ _).
-  repeat (constructor =>//=).
+  repeat (constructor=>//).
   destruct G=>/=. by rewrite merge_nothingE. 
 Qed.
 
@@ -423,15 +420,14 @@ Local Close Scope labels.
 
 (* [dot2one] follows from [dot2unit_r] *)
 Lemma dot2one (F: graph2): F · 1 ≃2 F.
-Proof. etransitivity. apply dot2unit_r. apply add_vlabel2_mon0. Qed.
+Proof. irewrite dot2unit_r. apply add_vlabel2_mon0. Qed.
 
 (* ... but also has a reasonable direct proof *)
 Lemma dot2one' (F: graph2): F · 1 ≃2 F.
 Proof.
-  rewrite /=/g2_dot.
   irewrite (merge_union_K_l (K:=g2_one) _ _ (k:=fun _ => output))=>//.
   apply merge2_nothing.
-  repeat (constructor =>//=).
+  repeat (constructor =>//).
   intros []; apply /eqquotP; eqv.
 Qed.
 
@@ -444,7 +440,6 @@ Lemma dot2Aflat (F G H: graph2):
                       (unl output,unr (unl input))]) 
         (\pi unl input) (\pi unr (unr output)).
 Proof.
-  rewrite /=/g2_dot.
   irewrite (merge_iso2 (union_merge_r _ _)).
   rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /fst/snd.
   irewrite (merge_merge (G:=F ⊎ (G ⊎ H))
@@ -454,7 +449,6 @@ Qed.
 Lemma dot2A (F G H: graph2): F · (G · H) ≃2 (F · G) · H.
 Proof.
   irewrite dot2Aflat. 
-  rewrite /=/g2_dot.
   irewrite' (merge_iso2 (union_merge_l _ _)).
   rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
   irewrite' (merge_merge (G:=(F ⊎ G) ⊎ H)
@@ -469,13 +463,11 @@ Proof. by case F. Qed.
 
 Lemma cnv2par (F G: graph2): (F ∥ G)° ≃2 F° ∥ G°.
 Proof.
-  rewrite /=/g2_cnv/g2_par.
   apply merge_same. apply eqv_clot_eq; leqv. eqv. eqv.
 Qed.
 
 Lemma cnv2dot (F G: graph2): (F · G)° ≃2 G° · F°.
 Proof.
-  rewrite /=/g2_cnv/g2_dot. 
   irewrite (merge_iso2 (union_C F G)).
   apply merge_same'=>/=. apply eqv_clot_eq; leqv.
 Qed.
@@ -493,9 +485,8 @@ Lemma dom2E (F: graph2): dom F ≃2 1 ∥ (F · top).
 Proof.
   symmetry. 
   irewrite par2C.
-  rewrite /=/g2_dom/g2_par/g2_dot.
   irewrite (merge_iso2 (union_merge_l _ _)).
-  rewrite /map_pairs/map 2!union_merge_lEl 1!union_merge_lEr /fst/snd.
+  rewrite /map_pairs/map 2!union_merge_lEl 1!union_merge_lEr /=.
   irewrite (merge_merge (G:=(F ⊎ g2_top) ⊎ g2_one)
                               (k:=[::(inl (inl input),inr tt); (inl (inr (inr tt)),inr tt)])) =>//.
   irewrite (merge_iso2 (iso_sym (union_A _ _ _))).
@@ -512,7 +503,6 @@ Qed.
 Lemma g2_A10 (F G: graph2): 1 ∥ F·G ≃2 dom (F ∥ G°).
 Proof.
   irewrite (par2C 1).
-  rewrite /=/g2_par/g2_dot/g2_dom/g2_cnv.
   irewrite (merge_iso2 (union_merge_l _ _)).
   rewrite /map_pairs/map 2!union_merge_lEl 1!union_merge_lEr /fst/snd.
   irewrite (merge_merge (G:=(F ⊎ G) ⊎ g2_one)
@@ -528,7 +518,6 @@ Qed.
 (* TOFIX: topL should be obtained from topR by duality *)
 Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%lbl) (@unr _ F (unit_graph _) tt) (unl output).
 Proof.
-  rewrite /=/g2_dot.
   irewrite (merge_iso2 (union_C _ _))=>/=.
   etransitivity. refine (merge_iso2 (union_A _ _ _) _ _ _)=>/=.
   irewrite (merge_union_K_l (F:=F ⊎ _) _ _ (k:=fun x => unl input))=>//=.
@@ -538,7 +527,6 @@ Qed.
 
 Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (@unr _ F (unit_graph _) tt).
 Proof.
-  rewrite /=/g2_dot.
   irewrite (merge_iso2 (union_iso iso_id (union_C _ _))).
   irewrite (merge_iso2 (union_A _ _ _)).
   irewrite (merge_union_K_l (F:=F ⊎ _) _ _ (k:=fun x => unl output))=>//=.
@@ -551,9 +539,9 @@ Proof. irewrite topR. symmetry. by irewrite topR. Qed.
 
 Lemma g2_A12' (F G: graph2): @input F = @output F -> F·G ≃2 F·top ∥ G.
 Proof.
-  intro H. rewrite /=/g2_par/g2_dot.
+  intro H.
   irewrite' (merge_iso2 (union_merge_l _ _)).
-  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
+  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /=.
   irewrite' (merge_merge (G:=(F ⊎ g2_top) ⊎ G)
                               (k:=[::(inl (inl input),inr input);(inl (inr (inr tt)),inr output)])) =>//.
   irewrite' (merge_iso2 (union_C (_ ⊎ _) _)).
@@ -573,19 +561,21 @@ Proof.
 Qed.
 
 (*
+
+  (* these two laws could be skipped by going through 2p algebra *)
+
 Lemma g2_A13 (F G: graph2): dom(F·G) ≃2 dom(F·dom G).
 Proof. reflexivity. Qed.
 
 Lemma g2_A14' (F G H: graph2): @input F = output -> F·(G∥H) ≃2 F·G ∥ H.
 Proof.
-  (* this law could be skipped by going through 2p algebra *)
   intro E. 
   irewrite (merge_iso2 (union_merge_r _ _)).
-  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /fst/snd.
+  rewrite /map_pairs/map 2!union_merge_rEl 2!union_merge_rEr /=.
   irewrite (merge_merge (G:=F ⊎ (G ⊎ H))
                         (k:=[::(unl output,unr (unl input))]))=>//.
   irewrite' (merge_iso2 (union_merge_l _ _)).
-  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /fst/snd.
+  rewrite /map_pairs/map 2!union_merge_lEl 2!union_merge_lEr /=.
   irewrite' (merge_merge (G:=(F ⊎ G) ⊎ H)
                               (k:=[::(unl (unl input),unr input); (unl (unr output),unr output)]))=>//.
   irewrite (merge_iso2 (union_A _ _ _)).

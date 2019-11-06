@@ -56,7 +56,7 @@ Structure setoid :=
       eqv: relation car;
       Eqv: Equivalence eqv
     }.
-Arguments eqv {_}. 
+Arguments eqv {_} : simpl never. 
 Infix "≡" := eqv (at level 79).
 Global Existing Instance Eqv.
 
@@ -93,8 +93,8 @@ Record labels :=
       eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z;
     }.
 Global Existing Instance lv_monoid.
-Arguments mon0 {_}.
-Arguments mon2 {_}.
+Arguments mon0 {_}: simpl never.
+Arguments mon2 {_}: simpl never.
 Arguments eqv' {_}.
 Infix "≡'" := eqv' (at level 79).
 
