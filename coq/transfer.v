@@ -433,9 +433,9 @@ Lemma open_add_vertexE :
 Proof. 
   split => [a|a x]. 
   - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
-    move => H /=. rewrite imfset_bij_bwdE //=. exact: inj_v_inj.
+    move => H /=. by rewrite imfset_bij_bwdE.
   - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
-    move => H /=. rewrite imfset_bij_bwdE //=. exact: inj_v_inj.
+    move => H /=. by rewrite imfset_bij_bwdE //=.
 Qed.
 
 (* This follows the same pattern as open_add_vertex. Lemma? *)
