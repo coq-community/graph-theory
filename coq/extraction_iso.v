@@ -96,7 +96,7 @@ Proof.
   + exact: sedge_equiv_in.
 Qed.
 
-Lemma merge_subgraph_dot (G : graph2) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
+Lemma merge_subgraph_dot (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
   (con1 : consistent V1 E1) (con2 : consistent V2 E2) i1 i2 o1 o2 :
   val o1 = val i2 -> [disjoint E1 & E2] -> (forall x, x \in V1 -> x \in V2 -> x = val o1) ->
   point (subgraph_for con1) i1 o1 · point (subgraph_for con2) i2 o2 ≃2
@@ -118,7 +118,30 @@ Proof.
   apply: (iso_iso2' (h := iso_id)); apply: val_inj => /=; by rewrite val_insubd inE ?(valP i1) ?(valP o2).
 Qed.
 
-(** TODO: [G[V1,E1] ∥ G[V2,E2] ≈ G[V1 :|: V2, E1 :|: E2]] *)
+Lemma merge_subgraph_par (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
+  (con1 : consistent V1 E1) (con2 : consistent V2 E2) (i1 o1 : subgraph_for con1) (i2 o2 : subgraph_for con2) :
+  val i2 = val i1 -> val o2 = val o1 ->
+  [disjoint E1 & E2] -> (forall x, x \in V1 -> x \in V2 -> x \in [set val i1; val o1]) ->
+  point (subgraph_for con1) i1 o1 ∥ point (subgraph_for con2) i2 o2 ≃2
+  point (subgraph_for (consistentU con1 con2))
+        (Sub (val i1) (union_bij_proofL _ (valP i1))) 
+        (Sub (val o2) (union_bij_proofR _ (valP o2))).
+Proof.
+  move => Ei Eo disE12 cap12. rewrite /=/g2_par. 
+  set G12 := (point _ _ _ ⊎ point _ _ _)%G.
+  have eqvI (x : G) (inV1 : x \in V1) (inV2 : x \in V2)  :
+    inl (Sub x inV1) = inr (Sub x inV2) 
+      %[mod @eqv_clot G12 [:: (unl input, unr input); (unl output, unr output)]].
+  { case/set2P : (cap12 _ inV1 inV2) => ?; subst x; rewrite !valK' !/input !/output.
+    rewrite -Ei in inV1 inV2 *. rewrite valK'. apply/eqquotP. by eqv.
+    rewrite -Eo in inV1 inV2 *. rewrite valK'. apply/eqquotP. by eqv. }
+  set x0 := Sub (sval i1) (union_bij_proofL V2 (valP i1)).
+  rewrite /x0 /G12. 
+  apply: iso2_comp. apply: (iso_iso2 (merge_subgraph_iso eqvI disE12)).
+  rewrite !(merge_subgraph_isoE eqvI disE12 x0).
+  rewrite -> merge_nothing. 2: repeat constructor; exact: val_inj.  
+  apply: (iso_iso2' (h := iso_id)); apply: val_inj => /=; by rewrite val_insubd inE ?(valP i1) ?(valP o2).
+Qed.
 
 (** These two lemmas make use of [merge_subgraph_dot], drastically
 simplifying their proofs (compared to the proofs underlying the ITP
@@ -186,13 +209,6 @@ Proof.
   - move => x. case/setUP. apply: (@interval_interval_cap G). by set_tac.
     exact: (@bag_interval_cap G).
 Qed.
-
-(* TODO: prove a lemma corresponding to [merge_subgraph_dot] for
-[par2] and simplify the proofs below 
-
-they currently need [par2_alt, par2_eqv_equivalence], if we can avoid it that could be better
-
-*)
 
 
 Section alt.
@@ -367,107 +383,15 @@ Lemma iso_split_par2 (G : graph2) (C D : {set G})
   C :&: D \subset IO -> C :|: D = setT -> 
   edge_set C :&: edge_set D = set0 -> edge_set C :|: edge_set D = setT ->
   G ≃2 point (induced C) (Sub input Ci) (Sub output Co)
-    ∥ point (induced D) (Sub input Di) (Sub output Do).
+     ∥ point (induced D) (Sub input Di) (Sub output Do).
 Proof.
-  move => subIO fullCD disjE fullE. symmetry. setoid_rewrite par2_alt.
-  set G1 := point _ _ _. set G2 := point _ _ _. set G' := par2' _ _.
-
-  have injL (x y : G1) : unl x = unl y %[mod par2_eqv_equivalence G1 G2] -> x = y.
-  { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
-    case/orP=> [/eqP|]; first exact: val_inj.
-    case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
-    all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE !orbF.
-    - by case/andP=> /andP[]/eqP->/eqP->.
-    - by case/andP=> /andP[]/eqP->/eqP->.
-    - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  have injR (x y : G2) : unr x = unr y %[mod par2_eqv_equivalence G1 G2] -> x = y.
-  { move=> /eqquotP/=. rewrite /par2_eqv sum_eqE -!(inj_eq val_inj) !SubK andbb.
-    case/orP=> [/eqP|]; first exact: val_inj.
-    case: ifPn; rewrite ?negbK ?in_set2 => Eio; first case/orP.
-    all: rewrite 1?eqEcard subUset !sub1set !in_setU !in_set1 !sum_eqE.
-    - by case/andP=> /andP[]/eqP->/eqP->.
-    - by case/andP=> /andP[]/eqP->/eqP->.
-    - by case/andP=> /orP[]/eqP-> /orP[]/eqP->; apply: val_inj => //=; rewrite -(eqP Eio). }
-  pose valE := f_equal val. 
-  pose inLR := par2_LR.
-  pose inRL := fun e => par2_LR (esym e).
-
-  pose f (x : G') : G := match repr x with inl x => val x | inr x => val x end.
-  pose h (e : edge G') : edge G := match e with inl e => val e | inr e => val e end.
-  have decV (v : G) : ((v \in C) + (v \in D))%type.
-  { have : v \in [set: G] by []. rewrite -fullCD in_setU.
-    case: (boolP (v \in C)) => HC /= HD; by [left|right]. }
-  pose g (x : G) : G' :=
-    match decV x with
-    | inl p => \pi inl (Sub x p)
-    | inr p => \pi inr (Sub x p)
-    end.
-  have decE (e : edge G) : ((e \in edge_set C) + (e \in edge_set D))%type.
-  { have : e \in [set: edge G] by []. rewrite -fullE in_setU.
-    case: (boolP (e \in edge_set C)) => HC /= HD; by [left|right]. }
-  pose k (e : edge G) : edge G' :=
-    match decE e with
-    | inl p => inl (Sub e p)
-    | inr p => inr (Sub e p)
-    end.
-  have fg: cancel f g. {
-    rewrite /f/g=>x.
-    case Ex: (repr x) => [y|y]; have Hy : val y \in _ := valP y; case: (decV _) => H.
-      * rewrite -[x]reprK Ex. congr (\pi (unl _)). exact: val_inj.
-      * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
-        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
-        rewrite /=/par2_eqv. case: ifPn => _; last first.
-        { rewrite subUset !sub1set !in_setU !in_set1.
-          by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
-        rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
-        rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
-        by rewrite /= !orbF !andbT !andbb.
-      * have {Hy} /(subsetP subIO) Hy : val y \in C :&: D by rewrite in_setI Hy H.
-        rewrite in_set2 in Hy. rewrite -[x]reprK Ex. apply/eqquotP.
-        rewrite /=/par2_eqv. case: ifPn => _; last first.
-        { rewrite subUset !sub1set !in_setU !in_set1.
-          by rewrite !sum_eqE -!(inj_eq val_inj) !SubK !Hy. }
-        rewrite in_set2 2!eqEcard !cards2 2!subUset 4!sub1set.
-        rewrite 4!in_set2 !sum_eqE -!(inj_eq val_inj) !SubK.
-        by rewrite /= !orbF !andbT !andbb.
-      * rewrite -[x]reprK Ex. congr (\pi (inr _)). exact: val_inj. (* LOOOOONG *)
-  }
-  have gf: cancel g f. {
-    rewrite /f/g=>x. case: (decV x) => Hx; case: piP => -[]y.
-    * by move=> /injL<-.
-    * by case/inLR=> -[]/valE/=->->.
-    * by case/inRL=> -[->]/valE/=->.
-    * by move=> /injR<-.
-  }
-  have hk: cancel h k. {
-    rewrite /h/k=>e. case:e=> [e|e].
-    + have He : val e \in edge_set C := valP e.
-      case: (decE _) => H; first by congr inl; exact: val_inj.
-      suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
-      by rewrite in_setI He H.
-    + have He : val e \in edge_set D := valP e.
-      case: (decE _) => H; last by congr inr; exact: val_inj.
-      suff : val e \in edge_set C :&: edge_set D by rewrite disjE inE.
-      by rewrite in_setI He H.
-  }
-  have kh: cancel k h. {
-    rewrite /h/k=>e. by case: (decE e).
-  }
-  unshelve Iso2 (@Iso _ _ _ (Bij fg gf) (Bij hk kh) xpred0 _)=>/=. 
-  - split=>//=; case => [e|e]//b. 
-    + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/injL <-. 
-      * by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[/valE/= -> ->]].
-    + rewrite /f/h. case: piP => [[y|y]] /=. 
-      * by move/esym/(@par2_LR G1 G2) => [[-> /valE/= ->]|[-> /valE/= ->]].
-      * by move/injR <-. 
-  - rewrite /f. case: piP => [[y|y]] /=. 
-    + by move/injL<-.
-    + by move/(@par2_LR G1 G2) => [[_ ->]|[/valE/= -> ->]]. 
-  - rewrite /f. case: piP => [[y|y]] /=. 
-    + by move/injL<-.
-    + by move/(@par2_LR G1 G2) => [[/valE/= -> ->]|[_ ->]].
+  move => subIO fullCD disjE fullE. symmetry. 
+  apply: iso2_comp. apply: (merge_subgraph_par _ _ _ _) => //=.
+    abstract by rewrite -setI_eq0 disjE //.
+    abstract by move => x inC inD; apply: (subsetP subIO); exact/setIP.
+  by apply: iso2_subgraph_forT => //=; rewrite ?fullCD ?fullE.
 Qed.
+
 
 Lemma comp_dom2_redirect (G : graph2) (C : {set G}) : 
   connected [set: skeleton G] -> input == output :> G ->
@@ -543,8 +467,8 @@ Proof. by case: b. Qed.
 
 (** "false" is the input and "true" is the output *)
 Definition edges2_graph (As : seq (sym*bool)) : graph := 
-  {| vertex := [finType of bool];
-     edge := [finType of 'I_(size As)];
+  {| vertex := bool_finType;
+     edge := ordinal_finType (size As);
      elabel e := (tnth (in_tuple As) e).1 : le (flat_labels sym);
      vlabel _ := mon0;
      endpoint b e := (~~b) (+) (tnth (in_tuple As) e).2 |}.
@@ -736,9 +660,7 @@ Qed.
 Lemma graph_of_big_par (T : eqType) (r : seq T) F : 
   graph_of_term (\big[@tm_par sym/@tm_top _]_(x <- r) F x) ≃2 
   \big[@g2_par _/top]_(x <- r) graph_of_term (F x).
-Proof.
-  elim: r => [|i r IH]; rewrite ?big_nil ?big_cons //=. by apply par_iso2. 
-Qed.
+Proof. by elim/big_ind2 : _ => //= *; exact: par_iso2. Qed.
 
 Lemma graph_of_big_pars (T : finType) (r : {set T}) F : 
   graph_of_term (\big[@tm_par sym/@tm_top _]_(x in r) F x) ≃2 
