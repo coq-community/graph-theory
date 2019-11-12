@@ -227,6 +227,14 @@ Definition remove_edges (G : graph) (E : {set edge G}) :=
      vlabel x := vlabel x;
      elabel e := elabel (val e) |}.
 
+Lemma remove_edge_add (G : graph) (e : edge G) : 
+  remove_edges [set e] ∔ [source e, elabel e, target e] ≃ G.
+Proof.
+  Iso bij_id (bijD1 e) xpred0. constructor => //.
+  - by case => [f b|[|]].
+  - by case => [f|] /=.
+Defined.
+
 Lemma remove_loops (G : graph) (E : {set edge G}) :
   {in E, forall e, source e = target e} ->
   diso G (remove_edges E).

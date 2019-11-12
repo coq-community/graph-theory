@@ -679,13 +679,22 @@ Proof.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges input _). 
 Qed.
 
+
+
 Lemma remove_edge_add (G : graph) (e : edge G) : 
   remove_edges [set e] ∔ [source e, elabel e, target e] ≃ G.
-Admitted.
+Proof.
+  Iso bij_id (bijD1 e) xpred0. constructor => //.
+  - by case => [f b|[|]].
+  - by case => [f|] /=.
+Defined.
 
 Lemma split_io_edge_aux (G : graph2) (e : edge G) :
   e \in edges input output -> point (remove_edges [set e] ∔ [input, elabel e, output]) input output ≃2 G.
-Admitted.
+Proof.
+  rewrite inE => /andP [/eqP Es /eqP Et]. rewrite -{1}Es -{1}Et.
+  apply: iso2_comp. apply: iso_iso2. apply: remove_edge_add. by case: G e {Es Et}.
+Qed.
 
 Lemma split_io_edge (G : graph2) (e : edge G) : 
   e \in edges input output -> 

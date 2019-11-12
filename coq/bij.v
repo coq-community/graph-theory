@@ -190,6 +190,34 @@ Admitted.
 Definition subset_bij := Bij subset_can_fwd subset_can_bwd.
 End SubsetBij.
 
+(** Moving a single element out of a type *)
+
+Section BijD1. 
+  Variables (T : finType) (z : T).
+  
+(** We use [x \notin [set z]] rather than [x != z], because the former is
+the form that occurs when removing a single edge via [remove_edges] *)
+
+  Definition bijD1_fwd (x : option { x : T | x \notin [set z]}) : T :=
+    if x is Some y then val y else z.
+  Definition bijD1_bwd (x : T) : option { x : T | x \notin [set z]} := 
+    if @boolP (x \in [set z]) is AltFalse p then Some (Sub x p) else None.
+  
+  Lemma can_bijD1_fwd : cancel bijD1_fwd bijD1_bwd.
+  Proof. 
+    move => [x|] //=; rewrite /bijD1_bwd; case: {-}_ /boolP => [|i] //.
+    all: rewrite ?(negbTE (valP x)) ?valK' //.
+    case:notF. by rewrite inE eqxx in i.
+  Qed.
+
+  Lemma can_bijD1_bwd : cancel bijD1_bwd bijD1_fwd.
+  Proof. 
+    move => x. by rewrite /bijD1_bwd; case: {-}_ /boolP => [|i] //= /set1P->.
+  Qed.
+
+  Definition bijD1 := Bij can_bijD1_fwd can_bijD1_bwd.
+End BijD1.
+
 
 (** Useful to obtain bijections with good simplification properties *)
 Lemma bij_same A B (f : A -> B) (f_inv : B -> A) (i : bij A B) :
