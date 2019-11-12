@@ -22,8 +22,12 @@ Structure ops_ :=
     one: setoid_of_ops;
     top: setoid_of_ops;         (* top is left uninterpreted in 2pdom *)
   }.
-Arguments one {_}.
-Arguments top {_}.
+Arguments one {_}: simpl never.
+Arguments top {_}: simpl never.
+Arguments dot: simpl never.
+Arguments par: simpl never.
+Arguments cnv: simpl never.
+Arguments dom: simpl never.
 
 (* Declare Scope pttdom_ops. compat:coq-8.9*)
 Bind Scope pttdom_ops with setoid_of_ops.
@@ -59,27 +63,30 @@ Existing Instances dot_eqv par_eqv cnv_eqv dom_eqv.
 Section derived.
 
  Variable X: pttdom.
-
+ Implicit Types u v x y z: X.
+ 
  Lemma cnv1: 1° ≡ @one X.
  Proof.
   rewrite <-dotx1. rewrite <-(cnvI 1) at 2.
   by rewrite <-cnvdot, dotx1, cnvI.
  Qed.
 
- Lemma dot1x (x: X): 1·x ≡ x.
+ Lemma dot1x x: 1·x ≡ x.
  Proof. by rewrite <-cnvI, cnvdot, cnv1, dotx1, cnvI. Qed.
 
- Lemma cnv_inj (x y: X): x° ≡ y° -> x ≡ y.
+ Lemma cnv_inj x y: x° ≡ y° -> x ≡ y.
  Proof. intro. rewrite <-(cnvI x), <-(cnvI y). by apply cnv_eqv. Qed.
 
- Lemma dotcnv (x y: X): x·y ≡ (y°·x°)°.
+ Lemma dotcnv x y: x·y ≡ (y°·x°)°.
  Proof. apply cnv_inj. by rewrite cnvdot cnvI. Qed.
 
  (** ** tests *)
- Definition is_test (x: X) := dom x ≡ x.
+ Definition is_test x := dom x ≡ x.
  Record test := Test{ elem_of:> X ; testE: is_test elem_of }.
 
- Lemma is_test_alt (x: X): dom x ≡ x <-> x∥1 ≡ x.
+ Implicit Types a b c d: test.
+ 
+ Lemma is_test_alt x: dom x ≡ x <-> x∥1 ≡ x.
  Proof.
    split=>E.
    - rewrite -{1}E -{1}(dotx1 (dom x)) -A14.
@@ -87,10 +94,10 @@ Section derived.
    - by rewrite -E -{1}cnv1 -A10 dotx1 parC.
  Qed.
  
- Lemma domtst (a : test) : dom a ≡ a. 
+ Lemma domtst a: dom a ≡ a. 
  Proof. apply testE. Qed.
  
- Lemma tstpar1 (a : test) : a ∥ 1 ≡ a.
+ Lemma tstpar1 a: a ∥ 1 ≡ a.
  Proof. apply is_test_alt, domtst. Qed.
 
  Lemma one_test: is_test 1. 
@@ -101,43 +108,43 @@ Section derived.
  Proof. rewrite /is_test. by rewrite -{1}[dom x]dot1x -A13 dot1x. Qed.
  Canonical Structure tst_dom x := Test (dom_test x).
  
- Lemma par_test (a: test) (u: X): is_test (a∥u).
+ Lemma par_test a u: is_test (a∥u).
  Proof.
    rewrite /is_test is_test_alt.
    by rewrite -parA (parC u) parA tstpar1. 
  Qed.
  Canonical Structure tst_par a u := Test (par_test a u).
 
- Lemma cnvtst (a: test): a° ≡ a.
+ Lemma cnvtst a: a° ≡ a.
  Proof.
    rewrite -tstpar1 cnvpar cnv1 -(dot1x (a°)) parC A10 cnvI parC.
    apply domtst.
  Qed.
 
- Lemma cnv_test (a: test): is_test (a°).
+ Lemma cnv_test a: is_test (a°).
  Proof.
    by rewrite /is_test is_test_alt cnvtst tstpar1. 
  Qed.
  Canonical Structure tst_cnv a := Test (cnv_test a).
 
- Lemma tstpar (a: test) (x y: X): a·(x∥y) ≡ a·x ∥ y.
+ Lemma tstpar a x y: a·(x∥y) ≡ a·x ∥ y.
  Proof. rewrite -domtst. apply A14. Qed.
 
- Lemma pardot (a b: test): a ∥ b ≡ a·b.
+ Lemma pardot a b: a ∥ b ≡ a·b.
  Proof.
    by rewrite -{2}(tstpar1 b) (parC _ 1) tstpar dotx1.
  Qed.
  
- Lemma dot_test (a b: test): is_test (a·b).
+ Lemma dot_test a b: is_test (a·b).
  Proof. rewrite /is_test -pardot. apply domtst. Qed.
  Canonical Structure tst_dot a b := Test (dot_test a b).
  
  (** automatised inference of tests *)
- Definition infer_test x y (e: elem_of y = x) := y.
+ Definition infer_test x b (e: elem_of b = x) := b.
  Notation "[ x ]" := (@infer_test x _ erefl).
 
  (** ** commutative monoid of  tests *)
- Definition eqv_test (a b: test) := a ≡ b.
+ Definition eqv_test a b := a ≡ b.
  Arguments eqv_test _ _ /.
  Lemma eqv_test_equiv: Equivalence eqv_test. 
  Proof. 
@@ -147,17 +154,17 @@ Section derived.
  Canonical Structure pttdom_test_setoid := Setoid eqv_test_equiv.
  Lemma tst_dot_eqv: Proper (eqv ==> eqv ==> eqv) tst_dot.
  Proof. intros [a] [b] ? [c] [d] ?. by apply dot_eqv. Qed.
- Lemma tst_dotA: forall a b c: test, a·(b·c) ≡ (a·b)·c.
+ Lemma tst_dotA: forall a b c, a·(b·c) ≡ (a·b)·c.
  Proof. intros [a] [b] [c]. apply dotA. Qed.
- Lemma tst_dotC: forall a b: test, a·b ≡ b·a.
+ Lemma tst_dotC: forall a b, a·b ≡ b·a.
  Proof. intros. rewrite -2!pardot. apply parC. Qed.
- Lemma tst_dotU: forall a: test, a·1 ≡ a.
+ Lemma tst_dotU: forall a, a·1 ≡ a.
  Proof. intros [a]. apply dotx1. Qed.
 
  (** ** label structure of a 2pdom algebra (Definition 4.3)  *)
  
  (* dualised equality (to get the [labels] structure below) *)
- Definition eqv' (x y: X) := x ≡ y°.
+ Definition eqv' x y := x ≡ y°.
  Arguments eqv' _ _ /.
  Lemma eqv'_sym: Symmetric eqv'.
  Proof. move=> x y /= H. apply cnv_inj. by rewrite cnvI H. Qed.
@@ -170,59 +177,55 @@ Section derived.
    Labels
      (MonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
      eqv'_sym eqv01 eqv11.
-
-Implicit Types (u v x y z : X) (a b : test).
-
-(* Lemmas to turn pttdom expressions into (projections of) tests *)
-Lemma par1tst u : 1 ∥ u = [1∥u]. by []. Qed.
-Lemma paratst a u : a ∥ u = [a∥u]. by []. Qed.
-Lemma dom_tst u : dom u = [dom u]. by []. Qed.
-
-(* this allows rewriting an equivalence between tests inside a pttdom expression *)
-Lemma rwT (a b : test) : a ≡ b -> elem_of a ≡ elem_of b. by []. Qed.
-
-(** ** other derivable laws used in the completeness proof *)
-
-Lemma partst u v a : (u ∥ v)·a ≡ u ∥ v·a.
-Proof.
-  apply cnv_inj. rewrite cnvdot 2!cnvpar cnvdot.
-  by rewrite parC tstpar parC.
-Qed.
-
-Lemma par_tst_cnv (a : test) u : a ∥ u° ≡ a ∥ u.
-Proof. by rewrite paratst -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed.
-
-Lemma eqvb_par1 a u v (b : bool) : u ≡[b] v -> a ∥ u ≡ a ∥ v.
-Proof. case: b => [->|-> //]. exact: par_tst_cnv. Qed.
-
-(* used twice in reduce in reduction.v *)
-Lemma reduce_shuffle v (a c d : test) : c·(d·a)·[1∥v] ≡ a ∥ c·v·d.
-Proof. 
-  rewrite [c·(d·a)]dotA -dotA tstpar dotx1.
-  by rewrite -dotA (paratst a v) tst_dotC /= partst parC tstpar parC dotA.
-Qed.
-
-(* lemma for nt_correct *)
-Lemma par_nontest u v (a b c d : test) : a·u·b∥c·v·d ≡ a·c·(u∥v)·(b·d).
-Proof. by rewrite -partst -[a·u·b]dotA -tstpar parC -tstpar -partst !dotA parC. Qed.
-
-
-(* used in open.v *)
-Lemma eqvbN u v : u ≡[false] v -> u ≡ v. by []. Qed.
-Lemma eqvbT u v : u ≡[true] v -> u ≡ v°. by []. Qed.
-
-Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
-Proof. split; apply: eqvb_transL; by rewrite ?(addbN,addNb) addbb //= cnvI. Qed.
-
-Lemma infer_testE x x' (y y' : test) p p' : 
-  (@infer_test x y p) ≡ (@infer_test x' y' p') <-> x ≡ x'.
-Proof. rewrite /infer_test. by subst. Qed.
+ 
+ (* Lemmas to turn pttdom expressions into (projections of) tests *)
+ Lemma par1tst u : 1 ∥ u = [1∥u]. by []. Qed.
+ Lemma paratst a u : a ∥ u = [a∥u]. by []. Qed.
+ Lemma dom_tst u : dom u = [dom u]. by []. Qed.
+ 
+ (* this allows rewriting an equivalence between tests inside a pttdom expression *)
+ Lemma rwT a b: a ≡ b -> elem_of a ≡ elem_of b. by []. Qed.
+ 
+ (** ** other derivable laws used in the completeness proof *)
+ 
+ Lemma partst u v a : (u ∥ v)·a ≡ u ∥ v·a.
+ Proof.
+   apply cnv_inj. rewrite cnvdot 2!cnvpar cnvdot.
+   by rewrite parC tstpar parC.
+ Qed.
+ 
+ Lemma par_tst_cnv a u : a ∥ u° ≡ a ∥ u.
+ Proof. by rewrite paratst -(@cnvtst [a∥u]) /= cnvpar cnvtst. Qed.
+ 
+ Lemma eqvb_par1 a u v (b : bool) : u ≡[b] v -> a ∥ u ≡ a ∥ v.
+ Proof. case: b => [->|-> //]. exact: par_tst_cnv. Qed.
+ 
+ (* used twice in reduce in reduction.v *)
+ Lemma reduce_shuffle v a c d : c·(d·a)·[1∥v] ≡ a ∥ c·v·d.
+ Proof. 
+   rewrite [c·(d·a)]dotA -dotA tstpar dotx1.
+   by rewrite -dotA (paratst a v) tst_dotC /= partst parC tstpar parC dotA.
+ Qed.
+ 
+ (* lemma for nt_correct *)
+ Lemma par_nontest u v a b c d : a·u·b∥c·v·d ≡ a·c·(u∥v)·(b·d).
+ Proof. by rewrite -partst -[a·u·b]dotA -tstpar parC -tstpar -partst !dotA parC. Qed.
+ 
+ 
+ (* used in open.v *)
+ Lemma eqvbN u v : u ≡[false] v -> u ≡ v. by []. Qed.
+ Lemma eqvbT u v : u ≡[true] v -> u ≡ v°. by []. Qed.
+ 
+ Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
+ Proof. split; apply: eqvb_transL; by rewrite ?(addbN,addNb) addbb //= cnvI. Qed.
+ 
+ Lemma infer_testE x x' a a' p p' : 
+   (@infer_test x a p) ≡ (@infer_test x' a' p') <-> x ≡ x'.
+ Proof. rewrite /infer_test. by subst. Qed.
 
 End derived.
 Coercion pttdom_labels: pttdom >-> labels. 
 Notation "[ x ]" := (@infer_test _ x%ptt _ erefl): pttdom_ops.
-
-Arguments eqv : simpl never.
 
 (** ** initial algebra of terms *)
 Section terms.
@@ -352,15 +355,6 @@ Section terms.
    | tm_one => nt_one
    end.
 
-Ltac fold_ops := 
-  repeat match goal with 
-         | |- context[tm_par ?u ?v] => change (tm_par u v) with (u ∥ v) 
-         | |- context[tm_dot ?u ?v] => change (tm_dot u v) with (u · v)
-         | |- context[tm_cnv ?u] => change (tm_cnv u) with (u°)
-         | |- context[tm_dom ?u] => change (tm_dom u) with (dom u)
-         | |- tm_eqv ?u ?v => change (u ≡ v)
-         end.
-
  (* correctness of the normalisation function (Proposition 7.1)  *)
  Proposition nt_correct (u: term): u ≡ term_of_nterm (nt u).
  Proof.
@@ -378,7 +372,6 @@ Ltac fold_ops :=
    - rewrite {1}IHu.
      case (nt u)=>[a|a v b]=>//=.
      exact: cnvtst.
-     fold_ops.
      by rewrite 2!cnvdot dotA !cnvtst.
    - rewrite {1}IHu.
      case (nt u)=>[a|a v b]=>//=.
@@ -390,3 +383,14 @@ Ltac fold_ops :=
 End terms.
 
 
+(* unused for now
+Ltac fold_ops := 
+  repeat match goal with 
+         | |- context[tm_par ?u ?v] => change (tm_par u v) with (u ∥ v) 
+         | |- context[tm_dot ?u ?v] => change (tm_dot u v) with (u · v)
+         | |- context[tm_cnv ?u] => change (tm_cnv u) with (u°)
+         | |- context[tm_dom ?u] => change (tm_dom u) with (dom u)
+         | |- context[tm_one ?A] => change (tm_one A) with (@one (tm_ops_ A))
+         | |- tm_eqv ?u ?v => change (u ≡ v)
+         end.
+ *)

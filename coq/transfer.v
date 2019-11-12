@@ -98,9 +98,9 @@ Context {graph_G : is_graph G}.
 Lemma endpt_proof b (e : eset G) : endpt G b (val e) \in vset G.
 Proof. exact: (endptP b (valP e)). Qed.
 
-Definition pack' : graph := Eval simpl in 
-  {| vertex := [finType of vset G];
-     edge := [finType of eset G];
+Definition pack' : graph :=  
+  {| vertex := fset_sub_finType (vset G);
+     edge := fset_sub_finType (eset G);
      endpoint b e := Sub (endpt G b (val e)) (endpt_proof b e);
      vlabel v := lv G (val v);
      elabel e := le G (val e) |}.

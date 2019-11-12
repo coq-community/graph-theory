@@ -602,8 +602,6 @@ Proof.
   - by rewrite !edges_at_del fsetDDD fsetUC -fsetDDD.
 Qed.
 
-Arguments mon2 : simpl never.
-
 Lemma add_testC (G : pre_graph) x y a b :
   G[adt x <- a][adt y <- b] ≡G G[adt y <- b][adt x <- a].
 Proof.
@@ -1524,6 +1522,3 @@ Notation "G [adt x <- a ]" := (add_test G x a)
 Hint Resolve in_vsetDV in_vsetDE in_vsetAV in_vsetAE in_vsetAV' : vset.
 Hint Resolve is_edge_vsetL is_edge_vsetR oarc_vsetL oarc_vsetR : vset.
 Hint Resolve osteps_refl : core.
-
-
-

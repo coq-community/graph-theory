@@ -55,7 +55,7 @@ Definition unit_graph a := Graph (fun _ => vfun) (fun _: unit => a) vfun.
 
 (* adding an edge to a graph *)
 Definition add_edge (G: graph) (x y: G) (u: Le): graph :=
-  @Graph (vertex G) [finType of option (edge G)]
+  @Graph (vertex G) (option_finType (edge G))
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
          (@vlabel G)
          (fun e => match e with Some e => elabel e | None => u end).
@@ -382,17 +382,17 @@ Section merge_surj.
  Lemma merge_surj: merge G r ≃ H.
  Proof.
    Iso (quot_kernel Hr Hsurj) fe xpred0. split; intros=>/=.
-   - rewrite -Hendpoints=>/=. by rewrite surj_repr_pi. 
+   - rewrite -Hendpoints=>/=. by rewrite quot_kernelE. 
    - rewrite Hvlabel.
      (* TOCLEAN *)
      apply eq_eqv, eq_bigl=>x.
      apply /idP/idP =>/eqP E.
      * apply /eqP. move:E=>/Hr/eqquotP E. rewrite E. apply reprK. 
-     * rewrite -E surj_repr_pi=>//.
+     * by rewrite -E quot_kernelE.
    - apply Helabel.
  Defined.
  Lemma merge_surjE (x: G): merge_surj (\pi x) = fv x.
- Proof. by rewrite /=surj_repr_pi. Qed.
+ Proof. by rewrite quot_kernelE. Qed.
 End merge_surj.
 Global Opaque merge_surj.
 
@@ -574,10 +574,10 @@ Section union_merge_l.
   Proof. by rewrite /=union_quot_lEl quot_sameE. Qed.
   Lemma union_merge_lEr (x: G): union_merge_l (unr x) = \pi unr x.
   Proof. by rewrite /=union_quot_lEr quot_sameE. Qed.
-  Lemma union_merge_l'E (x: F+G):
+  Lemma union_merge_lE' (x: F+G):
     union_merge_l^-1 (\pi x) =
     match x with inl y => @unl (merge_seq F l) _ (\pi y) | inr y => unr y end.
-  Proof. by rewrite /=quot_sameE union_quot_l'E. Qed.
+  Proof. by rewrite /=quot_sameE' union_quot_lE'. Qed.
 End union_merge_l.  
 Global Opaque union_merge_l.
 
@@ -588,6 +588,7 @@ Lemma map_pairs_id {A} (l: pairs A): map_pairs id l = l.
 Proof. elim l=>//=[[a a'] q]/=. congruence. Qed.
 
 Section union_merge_r.
+  
   Variables (F G: graph) (l: pairs G).
   Lemma union_merge_r: F ⊎ merge_seq G l ≃ merge_seq (F ⊎ G) (map_pairs unr l).
   Proof.
@@ -657,7 +658,7 @@ Section merge_union_K.
 
   Lemma hom_merge_union_K: is_hom h_merge_union_K h_merge_union_Ke xpred0.
   Proof.
-    split; try (case; intros =>//=; by rewrite ?quot_union_KEl ?quot_union_KEr quot_sameE).
+    split; try (case; intros =>//=; by rewrite quot_union_KE quot_sameE).
     move=> v/=.
     rewrite quot_sameE/=.  
     have x0 : F. { case: (repr v). exact: id. exact k. }
@@ -682,7 +683,7 @@ Global Opaque merge_union_K.
 Lemma merge_two a b: merge_seq (unit_graph a ⊎ unit_graph b) [:: (inl tt,inr tt)] ≃ unit_graph (a⊗b).
 Admitted.
 Lemma merge_twoE a b x: merge_two a b x = tt.
-Admitted.  
+Admitted.
 
 (* other isomorphisms on concrete graphs *)
 
@@ -718,9 +719,13 @@ Section Subgraphs.
   Proof. exists val, val, xpred0. split => //=. split; exact: val_inj. Qed.
 
   (* edge deletion is treated as a special case, because this avoids the change in the vertex type *)
+  (* TODO: would be more natural to have a 'restrict_edges' operations 
+     (same as del_edge, without set complement on E)  
+     and maybe also define [restrict_vertices], which would assume that removed vertices have no incident edge, and [subgraph_for] be defined in terms of [restrict_edges] and [restrict_vertices]
+   *)
   Definition del_edges := 
-    {| vertex := [finType of G];
-       edge := [finType of {e | e \in ~: E}];
+    {| vertex := G;
+       edge := sig_finType (fun e: edge G => e \in ~: E);
        endpoint b e := endpoint b (val e); 
        vlabel x := vlabel x;
        elabel e := elabel (val e); |}.
@@ -805,7 +810,7 @@ Proof.
   apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
 Qed.
 
-Lemma subgraph_for_iso' G H (h : G ≃ H) 
+Lemma subgraph_for_iso G H (h : G ≃ H) 
   (VG :{set G}) (VH : {set H}) (EG : {set edge G}) (EH : {set edge H})
   (con1 : consistent VG EG) (con2 : consistent VH EH) :
   VH = h @: VG -> EH = h.e @: EG ->
@@ -819,36 +824,16 @@ Proof.
   - case => e He /=. exact: elabel_iso.
 Defined.
 
-Lemma subgraph_for_isoE' G H (h : G ≃ H) 
-  (VG :{set G}) (VH : {set H}) (EG : {set edge G}) (EH : {set edge H})
-  (con1 : consistent VG EG) (con2 : consistent VH EH) 
-  (eq_V : VH = h @: VG) (eq_E : EH = h.e @: EG) x p q :
-  subgraph_for_iso' con1 con2 eq_V eq_E (Sub x p) = (Sub (h x) q).
-Proof. exact: val_inj. Qed.
-Section BijT.
-Variables (T : finType) (P : pred T).
-Hypothesis inP : forall x, P x.
-Definition subT_bij : bij {x : T | P x} T.
-Proof. exists val (fun x => Sub x (inP x)). 
-       abstract (case => x Px; exact: val_inj).
-       abstract done.
-Defined.
-End BijT.
-
-Definition setT_bij (T : finType) : bij {x : T | x \in setT} T := 
-  Eval hnf in subT_bij (@in_setT T).
-Arguments setT_bij {T}.
-
 Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentTT G)) G setT_bij setT_bij xpred0. 
 Proof. by []. Qed.
 
-Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G := 
-  Eval hnf in Iso (setT_bij_hom G).
+Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G :=
+  Iso (setT_bij_hom G).
 
-Lemma del_vertex_iso' F G (h : F ≃ G) (z : F) (z' : G) : 
+Lemma del_vertex_iso F G (h : F ≃ G) (z : F) (z' : G) : 
   h z = z' -> del_vertex z ≃ del_vertex z'.
 Proof.
-  move => h_z. apply: (subgraph_for_iso' (h := h)). 
+  move => h_z. apply: (subgraph_for_iso (h := h)). 
   - abstract(by rewrite -h_z -bij_imsetC /= imset_set1).
   - abstract(by rewrite -h_z -bij_imsetC /= edges_at_iso). 
 Defined.
@@ -857,11 +842,11 @@ Lemma del_vertex_proof (F G : graph) (h : F ≃ G) (z : F) (z' : G) x :
   h z = z' -> x \in [set~ z] -> h x \in [set~ z'].
 Proof. move => E. by rewrite -E !inE bij_eq. Qed.
   
-Lemma del_vertex_isoE' F G (h : F ≃ G) (z : F) (z' : G) E x p : 
-  @del_vertex_iso' F G h z z' E (Sub x p) = Sub (h x) (del_vertex_proof E p).
-Proof. exact: val_inj. Qed.
+(* Lemma del_vertex_isoE F G (h : F ≃ G) (z : F) (z' : G) E x p :  *)
+(*   @del_vertex_iso F G h z z' E (Sub x p) = Sub (h x) (del_vertex_proof E p). *)
+(* Proof. exact: val_inj. Qed. *)
 
-Lemma del_edges_iso' F G (h : F ≃ G) (A : {set edge F}) (B : {set edge G}) : 
+Lemma del_edges_iso F G (h : F ≃ G) (A : {set edge F}) (B : {set edge G}) : 
   ~: B = (h.e @: ~: A) -> del_edges A ≃ del_edges B.
 Proof.
   move => E. Iso h (subset_bij E) (fun e => h.d (val e)). split.
@@ -947,25 +932,25 @@ Section MergeSubgraph.
   Local Notation G2 := (subgraph_for con2).
   Local Notation G12 := (subgraph_for consistentU).
 
-  Definition h' := map_pairs (@union_bij_fwd _ _ _) h.
+  Definition h' := map_pairs (@merge_union_fwd _ _ _) h.
   Lemma eqv_clot_union_rel : merge_union_rel (eqv_clot h) =2 eqv_clot h'.
   Proof.
     move => x y. rewrite /merge_union_rel /h' map_equivE. apply/idP/idP.
-    - have aux z : union_bij_fwd (union_bij_bwd z) = z %[mod eqv_clot (map_pairs (@union_bij_fwd _ _ _) h)].
-      { apply/eqquotP. case: union_bij_bwdP => *; apply: eq_equiv; by apply: val_inj. }
+    - have aux z : merge_union_fwd (merge_union_bwd z) = z %[mod eqv_clot (map_pairs (@merge_union_fwd _ _ _) h)].
+      { apply/eqquotP. case: merge_union_bwdP => *; apply: eq_equiv; by apply: val_inj. }
       move => H. apply/eqquotP. rewrite -[_ x]aux -[_ y]aux. apply/eqquotP.
       move: H. apply: eqv_clot_map'.
     - rewrite eqv_clotE. apply: equiv_ofE => /= {x y} x y. 
       rewrite /rel_of_pairs/=. case/mapP => /= [[u v]] in_h [-> ->].
-      apply/eqquotP. rewrite 2!(union_bij_fwd_can' eqvI). apply/eqquotP.
+      apply/eqquotP. rewrite 2!(merge_union_can eqvI). apply/eqquotP.
       exact: eqv_clot_pair.
   Qed.
 
   Definition merge_subgraph_v : bij (merge_seq (G1 ⊎ G2) h) (merge_seq G12 h') :=
-    Eval hnf in (bij_comp (merge_union_bij eqvI) (quot_same eqv_clot_union_rel)).
+    Eval hnf in (bij_comp (merge_union eqvI) (quot_same eqv_clot_union_rel)).
 
   Definition merge_subgraph_e : bij (edge G1 + edge G2) (edge G12) := 
-    union_bij disE.
+    merge_disjoint_union disE.
 
   Lemma merge_subgraph_hom : is_hom merge_subgraph_v merge_subgraph_e xpred0.
   Proof.
@@ -982,11 +967,11 @@ Section MergeSubgraph.
     (forall x, merge_subgraph_iso (\pi (inl x)) = \pi (insubd x0 (val x))) * 
     (forall y, merge_subgraph_iso (\pi (inr y)) = \pi (insubd x0 (val y))).
   Proof. 
-    split => [x|y]. 
+    split => [x|y].
     all: rewrite /= !quot_sameE.
     all: apply/eqquotP; rewrite -eqv_clot_union_rel; apply/eqquotP.
-    all: symmetry; rewrite -union_bij_bwd_can'; apply: union_bij_fwd_hom => //.
-    all: rewrite reprK /union_bij_bwd. 
+    all: symmetry; rewrite -merge_union_can'; apply: merge_union_fwd_hom => //.
+    all: rewrite reprK /merge_union_bwd.
     - case: setU_dec; rewrite val_insubd !inE !(valP x) //=; try by case.
       move => a. by rewrite valK'.
     - case: setU_dec; rewrite !val_insubd !inE !(valP y) !orbT //=.

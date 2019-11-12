@@ -81,8 +81,6 @@ Section derived.
 
 End derived.
 
-Arguments eqv : simpl never.
-
 Section terms.
  Variable A: Type.
  Inductive term :=

@@ -91,7 +91,6 @@ Qed.
 Lemma hom_skel (G1 G2 : graph) (h: iso G1 G2) :
   forall x y, @edge_rel (skeleton G1) x y -> @edge_rel (skeleton G2) (h x) (h y).
 Proof.
-  have B: bijective h by exists h^-1; apply (iso_v h). 
   apply skelP. 
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel/=/sk_rel. 
@@ -150,7 +149,6 @@ Lemma hom2_sskel (G1 G2 : graph2) (h: iso2 G1 G2) :
   forall x y, @edge_rel (sskeleton G1) x y -> @edge_rel (sskeleton G2) (h x) (h y).
 Proof.
   (* TODO: reuse [hom_skel] above? *)
-  have B: bijective h by exists h^-1; apply (iso_v h).
   apply sskelP.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /= /edge_rel //=. 
@@ -222,7 +220,7 @@ vertices *)
 (* TODO: reuse the one in mgraph? *)
 Definition remove_edges (G : graph) (E : {set edge G}) := 
   {| vertex := G;
-     edge := [finType of { e : edge G | e \notin E }];
+     edge := sig_finType (fun e : edge G => e \notin E );
      endpoint b e := endpoint b (val e);
      vlabel x := vlabel x;
      elabel e := elabel (val e) |}.
@@ -670,7 +668,7 @@ Qed.
 
 Definition flesh_out_graph (G : sgraph) sym0 tt (z : G) : graph2 :=
   {| graph_of :=
-       {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];
+       {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];(* TODO: avoid clones? *)
           endpoint b e := if b then snd (val e) else fst (val e);
           vlabel _ := tt;
           elabel := fun _ => sym0 |} ;

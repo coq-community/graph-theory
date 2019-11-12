@@ -104,7 +104,7 @@ Lemma merge_subgraph_dot (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G})
         (Sub (val i1) (union_bij_proofL _ (valP i1))) 
         (Sub (val o2) (union_bij_proofR _ (valP o2))).
 Proof.
-  move => Eoi disE12 cap12. rewrite /=/g2_dot.
+  move => Eoi disE12 cap12. rewrite /dot/=/g2_dot.
   set G12 := (point _ _ _ ⊎ point _ _ _)%G.
   have eqvI (x : G) (inV1 : x \in V1) (inV2 : x \in V2)  :
     inl (Sub x inV1) = inr (Sub x inV2) %[mod @eqv_clot G12 [:: (unl output, unr input)]].
@@ -127,7 +127,7 @@ Lemma merge_subgraph_par (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G})
         (Sub (val i1) (union_bij_proofL _ (valP i1))) 
         (Sub (val o2) (union_bij_proofR _ (valP o2))).
 Proof.
-  move => Ei Eo disE12 cap12. rewrite /=/g2_par. 
+  move => Ei Eo disE12 cap12. rewrite /par/=/g2_par. 
   set G12 := (point _ _ _ ⊎ point _ _ _)%G.
   have eqvI (x : G) (inV1 : x \in V1) (inV2 : x \in V2)  :
     inl (Sub x inV1) = inr (Sub x inV2) 
@@ -678,16 +678,6 @@ Proof.
   apply: big_par_iso2.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges input _). 
 Qed.
-
-
-
-Lemma remove_edge_add (G : graph) (e : edge G) : 
-  remove_edges [set e] ∔ [source e, elabel e, target e] ≃ G.
-Proof.
-  Iso bij_id (bijD1 e) xpred0. constructor => //.
-  - by case => [f b|[|]].
-  - by case => [f|] /=.
-Defined.
 
 Lemma split_io_edge_aux (G : graph2) (e : edge G) :
   e \in edges input output -> point (remove_edges [set e] ∔ [input, elabel e, output]) input output ≃2 G.
