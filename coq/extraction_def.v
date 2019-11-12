@@ -233,25 +233,23 @@ Definition term_of_rec (term_of : graph2 -> term sym) (G : graph2) :=
   if input == output :> G
   then (* input equals output *)
     let E := edge_set G IO in
-    if E == set0 then
+    if [pick e in E] isn't Some e then
       if [pick C in @components G [set~ input]] is Some C then
         dom (term_of (redirect C)) ∥ term_of (induced2 (~: C))
       else 1
-    else (\big[@par _/top]_(e in edge_set G IO) tm_ e) ∥
-         term_of (point (remove_edges E) input output)
+    else tm_ e ∥ term_of (point (remove_edges [set e]) input output)
   else (* distinct input and output *)
     if lens G
     then (* no checkpoints and no bags on i and o *)
       let P := components (@sinterval (skeleton G) input output) in
       let E := edge_set G IO in
-      if E == set0 
+      if [pick e in E] isn't Some e 
       then 
-        if [pick C in P] isn't Some C then 1 
+        if [pick C in P] isn't Some C then 1 (* never happens *)
         else term_of (component C) ∥ term_of (induced2 (~: C))
-      else if P == set0 
-           then \big[@par _/top]_(e in edge_set G IO) tm_ e
-           else  (\big[@par _/top]_(e in edge_set G IO) tm_ e) ∥ 
-                 term_of (point (remove_edges E) input output) 
+      else if (P == set0) && (E :\ e == set0)
+           then  tm_ e
+           else  tm_ e ∥ term_of (point (remove_edges [set e]) input output)
     else (* at least one nontrivial bag or checkpoint *)
       @simple_check_point_term term_of G.
 
@@ -585,18 +583,20 @@ Proof.
     + rewrite Efg //. exact: CK4F_split_cpR. exact: measure_split_cpR.
 Qed.
 
-Lemma CK4F_remove_edges (G : graph2) : 
+Lemma CK4F_remove_edges (G : graph2) (E : {set edge G}) :
   CK4F G -> input != output :> G -> lens G ->
-  components (@sinterval G input output) != set0 ->
-  CK4F (point (remove_edges (edge_set G IO)) input output).
+  components (@sinterval G input output) != set0 \/ edge_set IO :\: E != set0 ->
+  E \subset edge_set IO ->
+  CK4F (point (remove_edges E) input output).
 Proof.
-  move => CK4F_G Hio lens_G Ps. set E := edge_set G IO.
-  split.
-  - case: CK4F_G => G_conn _. apply: remove_edges_connected G_conn.
-    suff io_conn : connect (@sk_rel _ (remove_edges E)) input output.
-    { move=> e. rewrite !inE. case/andP=> /orP[]/eqP-> /orP[]/eqP-> //.
-      rewrite connect_symI //. exact: sk_rel_sym. }
-    move: Ps. set sI := sinterval _ _. case/set0Pn=> /= C C_comp.
+  move => CK4F_G Hio lens_G Ps E_sub_IO. 
+  split; last by case: CK4F_G => _; apply: iso_K4_free; exact: sskeleton_remove_io. 
+  case: CK4F_G => G_conn _. apply: remove_edges_connected G_conn.
+  suff io_conn : connect (@sk_rel _ (remove_edges E)) input output.
+  { move=> e /(subsetP E_sub_IO). rewrite !inE. case/andP=> /orP[]/eqP-> /orP[]/eqP-> //.
+    rewrite connect_symI //. exact: sk_rel_sym. }
+  move: Ps. set sI := sinterval _ _. case. 
+  - case/set0Pn=> /= C C_comp.
     case/and3P: (partition_components sI) => /eqP compU compI comp0.
     have C_sub : C \subset sI by rewrite -compU; exact: bigcup_sup.
     case: (@sinterval_components G C _ _ C_comp) => -[u u_C iu][v v_C ov].
@@ -604,17 +604,20 @@ Proof.
     { have [u_sI v_sI] := (subsetP C_sub u u_C, subsetP C_sub v v_C).
       rewrite !in_set2. split; [move: u_sI | move: v_sI];
       apply: contraTN => /orP[]/eqP->; by rewrite (@sinterval_bounds G). }
-    have /connect1 iu_conn := remove_edges_cross (subxx E) iu uNio.
+    have /connect1 iu_conn := remove_edges_cross (E_sub_IO) iu uNio.
     apply: connect_trans iu_conn _.
-    have := remove_edges_cross (subxx E) ov vNio. rewrite sk_rel_sym.
+    have := remove_edges_cross (E_sub_IO) ov vNio. rewrite sk_rel_sym.
     move/connect1. apply: connect_trans.
-    apply: remove_edges_restrict (subxx E) _.
+    apply: remove_edges_restrict (E_sub_IO) _.
     have := @connected_in_components G sI C C_comp u v u_C v_C.
     apply: connect_mono. apply: restrict_mono => z /= Hz.
     have {Hz} Hz : z \in sI by rewrite -compU; apply/bigcupP; exists C.
     rewrite !inE negb_or. apply/andP.
     by split; apply: contraTneq Hz => ->; rewrite /sI (@sinterval_bounds G).
-  - case: CK4F_G => _. apply: iso_K4_free. apply: sskeleton_remove_io. exact: subxx.
+  - case/set0Pn => e /setDP [E1 E2]. apply: connect1.
+    rewrite /= Hio /=. rewrite lens_io_set // in E1. case/setUP : E1 => E1.
+    + apply: adjacentI. instantiate (1 := Sub e E2). by rewrite !inE /= in E1 *.
+    + rewrite adjacent_sym. apply: adjacentI. instantiate (1 := Sub e E2). by rewrite !inE /= in E1 *.
 Qed.
 
 Lemma measure_remove_edges (G : graph2) (E : {set edge G}) (i o : G) :
@@ -624,17 +627,19 @@ Proof.
   apply: (card_ltnT (x := e)). by rewrite /= negbK.
 Qed.
 
-Lemma CK4F_remove_loops (G : graph2) :
-  CK4F G -> input == output :> G ->
-  CK4F (point (remove_edges (edge_set G IO)) input output).
+Lemma CK4F_remove_loops (G : graph2) (E : {set edge G}) : 
+  CK4F G -> input == output :> G -> E \subset edge_set IO ->
+  CK4F (point (remove_edges E) input output).
 Proof.
-  move=> [G_conn G_CK4F] /eqP Eio. rewrite -Eio setUid edge_set1. split.
-  - apply: iso_connected G_conn. symmetry. 
-    apply: remove_loops => e. rewrite inE. by case/andP=> /eqP-> /eqP->.
+  move=> [G_conn G_CK4F] /eqP Eio E_sub_IO. rewrite -Eio.
+  have loopP : {in E, forall e, source e = target e}. 
+  { move => e /(subsetP E_sub_IO). rewrite !inE. 
+    case/andP. by do 2 case/orP=> [/eqP->|/eqP->]. }
+ split.
+  - apply: iso_connected G_conn. symmetry. exact: remove_loops.
   - apply: iso_K4_free G_CK4F. apply: diso_comp (iso_pointxx _) _.
-    case: G {G_conn} Eio => G i o /= <-. symmetry. 
-    apply: diso_comp (iso_pointxx _) _. apply: remove_loops => e.
-    rewrite inE. by case/andP=> /eqP-> /eqP->.
+    case: G {G_conn E_sub_IO} E Eio loopP => G i o E /= <- loopP. symmetry. 
+    apply: diso_comp (iso_pointxx _) _. exact: remove_loops.
 Qed.
 
 Lemma CK4F_lens_rest (G : graph2) C : 
@@ -674,13 +679,27 @@ Proof.
   exact: measure_remove_component.
 Qed.
 
+Variant picks_spec (T : finType) (A : {set T}) : option T -> Type := 
+| Picks x & x \in A : picks_spec A (Some x)
+| Nopicks & A = set0 : picks_spec A None.
+
+Lemma picksP (T : finType) (A : {set T}) : picks_spec A [pick x in A].
+Proof. 
+  case: pickP => /= [|eq0]; first exact: Picks. 
+  apply/Nopicks/setP => x. by rewrite !inE eq0.
+Qed.
+
+Lemma set10 (T : finType) (e : T) : [set e] != set0.
+Proof. apply/set0Pn. exists e. by rewrite inE. Qed.
+
+
 Lemma term_of_rec_eq (f g : graph2 -> term sym) (G : graph2) :
   CK4F G -> (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) ->
   term_of_rec f G = term_of_rec g G.
 Proof.
   move=> CK4F_G Efg. rewrite /term_of_rec.
   case: (boolP (@input _ G == output)) => Hio.
-  - case (boolP (edge_set G IO == set0)) => Es.
+  - case: pickP => [e Eio|Es]; last first.
     + case: pickP => //= C HC. rewrite !Efg //.
       * exact: CK4F_remove_component.
       * move: HC. rewrite -[set1 input]setUid {2}(eqP Hio).
@@ -688,17 +707,18 @@ Proof.
       * exact: CK4F_redirect.
       * exact: measure_redirect.
     + congr tm_par. rewrite Efg //.
-      * exact: CK4F_remove_loops.
-      * exact: measure_remove_edges.
+      * apply CK4F_remove_loops => //. by rewrite sub1set.
+      * apply: measure_remove_edges. exact: set10.
   - case: (boolP (lens G)) => [deg_G|ndeg_G].
-    + case: (boolP (_ == _)) => Es.
+    + case: picksP => [e Eio|/eqP Es]; last first. 
       * case: pickP => [C HC|//]. congr tm_par.
         -- apply: Efg. exact: CK4F_lens. exact: measure_lens.
         -- apply: Efg. exact: CK4F_lens_rest. exact: measure_lens_rest.
-      * case: (boolP (_ == _)) => Ps //. 
-        rewrite Efg //. 
-        -- exact: CK4F_remove_edges. 
-        -- exact: measure_remove_edges.
+      * case: (boolP (_ && _)) => Ps //. rewrite Efg //. 
+        -- apply: CK4F_remove_edges => //.
+           ++ rewrite negb_and in Ps. exact/orP.
+           ++ by rewrite sub1set.
+        -- apply: measure_remove_edges. exact: set10.
     + exact: simple_check_point_wf.
 Qed.
 

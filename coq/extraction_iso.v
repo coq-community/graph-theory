@@ -679,6 +679,56 @@ Proof.
   move => e. rewrite mem_enum /tm_ /strip inE. by case: (e \in edges input _). 
 Qed.
 
+Lemma remove_edge_add (G : graph) (e : edge G) : 
+  remove_edges [set e] ∔ [source e, elabel e, target e] ≃ G.
+Admitted.
+
+Lemma split_io_edge_aux (G : graph2) (e : edge G) :
+  e \in edges input output -> point (remove_edges [set e] ∔ [input, elabel e, output]) input output ≃2 G.
+Admitted.
+
+Lemma split_io_edge (G : graph2) (e : edge G) : 
+  e \in edges input output -> 
+  G ≃2 edge_graph2 1%lbl (elabel e) 1%lbl ∥ point (remove_edges [set e]) input output.
+Proof.
+  move => e_io. symmetry. 
+  rewrite /par/=/g2_par/=. 
+  apply: iso2_comp. apply: merge_iso2. apply: union_add_edge_l. rewrite /=.
+  apply: iso2_comp. apply: iso_iso2. apply: merge_add_edge. rewrite !merge_add_edgeE.
+  apply: iso2_comp. apply: iso_iso2. apply: add_edge_iso. apply: merge_iso. 
+    apply: union_C. rewrite !merge_isoE /=. 
+  pose k (x : @two_graph (flat_labels sym) tt tt) : remove_edges [set e] := 
+    match x with inl tt => input | inr tt => output end.
+  eapply iso2_comp. apply: iso_iso2. apply: add_edge_iso. apply (merge_union_K (k := k)).
+  - done.
+  - abstract (case => [[]|[]] /=; apply/eqquotP; eqv).
+  - abstract (repeat case).
+  - rewrite /= !merge_union_KE /= {}/k. 
+    apply: iso2_comp. apply: iso_iso2. apply: iso_sym. apply: merge_add_edge. 
+    Unshelve. (* why? *)
+    rewrite !(@merge_add_edgeE _ _ _ input (elabel e) output _).
+    apply: iso2_comp. apply: @merge_nothing. 
+    + abstract (repeat constructor).
+    + exact: split_io_edge_aux.
+Qed.
+
+Lemma split_io_edge_lens (G : graph2) (e : edge G) : 
+  e \in edge_set IO -> lens G -> G ≃2 graph_of_term (tm_ e) ∥ point (remove_edges [set e]) input output.
+Proof.
+  move => e_io lens_G. rewrite lens_io_set // inE in e_io. 
+  rewrite /tm_. case: ifP e_io => //= [e_io _|eNio e_oi]; first exact: split_io_edge.
+  rewrite <- cnv2I. 
+  have e_io : e \in @edges _ (g2_cnv G) input output by [].
+  rewrite -> (split_io_edge e_io) at 1. by rewrite -> cnv2par. 
+Qed.
+
+Lemma split_io_loop (G : graph2) (e : edge G) : 
+  e \in edge_set IO -> input == output :> G -> G ≃2 graph_of_term (tm_ e) ∥ point (remove_edges [set e]) input output.
+Proof.
+  move => e_io /eqP Eio. rewrite inE -Eio setUid !inE in e_io. 
+  rewrite /tm_ inE -Eio e_io {2}Eio /=. apply: split_io_edge. by rewrite inE -Eio.
+Qed.
+
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> G ≃2 graph_of_term (term_of G).
 Proof.
@@ -686,7 +736,7 @@ Proof.
   rewrite term_of_eq // /term_of_rec. 
   case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)
-    case: ifP => [C2|/negbT C2] /=.
+    case: picksP => [e e_io|/eqP C2]; last first.
     + case: pickP => [C HC|/(_ _) HC] /=.
       * setoid_rewrite (@split_component _ C) at 1 =>//.
         rewrite -?(eqP C1) ?setUid.
@@ -702,14 +752,13 @@ Proof.
       * have : @components G [set~ input] == set0.
         { rewrite -subset0. apply/subsetP => C. by rewrite HC. }
         exact: componentless_one.
-    + setoid_rewrite split_io_edges at 1. set E := edges _ _ :|: edges _ _.
-      have Eio : E = edge_set IO. by rewrite /E (eqP C1) !setUid edge_set1.
-      rewrite -{1}Eio {2}Eio. apply: par_iso2; first exact: edges2_graph_of.
-      apply: IH; [exact: measure_remove_edges | exact: CK4F_remove_loops].
+    + rewrite -> (split_io_loop e_io C1) at 1. simpl. rewrite <- IH => //.
+      * apply: measure_remove_edges. exact: set10.
+      * apply: CK4F_remove_loops => //. by rewrite sub1set.
   - case: ifP => [C2|/negbT C2].
     + (* parallel split *)
       have EC := lens_sinterval (proj1 CK4F_G) C2.
-      case: (boolP (_ == set0)) => C3.
+      case: picksP => [e e_io|/eqP C3]; last first.
       * case: pickP => [C HC|]. 
         -- rewrite EC in HC. setoid_rewrite (split_component _ HC) at 1=> //=.  
            apply: par_iso2. 
@@ -721,18 +770,17 @@ Proof.
            rewrite edge_set_adj // => /(_ isT)/ltnW.
            move=>H H'. exfalso. move: H H'.  
            case/card_gt0P => C HC /(_ C). by rewrite HC.
-      * rewrite EC.
-        case: (boolP (_ == set0)) => C4 /=.
-        -- setoid_rewrite split_io_edges at 1; rewrite -{2}lens_io_set //.
-           setoid_rewrite componentless_top =>//.
-           setoid_rewrite par2top=>//.
-           rewrite lens_io_set//.
-           exact: edges2_graph_of. 
-        -- setoid_rewrite split_io_edges at 1. apply: par_iso2. 
-           ++ rewrite lens_io_set //. exact: edges2_graph_of.
-           ++ setoid_rewrite <-IH; rewrite lens_io_set // -lens_io_set //. 
-              exact: measure_remove_edges.
-              rewrite -EC in C4. exact: CK4F_remove_edges.
+      * rewrite EC. case: (boolP (_ && _)) => C4 /=. 
+        -- case/andP : C4 => C4 E4.  
+           rewrite -> (split_io_edge_lens e_io C2) at 1.
+           have -> : [set e] = edge_set IO. 
+           { apply/eqP. by rewrite eqEsubset sub1set e_io -setD_eq0. }
+           by rewrite -> componentless_top, par2top.
+        -- setoid_rewrite (split_io_edge_lens e_io C2) at 1. apply: par_iso2 => //.
+           rewrite negb_and -EC in C4. move/orP in C4.
+           apply: IH. 
+           ++ apply: measure_remove_edges. exact: set10.
+           ++ apply: CK4F_remove_edges => //=. by rewrite sub1set.
     + (* bag/sequential split *) 
       rewrite /simple_check_point_term. 
       case: ifP => [A|/negbT A].
