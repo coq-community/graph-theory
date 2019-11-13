@@ -1,4 +1,15 @@
-time make (on damien's machine, cpufreqd performance, without -j.. to avoid (lack of) luck due to parallelism)
+time make (on damien's machine, coq 8.9.1, cpufreqd performance, without -j.. to avoid (lack of) luck due to parallelism)
+
+eb5025e72a22e28dbfe121958b2ec813c16ee13e (garbage collection of useless admits)
+real	2m34,086s
+user	2m31,368s
+sys	0m2,711s
+(coq 8.10: user 2m25)
+
+5ed41879a8f0e49bee06064927ec1abefb45d21c (removed par2_alt&co)
+real	2m32,259s
+user	2m29,483s
+sys	0m2,775s
 
 83ecf70a5e229cbe746b2c1bac42653693734d46 (pass on bijections)
 real	2m48,304s
