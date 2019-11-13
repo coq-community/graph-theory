@@ -4,7 +4,7 @@ EXTRA_DIR:=coqdocjs/extra
 PACK:=graphs
 VERSION:=current
 PACKED_FILES:= \
- _CoqProject Makefile README files.txt html/ \
+ _CoqProject Makefile README files.txt html/ coqdocjs/ \
   depend-colors.gv
 
 COQDOCFLAGS:= \
