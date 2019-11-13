@@ -19,56 +19,6 @@ Notation graph := (graph L).
 Notation graph2 := (graph2 L).
 Local Open Scope labels.
 
-Lemma merge43 (a b c d: Lv):
-  merge_seq (two_graph a b ⊎ two_graph c d) [:: (inl (inr tt), inr (inl tt))] ≃ two_graph2 a d ∔ (b⊗c).
-Proof.
-  etransitivity. refine (merge_iso (iso_sym (union_A _ _ _)) _).
-  etransitivity. refine (merge_iso (union_iso iso_id (union_A _ _ _)) _). 
-  etransitivity. refine (merge_iso (union_iso iso_id (union_C _ _)) _). 
-  etransitivity. refine (merge_iso (union_A _ _ _) _).
-  etransitivity. symmetry. refine (union_merge_r _ (G:=two_graph b c) [:: (inl tt, inr tt)]).
-  apply union_iso. reflexivity. apply merge_two.
-Defined.
-
-Lemma union_merge_rE' (F G: graph) (l: pairs G) x:
-  (@union_merge_r _ F G l)^-1 (\pi x) = match x with inl x => inl x | inr x => inr (\pi x) end.
-Proof. case x=>?. Admitted.     (* not needed for now *)
-
-Lemma merge43E a b c d x:
-  merge43 a b c d (\pi x) =
-  (match x with
-   | inl (inl _) => inl (inl tt)
-   | inr (inl _) => inr tt
-   | inl (inr _) => inr tt
-   | inr (inr _) => inl (inr tt)
-   end).
-Admitted.                       (* not needed for now (direct approach seems better) *)
-Opaque merge43.
-
-Lemma merge42 (a b c d: Lv):
-  merge_seq (two_graph a b ⊎ two_graph c d)
-            [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))]
-≃ two_graph2 (a⊗c) (b⊗d).
-Proof.
-  etransitivity. refine (merge_iso (iso_sym (union_A _ _ _)) _).
-  etransitivity. refine (merge_iso (union_iso iso_id (union_C _ _)) _). 
-  etransitivity. refine (merge_iso (union_iso iso_id (iso_sym (union_A _ _ _))) _). 
-  etransitivity. refine (merge_iso (union_A _ _ _) _).
-  etransitivity. refine (merge_iso (union_iso iso_id (union_C _ _)) _).
-  simpl.
-  etransitivity. symmetry. refine (@mgraph.merge_merge_seq _ _ [:: _] [:: _] _ _). reflexivity. simpl.
-  etransitivity. symmetry. etransitivity. apply (merge_iso (union_merge_l (two_graph b d) (F:=two_graph a c) [:: (inl tt, inr tt)]) [:: (inr (inl tt), inr (inr tt))]).
-  simpl. by rewrite !union_merge_lEr.
-  etransitivity. symmetry. refine (union_merge_r _ (G:=two_graph b d) [:: (inl tt, inr tt)]).
-  apply union_iso; apply merge_two. 
-Defined.
-Lemma merge42E a b c d x:
-  merge42 a b c d (\pi x) = (match x with inl y | inr y => y end).
-Proof.
-  (* case x; case; case=>/=. *)
-Admitted.                       (* not needed for now (direct approach seems better) *)
-Opaque merge42.
-
 Lemma two_edges (a b c d: Lv) (u v: Le):
   edge_graph a u b ⊎ edge_graph c v d
 ≃ (two_graph a b ⊎ two_graph c d) ∔ [inl (inl tt), u, inl (inr tt)] ∔ [inr (inl tt), v, inr (inr tt)].
@@ -122,21 +72,6 @@ Proof.
       by rewrite monU.
 Qed.
 
-(* same as [dot_edge], but with a compositional/convoluted proof 
-   looks appealing, but the complexity is hidden in [merge43] and I still don't know how to prove [merge43E]
- *)
-Lemma dot_edges' (a b c d: Lv) (u v: Le):
-  point (merge_seq (edge_graph a u b ⊎ edge_graph c v d) [:: (inl (inr tt), inr (inl tt))])
-        (\pi inl (inl tt)) (\pi (inr (inr tt)))
-≃2 two_graph2 a d ∔ (b⊗c) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
-Proof.
-  etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
-  etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
-  etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
-  etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge43 _ _ _ _) _ _ _) _ _ _)).
-  by rewrite /= !merge43E.
-Qed.    
-
 
 Definition two_option_void': bij (option (void+void) + option (void+void)) (option (option (void+void))).
 Proof.
@@ -174,20 +109,6 @@ Proof.
       rewrite -big_filter filter_index_enum /=; 
       rewrite !enum_sum !enum_unit /= !big_cons big_nil;
       by rewrite monU.
-Qed.
-
-(* idem: same as [par_edges] with a compositional/convoluted proof *)
-Lemma par_edges' (a b c d: Lv) (u v: Le):
-  point (merge_seq (edge_graph a u b ⊎ edge_graph c v d)
-                   [:: (inl (inl tt), inr (inl tt)); (inl (inr tt), inr (inr tt))])
-        (\pi inl (inl tt)) (\pi (inr (inr tt)))
-≃2 two_graph2 (a⊗c) (b⊗d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
-Proof.
-  etransitivity. apply (merge_iso2 (two_edges _ _ _ _ _ _)). 
-  etransitivity. apply (iso_iso2 (merge_add_edge _ _ _ _)). rewrite /= !merge_add_edgeE.
-  etransitivity. apply (iso_iso2 (add_edge_iso (merge_add_edge _ _ _ _) _ _ _)). rewrite /= !merge_add_edgeE.
-  etransitivity. apply (iso_iso2 (add_edge_iso (add_edge_iso (merge42 _ _ _ _) _ _ _) _ _ _)).
-  by rewrite /= !merge42E.
 Qed.
 
 End prelim.

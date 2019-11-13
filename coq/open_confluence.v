@@ -1173,7 +1173,7 @@ Proof with eauto with typeclass_instances.
        { apply: contraTneq (oarc_edge_atL arc_e1') => ->. by rewrite Iz D2 // in_fset2 eqxx. }
        have ?: y' != z. 
        { apply: contraTneq (oarc_edge_atR arc_e2') => ->. by rewrite Iz D2 // in_fset2 eqxx. }
-       (* have zDz' : z != z'. by admit. *)       
+       (* have zDz' : z != z'. by .... *)       
        e2split.
        * eapply ostep_step,ostep_v2. 
          7: { apply: oarc_add_edge. 2:apply: oarc_remove_vertex arc_e2'. 

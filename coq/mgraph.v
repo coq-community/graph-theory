@@ -13,8 +13,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** labeled directed multigraphs and their operations *)
 
-(* this file subsumes mgraph_jar.v : 
-   the notion of multigraph defined here allows labels on vertices and edge-fliping isomorphisms 
+(* the notion of multigraph defined here allows labels on vertices and edge-fliping isomorphisms 
    we can recover multigraphs without vertex-labels and non-flipping isomophisms using the [flat_labels] structure
  *)
 
@@ -679,12 +678,6 @@ Section merge_union_K.
 End merge_union_K.
 Global Opaque merge_union_K.
 
-(* used only in unused proofs in reduction.v *)
-Lemma merge_two a b: merge_seq (unit_graph a ⊎ unit_graph b) [:: (inl tt,inr tt)] ≃ unit_graph (a⊗b).
-Admitted.
-Lemma merge_twoE a b x: merge_two a b x = tt.
-Admitted.
-
 (* other isomorphisms on concrete graphs *)
 
 Lemma two_graph_swap a b: two_graph a b ≃ two_graph b a.
@@ -810,52 +803,11 @@ Proof.
   apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
 Qed.
 
-Lemma subgraph_for_iso G H (h : G ≃ H) 
-  (VG :{set G}) (VH : {set H}) (EG : {set edge G}) (EH : {set edge H})
-  (con1 : consistent VG EG) (con2 : consistent VH EH) :
-  VH = h @: VG -> EH = h.e @: EG ->
-  subgraph_for con1 ≃ subgraph_for con2.
-Proof. 
-  move => eq_V eq_E. 
-  Iso (subset_bij eq_V) (subset_bij eq_E) (fun e => h.d (val e)).
-  split.
-  - case => e He b. apply: val_inj => /=. exact: endpoint_iso.
-  - case => v Hv /=. exact: vlabel_iso.
-  - case => e He /=. exact: elabel_iso.
-Defined.
-
 Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentTT G)) G setT_bij setT_bij xpred0. 
 Proof. by []. Qed.
 
 Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G :=
   Iso (setT_bij_hom G).
-
-Lemma remove_vertex_iso F G (h : F ≃ G) (z : F) (z' : G) : 
-  h z = z' -> remove_vertex z ≃ remove_vertex z'.
-Proof.
-  move => h_z. apply: (subgraph_for_iso (h := h)). 
-  - abstract(by rewrite -h_z -bij_imsetC /= imset_set1).
-  - abstract(by rewrite -h_z -bij_imsetC /= edges_at_iso). 
-Defined.
-
-Lemma remove_vertex_proof (F G : graph) (h : F ≃ G) (z : F) (z' : G) x : 
-  h z = z' -> x \in [set~ z] -> h x \in [set~ z'].
-Proof. move => E. by rewrite -E !inE bij_eq. Qed.
-  
-(* Lemma remove_vertex_isoE F G (h : F ≃ G) (z : F) (z' : G) E x p :  *)
-(*   @remove_vertex_iso F G h z z' E (Sub x p) = Sub (h x) (remove_vertex_proof E p). *)
-(* Proof. exact: val_inj. Qed. *)
-
-Lemma remove_edges_iso F G (h : F ≃ G) (A : {set edge F}) (B : {set edge G}) : 
-  B = (h.e @: A) -> remove_edges A ≃ remove_edges B.
-Abort.
-(* Proof. *)
-(*   move => E. *)
-(*   Iso h (subset_bij EE) (fun e => h.d (val e)). split. *)
-(*   - case => e He b /=. exact: endpoint_iso. *)
-(*   - move => v /=. exact: vlabel_iso. *)
-(*   - case => e He /=. exact: elabel_iso. *)
-(* Defined. *)
 
 End s. 
 

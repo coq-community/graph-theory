@@ -309,14 +309,6 @@ Definition fsetU1_fun  (a : (x |` A)) : (y |`B) :=
   | inr (_,p) => Sub (val (f [` p])) (fset1Ur (valP (f [` p])))
   end.
 
-(* Use below *)
-Lemma fsetU1_funE1 (p : x \in x |` A) : fsetU1_fun [`p] = Sub y fset1U1.
-Admitted.
-
-Lemma fsetU1_funE2 z (p : z \in x |` A) (p' : z \in A) :                                        
-    fsetU1_fun [`p] = Sub (val (f [` p'])) (fset1Ur (valP (f [` p']))).
-Admitted.
-
 
 End FsetU1Fun.
 Arguments fsetU1_fun [T A B] f x y a.

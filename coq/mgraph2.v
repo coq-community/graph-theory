@@ -14,8 +14,6 @@ Set Bullet Behavior "Strict Subproofs".
 (** local operations on such graphs (for the rewrite system) *)
 
 
-(* this file subsumes mgraph2_jar.v *)
-
 (* TODO:
  - input/output as a function from [bool]?
  - recheck status of [unr/unl]
@@ -324,9 +322,6 @@ Proof. Iso2 (merge_add_edge _ _ _ _); by rewrite merge_add_edgeE. Defined.
 Lemma merge2_add_vlabel (G: graph2) (r: equiv_rel G) x a: merge2 (G [tst x <- a]) r ≃2 merge2 G r [tst \pi x <- a].
 Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Defined.
 
-Lemma merge2_two a b: merge2_seq (two_graph2 a b) [:: (inl tt,inr tt)] ≃2 unit_graph2 (a⊗b).
-Proof. Iso2 (merge_two a b); by rewrite merge_twoE. Defined.
-
 (** ** 2p-graphs form a 2p-algebra *)
 
 (* TODO: for now the 2p laws are all proved in Type [iso2], 
@@ -562,7 +557,7 @@ Qed.
 
 (*
 
-  (* these two laws could be skipped by going through 2p algebra *)
+(* these two laws are skipped since we go through 2p algebra *)
 
 Lemma g2_A13 (F G: graph2): dom(F·G) ≃2 dom(F·dom G).
 Proof. reflexivity. Qed.
@@ -696,59 +691,12 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
     by rewrite monU.
 Qed.
 
-(* TODO: no longer needed in open_confluence.v, shall we keep it? *)
-
-Notation IO := [set input;output].
-
-Lemma remove_vertex_proof1 (G : graph2) (z : G) (Hz : z \notin IO) : input \in [set~ z].
-Admitted.
-Lemma remove_vertex_proof2 (G : graph2) (z : G) (Hz : z \notin IO) : output \in [set~ z].
-Admitted.
-
-Definition remove_vertex2 (G : graph2) (z : G) (Hz : z \notin IO) := 
-  point (remove_vertex z) (Sub input (remove_vertex_proof1 Hz)) (Sub output (remove_vertex_proof2 Hz)).
-Arguments remove_vertex2 : clear implicits.
-
-Lemma remove_vertex2_iso (F G : graph2) (i : F ≃2 G) 
-  (z : F) (z' : G) (Hz : z \notin IO) (Hiz : z' \notin IO) :
-  i z = z' -> remove_vertex2 F z Hz ≃2 remove_vertex2 G z' Hiz.
-Proof.
-  move => E. Iso2 (remove_vertex_iso E).
-  - abstract apply val_inj, iso2_input. 
-  - abstract apply val_inj, iso2_output. 
-Defined.
-
-Definition remove_edges2 (G : graph2) (E : {set edge G}) := 
-  point (remove_edges E) input output.
-
-Lemma iso2_remove_edges2 (F G : graph2) (i : F ≃2 G) 
-  (EF : {set edge F}) (EG : {set edge G}) : 
-  EG = [set i.e e | e in EF] -> remove_edges2 EF ≃2 remove_edges2 EG.
-Abort.
-(* Proof. *)
-(*   move => E. *)
-(*   have EE : ~: EG = [set i.e e | e in ~: EF] by rewrite -bij_imsetC E.  *)
-(*   Iso2 (remove_edges_iso EE)=>/=. exact: iso2_input. exact: iso2_output.  *)
-(* Defined. *)
-
 
 (* lemmas for term extraction *)
-
-Lemma big_par_iso2 (T : eqType) (s : seq T) idx F G : 
-  (forall x, x \in s -> F x ≃2 G x) ->
-  \big[g2_par/idx]_(x <- s) F x ≃2 \big[g2_par/idx]_(x <- s) G x.
-Proof.
-  move => A. 
-  elim: s A => [_|i s IH (* /all_cons [A B] *) E]. 
-  by rewrite !big_nil. 
-  rewrite !big_cons. apply: par_iso2; auto.
-  apply E, mem_head. apply IH=>x Hx. apply E. by apply mem_tail. 
-Qed.
 
 (** Extensionality lemma for [subgraph_for], the general construction
 underlying bag and interval subgraphs used in the extraction
 function. *)
-
 Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
   (C1 : @consistent _ G V1 E1) (C2: consistent V2 E2) :
   V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->

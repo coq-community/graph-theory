@@ -603,8 +603,6 @@ Proof.
   (* case: i => isF isG i /=. by rewrite vfun_bodyE.  *)
 Qed.
 
-Arguments remove_vertex2 [L] G z _.
-
 Hint Extern 0 (box _) => apply Box; assumption : typeclass_instances.
  
 Lemma oiso2_remove_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
@@ -685,8 +683,6 @@ Proof.
   apply add_edge2_iso'' with i; try assumption.
   all: abstract (by rewrite /vfun_of vfun_bodyE /= pack_fsval pack_vE).
 Defined.
-
-Arguments remove_edges2 [L] G E.
 
 Lemma oiso2_remove_edges (F G : pre_graph) (i : F ⩭2 G) E E':
   E `<=` eset F ->
