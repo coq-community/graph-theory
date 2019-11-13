@@ -700,35 +700,36 @@ Qed.
 
 Notation IO := [set input;output].
 
-Lemma del_vertex_proof1 (G : graph2) (z : G) (Hz : z \notin IO) : input \in [set~ z].
+Lemma remove_vertex_proof1 (G : graph2) (z : G) (Hz : z \notin IO) : input \in [set~ z].
 Admitted.
-Lemma del_vertex_proof2 (G : graph2) (z : G) (Hz : z \notin IO) : output \in [set~ z].
+Lemma remove_vertex_proof2 (G : graph2) (z : G) (Hz : z \notin IO) : output \in [set~ z].
 Admitted.
 
-Definition del_vertex2 (G : graph2) (z : G) (Hz : z \notin IO) := 
-  point (del_vertex z) (Sub input (del_vertex_proof1 Hz)) (Sub output (del_vertex_proof2 Hz)).
-Arguments del_vertex2 : clear implicits.
+Definition remove_vertex2 (G : graph2) (z : G) (Hz : z \notin IO) := 
+  point (remove_vertex z) (Sub input (remove_vertex_proof1 Hz)) (Sub output (remove_vertex_proof2 Hz)).
+Arguments remove_vertex2 : clear implicits.
 
-Lemma del_vertex2_iso (F G : graph2) (i : F ≃2 G) 
+Lemma remove_vertex2_iso (F G : graph2) (i : F ≃2 G) 
   (z : F) (z' : G) (Hz : z \notin IO) (Hiz : z' \notin IO) :
-  i z = z' -> del_vertex2 F z Hz ≃2 del_vertex2 G z' Hiz.
+  i z = z' -> remove_vertex2 F z Hz ≃2 remove_vertex2 G z' Hiz.
 Proof.
-  move => E. Iso2 (del_vertex_iso E).
+  move => E. Iso2 (remove_vertex_iso E).
   - abstract apply val_inj, iso2_input. 
   - abstract apply val_inj, iso2_output. 
 Defined.
 
-Definition del_edges2 (G : graph2) (E : {set edge G}) := 
-  point (del_edges E) input output.
+Definition remove_edges2 (G : graph2) (E : {set edge G}) := 
+  point (remove_edges E) input output.
 
-Lemma iso2_del_edges2 (F G : graph2) (i : F ≃2 G) 
+Lemma iso2_remove_edges2 (F G : graph2) (i : F ≃2 G) 
   (EF : {set edge F}) (EG : {set edge G}) : 
-  EG = [set i.e e | e in EF] -> del_edges2 EF ≃2 del_edges2 EG.
-Proof.
-  move => E.
-  have EE : ~: EG = [set i.e e | e in ~: EF] by rewrite -bij_imsetC E. 
-  Iso2 (del_edges_iso EE)=>/=. exact: iso2_input. exact: iso2_output. 
-Defined.
+  EG = [set i.e e | e in EF] -> remove_edges2 EF ≃2 remove_edges2 EG.
+Abort.
+(* Proof. *)
+(*   move => E. *)
+(*   have EE : ~: EG = [set i.e e | e in ~: EF] by rewrite -bij_imsetC E.  *)
+(*   Iso2 (remove_edges_iso EE)=>/=. exact: iso2_input. exact: iso2_output.  *)
+(* Defined. *)
 
 
 (* lemmas for term extraction *)

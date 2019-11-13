@@ -214,17 +214,6 @@ Proof.
   - by rewrite /edge_rel/=/sk_rel => ->.
 Qed.
 
-(** We treat [remove_edges] separately from [subgraph_for] since
-removing only edges allows us to avoid the sigma-type on for the
-vertices *)
-(* TODO: reuse the one in mgraph? *)
-Definition remove_edges (G : graph) (E : {set edge G}) := 
-  {| vertex := G;
-     edge := sig_finType (fun e : edge G => e \notin E );
-     endpoint b e := endpoint b (val e);
-     vlabel x := vlabel x;
-     elabel e := elabel (val e) |}.
-
 Lemma remove_edge_add (G : graph) (e : edge G) : 
   remove_edges [set e] ∔ [source e, elabel e, target e] ≃ G.
 Proof.

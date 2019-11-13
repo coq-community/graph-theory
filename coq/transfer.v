@@ -603,17 +603,17 @@ Proof.
   (* case: i => isF isG i /=. by rewrite vfun_bodyE.  *)
 Qed.
 
-Arguments del_vertex2 [L] G z _.
+Arguments remove_vertex2 [L] G z _.
 
 Hint Extern 0 (box _) => apply Box; assumption : typeclass_instances.
  
-Lemma oiso2_del_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
+Lemma oiso2_remove_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
   z \notin pIO F -> F \ z ⩭2 G \ j z.
 Proof.
   move: j => [isF isG i] Vz IOz /=.
   unshelve econstructor. 
-  { apply del_vertex_graph => //; constructor. rewrite (oiso2_pIO (OIso2 i)) // in IOz. }
+  { apply remove_vertex_graph => //; constructor. rewrite (oiso2_pIO (OIso2 i)) // in IOz. }
   have E1 : [fset vfun_body i z] = [fset val (i x) | x : vset F & val x \in [fset z]]. (* : / in?? *)
   { apply/fsetP => k. rewrite inE vfun_bodyE. apply/eqP/imfsetP => /= [->|[x] /= ].
     - exists (Sub z Vz) => //. by rewrite !inE.
@@ -656,8 +656,8 @@ Proof.
       move => r. set X := fsetDl _. by rewrite (bool_irrelevance X r).
 Defined.
 
-Lemma oiso2_del_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B x : 
-  x \in vset (F \ z) -> @oiso2_del_vertex F G z j A B x = j x.
+Lemma oiso2_remove_vertexE (F G : pre_graph) (z : VT) (j : F ⩭2 G) A B x : 
+  x \in vset (F \ z) -> @oiso2_remove_vertex F G z j A B x = j x.
 Proof.
   case: j => isF isG j Vx. rewrite /= !vfun_bodyE fsetD_bijE.
   - rewrite !inE [_ \in vset G]valP andbT. rewrite vfun_bodyE val_eqE bij_eqLR bijK.
@@ -666,10 +666,10 @@ Proof.
 Qed.
 
 (** Variant of the above with a linear pattern in the conclusion *)
-Lemma oiso2_del_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) : 
+Lemma oiso2_remove_vertex_ (F G : pre_graph) (z z' : VT) (j : F ⩭2 G) : 
   z \in vset F -> z \notin pIO F -> z' = j z ->
   F \ z ⩭2 G \ z'.
-Proof. move => ? ? ->. exact: oiso2_del_vertex. Qed.
+Proof. move => ? ? ->. exact: oiso2_remove_vertex. Qed.
 
 Lemma oiso2_add_edge (F G : pre_graph) (i : F ⩭2 G) e1 e2 x y u v : 
   e1 \notin eset F -> e2 \notin eset G -> x \in vset F -> y \in vset F -> u ≡ v ->
@@ -686,9 +686,9 @@ Proof.
   all: abstract (by rewrite /vfun_of vfun_bodyE /= pack_fsval pack_vE).
 Defined.
 
-Arguments del_edges2 [L] G E.
+Arguments remove_edges2 [L] G E.
 
-Lemma oiso2_del_edges (F G : pre_graph) (i : F ⩭2 G) E E':
+Lemma oiso2_remove_edges (F G : pre_graph) (i : F ⩭2 G) E E':
   E `<=` eset F ->
   E' = [fset efun_of i e | e in E] -> (F - E) ⩭2 (G - E').
 Proof.
@@ -724,9 +724,9 @@ Proof.
     set q' := @p_outP _ _ _ _. by rewrite (bool_irrelevance q' q).
 Defined.
 
-Lemma oiso2_del_edgesE (F G : pre_graph) (i : F ⩭2 G) E E' S EE' z :
+Lemma oiso2_remove_edgesE (F G : pre_graph) (i : F ⩭2 G) E E' S EE' z :
   z \in vset F ->
-  @oiso2_del_edges F G i E E' S EE' z = i z.
+  @oiso2_remove_edges F G i E E' S EE' z = i z.
 Proof. 
   case: i EE' => isF isG j EE' Vx. by rewrite /= !vfun_bodyE. 
 Qed.
@@ -742,7 +742,7 @@ Proof with eauto with vset.
       * exact: iso2_vset.
       * by rewrite oiso2_edges_at // Iz imfset0.
       * by rewrite -oiso2_pIO.
-    + exact: oiso2_del_vertex. 
+    + exact: oiso2_remove_vertex. 
   - move => x z e u Iz IOz arc_e xDz i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     have Vz : z \in vset F by apply: oarc_vsetR arc_e.
@@ -752,7 +752,7 @@ Proof with eauto with vset.
       * by rewrite -oiso2_pIO.
       * exact: oiso2_oarc arc_e.
       * apply: contra_neq xDz. apply: vfun_of_inj...
-    + unshelve apply: oiso2_del_vertex_. apply: oiso2_add_test...
+    + unshelve apply: oiso2_remove_vertex_. apply: oiso2_add_test...
       * by rewrite infer_testE  (rwT (oiso2_lv i Vz)). 
       * done.
       * done.
@@ -771,8 +771,8 @@ Proof with eauto with vset.
       * apply: contra_neq yDz. apply: vfun_of_inj...
       * exact: oiso2_oarc arc_e1.
       * exact: oiso2_oarc arc_e2.
-    + have @j : (F \ z)  ⩭2 (H \ i z). exact: oiso2_del_vertex.
-      have jE : {in vset (F \ z), j =1 i}. exact: oiso2_del_vertexE.
+    + have @j : (F \ z)  ⩭2 (H \ i z). exact: oiso2_remove_vertex.
+      have jE : {in vset (F \ z), j =1 i}. exact: oiso2_remove_vertexE.
       rewrite -![i x]jE -?[i y]jE //=. apply (oiso2_add_edge j).
       * by rewrite /= Iz maxn_fsetD.
       * rewrite in_fsetD negb_and negbK oiso2_edges_at //. 
@@ -789,10 +789,10 @@ Proof with eauto with vset.
     exists ((H - [fset efun_of i e])[adt i x <- [1 ∥ le H (efun_of i e)]])%O. split.
     + apply: (ostep_e0 (e := efun_of i e)). exact: oiso2_oarc arc_e.
     + have @j : (F - [fset e]) ⩭2 (H - [fset efun_of i e]). 
-      { apply: (oiso2_del_edges (i := i)). 
+      { apply: (oiso2_remove_edges (i := i)). 
         + abstract (rewrite fsub1set; by case: arc_e).
         + abstract (by rewrite imfset1). }
-      have jE z (Vz : z \in vset F) : j z = i z. { exact: oiso2_del_edgesE. }
+      have jE z (Vz : z \in vset F) : j z = i z. { exact: oiso2_remove_edgesE. }
       rewrite -!jE. apply: oiso2_add_test. 
       * rewrite /=. exact: oarc_vsetL arc_e.
       * case: arc_e {j jE} => E _.
@@ -809,10 +809,10 @@ Proof with eauto with vset.
       * exact: oiso2_oarc arc_e1.
       * exact: oiso2_oarc arc_e2.
     + have @j : (F - [fset e1; e2]) ⩭2 (H - [fset efun_of i e1; efun_of i e2]). 
-      { apply: (oiso2_del_edges (i := i)). 
+      { apply: (oiso2_remove_edges (i := i)). 
         abstract (rewrite fsubUset !fsub1set; case: arc_e1 => -> _; by case: arc_e2).
         abstract (by rewrite imfset1U imfset1). }
-      have jE z (Vz : z \in vset F) : j z = i z. { exact: oiso2_del_edgesE. }
+      have jE z (Vz : z \in vset F) : j z = i z. { exact: oiso2_remove_edgesE. }
       rewrite -!jE. apply: oiso2_add_edge. 
       * by rewrite maxn_fsetD.
       * by rewrite in_fsetD negb_and negbK maxn_fset2.
@@ -909,7 +909,7 @@ Proof.
   by rewrite imfset_bij_bwdE.
 Qed.
 
-Lemma del_edgesD (G : pre_graph) E  : [disjoint eset G & E] -> G - E ≡G G.
+Lemma remove_edgesD (G : pre_graph) E  : [disjoint eset G & E] -> G - E ≡G G.
 Proof. move => D. split => //=. exact: fsetDidPl. Qed.
 
 (** ** Packaged steps to open steps *) 
@@ -951,10 +951,10 @@ Proof with eauto with typeclass_instances vset.
     + set z := fresh _. set e := fresh _. rewrite /= updateE.
       etransitivity. 2: symmetry. 2: apply: open_add_test.
       eapply eqvG_iso2...
-      * apply del_vertex_graph => //=. 
+      * apply remove_vertex_graph => //=. 
         -- apply add_test_graph. by apply: add_edge_graph'; rewrite !inE ?eqxx ?inj_v_open.
         -- rewrite !pIO_add. constructor. apply: pIO_fresh. exact: freshP.
-      * rewrite -del_vertex_add_test add_edgeKr ?add_vertexK ?freshP //.
+      * rewrite -remove_vertex_add_test add_edgeKr ?add_vertexK ?freshP //.
   - (* V2 *) 
     move => G x y u a v. constructor. 
     (* mathcomp pose does not resolve inh_type *)
@@ -999,8 +999,8 @@ Proof with eauto with typeclass_instances vset.
     + rewrite /= update_eq.
       apply: oiso2_trans _ (oiso2_sym _). 2:apply: open_add_test.
       eapply eqvG_iso2R...
-      rewrite add_edge_del_edgesK ?inE //.
-      by rewrite del_edgesD // fdisjointX1 freshP. 
+      rewrite add_edge_remove_edgesK ?inE //.
+      by rewrite remove_edgesD // fdisjointX1 freshP. 
   - (* E2 *) 
     move => G x y u v. constructor. 
     pose (e1 := fresh (eset (open G))).
@@ -1019,8 +1019,8 @@ Proof with eauto with typeclass_instances vset.
       * exact: oarc_added_edge.
     + apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
       unshelve apply: oiso2_add_edge'. 
-      { apply eqvG_iso2R... rewrite !add_edge_del_edgesK ?inE ?eqxx //.
-        rewrite del_edgesD // fdisjointXU !fdisjointX1 freshP freshP' //. apply: fsubsetUr. }
+      { apply eqvG_iso2R... rewrite !add_edge_remove_edgesK ?inE ?eqxx //.
+        rewrite remove_edgesD // fdisjointXU !fdisjointX1 freshP freshP' //. apply: fsubsetUr. }
       1: by rewrite maxn_fsetD.
       all: by rewrite ?eqvG_iso2E ?freshP //= ?inj_v_open.
 Qed.
@@ -1046,7 +1046,7 @@ Proof.
  move => Vz Iz. symmetry.
  apply: iso2_comp (iso2_sym _) _. apply: pack_add_vertex. instantiate (1 := z).
  - by rewrite !inE eqxx.
- - apply: eqvG_pack. by rewrite del_vertexK // Iz del_edges0.
+ - apply: eqvG_pack. by rewrite remove_vertexK // Iz remove_edges0.
 Qed.
 
 
@@ -1067,13 +1067,13 @@ Proof with eauto with vset.
   - apply: add_edge_graph'; rewrite /G'...  
   - by rewrite /G' /= in_fsetD Iz !inE eqxx.
   - rewrite /G' {}/Sz {}/Sx.  (* TODO: fix edge direction *)
-    apply eqvG_pack. rewrite del_vertexK ?Iz ?del_edgeK //...
+    apply eqvG_pack. rewrite remove_vertexK ?Iz ?remove_edgeK //...
 Qed.
 
 
 
 
-Lemma is_edge_del_edges (G : pre_graph) E e x u y : 
+Lemma is_edge_remove_edges (G : pre_graph) E e x u y : 
   e \notin E -> is_edge G e x u y -> is_edge (G - E) e x u y.
 Proof. move => He. by rewrite /is_edge /= inE He. Qed.
 
@@ -1105,8 +1105,8 @@ Proof with eauto with vset.
   (* third extrusion *)
   have ? : z \in vset G by exact: is_edge_vsetR arc_e1.
   have E:  (G \ z) ∔ [z, lv G z] ∔ [e1, x, u, z] ∔ [e2, z, v, y] ≡G G.
-  {   rewrite del_vertexK // Iz fsetUC -del_edges_edges !del_edgeK //. 
-      apply: is_edge_del_edges arc_e1. by rewrite !inE e1De2. }
+  {   rewrite remove_vertexK // Iz fsetUC -remove_edges_edges !remove_edgeK //. 
+      apply: is_edge_remove_edges arc_e1. by rewrite !inE e1De2. }
   rewrite !{}C //...
   apply: iso2_comp. apply: iso2_sym. eapply (pack_add_edge' (e := e2)).
   { by rewrite 3!inE Iz eq_sym !inE eqxx. }
@@ -1118,7 +1118,7 @@ Lemma expand_loop (G : pre_graph) (isG : is_graph G) (x : VT) (e : ET) u :
 Proof.
   move => edge_e. symmetry. 
   have E : (G - [fset e]) ∔ [e,x,le G e,x] ≡G G. 
-  { rewrite del_edgeK //. by case: edge_e => E [A B C]. }
+  { rewrite remove_edgeK //. by case: edge_e => E [A B C]. }
   apply: iso2_comp (iso2_sym _) _. 
   unshelve eapply (pack_add_edge' (G := G - [fset e]) (e := e)).
   { symmetry in E. apply: eqvG_graph E. }
@@ -1138,7 +1138,7 @@ Proof with eauto with vset.
   { abstract (by rewrite !inE eqxx). }
   rewrite /=. 
   have E : (G - [fset e1; e2]) ∔ [e1, x, u, y] ∔ [e2,x, v,y] ≡G G. 
-  { rewrite fsetUC -del_edges_edges !del_edgeK //. apply: is_edge_del_edges edge_e1. by rewrite inE. }
+  { rewrite fsetUC -remove_edges_edges !remove_edgeK //. apply: is_edge_remove_edges edge_e1. by rewrite inE. }
   apply: iso2_comp (iso2_sym _) _. 
   rewrite -/G'. set Cx := pack_v x. set Cy := pack_v y.
   have -> : Cx = (pack_v G' x). { rewrite /Cx /G' !pack_vE... move => ? ?. exact: val_inj. }
@@ -1246,13 +1246,13 @@ Proof with eauto with typeclass_instances.
         by rewrite edges_at_test He !inE. }
     set a := lv G z in isH *.
     have xV : x \in vset G by eauto with vset.
-    have x_del_z : x \in vset (G \ z) by eauto with vset.
-    have z_del_z : z \notin vset (G \ z) by rewrite !inE eqxx.
+    have x_remove_z : x \in vset (G \ z) by eauto with vset.
+    have z_remove_z : z \notin vset (G \ z) by rewrite !inE eqxx.
     have h : pack G ≃2 pack (G \ z) ∔ a ∔ [inl (pack_v x), u, inr tt]. 
       { exact: expand_pendant He edge_e _. }
       apply: cons_step h _ _. constructor. 
       apply iso_step. apply: iso2_comp. apply: pack_add_test => //.
-      apply: eqvG_pack. by rewrite del_vertex_add_test.
+      apply: eqvG_pack. by rewrite remove_vertex_add_test.
   - move => x y z e1 e2 u v Iz e1De2 Hz xDz yDz arc_e1 arc_e2 isG isH.
     wlog edge_e1 : G Iz Hz {arc_e1} arc_e2 isG isH / is_edge G e1 x u z.
     { move => W. case: (oarc_cases arc_e1) => {arc_e1} edge_e1; first exact: W.
@@ -1279,9 +1279,9 @@ Proof with eauto with typeclass_instances.
     set a := lv G z in isH *.
     have xV : x \in vset G by eauto with vset.
     have yV : y \in vset G by eauto with vset.
-    have x_del_z : x \in vset (G \ z) by eauto with vset.
-    have y_del_z : y \in vset (G \ z) by eauto with vset.
-    have z_del_z : z \notin vset (G \ z) by rewrite !inE eqxx.
+    have x_remove_z : x \in vset (G \ z) by eauto with vset.
+    have y_remove_z : y \in vset (G \ z) by eauto with vset.
+    have z_remove_z : z \notin vset (G \ z) by rewrite !inE eqxx.
     have [h] : pack G ≃2p 
              pack (G \ z) ∔ a ∔ [inl (pack_v x),u,inr tt] ∔ [inr tt,v,inl (pack_v y)].
     { apply: expand_chain. exact: Iz. all: try done. }

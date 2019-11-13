@@ -720,17 +720,17 @@ Section Subgraphs.
 
   (* edge deletion is treated as a special case, because this avoids the change in the vertex type *)
   (* TODO: would be more natural to have a 'restrict_edges' operations 
-     (same as del_edge, without set complement on E)  
+     (same as remove_edge, without set complement on E)  
      and maybe also define [restrict_vertices], which would assume that removed vertices have no incident edge, and [subgraph_for] be defined in terms of [restrict_edges] and [restrict_vertices]
    *)
-  Definition del_edges := 
+  Definition remove_edges := 
     {| vertex := G;
-       edge := sig_finType (fun e: edge G => e \in ~: E);
+       edge := sig_finType (fun e: edge G => e \notin E);
        endpoint b e := endpoint b (val e); 
        vlabel x := vlabel x;
        elabel e := elabel (val e); |}.
 
-  Lemma del_edges_sub : subgraph del_edges G.
+  Lemma remove_edges_sub : subgraph remove_edges G.
   Proof. exists id, val, xpred0. split => //=. split. apply inj_id. apply val_inj. Qed.
   
 End Subgraphs.
@@ -790,7 +790,7 @@ Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
 Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
 
 (* Commonly used subgraphs *)
-Definition del_vertex (G : graph) (z : G) : graph := 
+Definition remove_vertex (G : graph) (z : G) : graph := 
   subgraph_for (@consistent_del1 G z).
 
 (** *** isomorphisms about subgraphs *)
@@ -830,30 +830,32 @@ Proof. by []. Qed.
 Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G :=
   Iso (setT_bij_hom G).
 
-Lemma del_vertex_iso F G (h : F ≃ G) (z : F) (z' : G) : 
-  h z = z' -> del_vertex z ≃ del_vertex z'.
+Lemma remove_vertex_iso F G (h : F ≃ G) (z : F) (z' : G) : 
+  h z = z' -> remove_vertex z ≃ remove_vertex z'.
 Proof.
   move => h_z. apply: (subgraph_for_iso (h := h)). 
   - abstract(by rewrite -h_z -bij_imsetC /= imset_set1).
   - abstract(by rewrite -h_z -bij_imsetC /= edges_at_iso). 
 Defined.
 
-Lemma del_vertex_proof (F G : graph) (h : F ≃ G) (z : F) (z' : G) x : 
+Lemma remove_vertex_proof (F G : graph) (h : F ≃ G) (z : F) (z' : G) x : 
   h z = z' -> x \in [set~ z] -> h x \in [set~ z'].
 Proof. move => E. by rewrite -E !inE bij_eq. Qed.
   
-(* Lemma del_vertex_isoE F G (h : F ≃ G) (z : F) (z' : G) E x p :  *)
-(*   @del_vertex_iso F G h z z' E (Sub x p) = Sub (h x) (del_vertex_proof E p). *)
+(* Lemma remove_vertex_isoE F G (h : F ≃ G) (z : F) (z' : G) E x p :  *)
+(*   @remove_vertex_iso F G h z z' E (Sub x p) = Sub (h x) (remove_vertex_proof E p). *)
 (* Proof. exact: val_inj. Qed. *)
 
-Lemma del_edges_iso F G (h : F ≃ G) (A : {set edge F}) (B : {set edge G}) : 
-  ~: B = (h.e @: ~: A) -> del_edges A ≃ del_edges B.
-Proof.
-  move => E. Iso h (subset_bij E) (fun e => h.d (val e)). split.
-  - case => e He b /=. exact: endpoint_iso.
-  - move => v /=. exact: vlabel_iso.
-  - case => e He /=. exact: elabel_iso.
-Defined.
+Lemma remove_edges_iso F G (h : F ≃ G) (A : {set edge F}) (B : {set edge G}) : 
+  B = (h.e @: A) -> remove_edges A ≃ remove_edges B.
+Abort.
+(* Proof. *)
+(*   move => E. *)
+(*   Iso h (subset_bij EE) (fun e => h.d (val e)). split. *)
+(*   - case => e He b /=. exact: endpoint_iso. *)
+(*   - move => v /=. exact: vlabel_iso. *)
+(*   - case => e He /=. exact: elabel_iso. *)
+(* Defined. *)
 
 End s. 
 
@@ -972,7 +974,7 @@ Section MergeSubgraph.
     all: apply/eqquotP; rewrite -eqv_clot_union_rel; apply/eqquotP.
     all: symmetry; rewrite -merge_union_can'; apply: merge_union_fwd_hom => //.
     all: rewrite reprK /merge_union_bwd.
-    - case: setU_dec; rewrite val_insubd !inE !(valP x) //=; try by case.
+    - case: setU_dec; rewrite val_insubd !inE !(valP x) //=. 2: by case.
       move => a. by rewrite valK'.
     - case: setU_dec; rewrite !val_insubd !inE !(valP y) !orbT //=.
       + move => a. by rewrite -{2}[y]valK' ?(valP y).
