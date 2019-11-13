@@ -33,7 +33,7 @@ html: Makefile.coq
 
 graph: Makefile.coq
 	$(COQBIN)coqdep $(COQMF_COQLIBS) -dyndep var -c -dumpgraph depend-graph.gv $(COQMF_VFILES) >/dev/null
-	sed -i '1d;s/\[label=\"\([^"]*\)\"]/[label="\1";URL=".\/$(VERSION)\/$(PACK).\1.html"]/g' depend-graph.gv
+	sed -i '1d;s/\[label=\"\([^"]*\)\"]/[label="\1";URL=".\/$(VERSION)\/graphs.\1.html"]/g' depend-graph.gv
 	cat depend-colors.gv depend-graph.gv | dot -o depend-graph.dot
 	dot -Tsvg depend-graph.dot -o depend-graph.svg
 
