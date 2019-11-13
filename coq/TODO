@@ -1,6 +1,8 @@
-- extraction via [merge_subgraph_par] lemma
+- pass on transfer / open_confluence
+- documentation + spell-checking
+- some light-blue background for text boxes?
 
-- uniformise handling of bijections/isomorphisms and equality lemmas
+-----
 
 - solve rewriting/setoid_rewriting/Type/irewrite... (or at least uniformise)
 
