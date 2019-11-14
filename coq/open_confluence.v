@@ -434,6 +434,24 @@ Proof. split => //=; apply graph_G. Qed.
 Notation "G [adt x <- a ]" := (add_test G x a) 
    (at level 2, left associativity, format "G [adt  x  <-  a ]") : open_scope.
 
+
+Definition flip_edge (G : pre_graph) (e : ET) :=
+  {| vset := vset G;
+     eset := eset G;
+     endpt b := (endpt G b)[upd e := endpt G (~~ b) e];
+     lv := lv G;
+     le := (le G)[upd e := (le G e)°];
+     p_in := p_in G;
+     p_out := p_out G |}. 
+
+Global Instance flip_edge_graph (G : pre_graph) (isG : is_graph G) e : 
+  is_graph (flip_edge G e).
+Proof. 
+  split => //=; rewrite ?p_inP ?p_outP //.
+  move => e0 b. case: (altP (e0 =P e)) => [->|?] E0; by rewrite updateE // endptP. 
+Qed.
+
+
 (** ** Properties of the operations *)
 
 (** Preservation of vertices and edges *)
@@ -466,6 +484,13 @@ Lemma incident_dele (G : pre_graph) E : incident (G - E) =2 incident G. done. Qe
 
 Lemma incident_addv (G : pre_graph) x a : incident (G ∔ [x,a]) =2 incident G. done. Qed.
 
+Lemma incident_flip (G : pre_graph) e x : incident (flip_edge G e) x =1 incident G x.
+Proof. 
+  move => e0. rewrite /incident. case: (altP (e0 =P e)) => [->|D]. 
+  - apply/existsP/existsP => [] [b] /eqP<-; exists (~~ b) => /=; by rewrite updateE ?negbK.
+  - apply/existsP/existsP => [] [b] /eqP<-; exists b => /=; by rewrite updateE ?negbK.
+Qed.
+
 Lemma incident_flip_edge G e x u y : 
   incident (G ∔ [e, x, u, y]) =2 incident (G ∔ [e, y, u°, x]).
 Proof. 
@@ -480,6 +505,17 @@ Proof. move => He /existsP[b]/eqP<-. exact: endptP. Qed.
 Lemma is_edge_remove_edges (G : pre_graph) E e x u y : 
   e \notin E -> is_edge G e x u y -> is_edge (G - E) e x u y.
 Proof. move => He. by rewrite /is_edge /= inE He. Qed.
+
+Lemma flipped_edge (G : pre_graph) e x y u : 
+  is_edge G e x u° y -> is_edge (flip_edge G e) e y u x.
+Proof.
+  rewrite /is_edge /flip_edge /= !updateE. firstorder. by rewrite H2 cnvI.
+Qed.
+
+Lemma is_edge_flip_edge (G : pre_graph) e1 e2 x y u : 
+  e2 != e1 -> is_edge G e2 x u y -> is_edge (flip_edge G e1) e2 x u y.
+Proof. move => D. by rewrite /is_edge /flip_edge /= !updateE. Qed.
+
 
 Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. done. Qed.
 
@@ -553,6 +589,10 @@ Proof.
   apply/fsetP => e. by rewrite !(inE,edges_atE) -andbA incident_dele.
 Qed.
 
+Lemma edges_at_flip_edge (G : pre_graph) (e : ET) (x : VT) : 
+  edges_at (flip_edge G e) x = edges_at G x.
+Proof. rewrite /edges_at. apply: eq_imfset => //= e0. by rewrite !inE incident_flip. Qed.
+
 
 Lemma oarc_add_edge (G : pre_graph) e e' x y x' y' u u' : 
   e' != e ->
@@ -577,6 +617,16 @@ Proof. move => He. by rewrite /oarc /= inE He. Qed.
 Lemma oarc_remove_vertex (G : pre_graph) z e x y u : 
   e \notin edges_at G z -> oarc G e x u y -> oarc (G \ z) e x u y.
 Proof. move => Iz [edge_e H]. apply: conj H. by rewrite inE Iz. Qed.
+
+Lemma oarc_flip_edge (G : pre_graph) e1 e2 x y u : 
+  oarc G e2 x u y -> oarc (flip_edge G e1) e2 x u y.
+Proof.
+  case: (altP (e2 =P e1)) => [->|D]. 
+  - case => E [b] [A B C]. split => //. exists (~~ b). rewrite /= !negbK !updateE. 
+    split => //. symmetry. rewrite eqvb_neq. symmetry. by rewrite cnvI.
+  - case => E [b] [A B C]. split => //. exists b. by rewrite /= !updateE.
+Qed.
+
 
 
 (** ** Commutation Lemmas *)
@@ -660,6 +710,11 @@ Proof.
   case: (altP (y =P x)) => [->|?]; rewrite !updateE //=. 
   by rewrite monA [(b ⊗ a)%lbl]monC -monA.
 Qed.
+
+Lemma flip_edge_add_test (G : pre_graph) (e : ET) (x : VT) a : 
+  ((flip_edge G e)[adt x <- a])%O = (flip_edge (G[adt x <- a]) e)%O.
+Proof. done. Qed.
+
 
 (** ** Morphism Lemmas *)
 
@@ -780,6 +835,21 @@ Proof.
   by rewrite fsetDDl edges_at_remove_edges fsetUDl fsetDv fsetD0 (fsetUidPr _ _ EIz).
 Qed.
 
+Lemma flip_edgeK (G : pre_graph) (e : ET) (x : VT)  : 
+  e \in edges_at G x -> (flip_edge G e) \ x ≡G G \ x.
+Proof. 
+  move => He. split; rewrite //= edges_at_flip_edge //.
+  - move => b e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
+  - move => e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
+Qed.
+  
+Lemma flip_edgeK' (G : pre_graph) (e : ET) (E : {fset ET})  : 
+  e \in E -> (flip_edge G e) - E ≡G G - E.
+Proof. 
+  move => He. split; rewrite //= ?edges_at_flip_edge //.
+  - move => b e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
+  - move => e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
+Qed.
 
 
 (** * Open Step relation  *)

@@ -1157,24 +1157,6 @@ Proof with eauto with vset.
   - exact: eqvG_pack E.
 Qed.
 
-(** Move this up ?*)
-
-Definition flip_edge (G : pre_graph) (e : ET) :=
-  {| vset := vset G;
-     eset := eset G;
-     endpt b := (endpt G b)[upd e := endpt G (~~ b) e];
-     lv := lv G;
-     le := (le G)[upd e := (le G e)°];
-     p_in := p_in G;
-     p_out := p_out G |}. 
-
-Global Instance flip_edge_graph (G : pre_graph) (isG : is_graph G) e : 
-  is_graph (flip_edge G e).
-Proof. 
-  split => //=; rewrite ?p_inP ?p_outP //.
-  move => e0 b. case: (altP (e0 =P e)) => [->|?] E0; by rewrite updateE // endptP. 
-Qed.
-
 Lemma flip_edge_iso (G : pre_graph) (isG : is_graph G) e : pack G ≃2 pack (flip_edge G e).
 Proof.
   iso2 bij_id bij_id (fun e' : edge (pack G) => val e' == e). 2-3: by apply: val_inj.
@@ -1184,57 +1166,7 @@ Proof.
   - move => e'. case: (altP (fsval e' =P e)) => /= [->|?]; by rewrite updateE.
 Defined.
 Arguments flip_edge_iso [G isG] e.
-
-Lemma flipped_edge (G : pre_graph) e x y u : 
-  is_edge G e x u° y -> is_edge (flip_edge G e) e y u x.
-Proof.
-  rewrite /is_edge /flip_edge /= !updateE. firstorder. by rewrite H2 cnvI.
-Qed.
-
-Lemma is_edge_flip_edge (G : pre_graph) e1 e2 x y u : 
-  e2 != e1 -> is_edge G e2 x u y -> is_edge (flip_edge G e1) e2 x u y.
-Proof. move => D. by rewrite /is_edge /flip_edge /= !updateE. Qed.
-
-Lemma oarc_flip_edge (G : pre_graph) e1 e2 x y u : 
-  oarc G e2 x u y -> oarc (flip_edge G e1) e2 x u y.
-Proof.
-  case: (altP (e2 =P e1)) => [->|D]. 
-  - case => E [b] [A B C]. split => //. exists (~~ b). rewrite /= !negbK !updateE. 
-    split => //. symmetry. rewrite eqvb_neq. symmetry. by rewrite cnvI.
-  - case => E [b] [A B C]. split => //. exists b. by rewrite /= !updateE.
-Qed.
-
-Lemma incident_flip (G : pre_graph) e x : incident (flip_edge G e) x =1 incident G x.
-Proof. 
-  move => e0. rewrite /incident. case: (altP (e0 =P e)) => [->|D]. 
-  - apply/existsP/existsP => [] [b] /eqP<-; exists (~~ b) => /=; by rewrite updateE ?negbK.
-  - apply/existsP/existsP => [] [b] /eqP<-; exists b => /=; by rewrite updateE ?negbK.
-Qed.
-
-Lemma edges_at_flip_edge (G : pre_graph) (e : ET) (x : VT) : 
-  edges_at (flip_edge G e) x = edges_at G x.
-Proof. rewrite /edges_at. apply: eq_imfset => //= e0. by rewrite !inE incident_flip. Qed.
-
-Lemma flip_edge_add_test (G : pre_graph) (e : ET) (x : VT) a : 
-  ((flip_edge G e)[adt x <- a])%O = (flip_edge (G[adt x <- a]) e)%O.
-Proof. done. Qed.
-
-Lemma flip_edge_kill (G : pre_graph) (e : ET) (x : VT)  : 
-  e \in edges_at G x -> (flip_edge G e) \ x ≡G G \ x.
-Proof. 
-  move => He. split; rewrite //= edges_at_flip_edge //.
-  - move => b e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
-  - move => e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
-Qed.
-  
-Lemma flip_edge_kill' (G : pre_graph) (e : ET) (E : {fset ET})  : 
-  e \in E -> (flip_edge G e) - E ≡G G - E.
-Proof. 
-  move => He. split; rewrite //= ?edges_at_flip_edge //.
-  - move => b e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
-  - move => e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
-Qed.
-  
+ 
 Lemma steps_of_ostep (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
   ostep G H -> steps (pack G) (pack H).
 Proof with eauto with typeclass_instances.
@@ -1250,7 +1182,7 @@ Proof with eauto with typeclass_instances.
       etransitivity. apply: W => //.
       - by rewrite ?edges_at_flip_edge.
       - exact: flipped_edge. 
-      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_add_test flip_edge_kill //=.
+      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_add_test flip_edgeK //=.
         by rewrite edges_at_test He !inE. }
     set a := lv G z in isH *.
     have xV : x \in vset G by eauto with vset.
@@ -1271,7 +1203,7 @@ Proof with eauto with typeclass_instances.
       - by rewrite ?edges_at_flip_edge.
       - exact: oarc_flip_edge.
       - exact: flipped_edge. 
-      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_kill //=.
+      - apply: iso_step. apply: eqvG_pack. rewrite flip_edgeK //=.
         by rewrite Iz !inE eqxx. }
     wlog edge_e2 : G Iz Hz {arc_e2} edge_e1 isG isH / is_edge G e2 z v y.
     { move => W. case: (oarc_cases arc_e2) => {arc_e2} edge_e2; first exact: W.
@@ -1282,7 +1214,7 @@ Proof with eauto with typeclass_instances.
       - by rewrite ?edges_at_flip_edge.
       - exact: is_edge_flip_edge.
       - exact: flipped_edge. 
-      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_kill //=.
+      - apply: iso_step. apply: eqvG_pack. rewrite flip_edgeK //=.
         by rewrite Iz !inE eqxx. }
     set a := lv G z in isH *.
     have xV : x \in vset G by eauto with vset.
@@ -1302,7 +1234,7 @@ Proof with eauto with typeclass_instances.
       etransitivity. apply: iso_step. apply: (flip_edge_iso e).
       etransitivity. apply: (W _ u).
       - exact: flipped_edge. 
-      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_kill' ?inE ?eqxx //= updateE.
+      - apply: iso_step. apply: eqvG_pack. rewrite flip_edgeK' ?inE ?eqxx //= updateE.
         rewrite (_ : [1∥(le G e)°] ≡ [1∥(le G e)]) //. exact: par_tst_cnv. }
     have h : pack G ≃2 pack (G - [fset e]) ∔ [pack_v x,le G e,pack_v x].
     { exact: expand_loop edge_e. }
@@ -1318,7 +1250,7 @@ Proof with eauto with typeclass_instances.
       - abstract by apply: add_edge_graph' => /=;  eauto with vset. 
       - exact: oarc_flip_edge.
       - exact: flipped_edge. 
-      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_kill' //=.
+      - apply: iso_step. apply: eqvG_pack. rewrite flip_edgeK' //=.
         by rewrite !inE eqxx. }
     wlog edge_e2 : G {arc_e2} edge_e1 isF isH / is_edge G e2 x v y.
     { move => W. case: (oarc_cases arc_e2) => {arc_e2} edge_e2; first exact: W.
@@ -1327,7 +1259,7 @@ Proof with eauto with typeclass_instances.
       - abstract by apply: add_edge_graph' => /=;  eauto with vset. 
       - exact: is_edge_flip_edge.
       - exact: flipped_edge. 
-      - apply: iso_step. apply: eqvG_pack. rewrite flip_edge_kill' //=.
+      - apply: iso_step. apply: eqvG_pack. rewrite flip_edgeK' //=.
         by rewrite !inE eqxx. }
     have h : pack G ≃2 pack (G - [fset e1; e2]) ∔ [pack_v x,u,pack_v y] ∔ [pack_v x,v,pack_v y].
     { exact: expand_parallel. }
