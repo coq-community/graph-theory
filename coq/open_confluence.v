@@ -47,24 +47,6 @@ Canonical ET_eqType := [eqType of ET].
 Canonical ET_choiceType := [choiceType of ET].
 Canonical ET_countType := [countType of ET].
 
-(** Injecting arbitrary fintypes (e.g., vertex and edge type) into the generic
-vertex and edge type *)
-Section inject.
-Variable (T : finType).
-
-Definition inj_v (x : T) : VT := enum_rank x.
-Definition inj_e (x : T) : ET := enum_rank x.
-Definition v0 : VT := 0.
-
-Lemma inj_v_inj : injective inj_v. 
-Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
-
-Lemma inj_e_inj : injective inj_e. 
-Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
-End inject.
-
-Hint Resolve inj_v_inj inj_e_inj : core.
-
 (** Unlike the typed graphs in mgraph.v and mgraph2.v, the definition of open
 graphs is split into a Record for the computational content and a Class for the
 well-formedness predicate [is_graph]. This allows us to separate the definition
@@ -494,6 +476,10 @@ Qed.
 Lemma incident_vset (G : pre_graph) (isG : is_graph G) x e : 
   e \in eset G -> incident G x e -> x \in vset G.
 Proof. move => He /existsP[b]/eqP<-. exact: endptP. Qed.
+
+Lemma is_edge_remove_edges (G : pre_graph) E e x u y : 
+  e \notin E -> is_edge G e x u y -> is_edge (G - E) e x u y.
+Proof. move => He. by rewrite /is_edge /= inE He. Qed.
 
 Lemma lv_add_edge (G : pre_graph) e x u y z : lv (G ∔ [e,x,u,y]) z = lv G z. done. Qed.
 

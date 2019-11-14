@@ -25,6 +25,27 @@ Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) :=
   match goal with |- ?G ≃2 ?H => refine (@iso2_intro _ G H hv he hd _ _ _) end.
 
 
+(** In order turn packaged graphs into open graphs, we need to inject
+arbitrary finite types into [VT] and [ET]. *)
+
+Section inject.
+Variable (T : finType).
+
+Definition inj_v (x : T) : VT := enum_rank x.
+Definition inj_e (x : T) : ET := enum_rank x.
+
+Lemma inj_v_inj : injective inj_v. 
+Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
+
+Lemma inj_e_inj : injective inj_e. 
+Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
+
+End inject.
+Hint Resolve inj_v_inj inj_e_inj : core.
+Instance VT_inh_type : inh_type VT := Build_inh_type 0. 
+Arguments inj_v {T}.
+Arguments inj_e {T}.
+
 Section Open.
 Variable L: labels.
 Notation Le := (structures.le L).                
@@ -34,13 +55,17 @@ Notation graph2 := (graph2 L).
 Variables (G : graph2).
 Context `{inh_type Le}.
 
-(** G may be edgeless, so there is no way to avoid the option type here *)
+(** We also need (partial) inverses to the functons [inj_v] and
+[inj_e]. For edges, this is necessarily partial, because the edge type
+may be empty. For vertices, we can use a total function, because we
+are dealing with 2p-graphs. *)
+
 Definition proj_e (e : ET) : option (edge G) := 
   omap enum_val (insub e : option 'I_#|edge G|).
 
-Lemma inj_eK (e : edge G) : proj_e (inj_e e) = Some e.
+Lemma inj_eK : pcancel inj_e proj_e.
 Proof. 
-  rewrite /proj_e /inj_e /=. 
+  move => e. rewrite /proj_e /inj_e /=.
   have P : enum_rank e < #|edge G| by [].
   case: insubP => [k _ /ord_inj -> /=|]; by rewrite ?P ?enum_rankK.
 Qed.
@@ -49,9 +74,9 @@ Qed.
 Definition proj_v (v : VT) : G :=
   odflt input (omap enum_val (insub v : option 'I_#|G|)).
 
-Lemma inj_vK (v : G) : proj_v (inj_v v) = v.
+Lemma inj_vK : cancel inj_v proj_v.
 Proof.
-  rewrite /proj_v /inj_v /=. 
+  move => v. rewrite /proj_v /inj_v /=. 
   have P : enum_rank v < #|G| by [].
   case: insubP => [k _ /ord_inj -> /=|]; by rewrite ?P ?enum_rankK.
 Qed.
@@ -63,7 +88,7 @@ edges... *)
 Definition open : pre_graph Lv Le := 
   {| vset := [fset inj_v x | x in G];
      eset := [fset inj_e x | x in edge G];
-     endpt b (e:ET) := if proj_e e is Some e' then inj_v (endpoint b e') else v0;
+     endpt b (e:ET) := if proj_e e is Some e' then inj_v (endpoint b e') else default;
      lv v := vlabel (proj_v v);
      le e := if proj_e e is Some e' then elabel e' else default;
      p_in := inj_v (input : G);
@@ -83,8 +108,13 @@ Proof. by rewrite in_imfset. Qed.
 Lemma inj_v_fresh (x : G) (z : VT) : z \notin vset open -> inj_v x != z.
 Proof. apply: contraNneq => <-. exact: inj_v_open. Qed.
 
+Lemma inj_vNfresh (x : G) : inj_v x != fresh (vset open).
+Proof. apply: inj_v_fresh. exact: freshP. Qed.
+
 End Open.
 Hint Resolve inj_v_open : core.
+Hint Resolve freshP : vset.
+
 
 Section Pack.
 Variable L: labels.
@@ -105,13 +135,11 @@ Definition pack' : graph :=
      vlabel v := lv G (val v);
      elabel e := le G (val e) |}.
 
-Arguments Graph2 [_] graph_of _ _.
-
 Definition pack := Eval hnf in
   point pack' (Sub (p_in G) (@p_inP _ _ _ _)) (Sub (p_out G) (@p_outP _ _ _ _)).
 
-
-(** tracing vertices through the packing operation *)
+(** Since the vertex type od a packed graph is simply the vertex set
+seen as type, we can trace vertcies through the packing operation. *)
 Definition pack_v (x : VT) : pack :=
   match @idP (x \in vset G) with
   | ReflectT p => Sub x p
@@ -130,7 +158,6 @@ Proof. move => Vx. by rewrite pack_vE. Qed.
 Lemma pack_fsval (v : vset G) : pack_v (fsval v) = v.
 Proof. apply: val_inj => //=. by rewrite pack_vK ?fsvalP. Qed.
 
-
 End Pack.
 Arguments pack [_] G {_} , [_] G graph_G.
 Arguments pack_v [L G _] x,[L] G [_] x. 
@@ -148,51 +175,17 @@ Notation pre_graph := (pre_graph test (car (setoid_of_ops (pttdom.ops tm)))).
 Notation graph := (graph (pttdom_labels tm)).
 Notation graph2 := (graph2 (pttdom_labels tm)).
 
-(** We define isomorphisms via packing *)
-
+(** We define isomorphisms of open graphs via packing *)
 Set Primitive Projections.
 Record oiso2 (G H : pre_graph) := 
   OIso2 { oiso2_graphL : is_graph G;
           oiso2_graphR : is_graph H;
           oiso2_iso : pack G ≃2 pack H}.
+Unset Primitive Projections.
 Global Existing Instance oiso2_graphL.
 Global Existing Instance oiso2_graphR.
 
 Notation "G ⩭2 H" := (oiso2 G H) (at level 45).
-
-
-
-Lemma openK (G : graph2) : G ≃2 pack (open G).
-Proof.
-iso2 (imfset_bij (@inj_v_inj G)) 
-     (imfset_bij (@inj_e_inj (edge G)))
-     (fun => false) => /=.
-2-3: exact: val_inj.
-split. 
-- move => e b. apply: val_inj => /=;by rewrite !inj_eK.
-- move => v /=. by rewrite inj_vK. 
-- move => e /=. by rewrite inj_eK.
-Defined.
-
-Lemma oiso_of (G H: graph2): G ≃2 H -> open G ⩭2 open H.
-Proof.
-  intro.
-  apply (@OIso2 _ _ (open_is_graph G) (open_is_graph H)).
-  etransitivity. symmetry. apply openK.
-  etransitivity. eassumption. apply openK.
-Qed.
-
-Lemma openKE (G : graph2) (x : G) :
-  openK G x = pack_v (inj_v x) :> pack (open G).
-Proof. 
-  rewrite /pack_v /=. case: {-}_ /idP => [p|np].
-  - by apply: val_inj => /=. 
-  - by rewrite in_imfsetT in np.
-Qed.
-
-Lemma packK (G : pre_graph) (graph_G : is_graph G) : 
-  G ⩭2 open (pack G).
-Proof. econstructor. exact: openK. Defined.
 
 Lemma pack_irrelevance (G : pre_graph) (graph_G graph_G' : is_graph G) : 
   pack G graph_G ≃2 pack G graph_G'.
@@ -200,7 +193,7 @@ Proof.
   iso2 bij_id bij_id xpred0; try exact: val_inj.
   split => // e [|]; exact: val_inj.
 Defined.
-  
+
 Lemma iso_of_oiso (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) : 
   G ⩭2 H -> pack G ≃2 pack H.
 Proof. 
@@ -224,10 +217,44 @@ Proof. move => F G [isF isG /iso2_sym ?]. by econstructor. Qed.
 Global Instance oiso2_Equivalence : CRelationClasses.PER oiso2.
 Proof. exact: (CRelationClasses.Build_PER _ oiso2_sym oiso2_trans). Qed.
 
-(** In order to reason about [F ⩭2 G] without dependent types, we need to vast
-the bijections underlying the isomorphism of [pack F ≃2 pack G] to functions
-on [VT -> VT] and [ET -> ET] respectively. These functions are bijective only on
-vertices and edge of the respective graphs. *)
+(** [open] and [pack] cancel each other up to isomorphism *)
+
+Lemma openK (G : graph2) : G ≃2 pack (open G).
+Proof.
+  iso2 (imfset_bij (@inj_v_inj G)) (imfset_bij (@inj_e_inj (edge G))) (fun => false) => /=.
+  2-3: exact: val_inj.
+  split. 
+  - move => e b. apply: val_inj => /=;by rewrite !inj_eK.
+  - move => v /=. by rewrite inj_vK. 
+  - move => e /=. by rewrite inj_eK.
+Defined.
+
+Lemma openKE (G : graph2) (x : G) :
+  openK G x = pack_v (inj_v x) :> pack (open G).
+Proof. 
+  rewrite /pack_v /=. case: {-}_ /idP => [p|np].
+  - by apply: val_inj => /=. 
+  - by rewrite in_imfsetT in np.
+Qed.
+
+Lemma packK (G : pre_graph) (graph_G : is_graph G) : 
+  G ⩭2 open (pack G).
+Proof. econstructor. exact: openK. Defined.
+
+Lemma oiso_of (G H: graph2): G ≃2 H -> open G ⩭2 open H.
+Proof.
+  intro.
+  apply (@OIso2 _ _ (open_is_graph G) (open_is_graph H)).
+  etransitivity. symmetry. apply openK.
+  etransitivity. eassumption. apply openK.
+Qed.
+  
+
+(** In order to reason about [F ⩭2 G] without dependent types, we need
+to cast the bijections underlying the isomorphism of [pack F ≃2 pack
+G] to functions on [VT -> VT] and [ET -> ET] respectively. These
+functions are bijective only on vertices and edges of the respective
+graphs. *)
 
 Definition vfun_body (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) 
   (h : bij (pack G) (pack H)) (x : VT) : VT := 
@@ -237,7 +264,6 @@ Definition vfun_body (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_grap
           end).
 
 Definition vfun_of (G H : pre_graph) (h : G ⩭2 H) := vfun_body (oiso2_iso h).
-Arguments vfun_of [G H] h x.
 Coercion vfun_of : oiso2 >-> Funclass.
 
 Definition efun_body (G H : pre_graph) (graph_G : is_graph G) (graph_H : is_graph H) 
@@ -269,6 +295,11 @@ Proof.
   case: {-}_ / idP => [p'|]; by [rewrite (bool_irrelevance p p')| move/(_ p)].
 Qed.
 
+Lemma vfun_bodyEinj (G : graph2) (H : pre_graph) (graph_H : is_graph H)
+     (h : bij (pack (open G)) (pack H)) (x : G) :
+  vfun_body h (inj_v x) = val (h (Sub (inj_v x) (inj_v_open x))).
+Proof. by rewrite vfun_bodyE. Qed.
+
 Lemma efun_bodyE (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) 
   (he : bij (edge (pack G)) (edge (pack H))) e (He : e \in eset G) : 
   efun_body he e = val (he (Sub e He)).
@@ -294,207 +325,12 @@ Proof.
   move/val_inj. by move/(bij_injective (f := (oiso2_iso i).e)) => [].
 Qed.
 
-(** While injectivity of [vfun_of i] and [efun_of i] is sufficient to
-prove that they are preserved under isomorphisms, we actually need to
-show that [efun_of i] is a bijection between [eset F] and [eset G] in
-order to transfer the [edges_at] function *)
-
-(* TODO: encapsulate this notion *)
-
-Lemma efun_of_bij (F G : pre_graph) (i : F ⩭2 G) : 
-  exists g, [/\ {in eset F, cancel (efun_of i) g},
-          {in eset G, cancel g (efun_of i)} &
-          {in eset G, forall x, g x \in eset F}].
-Proof.
-  case: i => isF isG i /=.
-  pose g := efun_body (iso2_sym i).e.
-  exists g. split => //; rewrite /efun_of/=. 
-  - move => e Fe. rewrite /g !efun_bodyE /=. exact: valP.
-    move => p. by rewrite fsvalK bijK.
-  - move => e Ge. rewrite /g !efun_bodyE /=. exact: valP.
-    move => p. by rewrite fsvalK bijK'.
-  - move => e Ge. rewrite /g !efun_bodyE /=. exact: valP.
-Qed.
-
-Lemma oiso2_lv (F G : pre_graph) (i : F ⩭2 G) x : 
-  x \in vset F -> lv G (i x) ≡ lv F x.
-Proof. 
-  case: i => isF isG i Ee /=. rewrite vfun_bodyE /=. 
-  exact: (vlabel_hom (is_hom := (iso_hom i))). (* this needs a bit of help ? *)
-Qed.
-
-Lemma oiso2_le (F G : pre_graph) (i : F ⩭2 G) e : e \in eset F ->
-  le G (efun_of i e) ≡[edir_of i e] le F e.
-Proof.
-  case: i => isF isG i Ee /=. rewrite efun_bodyE edir_bodyE. 
-  exact: elabel_hom. (* this doesn't ? *)
-Qed.
-
-Definition eqvG_iso2 (G H : pre_graph) : 
-  is_graph G -> is_graph H -> G ≡G H -> G ⩭2 H.
-Proof.
-  move => isG isH [EV EE Eep Elv Ele]. econstructor.
-  iso2 (bij_cast EV) (bij_cast EE) (fun _ => false).
-  - split.
-    + move => [e p] b /=. 
-      apply: val_inj => /=. by rewrite !bij_castE /= ?Eep. 
-    + move => [v p]. by rewrite bij_castE /= Elv.
-    + move => [e p]. by rewrite bij_castE /= Ele.
-  - rewrite bij_castE. exact: val_inj.
-  - rewrite bij_castE. exact: val_inj.
-Defined.
-
-Definition eqvG_iso2L (G H : pre_graph) (isG : is_graph G) (E : G ≡G H) := 
-  @eqvG_iso2 G H isG (eqvG_graph isG E) E.
-
-Definition eqvG_iso2R (G H : pre_graph) (isH : is_graph H) (E : G ≡G H) := 
-  @eqvG_iso2 G H (eqvG_graph isH (eqvG_sym E)) isH E.
-
-Lemma eqvG_iso2E (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) (E : G ≡G H) x :
-  x \in vset G ->
-  @eqvG_iso2 G H isG isH E x = x.
-Proof. 
-  move => Vx. rewrite /= vfun_bodyE /=. destruct E.
-  rewrite /=. by rewrite bij_castE.
-Qed.
-
-
-(** ** Commutation with open/pack *)
-
-Arguments freshP {E}.
-
-Lemma pack_add_edge' (G : pre_graph) e x y u 
-  (isG : is_graph G)(isG' : is_graph (G ∔ [e,x, u, y])) :
-  e \notin eset G -> pack (G ∔ [e,x, u, y]) ≃2 pack G ∔ [pack_v x, u, pack_v y].
-Proof. 
-  move => eG.
-  apply: iso2_sym. 
-  iso2 (bij_id) (fresh_bij bij_id eG) (fun => false) => //. 
-  2-3: exact: val_inj. 
-  split => //.
-  - move => [e'|] b; apply: val_inj => //.
-    + by rewrite fresh_bijE /= updateE ?fsval_eqF.  
-    + rewrite fresh_bijE /= updateE. 
-      by case: b; rewrite pack_vK // ?fsval_eqF add_edgeV.
-  - by move => [e'|] /=; rewrite updateE // fsval_eqF.
-Defined.
-
-Lemma pack_add_edge (G : pre_graph) (x y : VT) u 
-  (isG : is_graph G) (isG' : is_graph (G ∔ [x, u, y])) : 
-  pack (G ∔ [x, u, y]) ≃2 pack G ∔ [pack_v x, u, pack_v y].
-Proof. exact: pack_add_edge' freshP. Defined.
-
-Definition pack_add_vertex (G : pre_graph) (graph_G : is_graph G) x a : x \notin vset G -> 
-  pack (G ∔ [x, a]) ≃2 (pack G) ∔ a.
-Proof.
-  move => xG. apply: iso2_sym. 
-  iso2 (fresh_bij' bij_id xG) sumxU (fun => false) => //. 2-3: move => *; exact: val_inj.
-  split => //.
-  + move => [e|[]] b. exact: val_inj.
-  + by move => [v|] /=; rewrite updateE // fsval_eqF.
-  + by move => [e|[]]. 
-Defined.
-
-
-
-Lemma vfun_bodyEinj (G : graph2) (H : pre_graph) (graph_H : is_graph H)
-     (h : bij (pack (open G)) (pack H)) (x : G) :
-  vfun_body h (inj_v x) = val (h (Sub (inj_v x) (inj_v_open x))).
-Proof. by rewrite vfun_bodyE. Qed.
-
-Definition pack_add_test (G : pre_graph) (isG : is_graph G) x (Hx : x \in vset G) a :
-  (pack G)[tst pack_v x <- a] ≃2 pack (G[adt x <- a]).
-Proof.
-  iso2 bij_id bij_id xpred0; try exact: val_inj.
-  split => //.
-  - move => e b. exact: val_inj. 
-  - move => v. rewrite /= /update. (* simpl should not expose tst_dot *)
-    case: (altP (v =P pack_v x)) => [->|D]. 
-    + by rewrite pack_vK // eqxx.
-    + suff -> : (fsval v == x = false) by []. 
-      apply: contra_neqF D => /eqP<-. by rewrite pack_fsval.
-Defined.
-
-Section Transfer.
-Variable (G : graph2).
-
-Definition open_add_vertex a : 
-  open (G ∔ a) ⩭2 (open G) ∔ [fresh (vset (open G)), a].
-Proof. 
-  econstructor.
-  apply: iso2_comp (iso2_sym _) _. apply: openK.
-  apply: iso2_comp (iso2_sym _). 2: apply: pack_add_vertex freshP. 
-  apply: add_vertex2_iso => //. exact: openK.
-Defined.
-
-Lemma open_add_vertexE : 
-  ((forall a, open_add_vertex a (@inj_v (G ∔ a)%G2 (inr tt)) = fresh (vset (open G)))
-  *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%G2 (inl x)) = @inj_v G x))%type. 
-Proof. 
-  split => [a|a x]. 
-  - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
-    move => H /=. by rewrite imfset_bij_bwdE.
-  - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
-    move => H /=. by rewrite imfset_bij_bwdE //=.
-Qed.
-
-(* This follows the same pattern as open_add_vertex. Lemma? *)
-Lemma open_add_edge (x y : G) u : 
-  open (G ∔ [x, u, y]) ⩭2 open G ∔ [inj_v x, u, inj_v y].
-Proof. 
-  have X : is_graph (add_edge (open G) (inj_v x) u (inj_v y)). 
-  { exact: add_edge_graph. }
-  econstructor.
-  apply: iso2_comp (iso2_sym _) _. apply: openK.
-  apply: iso2_comp _ (iso2_sym _). 2: apply pack_add_edge.
-  apply: (add_edge2_iso'' (h := (openK _))) => //; exact: openKE.
-Defined.
-
-
-Definition open_add_test (x : G) a : 
-  open (G[tst x <- a]) ⩭2 (open G)[adt inj_v x <- a].
-Proof.
-  econstructor.
-  apply: iso2_comp (iso2_sym (openK _)) _.
-  apply: iso2_comp (pack_add_test _ _ _); last exact: inj_v_open.
-  apply: iso2_comp. 
-    apply: (add_test_cong _ _ eqvxx). apply: openK. 
-  by rewrite openKE.
-Defined.
-
-End Transfer. 
-   
 (* TOTHINK: the converse does NOT hold since [h] is the identity on
 vertices outside of [G]. This could be made to hold by taking [fresh (vset H)] 
 as value outside of [G] *)
-Lemma vfun_of_vset (G H : pre_graph) (h : G ⩭2 H) x : x \in vset G -> h x \in vset H.
+Lemma oiso2_vset (G H : pre_graph) (h : G ⩭2 H) x : x \in vset G -> h x \in vset H.
 Proof. case: h => /= isG isH h /= xG. rewrite /vfun_of vfun_bodyE. exact: valP. Qed.
 
-
-(* We prove this directly rather than going though [add_edge2_rev],
-because this way we can avoid the assumption [e \notin eset G] *)
-Lemma add_edge_flip (G : pre_graph) e x y u v (isG1 : is_graph (G ∔ [e,x,u,y])): 
-  u° ≡ v ->
-  x \in vset G -> y \in vset G -> G ∔ [e,x,u,y] ⩭2 G ∔ [e,y,v,x].
-Proof.
-  move => E xG yG. 
-  have isG2 : is_graph (G ∔ [e,y,v,x]) by apply: add_edge_graph''.
-  econstructor.
-  pose dir (e0 : edge (pack (G ∔ [e,x,u,y]) isG1)) := val e0 == e.
-  iso2 bij_id bij_id dir => //=. 2-3: exact: val_inj.
-  split => //.
-  - case => e' He' b /=. apply: val_inj => /=. case: (fset1UE He') => [?|].
-    + subst e'. by rewrite /dir/=!eqxx addTb !updateE if_neg. 
-    + case => A ?. by rewrite /dir/= (negbTE A) !updateE.
-  - case => e' He'. rewrite /dir/=. case: (fset1UE He') => [?|].
-    + subst e'. rewrite eqxx !updateE. by symmetry in E.
-    + case => A ?. by rewrite /dir/= (negbTE A) !updateE.
-Defined.
-
-(* note: the converse does not hold, due to the totalization of i *)
-Lemma iso2_vset (F G : pre_graph) (i : F ⩭2 G) x : 
-  x \in vset F -> i x \in vset G.
-Proof. case: i => i isF isG Vx /=. by rewrite vfun_bodyE /= fsvalP. Qed.
 
 Lemma oiso2_input (F G : pre_graph) (i : F ⩭2 G) : i (p_in F) = p_in G.
 Proof. 
@@ -507,6 +343,13 @@ Proof.
   case: i => isF isG i /=. rewrite vfun_bodyE => [|p]. exact: p_outP.
   rewrite [Sub _ _](_ : _ = @output _ (pack F)) ?iso2_output //. exact: val_inj. 
 Qed.
+
+Lemma oiso2_id G (isG : is_graph G) : G ⩭2 G. 
+Proof. econstructor. exact: iso2_id. Defined.
+
+Lemma oiso2_idE G (isG : is_graph G) x : 
+  x \in vset G -> oiso2_id isG x = x.
+Proof. move => Vx. by rewrite /= vfun_bodyE. Qed.
 
 Lemma vfun_of_inj (F G : pre_graph) (i : F ⩭2 G) : {in vset F &, injective i}.
 Proof.
@@ -547,6 +390,43 @@ Proof.
   by rewrite Sub_endpt -endpoint_hom /=.
 Qed.
 
+(** While injectivity of [vfun_of i] and [efun_of i] is sufficient to
+prove that they are preserved under isomorphisms, we actually need to
+show that [efun_of i] is a bijection between [eset F] and [eset G] in
+order to transfer the [edges_at] function *)
+
+(* TOTHINK: encapsulate this notion? *)
+Lemma efun_of_bij (F G : pre_graph) (i : F ⩭2 G) : 
+  exists g, [/\ {in eset F, cancel (efun_of i) g},
+          {in eset G, cancel g (efun_of i)} &
+          {in eset G, forall x, g x \in eset F}].
+Proof.
+  case: i => isF isG i /=.
+  pose g := efun_body (iso2_sym i).e.
+  exists g. split => //; rewrite /efun_of/=. 
+  - move => e Fe. rewrite /g !efun_bodyE /=. exact: valP.
+    move => p. by rewrite fsvalK bijK.
+  - move => e Ge. rewrite /g !efun_bodyE /=. exact: valP.
+    move => p. by rewrite fsvalK bijK'.
+  - move => e Ge. rewrite /g !efun_bodyE /=. exact: valP.
+Qed.
+
+Lemma oiso2_lv (F G : pre_graph) (i : F ⩭2 G) x : 
+  x \in vset F -> lv G (i x) ≡ lv F x.
+Proof. 
+  case: i => isF isG i Ee /=. rewrite vfun_bodyE /=. 
+  exact: (vlabel_hom (is_hom := (iso_hom i))). (* this needs a bit of help ? *)
+Qed.
+
+Lemma oiso2_le (F G : pre_graph) (i : F ⩭2 G) e : e \in eset F ->
+  le G (efun_of i e) ≡[edir_of i e] le F e.
+Proof.
+  case: i => isF isG i Ee /=. rewrite efun_bodyE edir_bodyE. 
+  exact: elabel_hom. (* this doesn't ? *)
+Qed.
+
+(** perservation of incidence and the [oarc] predicate *)
+
 Lemma oiso2_incident (F G : pre_graph) (i : F ⩭2 G) (x : VT) (e : ET) :
   x \in vset F -> e \in eset F ->
   incident F x e = incident G (i x) (efun_of i e).
@@ -558,8 +438,6 @@ Proof.
     rewrite oiso2_endpoint // in e_ix. move/eqP : e_ix. move/vfun_of_inj => -> //.
     rewrite -> endptP => //. exact: oiso2_graphL i.
 Qed.
-
-
 
 Lemma oiso2_edges_at  (F G : pre_graph) (i : F ⩭2 G) z : z \in vset F ->
   edges_at G (i z) = [fset (efun_of i) x | x in edges_at F z].
@@ -582,6 +460,172 @@ Proof.
   exact: eqvb_trans (oiso2_le _ _ ) _.
 Qed.
 
+
+(** Graph equivalence gives rise to graph isomorphism for well-formed
+graphs. Note that one of the [is_graph _] assumptions follows from the
+other. So use the more specific [L/R] lemmas below. *)
+
+Definition eqvG_iso2 (G H : pre_graph) : 
+  is_graph G -> is_graph H -> G ≡G H -> G ⩭2 H.
+Proof.
+  move => isG isH [EV EE Eep Elv Ele]. econstructor.
+  iso2 (bij_cast EV) (bij_cast EE) (fun _ => false).
+  - split.
+    + move => [e p] b /=. 
+      apply: val_inj => /=. by rewrite !bij_castE /= ?Eep. 
+    + move => [v p]. by rewrite bij_castE /= Elv.
+    + move => [e p]. by rewrite bij_castE /= Ele.
+  - rewrite bij_castE. exact: val_inj.
+  - rewrite bij_castE. exact: val_inj.
+Defined.
+
+Definition eqvG_iso2L (G H : pre_graph) (isG : is_graph G) (E : G ≡G H) := 
+  @eqvG_iso2 G H isG (eqvG_graph isG E) E.
+
+Definition eqvG_iso2R (G H : pre_graph) (isH : is_graph H) (E : G ≡G H) := 
+  @eqvG_iso2 G H (eqvG_graph isH (eqvG_sym E)) isH E.
+
+Lemma eqvG_iso2E (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) (E : G ≡G H) x :
+  x \in vset G ->
+  @eqvG_iso2 G H isG isH E x = x.
+Proof. 
+  move => Vx. rewrite /= vfun_bodyE /=. destruct E.
+  rewrite /=. by rewrite bij_castE.
+Qed.
+
+Lemma eqvG_pack (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
+  G ≡G H -> pack G ≃2 pack H.
+Proof. 
+  move/eqvG_iso2 => h. 
+  apply: iso2_comp _ (iso2_comp  (@oiso2_iso _ _ h) _); apply: pack_irrelevance.
+Qed.
+
+(** ** Commutation with open/pack *)
+
+Arguments freshP {E}.
+
+Lemma pack_add_edge' (G : pre_graph) e x y u 
+  (isG : is_graph G)(isG' : is_graph (G ∔ [e,x, u, y])) :
+  e \notin eset G -> pack (G ∔ [e,x, u, y]) ≃2 pack G ∔ [pack_v x, u, pack_v y].
+Proof. 
+  move => eG.
+  apply: iso2_sym. 
+  iso2 (bij_id) (fresh_bij bij_id eG) (fun => false) => //. 
+  2-3: exact: val_inj. 
+  split => //.
+  - move => [e'|] b; apply: val_inj => //.
+    + by rewrite fresh_bijE /= updateE ?fsval_eqF.  
+    + rewrite fresh_bijE /= updateE. 
+      by case: b; rewrite pack_vK // ?fsval_eqF add_edgeV.
+  - by move => [e'|] /=; rewrite updateE // fsval_eqF.
+Defined.
+
+Lemma pack_add_edge (G : pre_graph) (x y : VT) u 
+  (isG : is_graph G) (isG' : is_graph (G ∔ [x, u, y])) : 
+  pack (G ∔ [x, u, y]) ≃2 pack G ∔ [pack_v x, u, pack_v y].
+Proof. exact: pack_add_edge' freshP. Defined.
+
+Definition pack_add_vertex (G : pre_graph) (graph_G : is_graph G) x a : x \notin vset G -> 
+  pack (G ∔ [x, a]) ≃2 (pack G) ∔ a.
+Proof.
+  move => xG. apply: iso2_sym. 
+  iso2 (fresh_bij' bij_id xG) sumxU (fun => false) => //. 2-3: move => *; exact: val_inj.
+  split => //.
+  + move => [e|[]] b. exact: val_inj.
+  + by move => [v|] /=; rewrite updateE // fsval_eqF.
+  + by move => [e|[]]. 
+Defined.
+
+Definition pack_add_test (G : pre_graph) (isG : is_graph G) x (Hx : x \in vset G) a :
+  (pack G)[tst pack_v x <- a] ≃2 pack (G[adt x <- a]).
+Proof.
+  iso2 bij_id bij_id xpred0; try exact: val_inj.
+  split => //.
+  - move => e b. exact: val_inj. 
+  - move => v. rewrite /= /update. (* simpl should not expose tst_dot *)
+    case: (altP (v =P pack_v x)) => [->|D]. 
+    + by rewrite pack_vK // eqxx.
+    + suff -> : (fsval v == x = false) by []. 
+      apply: contra_neqF D => /eqP<-. by rewrite pack_fsval.
+Defined.
+
+Section Open.
+Variable (G : graph2).
+
+Definition open_add_vertex a : 
+  open (G ∔ a) ⩭2 (open G) ∔ [fresh (vset (open G)), a].
+Proof. 
+  econstructor.
+  apply: iso2_comp (iso2_sym _) _. apply: openK.
+  apply: iso2_comp (iso2_sym _). 2: apply: pack_add_vertex freshP. 
+  apply: add_vertex2_iso => //. exact: openK.
+Defined.
+
+Lemma open_add_vertexE : 
+  ((forall a, open_add_vertex a (@inj_v (G ∔ a)%G2 (inr tt)) = fresh (vset (open G)))
+  *(forall a x, open_add_vertex a (@inj_v (G ∔ a)%G2 (inl x)) = @inj_v G x))%type. 
+Proof. 
+  split => [a|a x]. 
+  - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
+    move => H /=. by rewrite imfset_bij_bwdE.
+  - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
+    move => H /=. by rewrite imfset_bij_bwdE //=.
+Qed.
+
+(* This follows the same pattern as open_add_vertex. Lemma? *)
+Lemma open_add_edge (x y : G) u : 
+  open (G ∔ [x, u, y]) ⩭2 open G ∔ [inj_v x, u, inj_v y].
+Proof. 
+  have X : is_graph (add_edge (open G) (inj_v x) u (inj_v y)). 
+  { exact: add_edge_graph. }
+  econstructor.
+  apply: iso2_comp (iso2_sym _) _. apply: openK.
+  apply: iso2_comp _ (iso2_sym _). 2: apply pack_add_edge.
+  apply: (add_edge2_iso'' (h := (openK _))) => //; exact: openKE.
+Defined.
+
+Lemma open_add_edgeE (x y z : G) u :
+  @open_add_edge x y u (inj_v z) = (inj_v z). 
+Proof.
+  rewrite /= vfun_bodyE ?inj_v_open //= => p. 
+  by rewrite imfset_bij_bwdE.
+Qed.
+
+Definition open_add_test (x : G) a : 
+  open (G[tst x <- a]) ⩭2 (open G)[adt inj_v x <- a].
+Proof.
+  econstructor.
+  apply: iso2_comp (iso2_sym (openK _)) _.
+  apply: iso2_comp (pack_add_test _ _ _); last exact: inj_v_open.
+  apply: iso2_comp. 
+    apply: (add_test_cong _ _ eqvxx). apply: openK. 
+  by rewrite openKE.
+Defined.
+
+End Open. 
+   
+(** ** Isomorphisms on open graphs *)
+
+(* We prove this directly rather than going though [add_edge2_rev],
+because this way we can avoid the assumption [e \notin eset G] *)
+Lemma add_edge_flip (G : pre_graph) e x y u v (isG1 : is_graph (G ∔ [e,x,u,y])): 
+  u° ≡ v ->
+  x \in vset G -> y \in vset G -> G ∔ [e,x,u,y] ⩭2 G ∔ [e,y,v,x].
+Proof.
+  move => E xG yG. 
+  have isG2 : is_graph (G ∔ [e,y,v,x]) by apply: add_edge_graph''.
+  econstructor.
+  pose dir (e0 : edge (pack (G ∔ [e,x,u,y]) isG1)) := val e0 == e.
+  iso2 bij_id bij_id dir => //=. 2-3: exact: val_inj.
+  split => //.
+  - case => e' He' b /=. apply: val_inj => /=. case: (fset1UE He') => [?|].
+    + subst e'. by rewrite /dir/=!eqxx addTb !updateE if_neg. 
+    + case => A ?. by rewrite /dir/= (negbTE A) !updateE.
+  - case => e' He'. rewrite /dir/=. case: (fset1UE He') => [?|].
+    + subst e'. rewrite eqxx !updateE. by symmetry in E.
+    + case => A ?. by rewrite /dir/= (negbTE A) !updateE.
+Defined.
+
 Lemma oiso2_add_test (F G : pre_graph) (i : F ⩭2 G) x a b :
   x \in vset F ->
   a ≡ b -> F[adt x <- a] ⩭2 G[adt i x <- b].
@@ -589,7 +633,7 @@ Proof.
   case: i => isF isG i Vx ab. (* rewrite {}E /=. *)
   econstructor. 
   apply: iso2_comp (iso2_sym _) _. by apply: pack_add_test.
-  apply: iso2_comp. 2: apply: pack_add_test. 2: exact: (iso2_vset (OIso2 i)).
+  apply: iso2_comp. 2: apply: pack_add_test. 2: exact: (oiso2_vset (OIso2 i)).
   apply add_vlabel2_iso'' with i. 2:exact: ab.
   abstract (by rewrite /= vfun_bodyE /= pack_fsval pack_vE).
 Defined.
@@ -597,14 +641,11 @@ Defined.
 Lemma oiso2_add_testE (F G : pre_graph) (i : F ⩭2 G) x a b Vx ab z : 
   z \in vset F ->
   @oiso2_add_test F G i x a b Vx ab z = i z.
-Proof.
-  move => Vz. rewrite /= !vfun_bodyE //=.
-  (* rewrite /oiso2_add_test/=. *)
-  (* case: i => isF isG i /=. by rewrite vfun_bodyE.  *)
-Qed.
+Proof. by move => Vz; rewrite /= !vfun_bodyE. Qed.
 
 Hint Extern 0 (box _) => apply Box; assumption : typeclass_instances.
- 
+
+(* TOTHINK: can this be simplified? Should we connect this to typed vertex removal? *) 
 Lemma oiso2_remove_vertex (F G : pre_graph) (z : VT) (j : F ⩭2 G) : 
   z \in vset F ->
   z \notin pIO F -> F \ z ⩭2 G \ j z.
@@ -676,7 +717,7 @@ Proof.
   case: i => isF isG i fresh_e1 fresh_e2 Vx Vy uv /=.
   have isF' : is_graph (F ∔ [e1, x, u, y]) by abstract exact: add_edge_graph'.
   have isG' : is_graph (G ∔ [e2, vfun_body i x, v, vfun_body i y]).
-    by abstract (apply: add_edge_graph'; exact: (iso2_vset (OIso2 i))).
+    by abstract (apply: add_edge_graph'; exact: (oiso2_vset (OIso2 i))).
   econstructor.
   apply: iso2_comp. apply: pack_add_edge'. assumption. 
   apply: iso2_comp (iso2_sym _). 2: apply: pack_add_edge';assumption. 
@@ -727,6 +768,42 @@ Proof.
   case: i EE' => isF isG j EE' Vx. by rewrite /= !vfun_bodyE. 
 Qed.
 
+Lemma oiso2_add_edge' (F G : pre_graph) (i : F ⩭2 G) 
+ (e1 e2 : ET) (x y x' y' : VT) (u v : tm) :
+ e1 \notin eset F -> e2 \notin eset G ->
+ x \in vset F -> y \in vset F -> x' \in vset G -> y' \in vset G -> 
+ i x = x' -> i y = y' -> u ≡ v -> 
+ F ∔ [e1, x, u, y] ⩭2 G ∔ [e2, x', v, y'].
+Proof with eauto with typeclass_instances.
+  case: i => isF isG i.
+  move => E1 E2 Vx Vy Vx' Vy' Ix Iy uv. 
+  have isF' : is_graph ( F ∔ [e1, x, u, y] ). apply add_edge_graph'...
+  have isG' : is_graph (  G ∔ [e2, x', v, y']). apply add_edge_graph'...
+  econstructor. 
+  apply: iso2_comp. apply: pack_add_edge'. assumption.
+  apply: iso2_comp (iso2_sym _). 2: apply: pack_add_edge'; try assumption.
+  apply: (add_edge2_iso'' (h := i)). 
+  abstract (by rewrite -Ix //= vfun_bodyE pack_fsval pack_vE).
+  abstract (by rewrite -Iy //= vfun_bodyE pack_fsval pack_vE).
+  exact: uv.
+Defined.
+  
+
+Lemma oiso2_add_edgeE' F G i e1 e2 x y x' y' u v E1 E2 Vx Vy Vx' Vy' Ix Iy uv k : 
+  k \in vset F ->
+  @oiso2_add_edge' F G i e1 e2 x y x' y' u v E1 E2 Vx Vy Vx' Vy' Ix Iy uv k = i k.
+Proof.
+  move => Vk. destruct i => /=. by rewrite !vfun_bodyE /=.
+Qed.
+
+Lemma oiso2_transE F G H i j k : k \in vset F -> @oiso2_trans F G H i j k = j (i k).
+Proof. 
+  case: i j => isF isG i [isF' isH j] Vk.
+  rewrite /= !vfun_bodyE; first exact: valP. 
+  move => p /=. by rewrite fsvalK.
+Qed.
+
+
 (** ** Preservation of open steps under isomorphisms *)
 
 Lemma ostep_iso (F G H : pre_graph) : 
@@ -735,7 +812,7 @@ Proof with eauto with vset.
   case => {G}.
   - move => z Vz Iz zIO i. exists (H \ i z)%O. split.
     + apply ostep_v0. 
-      * exact: iso2_vset.
+      * exact: oiso2_vset.
       * by rewrite oiso2_edges_at // Iz imfset0.
       * by rewrite -oiso2_pIO.
     + exact: oiso2_remove_vertex. 
@@ -842,68 +919,9 @@ first prove a slightly weaker statement with isomorphisms on both
 sides of the open step. We then use preservation open steps under
 isomorphisms to obtain the desired form of the lemma *)
 
-Lemma eqvG_pack (G H : pre_graph) (isG : is_graph G) (isH : is_graph H) : 
-  G ≡G H -> pack G ≃2 pack H.
-Proof. 
-  move/eqvG_iso2 => h. 
-  apply: iso2_comp _ (iso2_comp  (@oiso2_iso _ _ h) _); apply: pack_irrelevance.
-Qed.
 
 
-Lemma oiso2_add_edge' (F G : pre_graph) (i : F ⩭2 G) 
- (e1 e2 : ET) (x y x' y' : VT) (u v : tm) :
- e1 \notin eset F -> e2 \notin eset G ->
- x \in vset F -> y \in vset F -> x' \in vset G -> y' \in vset G -> 
- i x = x' -> i y = y' -> u ≡ v -> 
- F ∔ [e1, x, u, y] ⩭2 G ∔ [e2, x', v, y'].
-Proof with eauto with typeclass_instances.
-  case: i => isF isG i.
-  move => E1 E2 Vx Vy Vx' Vy' Ix Iy uv. 
-  have isF' : is_graph ( F ∔ [e1, x, u, y] ). apply add_edge_graph'...
-  have isG' : is_graph (  G ∔ [e2, x', v, y']). apply add_edge_graph'...
-  econstructor. 
-  apply: iso2_comp. apply: pack_add_edge'. assumption.
-  apply: iso2_comp (iso2_sym _). 2: apply: pack_add_edge'; try assumption.
-  apply: (add_edge2_iso'' (h := i)). 
-  abstract (by rewrite -Ix //= vfun_bodyE pack_fsval pack_vE).
-  abstract (by rewrite -Iy //= vfun_bodyE pack_fsval pack_vE).
-  exact: uv.
-Defined.
-  
 
-Lemma oiso2_add_edgeE' F G i e1 e2 x y x' y' u v E1 E2 Vx Vy Vx' Vy' Ix Iy uv k : 
-  k \in vset F ->
-  @oiso2_add_edge' F G i e1 e2 x y x' y' u v E1 E2 Vx Vy Vx' Vy' Ix Iy uv k = i k.
-Proof.
-  move => Vk. destruct i => /=. by rewrite !vfun_bodyE /=.
-Qed.
-
-Lemma oiso2_transE F G H i j k : k \in vset F -> @oiso2_trans F G H i j k = j (i k).
-Proof. 
-  case: i j => isF isG i [isF' isH j] Vk.
-  rewrite /= !vfun_bodyE; first exact: valP. 
-  move => p /=. by rewrite fsvalK.
-Qed.
-
-Hint Resolve inj_v_open : vset.
-Hint Resolve freshP : vset.
-
-Lemma inj_vNfresh (G : graph2) (x : G) : inj_v x != fresh (vset (open G)).
-Proof. apply: inj_v_fresh. exact: freshP. Qed.
-
-Lemma oiso2_id G (isG : is_graph G) : G ⩭2 G. 
-Proof. econstructor. exact: iso2_id. Defined.
-
-Lemma oiso2_idE G (isG : is_graph G) x : 
-  x \in vset G -> oiso2_id isG x = x.
-Proof. move => Vx. by rewrite /= vfun_bodyE. Qed.
-
-Lemma open_add_edgeE (G : graph2) (x y z : G) u :
-  @open_add_edge G x y u (inj_v z) = (inj_v z). 
-Proof.
-  rewrite /= vfun_bodyE ?inj_v_open //= => p. 
-  by rewrite imfset_bij_bwdE.
-Qed.
 
 Lemma remove_edgesD (G : pre_graph) E  : [disjoint eset G & E] -> G - E ≡G G.
 Proof. move => D. split => //=. exact: fsetDidPl. Qed.
@@ -1066,12 +1084,6 @@ Proof with eauto with vset.
     apply eqvG_pack. rewrite remove_vertexK ?Iz ?remove_edgeK //...
 Qed.
 
-
-
-
-Lemma is_edge_remove_edges (G : pre_graph) E e x u y : 
-  e \notin E -> is_edge G e x u y -> is_edge (G - E) e x u y.
-Proof. move => He. by rewrite /is_edge /= inE He. Qed.
 
 Lemma expand_chain (G : pre_graph) (isG : is_graph G) (x y z : VT) (e1 e2 : ET) (Hz : z \notin pIO G) u v :
   edges_at G z = [fset e1; e2] -> e1 != e2 -> x != z -> y != z -> is_edge G e1 x u z -> is_edge G e2 z v y ->
