@@ -333,3 +333,121 @@ Proof.
     + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !mem_imset.
     + move => /= /Hphi [x0] ? ?.  exists i;exists (val x0). by rewrite sg_sym psi_None set11 !psi_G' !mem_imset.
 Qed.
+
+
+(** ** Excluded-Minor Characterization of Forests *)
+
+Hint Resolve ivalP : core.
+
+(* TODO: use this whenever explicitly exhibiting a minor map *)
+Lemma minor_rmapI (G H : sgraph) (phi : H -> {set G}) (f : H -> nat) : 
+  injective f ->
+  (forall x : H, phi x != set0) -> 
+  (forall x : H, connected (phi x)) -> 
+  (forall x y : H, f x < f y -> [disjoint phi x & phi y]) ->
+  (forall x y : H, f x < f y -> x -- y -> neighbor (phi x) (phi y)) ->
+  minor_rmap phi.
+Proof.
+  move => inj_f M1 M2 M3 M4. split => // x y xy.
+  - wlog: x y xy / f x < f y; last exact: M3.
+    move => W. case: (ltngtP (f x) (f y)); first exact: W.
+    + rewrite disjoint_sym eq_sym in xy *. exact: W.
+    + move/inj_f => E. by rewrite E eqxx in xy.
+  - wlog: x y xy / f x < f y; last by move => Hf; exact: M4 Hf xy.
+    move => W. case: (ltngtP (f x) (f y)); first exact: W.
+    + rewrite neighborC sgP in xy *. exact: W.
+    + move/inj_f => E. by rewrite E sgP in xy.
+Qed.
+
+Section K3.
+Variable (G : sgraph).
+
+Lemma is_forestPn (S : {set G}) : 
+  reflect (exists x y (p1 p2 : IPath x y), [/\ p1 \subset S, p2 \subset S & p1 != p2])
+          (~~ is_forestb S).
+Proof.
+Admitted.
+
+Lemma disjoint_part (x y : G) (p1 p2 : Path x y) : 
+  irred p1 -> irred p2 -> p1 != p2 -> 
+  exists (x' y' : G) (p1' p2' : IPath x' y'), [disjoint interior p1' & interior p2'] /\ interior p1' != set0.
+Proof.
+  move => Ip1 Ip2 Dp. 
+  have Dxy : x != y. admit. (* trivial *)
+  case: (boolP [disjoint interior p1 & interior p2]) => [dis12|].
+  - wlog int_p1 : p1 p2 Ip1 Ip2 dis12 {Dp} / interior p1 != set0.
+    { suff/orP [N|N] : (interior p1 != set0) || (interior p2 != set0).
+      - by move => S; apply: S dis12 N. 
+      - rewrite disjoint_sym in dis12. by move => S; apply: S dis12 N. 
+      - apply: contra_neqT Dp. rewrite negb_or !negbK => /andP [/eqP N1 /eqP N2].
+        have [[xy ->] [xy' ->]] := (interior0E Dxy Ip1 N1,interior0E Dxy Ip2 N2).
+        exact/eqP. }
+    by exists x; exists y; exists (Build_IPath Ip1); exists (Build_IPath Ip2). 
+  - rewrite disjoint_exists negbK. case/exists_inP => z Z1 Z2.
+    (* split p1 and p2 at z;
+       either the LHS or the RHS must be different
+       apply induction on the smaller paths *)
+    admit. 
+Qed.
+
+Lemma non_forerst_K3 : ~ is_forest [set: G] -> minor G 'K_3.
+Proof.
+  move/is_forestP/is_forestPn => [x0] [y0] [p0] [q0] [_ _ pDq].
+  have [x [y] [p1] [p2] [p12_disj p1_ne]] := disjoint_part (valP p0) (valP q0) pDq.
+  clear x0 y0 p0 q0 pDq.
+  pose phi (i : 'K_3) : {set G} :=
+    match i with 
+    | Ordinal 0 _ => [set x]
+    | Ordinal 1 _ => interior p1
+    | Ordinal 2 _ => y |: interior p2
+    | Ordinal _ _ => set0
+    end.
+  suff: minor_rmap phi by apply: minor_of_rmap.
+  have xDy : x != y. 
+  { apply: contra_neq p1_ne => ?; subst y. 
+    by rewrite /path_of_ipath (irredxx (valP p1)) interior_idp. }
+  apply: minor_rmapI; first exact: ord_inj.
+  - case => [[|[|[|i]]] Hi] //=; [exact: set10 | exact: setU1_neq]. 
+  - case => [[|[|[|i]]] Hi] //=. 
+    + exact: connected1. 
+    + exact: connected_interior.
+    + exact: connected_interiorR.
+  - case => [[|[|[|i]]] Hi]; case => [[|[|[|j]]] Hj] //= _.
+    + by rewrite disjoints1 !inE eqxx.
+    + by rewrite disjoints1 !inE eqxx (negbTE xDy).
+    + rewrite disjoint_sym disjointsU // ?disjoints1 1?disjoint_sym //.
+      by rewrite !inE eqxx.
+  - case => [[|[|[|i]]] Hi]; case => [[|[|[|j]]] Hj] //= _ _.
+    + apply: path_neighborL => //. by rewrite inE.
+    + exact: neighbor_interiorL.
+    + apply: neighborUl. rewrite neighborC. 
+      apply: path_neighborR => //. by rewrite inE.
+Qed.
+
+Lemma forest_K3_free : is_forest [set: G] -> ~ minor G 'K_3.
+Proof.
+  move/forestT_unique => forest_G /minorRE [phi [M1 M2 M3 M4]].
+  have [/neighborP [x1] [y1] [Px1 Py1 xy1]] := (M4 ord0 ord1 isT).
+  have [/neighborP [x2] [y2] [Px2 Py2 xy2]] := (M4 ord0 ord2 isT).
+  have Dy : y1 != y2. 
+  { apply: contraTneq (M3 ord1 ord2 _) => //= ?; subst y2. 
+    exact: disjointNI Py1 Py2. }
+  pose A := phi ord1 :|: phi ord2.
+  have conn_A : connected A. { apply: neighbor_connected => //. exact: M4. }
+  have disj_A : [disjoint A & phi ord0] by apply: disjointsU; apply: M3.
+  have [Y1 Y2] : y1 \in A /\ y2 \in A by rewrite /A !inE Py1 Py2.
+  have [p Ip p_sub_A] := path_in_connected conn_A Y1 Y2.
+  have [q Iq q_sub_A] := path_in_connected (M2 _) Px1 Px2.
+  rewrite sg_sym in xy1.
+  pose q' := pcat (edgep xy1) (pcat q (edgep xy2)).
+  suff Ip' : irred q'.
+  { apply/negP : disj_A. apply: disjointNI Px1. 
+    apply: (subsetP p_sub_A). by rewrite (forest_G _ _ p q') // !inE. }
+  rewrite irred_edgeL irred_edgeR Iq andbT !inE negb_or mem_edgep.
+  gen have Hq,-> : y1 {Py1 Dy} Y1 {p Ip p_sub_A xy1 q'} / y1 \notin q.
+  { apply: contraTN disj_A => /(subsetP q_sub_A). exact: disjointNI. }
+  rewrite Hq //= andbT (negbTE Dy) orbF. 
+  apply: contraTneq disj_A => ?;subst. exact: disjointNI Px2. 
+Qed.
+  
+End K3.

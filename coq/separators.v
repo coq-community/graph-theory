@@ -37,7 +37,7 @@ Lemma separatesNE x y U :
 Proof.
   move => xU yU /(introN separatesP). rewrite /separatesb xU yU !negb_and //= negb_forall.
   case: (altP (x =P y)) => [<-|xDy H]; first by rewrite connect0.
-  apply/uPathRP => //. case/existsP : H => p Hp. exists p => //. exact: ivalP.
+  apply/uPathRP => //. case/existsP : H => p Hp. exists p => //. 
   by rewrite -disjoint_subset disjoint_exists.
 Qed.
 
