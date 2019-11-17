@@ -192,6 +192,22 @@ Proof.
   case: (boolP (y == x)) => // /eqP ->. by rewrite H.
 Qed.
 
+Variant picks_spec (T : finType) (A : {set T}) : option T -> Type := 
+| Picks x & x \in A : picks_spec A (Some x)
+| Nopicks & A = set0 : picks_spec A None.
+
+Lemma picksP (T : finType) (A : {set T}) : picks_spec A [pick x in A].
+Proof. 
+  case: pickP => /= [|eq0]; first exact: Picks. 
+  apply/Nopicks/setP => x. by rewrite !inE eq0.
+Qed.
+
+Lemma set10 (T : finType) (e : T) : [set e] != set0.
+Proof. apply/set0Pn. exists e. by rewrite inE. Qed.
+
+Lemma setU1_neq (T : finType) (e : T) (A : {set T}) : e |: A != set0.
+Proof. apply/set0Pn. exists e. by rewrite !inE eqxx. Qed.
+
 (** TOTHINK: [#|P| <= #|aT|] would suffice, the other direction is
 implied. But the same is true for [inj_card_onto]. *)
 Lemma inj_card_onto_pred (aT rT : finType) (f : aT -> rT) (P : pred rT) : 

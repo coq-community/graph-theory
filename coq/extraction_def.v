@@ -679,20 +679,6 @@ Proof.
   exact: measure_remove_component.
 Qed.
 
-Variant picks_spec (T : finType) (A : {set T}) : option T -> Type := 
-| Picks x & x \in A : picks_spec A (Some x)
-| Nopicks & A = set0 : picks_spec A None.
-
-Lemma picksP (T : finType) (A : {set T}) : picks_spec A [pick x in A].
-Proof. 
-  case: pickP => /= [|eq0]; first exact: Picks. 
-  apply/Nopicks/setP => x. by rewrite !inE eq0.
-Qed.
-
-Lemma set10 (T : finType) (e : T) : [set e] != set0.
-Proof. apply/set0Pn. exists e. by rewrite inE. Qed.
-
-
 Lemma term_of_rec_eq (f g : graph2 -> term sym) (G : graph2) :
   CK4F G -> (forall H : graph2, CK4F H -> measure H < measure G -> f H = g H) ->
   term_of_rec f G = term_of_rec g G.

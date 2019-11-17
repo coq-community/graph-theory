@@ -440,23 +440,6 @@ Proof.
   apply: H. by rewrite !inE H1 H2.
 Qed.
 
-Lemma connected_interiorR (G : sgraph) (x y : G) (p : Path x y) : 
-  irred p -> connected (y |: interior p).
-Proof.
-  move => Ip. case: (set_0Vmem (interior p)) => [->|[z Hz]]. 
-  - rewrite setU0. exact: connected1.
-  - apply: neighbor_connected; [exact: connected1|exact: connected_interior|].
-    apply: path_neighborR => //; by set_tac. 
-Qed.
-
-Lemma neighbor_interiorL (G : sgraph) (x y : G) (p : Path x y) :
-  x != y -> irred p -> neighbor [set x] (y |: interior p).
-Proof.
-  move => xDy Ip. case: (set_0Vmem (interior p)) => [E|[z Hz]]. 
-  - apply: neighborUl. apply/neighborP; exists x; exists y. 
-    case: (interior0E xDy Ip E) => xy _. split => //; by rewrite inE eqxx.
-  - apply: neighborUr. apply: path_neighborL => //; by set_tac. 
-Qed.
 
 Lemma K4_of_paths (G : sgraph) x y s0 s1' (p0 p1 p2 : Path x y) (q1 : Path s0 s1') : 
   x!=y -> independent p0 p1 -> independent p0 p2 -> independent p1 p2 ->

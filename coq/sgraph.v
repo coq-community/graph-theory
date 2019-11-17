@@ -1405,9 +1405,27 @@ Proof.
       rewrite irred_edgeR in Ip'. case/andP : Ip' => yq Iq.
       suff -> : interior (pcat (edgep xx') (pcat q (edgep zy))) = [set u in q].
       { exact: connected_path. }
-      apply/setP => u. rewrite !inE !mem_edgep.
-      rewrite negb_or -andbA. case: (boolP (u \in q)) => Hu /=. 
-      * rewrite orbT andbT. by apply/andP; split; set_tac.
-      * apply: contraNF Hu. case/and3P. do 2 move/negbTE => -> /=. 
-        by case/or3P => //; set_tac.
+      apply/setP => u. rewrite 3!inE mem_pcat_edgeL mem_pcat_edgeR !inE. 
+      case: (u =P x) => [ux|_];case: (u =P y) => [uy|_] => //=; subst u.
+      all: rewrite ?(negbTE yq) //; symmetry.
+      all: by apply: contraNF xp; rewrite !inE => ->.
+Qed.
+
+Lemma connected_interiorR (G : sgraph) (x y : G) (p : Path x y) : 
+  irred p -> connected (y |: interior p).
+Proof.
+  move => Ip. case: (set_0Vmem (interior p)) => [->|[z Hz]]. 
+  - rewrite setU0. exact: connected1.
+  - apply: neighbor_connected; [exact: connected1|exact: connected_interior|].
+    apply: path_neighborR => //; by set_tac. 
+Qed.
+
+(* TOTHINK: This lemma looks bespoke, but it is actually used multiple times *)
+Lemma neighbor_interiorL (G : sgraph) (x y : G) (p : Path x y) :
+  x != y -> irred p -> neighbor [set x] (y |: interior p).
+Proof.
+  move => xDy Ip. case: (set_0Vmem (interior p)) => [E|[z Hz]]. 
+  - apply: neighborUl. apply/neighborP; exists x; exists y. 
+    case: (interior0E xDy Ip E) => xy _. split => //; by rewrite inE eqxx.
+  - apply: neighborUr. apply: path_neighborL => //; by set_tac. 
 Qed.
