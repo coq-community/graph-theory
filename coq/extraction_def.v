@@ -387,7 +387,7 @@ Qed.
 Lemma CK4F_one : CK4F 1.
 Proof. 
   split. move => [] [] _ _. exact: connect0.
-  apply small_K4_free. by rewrite card_unit.
+  apply small_K_free. by rewrite card_unit.
 Qed.
 
 Lemma CK4F_redirect (G : graph2) C : 

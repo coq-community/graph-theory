@@ -245,18 +245,22 @@ Lemma iso_K4_free (G H : sgraph) :
   diso G H -> K4_free H -> K4_free G.
 Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
 
-Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) : 
-  sdecomp B -> width B <= 3 -> K4_free G.
+Lemma treewidth_K_free (G : sgraph) (T : forest) (B : T -> {set G}) m : 
+  sdecomp B -> width B <= m.+1 -> ~ minor G 'K_m.+2.
 Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
-  suff: 4 <= 3 by []. 
-  apply: leq_trans wT. apply: leq_trans B2. exact: K4_width.
+  suff: m.+1 < m.+1 by rewrite ltnn.
+  apply: leq_trans wT. apply: leq_trans B2. apply: (Km_width B1).
 Qed.
 
-Lemma small_K4_free (G : sgraph): #|G| <=3 -> K4_free G.
+Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) : 
+  sdecomp B -> width B <= 3 -> K4_free G.
+Proof. exact: treewidth_K_free. Qed.
+
+Lemma small_K_free m (G : sgraph): #|G| <= m.+1 -> ~ minor G 'K_m.+2.
 Proof.
-  intro H. destruct (decomp_small H) as (T&D&E). 
-  eapply TW2_K4_free; apply E.
+  move => H. case: (decomp_small H) => T [D] [decD wD].
+  exact: treewidth_K_free decD wD.
 Qed.
 
 (* TODO: theory for [induced [set~ : None : add_node]] *)
@@ -469,5 +473,5 @@ Proof.
   rewrite Hq //= andbT (negbTE Dy) orbF. 
   apply: contraTneq disj_A => ?;subst. exact: disjointNI Px2. 
 Qed.
-  
+
 End K3.

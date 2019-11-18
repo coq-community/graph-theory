@@ -562,17 +562,17 @@ Section DecompTheory.
       
 End DecompTheory.
 
-(** K4 has with at least 4 *)
-Lemma K4_bag (T : forest) (D : T -> {set K4}) : 
-  sdecomp D -> exists t, 4 <= #|D t|.
+(** decompositsions of ['K_m] have with at least m *)
+Lemma Km_bag m (T : forest) (D : T -> {set 'K_m.+1}) : 
+  sdecomp D -> exists t, m.+1 <= #|D t|.
 Proof.
   move => decD.
   case: (@decomp_clique _ _ _ decD setT _ _) => //.
   - by rewrite cardsT card_ord.
-  - move => t A. exists t. rewrite -[4](card_ord 4) -cardsT. 
-    exact: subset_leq_card.
+  - move => t A. exists t. rewrite -{1}[m](card_ord m) -cardsT. 
+    apply: leq_trans (subset_leq_card A). by rewrite !cardsT !card_ord.
 Qed.
 
-Lemma K4_width (T : forest) (D : T -> {set K4}) : 
-  sdecomp D -> 4 <= width D.
-Proof. case/K4_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
+Lemma Km_width m (T : forest) (D : T -> {set 'K_m.+1}) : 
+  sdecomp D -> m.+1 <= width D.
+Proof. case/Km_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
