@@ -994,17 +994,15 @@ Definition is_forest S :=
 Definition is_tree S := is_forest S /\ connected S.
 
 Definition is_forestb S := 
-  [forall x in S, forall y in S, #|[pred p : IPath x y| val p \subset S]| <= 1] .
+  [forall x, forall y, #|[pred p : IPath x y| val p \subset S]| <= 1] .
 
 Lemma is_forestP S : reflect (is_forest S) (is_forestb S).
 Proof.
-  apply: (iffP idP) => H.
-  - move => x y p q [Ip Sp] [Iq Sq]. have [xS yS] : x \in S /\ y \in S.
-    { by split; apply: (subsetP Sp); rewrite ?path_begin ?path_end. }
-    move/forall_inP/(_ _ xS)/forall_inP/(_ _ yS) : H => H.
+  apply: (iffP idP) => [H x y p q [Ip Sp] [Iq Sq]|H].
+    move/forallP/(_ x)/forallP/(_ y) : H => H.
     suff: Sub p Ip == Sub q Iq :> IPath x y by rewrite -val_eqE => /eqP.
     apply/eqP. apply: card_le1 H _ _; by rewrite inE.
-  - apply/forall_inP => x xS. apply/forall_inP => y yS. 
+  - apply/forallP => x. apply/forallP => y. 
     apply/card_le1P => [[p Ip]] [q Iq]. rewrite !inE /= => pS qS.
     apply: val_inj => /=. exact: H.
 Qed.

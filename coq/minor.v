@@ -366,16 +366,22 @@ Lemma is_forestPn (S : {set G}) :
   reflect (exists x y (p1 p2 : IPath x y), [/\ p1 \subset S, p2 \subset S & p1 != p2])
           (~~ is_forestb S).
 Proof.
-Admitted.
+  rewrite negb_forall. apply: existsPP => x. 
+  rewrite negb_forall. apply: existsPP => y. 
+  rewrite -ltnNge. apply: (iffP card_gt1P) => /=. 
+  all: by move => [p1] [p2] [A B C]; exists p1; exists p2.
+Qed.
 
 Lemma disjoint_part (x y : G) (p1 p2 : Path x y) : 
   irred p1 -> irred p2 -> p1 != p2 -> 
   exists (x' y' : G) (p1' p2' : IPath x' y'), [disjoint interior p1' & interior p2'] /\ interior p1' != set0.
 Proof.
-  move => Ip1 Ip2 Dp. 
-  have Dxy : x != y. admit. (* trivial *)
+  move def_P : (mem p1 : pred G) => P. elim/proper_ind : P x y p1 def_P p2. 
+  move => A IH x y p1 ? p2 Ip1 Ip2 Dp; subst A.
+  have Dxy : x != y. 
+  { apply: contraNneq Dp => ?; subst y. by rewrite (irredxx Ip1) (irredxx Ip2). }
   case: (boolP [disjoint interior p1 & interior p2]) => [dis12|].
-  - wlog int_p1 : p1 p2 Ip1 Ip2 dis12 {Dp} / interior p1 != set0.
+  - wlog int_p1 : p1 p2 Ip1 Ip2 dis12 {IH Dp} / interior p1 != set0.
     { suff/orP [N|N] : (interior p1 != set0) || (interior p2 != set0).
       - by move => S; apply: S dis12 N. 
       - rewrite disjoint_sym in dis12. by move => S; apply: S dis12 N. 
@@ -384,10 +390,16 @@ Proof.
         exact/eqP. }
     by exists x; exists y; exists (Build_IPath Ip1); exists (Build_IPath Ip2). 
   - rewrite disjoint_exists negbK. case/exists_inP => z Z1 Z2.
-    (* split p1 and p2 at z;
-       either the LHS or the RHS must be different
-       apply induction on the smaller paths *)
-    admit. 
+    case/(isplitP Ip1) def_p1 : _ / (interiorW Z1) => [p1l p1r Ip1l Ip1r Iz1].
+    case/(isplitP Ip2) def_p2 : _ / (interiorW Z2) => [p2l p2r Ip2l Ip2r Iz2].
+    have/orP [Dl|Dr] : (p1l != p2l) || (p1r != p2r).
+    { apply: contraNT Dp. by rewrite negb_or !negbK def_p1 def_p2 => /andP[/eqP->/eqP->]. }
+    + apply: (IH _ _ x z p1l _ p2l) => //=. apply/properP. 
+      rewrite def_p1 subset_pcatL; split => //; exists y; first by rewrite !inE.
+      apply: contraTN Z1 => C. by rewrite -(Iz1 y) ?inE // eqxx. 
+    + apply: (IH _ _ z y p1r _ p2r) => //=. apply/properP. 
+      rewrite def_p1 subset_pcatR; split => //; exists x; first by rewrite !inE.
+      apply: contraTN Z1 => C. by rewrite -(Iz1 x) ?inE // eqxx. 
 Qed.
 
 Lemma non_forerst_K3 : ~ is_forest [set: G] -> minor G 'K_3.
@@ -424,11 +436,19 @@ Proof.
       apply: path_neighborR => //. by rewrite inE.
 Qed.
 
+Lemma K3_free_forest : ~ minor G 'K_3 -> is_forest [set: G].
+Proof. 
+  rewrite (rwP (is_forestP _)). apply: contraPT. move/is_forestP.
+  exact: non_forerst_K3.
+Qed.
+
+(* TODO: This is actually redundant if we also prove that forests have
+tree decompositions of width 1 *)
 Lemma forest_K3_free : is_forest [set: G] -> ~ minor G 'K_3.
 Proof.
   move/forestT_unique => forest_G /minorRE [phi [M1 M2 M3 M4]].
-  have [/neighborP [x1] [y1] [Px1 Py1 xy1]] := (M4 ord0 ord1 isT).
-  have [/neighborP [x2] [y2] [Px2 Py2 xy2]] := (M4 ord0 ord2 isT).
+  have/neighborP [x1 [y1] [Px1 Py1 xy1]] := (M4 ord0 ord1 isT).
+  have/neighborP [x2 [y2] [Px2 Py2 xy2]] := (M4 ord0 ord2 isT).
   have Dy : y1 != y2. 
   { apply: contraTneq (M3 ord1 ord2 _) => //= ?; subst y2. 
     exact: disjointNI Py1 Py2. }

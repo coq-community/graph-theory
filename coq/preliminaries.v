@@ -50,6 +50,9 @@ Proof. by case: b => //= H _ /H. Qed.
 Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
 Proof. rewrite -{1}[b]negbK. exact: contraTnot. Qed.
 
+Lemma contraPT (b : bool) (P : Prop) : (~~ b -> P) -> ~ P -> b.
+Proof. by case: b => //= *; exfalso; auto. Qed.
+
 Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).
 Proof. case: b => //=. by move/(_ isT) => H /H. Qed.
 
@@ -351,6 +354,26 @@ Proof. by apply: (@Wf_nat.well_founded_lt_compat _ f) => x y /ltP. Qed.
 Lemma nat_size_ind (X:Type) (P : X -> Type) (f : X -> nat) :
    (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
 Proof. move => H. apply: well_founded_induction_type; last exact H. exact: wf_leq. Qed.
+
+Lemma wf_proper (T:finType) : well_founded (fun B A : pred T => B \proper A).
+Proof. 
+  apply: (@Wf_nat.well_founded_lt_compat _ (fun x : pred T => #|x|)) => A B A_proper_B.
+  apply/ltP. exact: proper_card.
+Qed.
+
+Lemma proper_ind (T: finType) (P : pred T  -> Type) : 
+  (forall A : pred T, (forall B : pred T, B \proper A -> P B) -> P A) -> forall A, P A.
+Proof. move => H. apply: well_founded_induction_type H. exact: wf_proper. Qed.
+
+Lemma wf_propers (T:finType) : well_founded (fun B A : {set T} => B \proper A).
+Proof. 
+  apply: (@Wf_nat.well_founded_lt_compat _ (fun x : {set T} => #|x|)) => A B A_proper_B.
+  apply/ltP. exact: proper_card.
+Qed.
+
+Lemma propers_ind (T: finType) (P : {set T} -> Type) : 
+  (forall A : {set T}, (forall B : {set T}, B \proper A -> P B) -> P A) -> forall A, P A.
+Proof. move => H. apply: well_founded_induction_type H. exact: wf_propers. Qed.
 
 Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, P V -> #|U| <= #|V|.
 
