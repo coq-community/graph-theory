@@ -442,7 +442,7 @@ Qed.
 
 Lemma K3_free_forest : ~ minor G 'K_3 -> is_forest [set: G].
 Proof. 
-  rewrite (rwP (is_forestP _)). apply: contraPT. move/is_forestP.
+  rewrite (rwP (is_forestP _)). apply: contra_notT. move/is_forestP.
   exact: non_forerst_K3.
 Qed.
 

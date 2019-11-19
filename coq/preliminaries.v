@@ -50,7 +50,10 @@ Proof. by case: b => //= H _ /H. Qed.
 Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
 Proof. rewrite -{1}[b]negbK. exact: contraTnot. Qed.
 
-Lemma contraPT (b : bool) (P : Prop) : (~~ b -> P) -> ~ P -> b.
+Lemma contraPT (P : Prop) (b : bool) : (~~ b -> ~ P) -> P -> b.
+Proof. case: b => //= H1 H2. exfalso. exact: H1. Qed.
+
+Lemma contra_notT (b : bool) (P : Prop) : (~~ b -> P) -> ~ P -> b.
 Proof. by case: b => //= *; exfalso; auto. Qed.
 
 Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).

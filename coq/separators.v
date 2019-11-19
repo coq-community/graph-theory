@@ -910,17 +910,13 @@ Proof.
         by rewrite neighborC NCs1Pk // inE (negbTE xi) (negbTE xj).
 Qed.
 
-
-
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
   move: G. apply: (nat_size_ind (f := fun G => #|G|)) => G Hind K4free. 
   (* Either G is small, or it has a smallest separator of size at most two *)
   case (no_K4_smallest_separator K4free) =>[|[S [ssepS Ssmall2]]].
-  { move => Gsmall. exists tunit. exists (fun _ => [set: G]). split.
-    + exact (triv_sdecomp G).
-    + apply leq_trans with #|G| => //. apply width_bound. }
+  { exact: decomp_small. }
   move: (separator_separation ssepS.1) => [V1 [V2 [[sep prop] SV12]]].
   move: (prop) => [x0 [y0 [Hx0 Hy0]]]. 
   have V1properG: #|induced V1| < #|G|.
@@ -955,3 +951,76 @@ Theorem excluded_minor_TW2 (G : sgraph) :
   exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof. split => [|[T][B][]]. exact: TW2_of_K4F. exact: TW2_K4_free. Qed.
 
+(** ** Forests have treewidth 1 *)
+
+Lemma forest3 (G : sgraph) : is_forest [set: G] -> 3 <= #|G| -> exists x y : G, x != y /\ ~~ x -- y.
+Proof.
+  move => /is_forestP forest_G card_G. 
+  setoid_rewrite (rwP andP). do ! setoid_rewrite (rwP existsP).  
+  apply: contraTT forest_G => P.
+  have {P} comp_G : forall x y : G, x != y -> x -- y.
+  { move => x y xDy. move/existsPn : P => /(_ x)/exists_inPn/(_ y xDy). by rewrite negbK. }
+  case/card_gt2P : card_G => x [y] [z] [_ [D1 D2 D3]].
+  rewrite eq_sym in D1.
+  apply/is_forestPn; exists y; exists x. 
+  pose p1 := Build_IPath (irred_edge (comp_G y x D1)).
+  have Ip2 : irred (pcat (edgep (comp_G y z D2)) (edgep (comp_G z x D3))).
+  { by rewrite irred_edgeL irred_edge andbT /= mem_edgep negb_or D1 D2. }
+  pose p2 := Build_IPath Ip2.
+  exists p1; exists p2. split => //. 
+  have: z \in p2 by rewrite !inE. 
+  apply: contraTneq => <-. by rewrite mem_edgep negb_or D3 eq_sym D2.
+Qed.
+
+Lemma forest_separator (G : sgraph) : 
+  is_forest [set: G] -> 3 <= #|G| -> exists2 S : {set G}, separator S & #|S| <= 1.
+Proof.
+  move => forest_G card_G. 
+  have {card_G} [x [y [xDy xy]]] := forest3 forest_G card_G.
+  have [/uPathP [p Ip]|nCxy]:= (boolP (connect sedge x y)).
+  move/forestT_unique in forest_G.
+  - have/set0Pn [z z_p] : interior p != set0.
+    { apply: contraNneq xy => Ip0. by case: (interior0E xDy Ip Ip0). }
+    exists [set z]; last by rewrite cards1. 
+    exists x; exists y; apply: separatesI. 
+    move: (interiorN z_p); rewrite !inE negb_or ![z == _]eq_sym => /andP[-> ->].
+    split => // q Iq. exists z; rewrite ?inE ?eqxx //.
+    apply: interiorW. by rewrite (forest_G _ _ _ _ Iq Ip).
+  - exists set0; last by rewrite cards0. exists x;exists y. split; rewrite ?inE // => p.
+    case: notF. apply: contraNT nCxy => _. exact: Path_connect p.
+Qed.
+
+Lemma induced_forest (G : sgraph) (F : {set G}) : 
+  is_forest F -> is_forest [set: induced F].
+Proof.
+  move => forest_F. apply: unique_forestT => x y p q Ip Iq.
+  have [p0 /subsetP p0_sub_F eq_p0] := (Path_from_induced p).
+  have [q0 /subsetP q0_sub_F eq_q0] := (Path_from_induced q).
+  have ?: irred p0 by rewrite irredE eq_p0 map_inj_uniq //; exact: val_inj.
+  have ?: irred q0 by rewrite irredE eq_q0 map_inj_uniq //; exact: val_inj.
+  have Epq : p0 = q0 by apply: forest_F. 
+  apply/eqP; rewrite -nodes_eqE; apply/eqP. (* fixme *)
+  apply: (inj_map val_inj). by rewrite -eq_p0 -eq_q0 Epq.
+Qed.
+
+Lemma forest_TW1 (G : sgraph) : 
+  is_forest [set: G] -> exists T B, sdecomp T G B /\ width B <= 2.
+Proof.
+  move: G. apply: (nat_size_ind (f := fun G => #|G|)) => G Hind forest_G. 
+  have:= forest_separator forest_G.
+  case: leqP => [Glt2 _|Ggt2 /(_ isT) [S sepS Slt2]]; first exact: decomp_small.
+  have [V1 [V2 [[sep [x0 [y0 [Hx0 Hy0]]]] SV12]]] := separator_separation sepS.
+  have V1properG: #|induced V1| < #|G|.
+  { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
+  have {x0 Hx0 y0 Hy0} V2properG: #|induced V2| < #|G|.
+  { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
+  have C: clique (V1 :&: V2) by rewrite -SV12; exact: small_clique.
+  case: (Hind (induced V1)) => // [|T1 [B1 [sd1 w1]]].
+  { apply: induced_forest. exact: sub_forest forest_G. }
+  case: (Hind (induced V2)) => // [|T2 [B2 [sd2 w2]]].
+  { apply: induced_forest. exact: sub_forest forest_G. }  
+  case separation_decomp with G V1 V2 T1 T2 B1 B2 => // T [B [sd w]].
+  exists T. exists B. split => //. 
+  apply leq_trans with (maxn (width B1) (width B2)) => //.
+  by rewrite geq_max w1 w2. 
+Qed.
