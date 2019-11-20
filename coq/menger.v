@@ -14,7 +14,7 @@ well-known and most-used corollaries. The proof follows Göring's
 "Short Proof of Menger's Theorem".  The two most central notions in
 the proof are those of an AB-separator and an AB-connector. *)
 
-(** ** Separators and Connectors *)
+(** ** Connectors, Separators, and Separations *)
 
 Section SeparatorConnector.
 Variables (G : diGraph).
@@ -53,42 +53,17 @@ Qed.
 Lemma separator_min A B S : separator A B S -> #|A :&: B| <= #|S|.
 Proof. move/separator_cap. exact: subset_leq_card. Qed.
 
-(** In order to define the notion of [AB]-connector, we need to
-abstract from the incices in [Path x y] *)
-
-Definition pathS := { x : G * G & Path x.1 x.2 }.
-Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1 x.2) (x,y) p.
-
-Definition in_pathS (p : pathS) : collective_pred G := [pred x | x \in tagged p].
-Canonical pathS_predType := Eval hnf in PredType (@in_pathS).
-Arguments in_pathS _ /.
-
-(** We can override fst because MathComp uses .1 *)
-Definition fst (p : pathS) := (tag p).1.
-Definition lst (p : pathS) := (tag p).2.
-Arguments fst _ /.
-Arguments lst _ /.
-
-Lemma pathS_eta (p : pathS) : 
-  p = @PathS (fst p) (lst p) (tagged p).
-Proof. by case: p => [[x y] ri]. Qed.
-
-Lemma fst_mem (p : pathS) : fst p \in p.
-Proof. case: p => [[x y] p] /=. exact: path_begin. Qed.
-
-Lemma lst_mem (p : pathS) : lst p \in p.
-Proof. case: p => [[x y] p] /=. exact: path_end. Qed.
 
 (** TOTHINK: [conn_disjoint] could also be expressed as [x \in p i -> x \in p j ->  i = j] *)
 (** NOTE: Unlike the definition of Göring, we do not allow single edge paths inside [A :&: B] *)
-Record connector (A B : {set G}) n (p : 'I_n -> pathS) : Prop := 
+Record connector (A B : {set G}) n (p : 'I_n -> pathS G) : Prop := 
   { conn_irred    : forall i, irred (tagged (p i)); 
     conn_begin    : forall i, [set x in p i] :&: A = [set fst (p i)];
     conn_end      : forall i, [set x in p i] :&: B = [set lst (p i)];
     conn_disjoint :  forall i j, i != j -> [set x in p i] :&: [set x in p j] = set0 }.
 
 Section ConnectorTheory.
-Variables (A B : {set G}) (n : nat) (p : 'I_n -> pathS).
+Variables (A B : {set G}) (n : nat) (p : 'I_n -> pathS G).
 Hypothesis conn_p : connector A B p.
 
 Lemma connector_fst i : fst (p i) \in A.
@@ -139,51 +114,26 @@ Proof.
   by rewrite E lst_mem.
 Qed.
 
-Lemma fst_inj : injective (fst \o p).
+Lemma fst_inj : injective (@fst G \o p).
 Proof. 
   apply/injectiveP. 
   apply: wlog_neg => /injectivePn [i] [j] /(conn_disjoint conn_p)/setP S /= H.
-  move/(_ (fst (p i))) : S. by rewrite !inE /fst H fst_mem.
+  move/(_ (fst (p i))) : S. by rewrite !inE H fst_mem.
 Qed.
 
-Lemma lst_inj : injective (lst \o p).
+Lemma lst_inj : injective (@lst G \o p).
 Proof. 
   apply/injectiveP. 
   apply: wlog_neg => /injectivePn [i] [j] /(conn_disjoint conn_p)/setP S /= H.
-  move/(_ (lst (p i))) : S. by rewrite !inE /lst H lst_mem. 
+  move/(_ (lst (p i))) : S. by rewrite !inE H lst_mem. 
 Qed.
 
 End ConnectorTheory.
 
-(** Concatenation on [pathS] *)
 
-Definition castL (x' x y : G) (E : x = x') (p : Path x y) : Path x' y :=
-  match E in (_ = y0) return (Path y0 y) with erefl => p end.
-
-Definition pcatS (p1 p2 : pathS) : pathS :=
-  let: (existT x p,existT y q) := (p1,p2) in
-  match altP (y.1 =P x.2) with
-    AltTrue E => PathS (pcat p (castL E q))
-  | AltFalse _ => PathS p
-  end.
-
-Lemma pcatSE (x y z : G) (p : Path x y) (q : Path y z) : 
-  pcatS (PathS p) (PathS q) = PathS (pcat p q).
-Proof. 
-  rewrite /pcatS /=. case: {-}_ /altP => [E|]; last by rewrite eqxx.
-  rewrite /castL. by rewrite (eq_irrelevance E erefl).
-Qed.
-
-Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u : 
-  reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
-Proof. 
-  rewrite !inE mem_edgep -orbA. apply: (iffP or3P) => [|[->|->]]; rewrite ?eqxx. 
-  1: case => [/eqP->|/eqP->|->]; rewrite ?inE. all: by firstorder.
-Qed.
-
-Lemma connector_extend A B n (p : 'I_n -> pathS) x y i : 
+Lemma connector_extend A B n (p : 'I_n -> pathS G) x y i : 
   x \notin \bigcup_i [set z in p i] -> fst (p i) = y -> x -- y -> x \notin B ->
-  connector A B p -> exists q : 'I_n -> pathS, connector (x |: (A :\ y)) B q.
+  connector A B p -> exists q : 'I_n -> pathS G, connector (x |: (A :\ y)) B q.
 Proof.
   move => Hx Hy xy xB conn_p.
   have xDy : x != y. 
@@ -230,7 +180,7 @@ Proof.
     + move => _ _. exact: (conn_disjoint conn_p).
 Qed.
 
-Lemma connector_sep P A B n (p q : 'I_n -> pathS) i j x : 
+Lemma connector_sep P A B n (p q : 'I_n -> pathS G) i j x : 
   separator A B P -> connector A P p -> connector P B q -> 
   x \in p i -> x \in q j -> (x \in P) (* * (lst (p i) = fst (q j)) *).
 Proof.
@@ -254,22 +204,22 @@ Proof.
       change (s \in qj). by rewrite def_q inE in_q2.
 Qed.
 
-Lemma connector_cat (P A B : {set G}) n (p q : 'I_n -> pathS) : 
+Lemma connector_cat (P A B : {set G}) n (p q : 'I_n -> pathS G) : 
   #|P| = n -> separator A B P ->
   connector A P p -> connector P B q -> 
-  exists (r : 'I_n -> pathS), connector A B r.
+  exists (r : 'I_n -> pathS G), connector A B r.
 Proof.
   move => card_P. subst n. move => sep_P con_p con_q. 
   (* For every [i], we can obtain some [j] such that [p i] and [q j] compose. *)
   have mtch i : { j | fst (q j) = lst (p i) }.
   { pose x := lst (p i).
-    have Hx : x \in codom (fst \o q). 
+    have Hx : x \in codom (@fst G \o q). 
     { apply: (inj_card_onto_pred (P := mem P)). 
       - exact: fst_inj con_q.
       - move => j. exact: connector_fst con_q _.
       - by rewrite card_ord.
       - exact: connector_lst con_p _. }
-    exists (iinv Hx). rewrite -[fst _]/((fst \o q) (iinv Hx)). by rewrite f_iinv. }
+    exists (iinv Hx). rewrite -[fst _]/((@fst G \o q) (iinv Hx)). by rewrite f_iinv. }
   have mtch_inj : injective (fun i => sval (mtch i)).
   { move => i i' E. move: (svalP (mtch i')). rewrite -E (svalP (mtch i)).
     exact : (lst_inj con_p). }
@@ -311,7 +261,7 @@ Proof.
       have ? : s = y. 
       { by rewrite [s](connector_left con_q (i := j)) // Eq // def_q mem_pcat in_q2. }
       subst s. by rewrite [y]I // inE. 
-    + by rewrite inE [x](_ : _ = fst (p i)) ?(connector_fst con_p) // Ep. 
+    + by rewrite inE /fst/= [x](_ : _ = fst (p i)) ?(connector_fst con_p) // Ep. 
   - (* symmetric to the argument above *)
     move => i. move: (pqE i) => [j] [x] [y] [z] [pi] [qj] [Ep Ej Eq ->] /=.
     apply/setP => u. rewrite !inE /=. apply/andP/eqP => [[/orP[u_pi|u_qj] uB]|->].
@@ -327,7 +277,7 @@ Proof.
       suff: fst (q j) = lst (q j). by rewrite Eq. 
       apply: (fst_idp con_q _). by rewrite Eq. 
     + move/(_ j u): (connector_right con_q). rewrite Eq /= u_qj uB. by apply.
-    + by rewrite inE [z](_ : _ = lst (q j)) ?(connector_lst con_q) // Eq.
+    + by rewrite inE /lst/= [z](_ : _ = lst (q j)) ?(connector_lst con_q) // Eq.
   - move => i j iDj.
     move: (pqE i) => [i2] [x] [y] [z] [pi] [qi2] [Ep Ei Eq ->] /=. 
     move: (pqE j) => [j2] [x'] [y'] [z'] [pj] [qj2] [Ep' Ej Eq' ->] /=.
@@ -355,7 +305,7 @@ Proof.
       move/setP/(_ u): (conn_disjoint con_q iDj). by rewrite Eq Eq' !inE Hi Hj.
 Qed.
 
-Lemma trivial_connector A B : exists p : 'I_#|A :&: B| -> pathS, connector A B p.
+Lemma trivial_connector A B : exists p : 'I_#|A :&: B| -> pathS G, connector A B p.
 Proof.
   exists (fun i => PathS (idp (enum_val i))). split.
   - move => i /=. exact: irred_idp.
@@ -367,8 +317,8 @@ Proof.
     by rewrite !inE /= !mem_idp => /eqP-> /eqP /enum_val_inj->. 
 Qed.
 
-Lemma sub_connector A B n m (p : 'I_m -> pathS) : 
-  n <= m -> connector A B p -> exists q : 'I_n -> pathS, connector A B q.
+Lemma sub_connector A B n m (p : 'I_m -> pathS G) : 
+  n <= m -> connector A B p -> exists q : 'I_n -> pathS G, connector A B q.
 Proof.
   move => n_leq_m conn_p. pose W := widen_ord n_leq_m. exists (fun i => p (W i)).
   case: conn_p => C1 C2 C3 C4. split => // i j. exact:(C4 (W i) (W j)).

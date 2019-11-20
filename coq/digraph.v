@@ -316,6 +316,13 @@ Proof.
   case: (altP (u =P y)) => //= [->|]; by rewrite ?path_end 1?orbC.
 Qed.
 
+Lemma edgeLP x y z (xy : x -- y) (p : Path y z) u : 
+  reflect (u = x \/ u \in p) (u \in pcat (edgep xy) p).
+Proof. 
+  rewrite mem_pcat mem_edgep -orbA. apply: (iffP or3P) => [|[->|->]]; rewrite ?eqxx. 
+  1: case => [/eqP->|/eqP->|->]; rewrite ?inE. all: by firstorder using path_begin.
+Qed.
+
 (** These are easier to prove by breaking the abstraction barrier than by using
 [irred_cat] below. *)
 
@@ -955,6 +962,58 @@ Proof.
   move=>x y. split. apply H.
   abstract by move=> /H' E; rewrite 2!fg in E. 
 Defined.
+
+(** **  *)
+
+(** In order to define the notion of [AB]-connector, we need to
+abstract from the incices in [Path x y] *)
+
+Section PathS.
+Variable (G : diGraph).
+
+Definition pathS := { x : G * G & Path x.1 x.2 }.
+Definition PathS x y (p : Path x y) : pathS := existT (fun x : G * G => Path x.1 x.2) (x,y) p.
+
+Definition in_pathS (p : pathS) : collective_pred G := [pred x | x \in tagged p].
+Canonical pathS_predType := Eval hnf in PredType (@in_pathS).
+Arguments in_pathS _ /.
+
+(** We can override fst because MathComp uses .1 *)
+Definition fst (p : pathS) := (tag p).1.
+Definition lst (p : pathS) := (tag p).2.
+Arguments fst _ /.
+Arguments lst _ /.
+
+Lemma pathS_eta (p : pathS) : 
+  p = @PathS (fst p) (lst p) (tagged p).
+Proof. by case: p => [[x y] ri]. Qed.
+
+Lemma fst_mem (p : pathS) : fst p \in p.
+Proof. case: p => [[x y] p] /=. exact: path_begin. Qed.
+
+Lemma lst_mem (p : pathS) : lst p \in p.
+Proof. case: p => [[x y] p] /=. exact: path_end. Qed.
+
+(** Concatenation on [pathS] *)
+
+Definition castL (x' x y : G) (E : x = x') (p : Path x y) : Path x' y :=
+  match E in (_ = y0) return (Path y0 y) with erefl => p end.
+
+Definition pcatS (p1 p2 : pathS) : pathS :=
+  let: (existT x p,existT y q) := (p1,p2) in
+  match altP (y.1 =P x.2) with
+    AltTrue E => PathS (pcat p (castL E q))
+  | AltFalse _ => PathS p
+  end.
+
+Lemma pcatSE (x y z : G) (p : Path x y) (q : Path y z) : 
+  pcatS (PathS p) (PathS q) = PathS (pcat p q).
+Proof. 
+  rewrite /pcatS /=. case: {-}_ /altP => [E|]; last by rewrite eqxx.
+  rewrite /castL. by rewrite (eq_irrelevance E erefl).
+Qed.
+
+End PathS.
 
 (** ** Directed Multigraphs *)
 

@@ -658,7 +658,7 @@ Qed.
 Definition flesh_out_graph (G : sgraph) sym0 tt (z : G) : graph2 :=
   {| graph_of :=
        {| vertex := G ; edge := [finType of { p : G * G | p.1 -- p.2 }];(* TODO: avoid clones? *)
-          endpoint b e := if b then snd (val e) else fst (val e);
+          endpoint b e := if b then snd (val e) else (val e).1;
           vlabel _ := tt;
           elabel := fun _ => sym0 |} ;
      input := z; output := z |}.
