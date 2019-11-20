@@ -11,7 +11,7 @@ Unset Printing Implicit Defensive.
 Local Open Scope quotient_scope.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Minors, links with treewidth *)
+(** * Minors *)
 
 (** H is a minor of G -- The order allows us to write [minor G] for the
 collection of [G]s minors *)
@@ -170,14 +170,14 @@ Proof. apply: sub_minor. exact: induced_sub. Qed.
 Definition edge_surjective (G1 G2 : sgraph) (h : G1 -> G2) :=
   forall x y : G2 , x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0].
 
+(** ** Links with Treewidth *)
+
 (* The following should hold but does not fit the use case for minors *)
 Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G -> H) : 
   hom_s h -> surjective h -> edge_surjective h -> 
   (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
   @sdecomp T _ (rename D h).
 Abort. 
-
-
 
 Lemma width_minor (G H : sgraph) (T : forest) (B : T -> {set G}) : 
   sdecomp T G B -> minor G H -> exists B', @sdecomp T H B' /\ width B' <= width B.

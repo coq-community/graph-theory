@@ -19,9 +19,9 @@ equiv.v
 digraph.v
 sgraph.v
 helly.v
+connectivity.v
 treewidth.v
 minor.v
-connectivity.v
 excluded.v
 checkpoint.v
 cp_minor.v

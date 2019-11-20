@@ -15,11 +15,8 @@ Set Bullet Behavior "Strict Subproofs".
 
 Ltac notHyp b ::= assert_fails (assert b by assumption).
 
-(** ** Constructing Tree Decompositions *)
-
 Prenex Implicits vseparator.
 Implicit Types G H : sgraph.
-
 Arguments sdecomp : clear implicits.
 Arguments rename_decomp [T G H D]. 
 

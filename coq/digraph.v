@@ -1000,7 +1000,7 @@ Proof.
   abstract by move=> /H' E; rewrite 2!fg in E. 
 Defined.
 
-(** **  *)
+(** ** Unindexed paths *)
 
 (** In order to define the notion of [AB]-connector, we need to
 abstract from the incices in [Path x y] *)
