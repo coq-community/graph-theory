@@ -286,7 +286,7 @@ Proof.
   by rewrite rev_cons !revK -{2}[y](path_last p) -lastI.
 Qed.
 
-Definition inE := (inE,mem_pcat,path_begin,path_end,mem_prev).
+Definition inE := (inE,mem_prev).
 
 Lemma prev_cat x y z (p : Path x y) (q : Path y z) :
   prev (pcat p q) = pcat (prev q) (prev p).

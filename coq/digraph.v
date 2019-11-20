@@ -390,6 +390,7 @@ Qed.
 
 
 End PathTheory.
+Definition inE := (inE,mem_pcat,path_begin,path_end).
 
 (** NOTE: Up to here, nothing depends on the vertex type being finite. The
 constuctions below make use of functions that are only defined on finite types,
@@ -879,6 +880,41 @@ Lemma independent_sym (p q : Path x y):
 Proof. by rewrite /independent disjoint_sym. Qed.
 
 End Interior.
+
+(** The lemma below loses the connection between [p1]/[p2] and
+[p1']/[p2']. However adding [p1' \subset p1] and [p2' \subset p2]
+means that we would only get [interior p1' :|: interior p2' != set0] *)
+Lemma disjoint_part (G : diGraph) (x y : G) (p1 p2 : Path x y) : 
+  irred p1 -> irred p2 -> p1 != p2 -> 
+  exists (x' y' : G) (p1' p2' : IPath x' y'), independent p1' p2' /\ interior p1' != set0.
+Proof.
+  move def_P : (mem p1 : pred G) => P. elim/proper_ind : P x y p1 def_P p2. 
+  move => A IH x y p1 ? p2 Ip1 Ip2 Dp; subst A.
+  have Dxy : x != y. 
+  { apply: contraNneq Dp => ?; subst y. by rewrite (irredxx Ip1) (irredxx Ip2). }
+  case: (boolP [disjoint interior p1 & interior p2]) => [dis12|].
+  - wlog int_p1 : p1 p2 Ip1 Ip2 dis12 {IH Dp} / interior p1 != set0.
+    { suff/orP [N|N] : (interior p1 != set0) || (interior p2 != set0).
+      - by move => S; apply: S dis12 N. 
+      - rewrite disjoint_sym in dis12. by move => S; apply: S dis12 N. 
+      - apply: contra_neqT Dp. rewrite negb_or !negbK => /andP [/eqP N1 /eqP N2].
+        have [[xy ->] [xy' ->]] := (interior0E Dxy Ip1 N1,interior0E Dxy Ip2 N2).
+        exact/eqP. }
+    by exists x; exists y; exists (Build_IPath Ip1); exists (Build_IPath Ip2). 
+  - rewrite disjoint_exists negbK. case/exists_inP => z Z1 Z2.
+    case/(isplitP Ip1) def_p1 : _ / (interiorW Z1) => [p1l p1r Ip1l Ip1r Iz1].
+    case/(isplitP Ip2) def_p2 : _ / (interiorW Z2) => [p2l p2r Ip2l Ip2r Iz2].
+    have/orP [Dl|Dr] : (p1l != p2l) || (p1r != p2r).
+    { apply: contraNT Dp. by rewrite negb_or !negbK def_p1 def_p2 => /andP[/eqP->/eqP->]. }
+    + apply: (IH _ _ x z p1l _ p2l) => //=. apply/properP. 
+      rewrite def_p1 subset_pcatL; split => //; exists y; first by rewrite !inE.
+      apply: contraTN Z1 => C. by rewrite -(Iz1 y) ?inE // eqxx. 
+    + apply: (IH _ _ z y p1r _ p2r) => //=. apply/properP. 
+      rewrite def_p1 subset_pcatR; split => //; exists x; first by rewrite !inE.
+      apply: contraTN Z1 => C. by rewrite -(Iz1 x) ?inE // eqxx. 
+Qed.
+
+
 
 Section Transfer.
   Variables (T : finType) (e1 e2 : rel T).

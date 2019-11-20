@@ -361,40 +361,7 @@ Proof.
     + move/inj_f => E. by rewrite E sgP in xy.
 Qed.
 
-Section K3.
-Variable (G : sgraph).
-
-Lemma disjoint_part (x y : G) (p1 p2 : Path x y) : 
-  irred p1 -> irred p2 -> p1 != p2 -> 
-  exists (x' y' : G) (p1' p2' : IPath x' y'), [disjoint interior p1' & interior p2'] /\ interior p1' != set0.
-Proof.
-  move def_P : (mem p1 : pred G) => P. elim/proper_ind : P x y p1 def_P p2. 
-  move => A IH x y p1 ? p2 Ip1 Ip2 Dp; subst A.
-  have Dxy : x != y. 
-  { apply: contraNneq Dp => ?; subst y. by rewrite (irredxx Ip1) (irredxx Ip2). }
-  case: (boolP [disjoint interior p1 & interior p2]) => [dis12|].
-  - wlog int_p1 : p1 p2 Ip1 Ip2 dis12 {IH Dp} / interior p1 != set0.
-    { suff/orP [N|N] : (interior p1 != set0) || (interior p2 != set0).
-      - by move => S; apply: S dis12 N. 
-      - rewrite disjoint_sym in dis12. by move => S; apply: S dis12 N. 
-      - apply: contra_neqT Dp. rewrite negb_or !negbK => /andP [/eqP N1 /eqP N2].
-        have [[xy ->] [xy' ->]] := (interior0E Dxy Ip1 N1,interior0E Dxy Ip2 N2).
-        exact/eqP. }
-    by exists x; exists y; exists (Build_IPath Ip1); exists (Build_IPath Ip2). 
-  - rewrite disjoint_exists negbK. case/exists_inP => z Z1 Z2.
-    case/(isplitP Ip1) def_p1 : _ / (interiorW Z1) => [p1l p1r Ip1l Ip1r Iz1].
-    case/(isplitP Ip2) def_p2 : _ / (interiorW Z2) => [p2l p2r Ip2l Ip2r Iz2].
-    have/orP [Dl|Dr] : (p1l != p2l) || (p1r != p2r).
-    { apply: contraNT Dp. by rewrite negb_or !negbK def_p1 def_p2 => /andP[/eqP->/eqP->]. }
-    + apply: (IH _ _ x z p1l _ p2l) => //=. apply/properP. 
-      rewrite def_p1 subset_pcatL; split => //; exists y; first by rewrite !inE.
-      apply: contraTN Z1 => C. by rewrite -(Iz1 y) ?inE // eqxx. 
-    + apply: (IH _ _ z y p1r _ p2r) => //=. apply/properP. 
-      rewrite def_p1 subset_pcatR; split => //; exists x; first by rewrite !inE.
-      apply: contraTN Z1 => C. by rewrite -(Iz1 x) ?inE // eqxx. 
-Qed.
-
-Lemma non_forerst_K3 : ~ is_forest [set: G] -> minor G 'K_3.
+Lemma non_forerst_K3 (G : sgraph) : ~ is_forest [set: G] -> minor G 'K_3.
 Proof.
   move/is_forestP/is_forestPn => [x0] [y0] [p0] [q0] [_ _ pDq].
   have [x [y] [p1] [p2] [p12_disj p1_ne]] := disjoint_part (valP p0) (valP q0) pDq.
@@ -428,38 +395,10 @@ Proof.
       apply: path_neighborR => //. by rewrite inE.
 Qed.
 
-Lemma K3_free_forest : ~ minor G 'K_3 -> is_forest [set: G].
+Theorem K3_free_forest G : ~ minor G 'K_3 <-> is_forest [set: G].
 Proof. 
-  rewrite (rwP (is_forestP _)). apply: contra_notT. move/is_forestP.
-  exact: non_forerst_K3.
+  split.
+  - rewrite (rwP (is_forestP _)). apply: contra_notT. move/is_forestP.
+    exact: non_forerst_K3.
+  - case/forest_TW1 => T [B []]. exact: treewidth_K_free. 
 Qed.
-
-(* TODO: This is actually redundant if we also prove that forests have
-tree decompositions of width 1 *)
-Lemma forest_K3_free : is_forest [set: G] -> ~ minor G 'K_3.
-Proof.
-  move/forestT_unique => forest_G /minorRE [phi [M1 M2 M3 M4]].
-  have/neighborP [x1 [y1] [Px1 Py1 xy1]] := (M4 ord0 ord1 isT).
-  have/neighborP [x2 [y2] [Px2 Py2 xy2]] := (M4 ord0 ord2 isT).
-  have Dy : y1 != y2. 
-  { apply: contraTneq (M3 ord1 ord2 _) => //= ?; subst y2. 
-    exact: disjointNI Py1 Py2. }
-  pose A := phi ord1 :|: phi ord2.
-  have conn_A : connected A. { apply: neighbor_connected => //. exact: M4. }
-  have disj_A : [disjoint A & phi ord0] by apply: disjointsU; apply: M3.
-  have [Y1 Y2] : y1 \in A /\ y2 \in A by rewrite /A !inE Py1 Py2.
-  have [p Ip p_sub_A] := path_in_connected conn_A Y1 Y2.
-  have [q Iq q_sub_A] := path_in_connected (M2 _) Px1 Px2.
-  rewrite sg_sym in xy1.
-  pose q' := pcat (edgep xy1) (pcat q (edgep xy2)).
-  suff Ip' : irred q'.
-  { apply/negP : disj_A. apply: disjointNI Px1. 
-    apply: (subsetP p_sub_A). by rewrite (forest_G _ _ p q') // !inE. }
-  rewrite irred_edgeL irred_edgeR Iq andbT !inE negb_or mem_edgep.
-  gen have Hq,-> : y1 {Py1 Dy} Y1 {p Ip p_sub_A xy1 q'} / y1 \notin q.
-  { apply: contraTN disj_A => /(subsetP q_sub_A). exact: disjointNI. }
-  rewrite Hq //= andbT (negbTE Dy) orbF. 
-  apply: contraTneq disj_A => ?;subst. exact: disjointNI Px2. 
-Qed.
-
-End K3.
