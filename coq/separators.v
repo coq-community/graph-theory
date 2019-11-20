@@ -13,234 +13,11 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Tree Decompositions for K4-free graphs *)
 
-(** * Separators and Separations *)
-
 Ltac notHyp b ::= assert_fails (assert b by assumption).
-
-(** TODO: using clauses to speed up make quick *)
-
-Arguments separatesP {G x y U}.
-
-Section Separators.
-Variable (G : sgraph).
-Implicit Types (x y z u v : G) (S U V : {set G}).
-
-Fact separates_sym x y U : separates x y U <-> separates y x U.
-Proof.
-  wlog suff: x y / separates x y U -> separates y x U by firstorder.
-  move => [xU yU H] //. rewrite /separates; split => // p.
-  move: (H (prev p)) => [z zpp zU]. exists z; by try rewrite mem_prev in zpp.
-Qed.
-
-Lemma separatesNE x y U :
-  x \notin U -> y \notin U -> ~ separates x y U -> connect (restrict [predC U] edge_rel) x y.
-Proof.
-  move => xU yU /(introN separatesP). rewrite /separatesb xU yU !negb_and //= negb_forall.
-  case: (altP (x =P y)) => [<-|xDy H]; first by rewrite connect0.
-  apply/uPathRP => //. case/existsP : H => p Hp. exists p => //. 
-  by rewrite -disjoint_subset disjoint_exists.
-Qed.
-
-Definition separator U := exists x y, separates x y U.
-
-Lemma separatorNE U x y : ~ separator U -> ~ separates x y U.
-Proof. move => nsepU sepU. by apply nsepU; exists x; exists y. Qed.
-
-Lemma sseparator_connected S : 
-  smallest separator S -> 0 < #|S| -> connected [set: G].
-Proof.
-  move => SS gt0 x y _ _.
-  have: (connect (restrict [predC set0] sedge) x y).
-  { apply (@separatesNE x y set0); rewrite ?inE => //. rewrite -(@cards0 G) in gt0. 
-    move: (below_smallest SS gt0). exact: separatorNE. }
-  rewrite !restrictE //; intro; rewrite !inE //.
-Qed.
-
-(** separators do not make precises what the separated comonents are,
-i.e., a separator can disconnect the graph into more than two
-components. Hence, we also define separations, which make the
-separated sides explicit *)
-Definition separation V1 V2 := 
-  ((forall x, x \in V1 :|: V2) * (forall x1 x2, x1 \notin V2 -> x2 \notin V1 -> x1 -- x2 = false))%type.
-
-Lemma sep_inR x V1 V2 : separation V1 V2 -> x \notin V1 -> x \in V2.
-Proof. move => sepV. by case/setUP : (sepV.1 x) => ->. Qed.
-
-Lemma sep_inL x V1 V2 : separation V1 V2 -> x \notin V2 -> x \in V1.
-Proof. move => sepV. by case/setUP : (sepV.1 x) => ->. Qed.
-
-Definition proper_separation V1 V2 := separation V1 V2 /\ exists x y, x \notin V2 /\ y \notin V1.
-
-Lemma separate_nonadjacent x y : x != y -> ~~ x -- y -> proper_separation [set~ x] [set~ y].
-Proof.
-  move => xDy xNy. split; last by exists y; exists x; rewrite !inE !eqxx.
-  split => [z | x1 x2].
-  - rewrite !inE -negb_and. by apply: contraNN xDy => /andP[/eqP->/eqP->].
-  - rewrite !inE !negbK sg_sym => /eqP-> /eqP->. by rewrite (negbTE xNy).
-Qed.
-
-Lemma separation_separates x y V1 V2:
-  separation V1 V2 -> x \notin V2 -> y \notin V1 -> separates x y (V1 :&: V2).
-Proof.
-  move => sepV Hx Hy. split; rewrite ?inE ?negb_and ?Hx ?Hy //. 
-  move => p.
-  case: (@split_at_first G (mem V2) x y p y) => // ; rewrite ?(sep_inR sepV) //.
-  move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE in H2. 
-  exists z; rewrite ?H1 !inE ?H2 // andbT.
-  case: (@splitR G x z p1) => [|z0 [p1' [z0z H4]]]. 
-  { by apply: contraTneq H2 => <-. }
-  apply: contraTT (z0z) => Hz1. rewrite sepV ?inE //.
-  apply: contraTN (z0z) => H0. by rewrite [z0]H3 ?sgP // H4 !inE.
-Qed.
-
-Lemma proper_separator V1 V2 :
-  proper_separation V1 V2 -> separator (V1 :&: V2).
-Proof.
-  case => Hsep [x] [y] [Hx Hy]. exists x. exists y. exact: separation_separates. 
-Qed.
-
-Lemma separator_separation S : 
-  separator S -> exists V1 V2, proper_separation V1 V2 /\ S = V1 :&: V2.
-Proof.
-  case => x1 [x2] [S1 S2 P12].
-  set U := locked [set x | connect (restrict [predC S] sedge) x1 x].
-  set V1 := U :|: S. set V2 := ~: U. exists V1; exists V2.
-  have D : x1 != x2.
-  { apply/negP => /eqP A. subst x2. case: (P12 (idp x1)) => ?.
-    rewrite mem_idp => /eqP-> ?. contrab. }
-  have HU x : x \in U -> x \notin S.
-  { rewrite /U -lock inE srestrict_sym. case/connectP => [[/= _ <- //|/= y p]].
-    rewrite inE /=. by case: (x \in S). }
-  split; first split; first split.
-  - move => x. rewrite !inE. by case: (x \in U).
-  - move => u v. rewrite !inE !(negb_or,negb_and,negbK) => [Hu] /andP [Hv1 Hv2].
-    apply: contraNF Hv1 => uv. move: (Hu). rewrite /U -lock !inE => H.
-    apply: connect_trans H _. apply: connect1. by rewrite /= !inE HU.
-  - exists x1; exists x2; split.
-    + suff H: (x1 \in U) by rewrite !inE H.
-      by rewrite /U -lock inE connect0.
-    + rewrite !inE negb_or S2 (_ : x2 \notin U = true) //.
-      apply: contraTN isT. rewrite /U -lock inE => /uPathRP.
-      case => [//|p Ip /subsetP subS].
-      case: (P12 p) => z /subS. rewrite inE /= => *. contrab.
-  - apply/setP => x. rewrite !inE. case E: (x \in U) => //=.
-    by rewrite (negbTE (HU _ _)).
-Qed.
-
-Definition separatorb U := [exists x, exists y, separatesb x y U].
-
-Lemma separatorP U : reflect (separator U) (separatorb U).
-Proof. rewrite /separator /separatorb.
-  apply: (iffP existsP).
-  - move => [x /existsP [y /separatesP H]]. exists x; exists y; done.
-  - move => [x [y H]]. exists x. apply /existsP. exists y. by apply /separatesP.
-Qed.
-
-Lemma minimal_separation x y : x != y -> ~~ x -- y -> 
-  exists V1 V2, proper_separation V1 V2 /\ smallest separator (V1 :&: V2).
-Proof.
-  move => xDy xNy. 
-  move/proper_separator/separatorP : (separate_nonadjacent xDy xNy) => sep.
-  case (ex_smallest (fun S => #|S|) sep) => U /separatorP sepU HU {sep xDy xNy}.
-  move: (separator_separation sepU) => [V1 [V2 [ps UV]]].
-  exists V1; exists V2. repeat split => //; rewrite -UV // => V /separatorP. exact: HU.
-Qed.
-
-Lemma separation_sym V1 V2 : separation V1 V2 <-> separation V2 V1.
-Proof.
-  wlog suff W : V1 V2 / separation V1 V2 -> separation V2 V1. { split; exact: W. }
-  move => sepV. split => [x|x1 x2 A B]; by rewrite 1?setUC 1?sgP sepV. 
-Qed.
-
-Lemma proper_separation_symmetry V1 V2 :
-  proper_separation V1 V2 <-> proper_separation V2 V1.
-Proof. rewrite /proper_separation separation_sym. by firstorder. Qed.
-
-Lemma sseparator_neighbours V1 V2 s : 
-  proper_separation V1 V2 -> smallest separator (V1 :&: V2) -> 
-  s \in V1 :&: V2 -> exists x1 x2, [/\ x1 \notin V2, x2 \notin V1, s -- x1 & s -- x2].
-Proof.
-  wlog: V1 V2 / [forall x1, (x1 \notin V2) ==> ~~ s -- x1].
-  { move => H ps ss sS.
-    case (boolP [forall x1, (x1 \notin V2) ==> ~~ s -- x1]).
-    - move => HH. apply (H V1 V2) => //.
-    - move => /forall_inPn [x1 x1V /negPn sx1].
-      case (boolP [forall x, (x \notin V1) ==> ~~ s -- x]).
-      + move => HH. rewrite setIC in sS ss. case (H V2 V1) => //.
-        * by apply proper_separation_symmetry.
-        * move => y [z [? ? ? ?]]. exists z; exists y. split; done.
-      + move => /forall_inPn [x2 x2V sx2].
-        exists x1; exists x2. split => //; by apply negbNE. }
-  move => /forall_inP Hwlog [sepV [x1] [x2] [x1V12  x2V21]] smallS sS.
-  pose S' := V1 :&: V2:\ s. 
-  suff: separator S'.
-  - move => sS'. case: (below_smallest (V := S') smallS) => //. 
-    by rewrite /S' (cardsD1 s (V1 :&: V2)) sS. 
-  - (* cant use [separator S], because the two vertices could be both in V2 *)
-    exists x1; exists x2. split; try by rewrite /S' notinD.
-    + move => p.
-      case: (@split_at_first G (mem V2) x1 x2 p x2) => //.
-      { by rewrite (sep_inR sepV x2V21). }
-      move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE in H2. 
-      exists z; first by rewrite H1 !inE. 
-      case: (@splitR G x1 z p1).
-      { apply: contraTN isT => /eqP ?. subst x1; contrab. }
-      move => z0 [p' [z0z Hp']].
-      have z0V1: z0 \notin V2. 
-      { apply: contraTN (z0z) => ?. by rewrite [z0]H3 ?sgP // Hp' !inE. }
-      rewrite !inE H2 andbT. apply/andP; split.
-      * apply: contraTN (z0z) => /eqP->. by rewrite sgP Hwlog.
-      * apply: contraTT (z0z) => ?. by rewrite sepV.
-Qed.
-
-(** Note: This generalizes the corresponding lemma on checkpoints *)
-Lemma avoid_nonseperator U x y : ~ separator U -> x \notin U -> y \notin U -> 
-  exists2 p : Path x y, irred p & [disjoint p & U].
-Proof.
-  move => nsep_u xU yU. 
-  case: (altP (x =P y)) => [?|A];first subst y.
-  - exists (idp x); first exact: irred_idp. 
-    rewrite (@eq_disjoint1 _ x) // => y. by rewrite mem_idp.
-  - have/separatesNE/uPathRP : ~ separates x y U by apply separatorNE.
-    case => // p irr_p. rewrite -disjoint_subset. by exists p.
-Qed.
-
-Lemma sseparator_uniq x y S:
-  smallest separator S -> separates x y S -> S != set0 ->
-  exists2 p : Path x y, irred p & exists! z, z \in p /\ z \in S.
-Proof.
-  (* Since [S != set0], [G] is connected. Assume every path needs to
-  visit at least two distinct vertices fro [S]. Thus, there exists a
-  vertex in [S], say [s], such that every xy-path through [s] must
-  vist another node. Then [S :\ s] separates [x] and [y],
-  contradiction. *)
-Abort.
-
-
-Lemma separation_connected_same_component V1 V2:
-  separation V1 V2 -> forall x0 x, x0 \notin V2 ->
-  connect (restrict [predC (V1:&:V2)] sedge) x0 x -> x \notin V2.
-Proof.
-  set S := V1 :&: V2.
-  move => sepV x0 x x0NV2.
-  case: (boolP (x0==x)) => [/eqP ? | x0x]; first by subst x0.
-  move => /(PathRP x0x) [p /subsetP Hp].
-  case: (boolP(x \in V2)) => // xV2.
-  case: (@split_at_first G (mem V2) x0 x p x) => //.
-    move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE /= in H2.
-  case: (altP (x0 =P z)) => ?; first by subst x0; contrab.
-  case: (@splitR G x0 z p1) => [|z0 [p1' [z0z H4]]] //.
-  apply: contraTT (z0z) => _. rewrite sepV //.
-  + apply: contraTN (z0z) => z0V2. by rewrite [z0]H3 ?sgP // H4 !inE.
-  + have ? : (z \notin S) by apply: Hp; rewrite H1 !inE. by subst S; set_tac.
-Qed.
-
-End Separators.
-
 
 (** ** Constructing Tree Decompositions *)
 
-Prenex Implicits separator.
+Prenex Implicits vseparator.
 Implicit Types G H : sgraph.
 
 Arguments sdecomp : clear implicits.
@@ -517,8 +294,8 @@ Proof.
 Qed.
 
 
-Lemma K4_of_separators (G : sgraph) : 
-  3 < #|G| -> (forall S : {set G}, separator S -> 2 < #|S|) -> minor G K4.
+Lemma K4_of_vseparators (G : sgraph) : 
+  3 < #|G| -> (forall S : {set G}, vseparator S -> 2 < #|S|) -> minor G K4.
 Proof.
   move => G4elt minsep3.
   case: (boolP (cliqueb [set: G])) => [|/cliquePn [x] [y] [_ _ xNy xNEy]].
@@ -551,18 +328,18 @@ Proof.
   apply K4_of_paths with x y (s ord0) s1' (p ord0) p1 p2 q1 => //; exact: valP.
 Qed.
 
-Lemma no_K4_smallest_separator (G : sgraph) :
-  ~ minor G K4 -> #|G| <= 3 \/ (exists S : {set G}, smallest separator S /\ #|S| <= 2).
+Lemma no_K4_smallest_vseparator (G : sgraph) :
+  ~ minor G K4 -> #|G| <= 3 \/ (exists S : {set G}, smallest vseparator S /\ #|S| <= 2).
 Proof.
   move => HM. case (boolP (3 < #|G|)) => sizeG; last by rewrite leqNgt; left. 
-  right. case: (boolP ([exists (S : {set G} | #|S| <= 2), separatorb S])).
+  right. case: (boolP ([exists (S : {set G} | #|S| <= 2), vseparatorb S])).
   - case/exists_inP => /= S sizeS sepS. 
-    case (@ex_smallest _ (@separatorb G) (fun a => #|a|) S sepS) => U /separatorP sepU HU.
+    case (@ex_smallest _ (@vseparatorb G) (fun a => #|a|) S sepS) => U /vseparatorP sepU HU.
     exists U. repeat split => //. 
-    + move => V /separatorP. exact: HU.
+    + move => V /vseparatorP. exact: HU.
     + move: (HU S sepS) => ?. exact: leq_trans sizeS.
-  - move/exists_inPn => H. exfalso. apply HM. apply K4_of_separators => //.
-    move => S. move: (H S). rewrite unfold_in (rwP (separatorP _)) => H'.
+  - move/exists_inPn => H. exfalso. apply HM. apply K4_of_vseparators => //.
+    move => S. move: (H S). rewrite unfold_in (rwP (vseparatorP _)) => H'.
     apply: contraTT. by rewrite ltnNge negbK.
 Qed.
 
@@ -678,10 +455,10 @@ Qed.
 for K4-free graphs. *)
 
 Lemma K4_free_add_edge_sep_size2 (G : sgraph) (s1 s2 : G):
-  K4_free G -> smallest separator [set s1; s2] -> s1 != s2 -> K4_free (add_edge s1 s2).
+  K4_free G -> smallest vseparator [set s1; s2] -> s1 != s2 -> K4_free (add_edge s1 s2).
 Proof.
   move S12 : [set s1;s2] => S. move/esym in S12. move => K4free ssepS s1Ns2 K4G'.
-  case: (separator_separation ssepS.1) => V1 [V2] [psep SV12].
+  case: (vseparator_separation ssepS.1) => V1 [V2] [psep SV12].
   wlog [phi rmapphi HphiV1] : {K4G'} V1 V2 psep SV12 / exists2 phi : K4 -> {set add_edge s1 s2},
          minor_rmap phi & forall x : K4, phi x \subset V1.
   { move => W.  case: (@separation_K4side (add_edge s1 s2) V1 V2) => //.
@@ -698,7 +475,7 @@ Proof.
     (exists i j : K4, [/\ s1 \in phi i, s2 \in phi j & i != j]) -> minor G K4.
   { move => [i [j [s1i s2j iNj]]]. rewrite SV12 in ssepS.
     (* s1 as a neighbour [z \notin V1] *)
-    case: (@sseparator_neighbours _ _ _ s1 psep ssepS) => [|_ [z [_ zNV1 _ s1z]]].
+    case: (@svseparator_neighbours _ _ _ s1 psep ssepS) => [|_ [z [_ zNV1 _ s1z]]].
     { by rewrite S12 !inE eqxx. }
     (* path from z to s2 avoiding s1 *)
     have [p irp dis] : exists2 p : Path z s2, irred p & [disjoint p & [set s1]].
@@ -914,10 +691,10 @@ Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
   move: G. apply: (nat_size_ind (f := fun G => #|G|)) => G Hind K4free. 
-  (* Either G is small, or it has a smallest separator of size at most two *)
-  case (no_K4_smallest_separator K4free) =>[|[S [ssepS Ssmall2]]].
+  (* Either G is small, or it has a smallest vseparator of size at most two *)
+  case (no_K4_smallest_vseparator K4free) =>[|[S [ssepS Ssmall2]]].
   { exact: decomp_small. }
-  move: (separator_separation ssepS.1) => [V1 [V2 [[sep prop] SV12]]].
+  move: (vseparator_separation ssepS.1) => [V1 [V2 [[sep prop] SV12]]].
   move: (prop) => [x0 [y0 [Hx0 Hy0]]]. 
   have V1properG: #|induced V1| < #|G|.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
@@ -972,8 +749,8 @@ Proof.
   apply: contraTneq => <-. by rewrite mem_edgep negb_or D3 eq_sym D2.
 Qed.
 
-Lemma forest_separator (G : sgraph) : 
-  is_forest [set: G] -> 3 <= #|G| -> exists2 S : {set G}, separator S & #|S| <= 1.
+Lemma forest_vseparator (G : sgraph) : 
+  is_forest [set: G] -> 3 <= #|G| -> exists2 S : {set G}, vseparator S & #|S| <= 1.
 Proof.
   move => forest_G card_G. 
   have {card_G} [x [y [xDy xy]]] := forest3 forest_G card_G.
@@ -1007,9 +784,9 @@ Lemma forest_TW1 (G : sgraph) :
   is_forest [set: G] -> exists T B, sdecomp T G B /\ width B <= 2.
 Proof.
   move: G. apply: (nat_size_ind (f := fun G => #|G|)) => G Hind forest_G. 
-  have:= forest_separator forest_G.
+  have:= forest_vseparator forest_G.
   case: leqP => [Glt2 _|Ggt2 /(_ isT) [S sepS Slt2]]; first exact: decomp_small.
-  have [V1 [V2 [[sep [x0 [y0 [Hx0 Hy0]]]] SV12]]] := separator_separation sepS.
+  have [V1 [V2 [[sep [x0 [y0 [Hx0 Hy0]]]] SV12]]] := vseparator_separation sepS.
   have V1properG: #|induced V1| < #|G|.
   { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
   have {x0 Hx0 y0 Hy0} V2properG: #|induced V2| < #|G|.

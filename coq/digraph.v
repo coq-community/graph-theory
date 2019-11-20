@@ -701,6 +701,7 @@ Section IPath.
 End IPath.
 
 End DiPathTheory.
+Hint Resolve ivalP : core.
 
 (** In some constructions a vertex can be typed as belonging to different
 graphs. This makes [Path x y] or [x -- y] insufficent for understanding the
@@ -1014,6 +1015,13 @@ Proof.
 Qed.
 
 End PathS.
+
+Definition del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b)) :=
+  let: existT (x,y) p' := p in PathS (Build_Path (del_edge_lift_proof (valP p'))).
+
+Lemma mem_del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b))  x : 
+  (x \in del_edge_liftS p) = (x \in p).
+Proof. by case: p => [[u v] p]. Qed.
 
 (** ** Directed Multigraphs *)
 

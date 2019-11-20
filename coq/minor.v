@@ -341,8 +341,6 @@ Qed.
 
 (** ** Excluded-Minor Characterization of Forests *)
 
-Hint Resolve ivalP : core.
-
 (* TODO: use this whenever explicitly exhibiting a minor map *)
 Lemma minor_rmapI (G H : sgraph) (phi : H -> {set G}) (f : H -> nat) : 
   injective f ->
