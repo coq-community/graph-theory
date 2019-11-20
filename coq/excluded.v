@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 (* Note: ssrbool is empty and shadows Coq.ssr.ssrbool, use Coq.ssrbool for "Find" *)
 
 Require Import edone preliminaries set_tac.
-Require Import digraph sgraph treewidth minor menger.
+Require Import digraph sgraph treewidth minor connectivity.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

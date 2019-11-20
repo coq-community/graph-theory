@@ -6,7 +6,7 @@ Require Import edone finite_quotient preliminaries set_tac.
 Require Import digraph sgraph treewidth minor checkpoint.
 Require Import equiv mgraph mgraph2 ptt mgraph2_tw2 skeleton.
 Require Import bounded extraction_def extraction_iso.
-Require Import separators.
+Require Import excluded.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

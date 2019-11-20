@@ -21,8 +21,8 @@ sgraph.v
 helly.v
 treewidth.v
 minor.v
-menger.v
-separators.v
+connectivity.v
+excluded.v
 checkpoint.v
 cp_minor.v
 

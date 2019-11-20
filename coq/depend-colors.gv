@@ -12,13 +12,13 @@ digraph dependencies {
 	}
 	subgraph { # general purpose graph lib
 		node [style=filled; color="orange"];
-		"digraph";   
-		"sgraph";	   
-		"helly";	   
-		"treewidth"; 
-		"minor";	   
-		"menger";	   
-		"separators";		
+		"digraph";
+		"sgraph";
+		"helly";
+		"treewidth";
+		"minor";
+		"connectivity";
+		"excluded";
 		"checkpoint";
 	}
 	subgraph { # 2p algebra of multigraphs (JAR19 generalised in CPP20)
@@ -29,22 +29,22 @@ digraph dependencies {
 	}
 	subgraph { # 2p algebra of multigraphs, extraction (JAR19)
 		node [style=filled; color="red"];
-		"skeleton";	
-		"mgraph2_tw2";	
-		"cp_minor";	
-		"extraction_def"; 
-		"extraction_iso"; 
-		"extraction_top"; 
+		"skeleton";
+		"mgraph2_tw2";
+		"cp_minor";
+		"extraction_def";
+		"extraction_iso";
+		"extraction_top";
 	}
 	subgraph { # 2pdom soundness and completeness (CPP20)
 		node [style=filled; color="blueviolet"];
-		"structures";	
+		"structures";
 		"pttdom";
-		"rewriting"; 	
-		"reduction"; 	
+		"rewriting";
+		"reduction";
 		"open_confluence";
-		"transfer"; 	
-		"completeness"; 	
+		"transfer";
+		"completeness";
 	}
 	subgraph {
 		rank="same";
