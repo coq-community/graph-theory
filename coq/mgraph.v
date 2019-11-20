@@ -1,7 +1,7 @@
 Require Import Morphisms RelationClasses.
 Require CMorphisms CRelationClasses. (* To be used explicitly *)
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries bij equiv.
+Require Import edone finite_quotient preliminaries bij equiv digraph.
 Require Export structures.
 
 Set Implicit Arguments.
@@ -935,3 +935,46 @@ Section MergeSubgraph.
 
 End MergeSubgraph.
 
+(** ** Walks *)
+
+Definition mgraph_rel L (G : graph L) : rel G := 
+  fun x y => [exists e, (source e == x) && (target e == y)].
+
+Definition digraph_of L (G : graph L) := DiGraph (@mgraph_rel L G).
+(* Coercion mgraph_relType : graph >-> diGraph. -- breaks skeleton.v *)
+
+
+Section Walk.
+Variable (L : labels) (G : graph L).
+Implicit Types (x y z : G) (e : edge G) (w : seq (edge G)).
+
+Fixpoint walk x y w := 
+  if w is e :: w' then (source e == x) && walk (target e) y w' else x == y.
+
+Definition eseparates x y (E : {set edge G}) := 
+  forall w, walk x y w -> exists2 e, e \in E & e \in w.
+
+Definition line_graph := DiGraph [rel e1 e2 : edge G | target e1 == source e2].
+
+Lemma walk_of_line e1 e2 (p : @Path line_graph e1 e2) :
+  walk (source e1) (target e2) (nodes p).
+Proof.
+  case: p => p pth_p. rewrite nodesE /= eqxx /=. 
+  elim: p e1 pth_p => [e1 pth_p|e w IHw e1]. 
+  - by rewrite (pathp_nil pth_p) /= eqxx.
+  - by rewrite pathp_cons /edge_rel /= eq_sym => /andP [-> /IHw].
+Qed.
+
+Lemma line_of_walk x y w : walk x y w -> ~~ nilp w -> 
+  exists e1 e2 (p : @Path line_graph e1 e2), [/\ source e1 = x, target e2 = y & nodes p = w].
+Proof.
+  elim: w x => //= e [|e' w] IH x /andP[src_e walk_w] _. 
+  - exists e. exists e. exists (@idp line_graph e). 
+    rewrite nodesE /idp /= (eqP src_e). split => //. exact/eqP.
+  - case: (IH _ walk_w _) => // e1 [e2] [p] [P1 P2 P3].
+    have ee1 : @edge_rel line_graph e e1 by apply/eqP; rewrite P1.
+    exists e. exists e2. exists (pcat (edgep ee1) p). rewrite (eqP src_e) P2. split => //.
+    rewrite !nodesE /= in P3 *. case: P3 => ? ?. by subst.
+Qed.
+
+End Walk.

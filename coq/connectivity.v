@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries digraph sgraph set_tac.
+Require Import edone preliminaries digraph sgraph mgraph set_tac.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -812,7 +812,7 @@ Qed.
 
 (** *** Edge Version *)
 
-Corollary independent_walks (G : mGraph) (a b : G) n : 
+Corollary independent_walks L (G : graph L) (a b : G) n : 
   a != b -> (forall E, eseparates a b E -> n <= #|E|) -> 
   exists2 W : 'I_n -> seq (edge G), 
     forall i, walk a b (W i) & forall i j, i != j -> [disjoint W i & W j].
