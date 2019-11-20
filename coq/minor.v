@@ -402,3 +402,9 @@ Proof.
     exact: non_forerst_K3.
   - case/forest_TW1 => T [B []]. exact: treewidth_K_free. 
 Qed.
+
+Theorem TW1_forest G : (exists T B, sdecomp T G B /\ width B <= 2) <-> is_forest [set: G].
+Proof.
+  split => [[T] [B] [decB wB]|]; last exact: forest_TW1.
+  apply/K3_free_forest. exact: treewidth_K_free decB wB.
+Qed.
