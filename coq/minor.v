@@ -171,7 +171,7 @@ Definition edge_surjective (G1 G2 : sgraph) (h : G1 -> G2) :=
   forall x y : G2 , x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0].
 
 (* The following should hold but does not fit the use case for minors *)
-Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp D) (h :G -> H) : 
+Lemma rename_sdecomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h :G -> H) : 
   hom_s h -> surjective h -> edge_surjective h -> 
   (forall x y, h x = h y -> exists t, (x \in D t) && (y \in D t)) -> 
   @sdecomp T _ (rename D h).
@@ -180,7 +180,7 @@ Abort.
 
 
 Lemma width_minor (G H : sgraph) (T : forest) (B : T -> {set G}) : 
-  sdecomp B -> minor G H -> exists B', @sdecomp T H B' /\ width B' <= width B.
+  sdecomp T G B -> minor G H -> exists B', @sdecomp T H B' /\ width B' <= width B.
 Proof.
   move => decT [phi [p1 p2 p3]].
   pose B' t := [set x : H | [exists (x0 | x0 \in B t), phi x0 == Some x]].
@@ -246,7 +246,7 @@ Lemma iso_K4_free (G H : sgraph) :
 Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
 
 Lemma treewidth_K_free (G : sgraph) (T : forest) (B : T -> {set G}) m : 
-  sdecomp B -> width B <= m.+1 -> ~ minor G 'K_m.+2.
+  sdecomp T G B -> width B <= m.+1 -> ~ minor G 'K_m.+2.
 Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
   suff: m.+1 < m.+1 by rewrite ltnn.
@@ -254,7 +254,7 @@ Proof.
 Qed.
 
 Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) : 
-  sdecomp B -> width B <= 3 -> K4_free G.
+  sdecomp T G B -> width B <= 3 -> K4_free G.
 Proof. exact: treewidth_K_free. Qed.
 
 Lemma small_K_free m (G : sgraph): #|G| <= m.+1 -> ~ minor G 'K_m.+2.
@@ -363,16 +363,6 @@ Qed.
 
 Section K3.
 Variable (G : sgraph).
-
-Lemma is_forestPn (S : {set G}) : 
-  reflect (exists x y (p1 p2 : IPath x y), [/\ p1 \subset S, p2 \subset S & p1 != p2])
-          (~~ is_forestb S).
-Proof.
-  rewrite negb_forall. apply: existsPP => x. 
-  rewrite negb_forall. apply: existsPP => y. 
-  rewrite -ltnNge. apply: (iffP card_gt1P) => /=. 
-  all: by move => [p1] [p2] [A B C]; exists p1; exists p2.
-Qed.
 
 Lemma disjoint_part (x y : G) (p1 p2 : Path x y) : 
   irred p1 -> irred p2 -> p1 != p2 -> 

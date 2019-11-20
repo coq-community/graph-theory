@@ -1,7 +1,7 @@
 Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries digraph sgraph.
+Require Import edone preliminaries digraph sgraph connectivity.
 Require Import set_tac.
 
 Set Implicit Arguments.
@@ -93,9 +93,8 @@ Proof.
 Qed.
 
 (** ** Renaming *)
-Arguments sdecomp [T G] B.
 
-Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp D) (h : G -> H) : 
+Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h : G -> H) : 
   hom_s h -> 
   surjective h -> 
   (forall x y : H, x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0]) ->
@@ -180,7 +179,7 @@ Section JoinT.
           end].
 
   Lemma join_decomp (G1 G2 : sgraph) (D1 : T1 -> {set G1}) (D2 : T2 -> {set G2})  :
-    sdecomp D1 -> sdecomp D2 -> sdecomp (decompU D1 D2).
+    sdecomp T1 G1 D1 -> sdecomp T2 G2 D2 -> sdecomp tjoin (sjoin G1 G2) (decompU D1 D2).
   Proof using.
     move => dec1 dec2. split.
     - move => [x|x]. 
@@ -224,33 +223,6 @@ End JoinT.
 
 (** ** Link Construction (without intermediate node) *)
 
-(*
-Section AddClique.
-Variables (G : sgraph) (U : {set G}).
-Implicit Types x y : G.
-
-Definition add_clique_rel := relU sedge [rel x y in U | x != y].
-
-Lemma add_clique_rel_irred : irreflexive add_clique_rel.
-Abort.
-
-Lemma add_clique_rel_sym : symmetric add_clique_rel.
-Abort.
-
-Definition add_clique := SGraph add_clique_rel_sym add_clique_rel_irred.
-
-Lemma add_clique_lift x y (p : @Path G x y) : 
-  exists q : @Path add_clique x y, nodes q = nodes p.
-Abort.
-
-Lemma add_clique_unlift x y (p : @Path add_clique x y) : 
-  #|[set x in U | x \in p]| <= 1 ->
-  exists q : @Path G x y, nodes q = nodes p.
-Abort.
-
-End AddClique.
-*)
- 
 (* TOTHINK: The assumption [s1 != s2] is redundant, but usually available. *)
 Lemma add_edge_break (G : sgraph) (s1 s2 x y : G) (p : @Path (add_edge s1 s2) x y) :
   s1 != s2 ->
@@ -306,9 +278,6 @@ Lemma path_return (G : sgraph) z (A : {set G}) (x y : G) (p : Path x y) :
   x \in A -> y \in A -> irred p -> 
   (forall u v, u -- v -> u \in A -> v \notin A -> u = z) -> p \subset A.
 Abort.
-
-
-
 
 Section AddEdge.
   Variables (T : forest) (t0 t1 : T).
@@ -450,7 +419,7 @@ Section Link.
 
   Lemma decomp_link (G : sgraph) (D : T -> {set G}) (A  : {set G}) : 
     A \subset \bigcup_(t in U) D t ->
-    sdecomp D -> @sdecomp tlink G (decompL D A).
+    sdecomp T G D -> @sdecomp tlink G (decompL D A).
   Proof.
     move => HA decD. split => //.
     - move => x. case: (sbag_cover decD x) => t Ht. by exists (Some t). 
@@ -477,11 +446,13 @@ Section Link.
 
 End Link.
 
+(** ** Every clique is contained in some bag *)
+
 Section DecompTheory.
   Variables (G : sgraph) (T : forest) (B : T -> {set G}).
   Implicit Types (t u v : T) (x y z : G).
 
-  Hypothesis decD : sdecomp B.
+  Hypothesis decD : sdecomp T G B.
 
   Arguments sbag_conn [T G B] dec x t1 t2 : rename.
 
@@ -561,10 +532,12 @@ Section DecompTheory.
   Qed.
       
 End DecompTheory.
+Arguments rename_decomp [T G H D].
 
-(** decompositsions of ['K_m] have with at least m *)
+(** decompositsions of ['K_m] have width at least [m] *)
+
 Lemma Km_bag m (T : forest) (D : T -> {set 'K_m.+1}) : 
-  sdecomp D -> exists t, m.+1 <= #|D t|.
+  sdecomp T 'K_m.+1 D -> exists t, m.+1 <= #|D t|.
 Proof.
   move => decD.
   case: (@decomp_clique _ _ _ decD setT _ _) => //.
@@ -574,5 +547,127 @@ Proof.
 Qed.
 
 Lemma Km_width m (T : forest) (D : T -> {set 'K_m.+1}) : 
-  sdecomp D -> m.+1 <= width D.
+  sdecomp T 'K_m.+1 D -> m.+1 <= width D.
 Proof. case/Km_bag => t Ht. apply: leq_trans Ht _. exact: leq_bigmax. Qed.
+
+(** Obtaining a tree decomposition from tree decompositions of (induced) subgraphs *)
+Lemma separation_decomp (G:sgraph) (V1 V2 : {set G}) T1 T2 B1 B2 :
+  @sdecomp T1 (induced V1) B1 -> @sdecomp T2 (induced V2) B2 -> 
+  separation V1 V2 -> clique (V1 :&: V2) ->
+  exists T B, @sdecomp T G B /\ width B <= maxn (width B1) (width B2).
+Proof.
+  move => dec1 dec2 sepV clV.
+  have dec12 := join_decomp dec1 dec2.
+  set G' := sjoin _ _ in dec12.
+  set T := tjoin T1 T2 in dec12.
+  set B : tjoin T1 T2 -> {set G'}:= decompU B1 B2 in dec12.
+  pose h (x : G') : G := match x with inl x => val x | inr x => val x end.
+  case: (boolP (0 < #|V1 :&: V2|)) => [cliquen0|clique0].
+  - (* clique not empty *)
+    case/card_gt0P : cliquen0 => v0 /setIP [v01 v02].
+    have HVx (V : {set G}) : (V = V1) \/ V = V2 -> v0 \in V ->
+       let V' := val @^-1: (V1 :&: V2) : {set induced V} in 0 < #|V'| /\ clique V'.
+    { move => HV xV /=. split.
+      - apply/card_gt0P; exists (Sub v0 xV). rewrite inE /=. case: HV => ?; by set_tac.
+      - move => u v. rewrite [_:&:_]lock !inE -lock -val_eqE. exact: clV. }
+    set S := V1 :&: V2 in HVx.
+    pose S1 := val @^-1: S : {set induced V1}. 
+    pose S2 := val @^-1: S : {set induced V2}.
+    have [cln01 clS1] : 0 < #|S1| /\ clique S1 by apply: HVx; auto.
+    have [cln02 clS2] : 0 < #|S2| /\ clique S2 by apply: HVx; auto.
+    case: (decomp_clique dec1 cln01 clS1) => t1 Ht1.
+    case: (decomp_clique dec2 cln02 clS2) => t2 Ht2.
+    have dis_t1_t2 : ~~ connect (@sedge T)(inl t1) (inr t2) by rewrite join_disc.
+    set T' := Forest (add_edge_is_forest dis_t1_t2).
+    have dec12' : sdecomp T' G' B. 
+    { apply: sdecomp_tree_subrel dec12. exact: subrelUl. }
+    case/Wrap: (rename_decomp dec12' h). case/(_ _ _ _ _)/Wrap.
+    + by move => [u|u] [v|v].
+    + move => v. 
+      case/setUP : (sepV.1 v) => Hv; by [exists (inl (Sub v Hv))|exists (inr (Sub v Hv))].
+    + move => x y xy.
+      suff: x \in V1 /\ y \in V1 \/ x \in V2 /\ y \in V2.
+      { case => [[Hx Hy]|[Hx Hy]].
+        - by exists (inl (Sub x Hx)); exists (inl (Sub y Hy)). 
+        - by exists (inr (Sub x Hx)); exists (inr (Sub y Hy)). }
+      case: (boolP (x \in V1));case: (boolP (y \in V1)) => Hy Hx; 
+        first [by left|right; apply/andP].
+      * rewrite [y \in _](sep_inR sepV) // andbT. 
+        apply: contraTT xy => H. by rewrite sepV.
+      * rewrite [x \in _](sep_inR sepV) //=.
+        apply: contraTT xy => H. by rewrite sgP sepV.
+      * by rewrite !(sep_inR sepV).
+    + case: dec1 => dec1A dec1B dec1C. case: dec2 => dec2A dec2B dec2C.
+      have X (x : induced V1) (y : induced V2) : val x = val y -> 
+         ((inl x \in B (inl t1) = true) * (inr y \in B (inr t2) = true))%type.
+      { move => Exy. rewrite /B /decompU /= !mem_imset //.
+        - apply: (subsetP Ht2). rewrite !inE -{1}Exy. 
+          apply/andP; split; exact: valP.
+        - apply: (subsetP Ht1). rewrite !inE {2}Exy.
+          apply/andP; split; exact: valP. }
+      move => [x|x] [y|y]; simpl h.
+      * move/val_inj => ?;subst y. 
+        case: (dec1A x) => t Ht. left. exists (inl t). 
+        by rewrite /B /decompU /= mem_imset.
+      * move => Exy. right. exists (inl t1). exists (inr t2).
+        by rewrite /edge_rel/= !(X _ _ Exy) /= !eqxx.
+      * move/esym => Eyx. right. exists (inr t2). exists (inl t1). 
+        by rewrite /edge_rel/= !(X _ _ Eyx) /= !eqxx.
+      * move/val_inj => ?;subst y. 
+        case: (dec2A x) => t Ht. left. exists (inr t). 
+        by rewrite /B /decompU /= mem_imset.
+    + move => decRB. do 2 eexists. split. eapply decRB.
+      apply: leq_trans (rename_width _ _) _. exact: join_width.
+  - (* clique size 0 *)
+    suff iso: diso G' G.
+    + case: (decomp_iso dec12 iso) => B' sdecB' wB'B.
+      exists T; exists B'. split => //. by rewrite wB'B join_width.
+    + suff HH: V2 = ~:V1.
+      { rewrite /G' HH. apply ssplit_disconnected. move => x y xV1 yNV1.
+        rewrite (sepV.2 x y) => //. by rewrite HH inE xV1. }
+      apply/setP => z. rewrite inE. case: (boolP (z \in V1)) => Hz.
+      * apply: contraNF clique0 => H. apply/card_gt0P. exists z. by set_tac.
+      * apply: contraTT (sepV.1 z). by set_tac.
+Qed.
+
+(** ** Forests have treewidth 1 *)
+
+Lemma forest_vseparator (G : sgraph) : 
+  is_forest [set: G] -> 3 <= #|G| -> exists2 S : {set G}, vseparator S & #|S| <= 1.
+Proof.
+  move => forest_G card_G. 
+  have {card_G} [x [y [xDy xy]]] := forest3 forest_G card_G.
+  have [/uPathP [p Ip]|nCxy]:= (boolP (connect sedge x y)).
+  move/forestT_unique in forest_G.
+  - have/set0Pn [z z_p] : interior p != set0.
+    { apply: contraNneq xy => Ip0. by case: (interior0E xDy Ip Ip0). }
+    exists [set z]; last by rewrite cards1. 
+    exists x; exists y; apply: separatesI. 
+    move: (interiorN z_p); rewrite !inE negb_or ![z == _]eq_sym => /andP[-> ->].
+    split => // q Iq. exists z; rewrite ?inE ?eqxx //.
+    apply: interiorW. by rewrite (forest_G _ _ _ _ Iq Ip).
+  - exists set0; last by rewrite cards0. exists x;exists y. split; rewrite ?inE // => p.
+    case: notF. apply: contraNT nCxy => _. exact: Path_connect p.
+Qed.
+
+Lemma forest_TW1 (G : sgraph) : 
+  is_forest [set: G] -> exists T B, sdecomp T G B /\ width B <= 2.
+Proof.
+  elim/(size_ind (fun G : sgraph => #|G|)) : G => G Hind forest_G. 
+  have:= forest_vseparator forest_G.
+  case: leqP => [Glt2 _|Ggt2 /(_ isT) [S sepS Slt2]]; first exact: decomp_small.
+  have [V1 [V2 [[sep [x0 [y0 [Hx0 Hy0]]]] SV12]]] := vseparator_separation sepS.
+  have V1properG: #|induced V1| < #|G|.
+  { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
+  have {x0 Hx0 y0 Hy0} V2properG: #|induced V2| < #|G|.
+  { rewrite card_sig. eapply card_ltnT. simpl. eauto. }
+  have C: clique (V1 :&: V2) by rewrite -SV12; exact: small_clique.
+  case: (Hind (induced V1)) => // [|T1 [B1 [sd1 w1]]].
+  { apply: induced_forest. exact: sub_forest forest_G. }
+  case: (Hind (induced V2)) => // [|T2 [B2 [sd2 w2]]].
+  { apply: induced_forest. exact: sub_forest forest_G. }  
+  case separation_decomp with G V1 V2 T1 T2 B1 B2 => // T [B [sd w]].
+  exists T. exists B. split => //. 
+  apply leq_trans with (maxn (width B1) (width B2)) => //.
+  by rewrite geq_max w1 w2. 
+Qed.

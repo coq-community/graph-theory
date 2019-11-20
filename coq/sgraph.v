@@ -1007,6 +1007,35 @@ Proof.
     apply: val_inj => /=. exact: H.
 Qed.
 
+Lemma is_forestPn (S : {set G}) : 
+  reflect (exists x y (p1 p2 : IPath x y), [/\ p1 \subset S, p2 \subset S & p1 != p2])
+          (~~ is_forestb S).
+Proof.
+  rewrite negb_forall. apply: existsPP => x. 
+  rewrite negb_forall. apply: existsPP => y. 
+  rewrite -ltnNge. apply: (iffP card_gt1P) => /=. 
+  all: by move => [p1] [p2] [A B C]; exists p1; exists p2.
+Qed.
+
+Lemma forest3 : is_forest [set: G] -> 3 <= #|G| -> exists x y : G, x != y /\ ~~ x -- y.
+Proof.
+  move => /is_forestP forest_G card_G. 
+  setoid_rewrite (rwP andP). do ! setoid_rewrite (rwP existsP).  
+  apply: contraTT forest_G => P.
+  have {P} comp_G : forall x y : G, x != y -> x -- y.
+  { move => x y xDy. move/existsPn : P => /(_ x)/exists_inPn/(_ y xDy). by rewrite negbK. }
+  case/card_gt2P : card_G => x [y] [z] [_ [D1 D2 D3]].
+  rewrite eq_sym in D1.
+  apply/is_forestPn; exists y; exists x. 
+  pose p1 := Build_IPath (irred_edge (comp_G y x D1)).
+  have Ip2 : irred (pcat (edgep (comp_G y z D2)) (edgep (comp_G z x D3))).
+  { by rewrite irred_edgeL irred_edge andbT /= mem_edgep negb_or D1 D2. }
+  pose p2 := Build_IPath Ip2.
+  exists p1; exists p2. split => //. 
+  have: z \in p2 by rewrite !inE. 
+  apply: contraTneq => <-. by rewrite mem_edgep negb_or D3 eq_sym D2.
+Qed.
+
 Definition connectedb S := 
   [forall x in S, forall y in S, connect (restrict (mem S) sedge) x y].
 
@@ -1050,8 +1079,21 @@ Proof.
   apply: H; try split; 
     try solve [ done |exact: (subsetP subS) | exact: subset_trans subS].
 Qed.
- 
+
 End Forests.
+
+Lemma induced_forest (G : sgraph) (F : {set G}) : 
+  is_forest F -> is_forest [set: induced F].
+Proof.
+  move => forest_F. apply: unique_forestT => x y p q Ip Iq.
+  have [p0 /subsetP p0_sub_F eq_p0] := (Path_from_induced p).
+  have [q0 /subsetP q0_sub_F eq_q0] := (Path_from_induced q).
+  have ?: irred p0 by rewrite irredE eq_p0 map_inj_uniq //; exact: val_inj.
+  have ?: irred q0 by rewrite irredE eq_q0 map_inj_uniq //; exact: val_inj.
+  have Epq : p0 = q0 by apply: forest_F. 
+  apply/eqP; rewrite -nodes_eqE; apply/eqP. (* fixme *)
+  apply: (inj_map val_inj). by rewrite -eq_p0 -eq_q0 Epq.
+Qed.
 
 (** *** Forest Type (for tree decompositions) *)
 
@@ -1075,10 +1117,6 @@ Proof. by move => [] [] p1 p2 [/irredxx -> _] [/irredxx -> _]. Qed.
 
 Definition tunit := Forest unit_forest.
 
-(** We define [width] and [rename] for tree decompositions already
-here, so that we can use use them for tree decompositions of simple
-graphs and directed graphs. *)
-
 (** Non-standard: we do not substract 1 *)
 Definition width (T G : finType) (D : T -> {set G}) := \max_(t:T) #|D t|.
 
@@ -1087,7 +1125,6 @@ Proof. apply/bigmax_leqP => t _; exact: max_card. Qed.
 
 Definition rename (T G G' : finType) (B: T -> {set G}) (h : G -> G') :=
   [fun x => h @: B x].
-
 
 (** ** Complete graphs *)
 
@@ -1375,6 +1412,8 @@ Proof.
   apply: contraTneq Hz => ?. subst u. 
   by rewrite E (irredxx Ip) pcat_idR interior_edgep inE.
 Qed.
+
+(** Interior of irredundant paths *)
 
 Lemma interior_idp (G : sgraph) (x : G) : interior (idp x) = set0.
 Proof. apply/setP => z. rewrite !inE mem_idp. by (case: (_ == _)). Qed.

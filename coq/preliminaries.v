@@ -358,6 +358,11 @@ Lemma nat_size_ind (X:Type) (P : X -> Type) (f : X -> nat) :
    (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
 Proof. move => H. apply: well_founded_induction_type; last exact H. exact: wf_leq. Qed.
 
+(** TODO: this form allows giving f without giving P which allows using [elim/(size_ind f)] *)
+Definition size_ind (X : Type) (f : X -> nat) (P : X -> Prop) := @nat_size_ind X P f.
+Arguments size_ind [X] f [P].
+
+
 Lemma wf_proper (T:finType) : well_founded (fun B A : pred T => B \proper A).
 Proof. 
   apply: (@Wf_nat.well_founded_lt_compat _ (fun x : pred T => #|x|)) => A B A_proper_B.
