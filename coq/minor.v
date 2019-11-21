@@ -80,6 +80,37 @@ Proof. move/minor_map_rmap. exact: minor_of_map. Qed.
 Lemma minorRE G H : minor G H -> exists phi : H -> {set G}, minor_rmap phi.
 Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
 
+Lemma mem_bigcup (T1 T2 : finType) (F : T1 -> {set T2}) (P : pred T1) z y : 
+  P y -> z \in F y -> z \in \bigcup_(x | P x) F x.
+Proof. move => Py zF. by apply/bigcupP; exists y; rewrite ?yA. Qed.
+Arguments mem_bigcup [T1 T2 F P z] y _ _.
+
+Lemma minor_rmap_comp (G H K : sgraph) (f : H -> {set G}) (g : K -> {set H}) :
+  minor_rmap f -> minor_rmap g -> minor_rmap (fun x => \bigcup_(y in g x) f y).
+Proof.
+  move => [f1 f2 f3 f4] [g1 g2 g3 g4]. split => [x|x|x1 x2|x1 x2].
+  - case/set0Pn: (g1 x) => y Gy; case/set0Pn: (f1 y) => z Fz. 
+    by apply/set0Pn; exists z; apply/bigcupP; exists y.
+  - move => z1 z2 /bigcupP [y1 y1_g z1_f] /bigcupP [y2 y2_g z2_f].
+    have/connectP [p] := (g2 _ _ _ y1_g y2_g). 
+    elim: p z1 y1 y1_g z1_f => /= [|y1' p IHp] z1 y1 y1_g z1_f. 
+    + move => _ ?; subst. 
+      apply: connect_restrict_mono; [exact: bigcup_sup y1_g|exact: f2].
+    + rewrite !in_simpl -andbA => /and3P [/andP [H1 H2] H3 H4 H5].
+      case/neighborP: (f4 _ _ H3) => a [b] [a_fy1 b_fy1' ab].
+      apply: connect_trans (IHp _ _ H2 b_fy1' H4 H5).
+      apply: (@connect_trans _ _ a).
+      * apply: connect_restrict_mono. apply: bigcup_sup y1_g. exact: f2.
+      * apply: connect1 => /=. 
+        by rewrite !in_simpl ab andbT (mem_bigcup y1) ?(mem_bigcup y1'). 
+  - move/g3 => Dx. apply/disjointP => z. 
+    case/bigcupP => y1 y1_g z_fy1; case/bigcupP => y2 y2_g z_fy2.
+    suff: y1 != y2 by move/f3/disjointP/(_ z); apply.
+    apply: contraTneq Dx => ?;subst. exact: disjointNI y2_g.
+  - move/g4/neighborP => [y1] [y2] [Y1 Y2 /f4 /neighborP [z1] [z2] [? ? e]].
+    by apply/neighborP; exists z1; exists z2; rewrite (mem_bigcup y1) ?(mem_bigcup y2).
+Qed.
+
 Lemma minor_map_comp (G H K : sgraph) (f : G -> option H) (g : H -> option K) :
   minor_map f -> minor_map g -> minor_map (obind g \o f).
 Proof.
@@ -112,9 +143,9 @@ Proof.
 Qed.
 
 Lemma minor_trans : Transitive minor.
-Proof.
-  move => G H I [f mm_f] [g mm_g]. eexists.
-  exact: minor_map_comp mm_f mm_g.
+Proof. 
+  move => G H I /minorRE [f mm_f] /minorRE [g mm_g].
+  apply: minor_of_rmap. exact: minor_rmap_comp mm_f mm_g.
 Qed.
 
 Definition total_minor_map (G H : sgraph) (phi : G -> H) :=
