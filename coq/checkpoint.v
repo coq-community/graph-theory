@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries digraph sgraph.
+Require Import edone preliminaries digraph sgraph connectivity.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -14,19 +14,15 @@ Section CheckPoints.
   Variables (G : sgraph).
   Implicit Types (x y z : G) (U : {set G}).
 
-  Definition cp x y := 
-    locked ([set z | ~~ connect (restrict (predC1 z) sedge) x y] :|: [set x;y]).
+  Definition cp x y := locked [set z | separatorb G [set x] [set y] [set z]].
 
   Lemma cpPn x y z : reflect (exists2 p : Path x y, irred p & z \notin p) (z \notin cp x y).
-  Proof using.
-    rewrite /cp -lock !inE !negb_or negbK. apply: (iffP and3P).
-    - case: (altP (x =P y)) => [<- [_ C2 _]|Dxy [C1 C2 C3]]. 
-      + exists (idp x); by rewrite ?irred_idp ?mem_idp. 
-      + case/uPathRP : C1 => // p irr_p /subsetP S. exists p => //. 
-        apply: contraTN isT => /S. by rewrite !inE eqxx.
-    - case => p irr_p av_z. 
-      split; try by apply: contraNN av_z => /eqP->; rewrite ?path_begin ?path_end.
-      apply: (connectRI (p := p)) => u. rewrite inE. by apply: contraTneq => ->.
+  Proof. 
+    rewrite /cp -lock inE. apply: (iffP (separatorPn _ _ _)).
+    - move => [x0] [y0] [p] [/set1P ? /set1P ?]; subst x0 y0.
+      rewrite disjoint_sym disjoints1. by exists p.
+    - move => [p Ip zNp]. exists x; exists y; exists (Build_IPath Ip). 
+      by rewrite disjoint_sym disjoints1 !inE !eqxx. 
   Qed.
 
   Lemma cpNI x y (p : Path x y) z : z \notin p -> z \notin cp x y.
@@ -66,7 +62,8 @@ Section CheckPoints.
 
   Lemma cpxx x : cp x x = [set x].
   Proof using. 
-    apply/setP => z; by rewrite /cp -lock !inE connect0 orbb.
+    apply/eqP. rewrite eqEsubset sub1set mem_cpl andbT.
+    apply/subsetP => z /cpP /(_ (idp x)). by rewrite !inE mem_idp.
   Qed.
 
   Lemma cp_triangle z {x y} : cp x y \subset cp x z :|: cp z y.

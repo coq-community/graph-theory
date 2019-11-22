@@ -49,6 +49,16 @@ Proof.
     case: (H a b p) => // s S1 S2. by exists s.
 Qed.
 
+Lemma separatorPn (A B S : {set G}) : 
+  reflect (exists x y (p: IPath x y), [/\ x \in A, y \in B & [disjoint p & S]]) (~~ separatorb A B S).
+Proof.
+  rewrite negb_forall_in. apply: (iffP exists_inP). 
+  - case => x xA /forall_inPn [y] yB /forallPn [p] /exists_inPn H.
+    exists x; exists y; exists p; split => //. apply/disjointP => z Z1 /H. by rewrite Z1.
+  - case => x [y] [p] [aA yB /disjointP D]. exists x => //. apply/forall_inPn; exists y => //. 
+    apply/forallPn; exists p. apply/exists_inPn => z /D H. exact/negP.
+Qed.
+
 Lemma separator_cap A B S : separator A B S -> A :&: B \subset S.
 Proof.
   move => sepS. apply/subsetP => x /setIP [xA xB]. 
