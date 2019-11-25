@@ -277,10 +277,10 @@ Lemma iso_K4_free (G H : sgraph) :
 Proof. move => iso_GH. apply: subgraph_K4_free. exact: iso_subgraph. Qed.
 
 Lemma treewidth_K_free (G : sgraph) (T : forest) (B : T -> {set G}) m : 
-  sdecomp T G B -> width B <= m.+1 -> ~ minor G 'K_m.+2.
+  sdecomp T G B -> width B <= m -> ~ minor G 'K_m.+1.
 Proof.
   move => decT wT M. case: (width_minor decT M) => B' [B1 B2].
-  suff: m.+1 < m.+1 by rewrite ltnn.
+  suff: m < m by rewrite ltnn.
   apply: leq_trans wT. apply: leq_trans B2. apply: (Km_width B1).
 Qed.
 
@@ -288,7 +288,7 @@ Lemma TW2_K4_free (G : sgraph) (T : forest) (B : T -> {set G}) :
   sdecomp T G B -> width B <= 3 -> K4_free G.
 Proof. exact: treewidth_K_free. Qed.
 
-Lemma small_K_free m (G : sgraph): #|G| <= m.+1 -> ~ minor G 'K_m.+2.
+Lemma small_K_free m (G : sgraph): #|G| <= m -> ~ minor G 'K_m.+1.
 Proof.
   move => H. case: (decomp_small H) => T [D] [decD wD].
   exact: treewidth_K_free decD wD.
