@@ -918,7 +918,7 @@ Qed.
 Definition matching_of (G : diGraph) (M' : {set G * G}) := 
   [set [set e.1;e.2] | e in M'].
 
-Lemma matching_of_bimatching (G : sgraph) (A : {set G}) M : 
+Lemma matching_of_dimatching (G : sgraph) (A : {set G}) M : 
   dimatching M -> @matching G (matching_of M).
 Proof.
   move => [M1 M2]. split.  
@@ -971,7 +971,7 @@ Theorem Hall (G : sgraph) A :
 Proof.
   move => bip_A N_A. case: (@diHall G A) => [//|//|M' [M1 M2]].
   - case: M1 => M1 M1'. exists (matching_of M'). 
-    split; first exact: matching_of_bimatching.
+    split; first exact: matching_of_dimatching.
     rewrite M2. apply/subsetP => a. case/imsetP => e E1 E2. apply/bigcupP. 
     exists [set e.1; e.2]; last by rewrite E2 !inE eqxx. exact: mem_imset.
 Qed.
