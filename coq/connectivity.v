@@ -1065,7 +1065,7 @@ Proof.
   { move/bip_separation_vcover => /(_ bip_A). exact: min_V. }
   case: (Menger sep_A) => p conn_p. 
   move/connector_dimatching : (conn_p) => dim_M.
-  exists (matching_of (dimatching_of p)). exact: matching_of_bimatching.
+  exists (matching_of (dimatching_of p)). exact: matching_of_dimatching.
   by rewrite card_matching_of // (card_dimatching_of conn_p).
 Qed.
 
