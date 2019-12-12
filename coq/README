@@ -33,8 +33,8 @@ The second one focuses on the completeness proof for 2pdom axioms, which is obta
 To build the theory files you need:
 
    coq-8.9.1 or coq-8.10,
-   coq-mathcomp-ssreflect-1.9.0,
-   coq-mathcomp-finmap-1.3.3
+   coq-mathcomp-ssreflect-1.9.0 or coq-mathcomp-ssreflect-1.10.0
+   coq-mathcomp-finmap-1.4
 
    (all available with opam)
 
