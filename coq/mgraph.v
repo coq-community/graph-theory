@@ -404,11 +404,7 @@ Section h_merge_nothing'.
    - intros. apply Bool.iff_reflect.
      split. intros ->. by rewrite equiv_refl.
      intro E. apply H. by rewrite E.
-   - intro.
-     (* TOCLEAN *)
-     rewrite -big_filter filter_index_enum /=.
-     rewrite enum1 big_cons big_nil/=.
-     by rewrite monU. 
+   - move => y. by rewrite big_pred1_eq.
  Defined.
  Lemma merge_nothing'E x: merge_nothing' (\pi x) = x.
  Proof. by rewrite /=merge_surjE. Qed.

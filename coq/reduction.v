@@ -36,21 +36,21 @@ Proof.
   symmetry. apply sumxU. 
 Defined.
 
+
 Lemma dot_edges (a b c d: Lv) (u v: Le):
   point (merge_seq (edge_graph a u b ⊎ edge_graph c v d) [:: (inl (inr tt), inr (inl tt))])
         (\pi inl (inl tt)) (\pi (inr (inr tt)))
 ≃2 two_graph2 a d ∔ (b⊗c) ∔ [inl (inl tt), u, inr tt] ∔ [inr tt, v, inl (inr tt)].
 Proof.
-  unshelve Iso2
-  (@merge_surj _
-     (edge_graph a u b ⊎ edge_graph c v d) _
-     (two_graph2 a d ∔ _ ∔ [_, u, _] ∔ [_, v, _])
-     (fun x =>
-        match x with
+  set G := (_ ⊎ _)%G.
+  set H := (_ ∔ [_, _, _] ∔ [_,_,_])%G2.
+  pose f (x : G) : H := match x with
         | inl (inl _) => inl (inl tt)
         | inr (inr _) => inl (inr tt)
         | _ => inr tt
-        end)
+        end.
+  unshelve Iso2
+  (@merge_surj _ G _ H f
      (fun x =>
         match x with
         | inl (inl _) => inl (inl tt)
@@ -66,11 +66,10 @@ Proof.
   - by repeat case. 
   - by repeat case.
   - by repeat case.
-  - case; [case; case | case];
-      rewrite -big_filter filter_index_enum /=; 
-      rewrite !enum_sum !enum_unit /= !big_cons big_nil;
-      by rewrite monU.
+  - move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+    by case: y ; [case; case | case]; rewrite /= ?monUl ?monU.
 Qed.
+
 
 
 Definition two_option_void': bij (option (void+void) + option (void+void)) (option (option (void+void))).
@@ -105,10 +104,8 @@ Proof.
   - by repeat case. 
   - by repeat case.
   - by repeat case.
-  - case; case; 
-      rewrite -big_filter filter_index_enum /=; 
-      rewrite !enum_sum !enum_unit /= !big_cons big_nil;
-      by rewrite monU.
+  - move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+    by case: y => [[]|[]] /=; rewrite ?monU ?monUl.
 Qed.
 
 End prelim.

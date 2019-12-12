@@ -229,9 +229,16 @@ Proof.
 Qed.
 Arguments bigID [I r] a P F.
 
+Lemma big_seq1 (I : Type) (i : I) (F : I -> X) : \big[mon2/1]_(j <- [:: i]) F j ≡ F i.
+Proof. by rewrite big_cons big_nil monU. Qed.
+
 Lemma big_pred1_eq (I : finType) (i : I) (F : I -> X) :
   \big[mon2/1]_(j | j == i) F j ≡ F i.
-Proof. rewrite -big_filter filter_index_enum enum1. (* big_seq1. *) by rewrite big_cons big_nil monU. Qed.
+Proof. 
+  rewrite -big_filter filter_pred1_uniq //; first by rewrite big_seq1.
+  solve [by rewrite /index_enum -?enumT ?enum_uniq (* mathcomp-1.9.0 *)
+        |exact: index_enum_uniq].                  (* mathcomp-1.10.0 *)
+Qed.
 
 Lemma big_pred1 (I : finType) i (P : pred I) (F : I -> X) :
   P =1 pred1 i -> \big[mon2/1]_(j | P j) F j ≡ F i.
@@ -306,8 +313,12 @@ Proof.
 Qed.
 Arguments big_sum [I1 I2] i1 i2 P F.
 
-Lemma big_seq1 I (i : I) (F : I -> X) : \big[mon2/1]_(j <- [:: i]) F j ≡ F i.
-Proof. by rewrite unlock /= monU. Qed.
+Lemma big_unit (P : pred unit) (F : unit -> X) : 
+  \big[mon2/1]_(x | P x) F x ≡ if P tt then F tt else 1.
+Proof.
+case Ptt : (P tt); last by rewrite big_pred0 // => -[]. 
+by rewrite (@big_pred1 _ tt) //; case.
+Qed.
 
 End Theory.
 Arguments reindex_onto [X mon0 mon2 _ I J] h h' [P F].

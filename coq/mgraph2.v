@@ -684,11 +684,9 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
     * (repeat case)=>//=_; try eqv; apply eqv_clot_trans with (inr tt); eqv.
   - by case. 
   - move=>d. by repeat case. 
-  - by repeat case. 
-  - repeat case=>//=. rewrite eq_refl/=.
-    rewrite -big_filter filter_index_enum /=; 
-    rewrite !enum_sum !enum_unit /= !big_cons big_nil.
-    by rewrite monU.
+  - by repeat case.
+  - repeat case=>//=. rewrite eqxx /= (big_sum (inl tt) tt) (big_sum tt tt). 
+    by rewrite !(big_pred1 tt) ?monA //.
 Qed.
 
 
