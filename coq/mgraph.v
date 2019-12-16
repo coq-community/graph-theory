@@ -106,89 +106,136 @@ Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
 (* Definition 4.8  *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
   { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
-    vlabel_hom: forall v, vlabel (hv v) ≡ vlabel v;
+    vlabel_hom: forall v, vlabel v ≡ (\big[mon2/mon0]_(u | hv u == v) vlabel u);
     elabel_hom: forall e, elabel (he e) ≡[hd e] elabel e;
   }.
+
 (* note: 
    - when using [flat_labels] for L, the edge swapping funcion [hd] 
      may only be constantly false
    - when the edge swapping function [hd] is constantly false, the
      types of [endpoint_hom] and [elabel_hom] in the above definition
      simplify to the simple, non swapping, notion of homomorphism *)
-(* TOTHINK: actually, vlabel_hom should use a bigop, like in lemma [merge_surj]
-   -> would be a more natural notion of homomorphism
-   -> we would have the equivalence with the current definition when hv is injective (and thus, for isomorphisms)
-   -> lemma [merge_surj] would just asssume a homormophism which is vertex surjective and edge bijective
-   (not done for now since we do not really use general homomorphisms, only isomorphisms) *)
 
 Lemma hom_id G: @is_hom G G id id xpred0.
-Proof. by split. Qed.
+Proof. split => // v. by rewrite big_pred1_eq. Qed.
 
 Lemma hom_comp F G H hv he hd kv ke kd :
-  @is_hom F G hv he hd -> @is_hom G H kv ke kd -> is_hom (kv \o hv) (ke \o he) (fun e => hd e (+) kd (he e)).
+  @is_hom F G hv he hd -> @is_hom G H kv ke kd -> 
+  is_hom (kv \o hv) (ke \o he) (fun e => hd e (+) kd (he e)).
 Proof.
   intros E E'. split.
-  move=>e b=>/=. by rewrite 2!endpoint_hom addbA.
-  move=>x/=. by rewrite 2!vlabel_hom. 
-  move=>e/=.
-  generalize (@elabel_hom _ _ _ _ _ E e). 
-  generalize (@elabel_hom _ _ _ _ _ E' (he e)).
-  case (hd e); case (kd (he e)); simpl.
-  - apply eqv11. 
-  - apply eqv01. 
-  - apply eqv10.
-  - apply transitivity. 
+  move=>e b=>/=; first by rewrite 2!endpoint_hom addbA.
+  - move=>x/=. rewrite vlabel_hom (eqv_bigr _ (fun u _ => vlabel_hom (is_hom := E) u)).
+    rewrite [X in _ ≡ X](partition_big _ (fun u => kv u == x)); last by move=>?;apply.
+    apply: eqv_bigr => y /eqP <-. apply: eqv_big => // z. 
+    case e: (_ == y) => //. by rewrite (eqP e) eqxx.
+  - move=>e/=.
+    generalize (@elabel_hom _ _ _ _ _ E e). 
+    generalize (@elabel_hom _ _ _ _ _ E' (he e)).
+    case (hd e); case (kd (he e)); simpl.
+    + apply eqv11. 
+    + apply eqv01. 
+    + apply eqv10.
+    + apply transitivity. 
 Qed.
+
+Lemma big_bij_eq (I1 I2 : finType) (F : I1 -> lv L) (f : bij I1 I2) (y : I2) :
+  \big[mon2/1]_(x | f x == y) F x ≡ F (f^-1 y).
+Proof. apply: big_pred1 => x /=. exact: bij_eqLR. Qed.
+
+(* TOTHINK: this is necessary because f^-1 is a bijective function and not a bijection ... *)
+Lemma big_bij_eq' (I1 I2 : finType) (F : I1 -> lv L) (f : bij I2 I1) (y : I2) :
+  \big[mon2/mon0]_(x | f^-1 x == y) F x ≡ F (f y).
+Proof. apply: big_pred1 => x /=. by rewrite eq_sym -bij_eqLR eq_sym. Qed.
 
 Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
   is_hom hv he hd -> 
   is_hom hv^-1 he^-1 (hd \o he^-1).
 Proof.
   intro H. split.
-  move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK addbA addbb. 
-  move=>x/=. by rewrite -{2}(bijK' hv x) vlabel_hom.
-  move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). rewrite -{3}(bijK' he e) bijK'. by symmetry. 
+  - move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK addbA addbb. 
+  - move=>x/=. rewrite big_bij_eq' vlabel_hom (big_pred1 x) => //= u. 
+    by rewrite bij_eqLR bijK.
+  - move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). 
+    rewrite -{3}(bijK' he e) bijK'. by symmetry. 
 Qed.
 
 (** ** Isomorphisms *)
 
 (* Definition 4.8 *)
+
+(** When the underlying functions are injective, as is the case with
+isomorphisms, the definition of homomorphism simlifies to the
+follwing, which does not require a bigop for gathering vertex labels *)
+
+Class is_ihom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := IHom
+  { endpoint_ihom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
+    vlabel_ihom: forall v, vlabel (hv v) ≡ vlabel v;
+    elabel_ihom: forall e, elabel (he e) ≡[hd e] elabel e }.
 Universe S.
+
+Lemma ihom_id G: @is_ihom G G id id xpred0.
+Proof. by split. Qed.
+
+Lemma ihom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
+  is_ihom hv he hd -> 
+  is_ihom hv^-1 he^-1 (hd \o he^-1).
+Proof.
+  intro H. split.
+  - move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_ihom bijK addbA addbb. 
+  - move=>x/=. by rewrite -{2}(bijK' hv x) vlabel_ihom.
+  - move=>e/=. generalize (@elabel_ihom _ _ _ _ _ H (he^-1 e)). 
+    rewrite -{3}(bijK' he e) bijK'. by symmetry. 
+Qed.
+
+Lemma hom_ihom (F G: graph) (hv: F -> G) (he: (edge F) -> (edge G)) hd : 
+  injective hv -> is_hom hv he hd -> is_ihom hv he hd.
+Proof. move => inj_hv [? H ?]. split => // v. by rewrite H big_inj2_eq. Qed.
+
+Lemma ihom_hom (F G: graph) (hv: bij F G) (he: (edge F) -> (edge G)) hd : 
+  is_ihom hv he hd -> is_hom hv he hd.
+Proof. move => [? H ?]. split => // v. by rewrite big_bij_eq -H bijK'. Qed.
+
+
 Set Primitive Projections.
 Record iso (F G: graph): Type@{S} :=
   Iso { iso_v:> bij F G;
         iso_e: bij (edge F) (edge G);
         iso_d: edge F -> bool;
-        iso_hom: is_hom iso_v iso_e iso_d }.
+        iso_ihom: is_ihom iso_v iso_e iso_d }.
 Infix "≃" := iso (at level 79).
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'"). 
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
-Global Existing Instance iso_hom.
+Global Existing Instance iso_ihom.
+Global Instance iso_hom (F G : graph) (h : F ≃ G) : is_hom h h.e h.d. 
+Proof. exact: ihom_hom. Qed.
 
 Lemma endpoint_iso F G (h: iso F G) b e: endpoint b (h.e e) = h (endpoint (h.d e (+) b) e).
-Proof. apply endpoint_hom. Qed.
+Proof. exact: endpoint_ihom. Qed.
 
 Lemma vlabel_iso F G (h: iso F G) v: vlabel (h v) ≡ vlabel v.
-Proof. apply vlabel_hom. Qed.
+Proof. exact: vlabel_ihom. Qed.
 
 Lemma elabel_iso F G (h: iso F G) e: elabel (h.e e) ≡[h.d e] elabel e.
-Proof. apply elabel_hom. Qed.
+Proof. apply elabel_ihom. Qed.
 
-Definition iso_id {G}: G ≃ G := @Iso _ _ bij_id bij_id _ (hom_id G). 
+Definition iso_id {G}: G ≃ G := @Iso _ _ bij_id bij_id _ (ihom_id G). 
 Hint Resolve iso_id : core.    (* so that [by] gets it... *)
 
 Definition iso_sym F G: F ≃ G -> G ≃ F.
 Proof.
   move => f. 
   eapply Iso with (bij_sym f) (bij_sym f.e) _ =>/=.
-  apply hom_sym, f. 
+  apply ihom_sym, f. 
 Defined.
 
 Definition iso_comp F G H: F ≃ G -> G ≃ H -> F ≃ H.
 Proof.
   move => f g. 
-  eapply Iso with (bij_comp f g) (bij_comp f.e g.e) _=>/=.
-  apply hom_comp. apply f. apply g.
+  eapply Iso with (bij_comp f g) (bij_comp f.e g.e) _ =>/=.
+  apply hom_ihom; first by apply: inj_comp. 
+  apply hom_comp; apply iso_hom.
 Defined.
 
 (* Fact 4.9 *)
@@ -209,7 +256,7 @@ Definition Iso' (F G: graph)
            (fe: edge F -> edge G) (fe': edge G -> edge F) fd:
   cancel fv fv' -> cancel fv' fv ->
   cancel fe fe' -> cancel fe' fe ->
-  is_hom fv fe fd -> F ≃ G.
+  is_ihom fv fe fd -> F ≃ G.
 Proof. move=> fv1 fv2 fe1 fe2 E. exists (Bij fv1 fv2) (Bij fe1 fe2) fd. apply E. Defined.
 
 Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
@@ -370,25 +417,19 @@ Proof. by move=>->. Qed.
 Section merge_surj.
  Variable (G: graph) (r: equiv_rel G).
  Variable (H: graph) (fv: G -> H) (fv': H -> G).
- Variable (fe: bij (edge G) (edge H)).
+ Variable (fe: bij (edge G) (edge H)) (fd : pred (edge G)).
  Hypothesis Hr: forall x y, reflect (kernel fv x y) (r x y).
  Hypothesis Hsurj: cancel fv' fv.
- Hypothesis Hendpoints: forall b e, fv (endpoint b e) = endpoint b (fe e).
- Hypothesis Helabel: forall e, elabel (fe e) ≡ elabel e.
- Hypothesis Hvlabel: forall y, vlabel y ≡ \big[mon2/mon0]_(x | fv x == y) vlabel x.
- 
+ Hypothesis Hhom : is_hom fv fe fd.
  (* Lemma 4.13 *)
  Lemma merge_surj: merge G r ≃ H.
  Proof.
-   Iso (quot_kernel Hr Hsurj) fe xpred0. split; intros=>/=.
-   - rewrite -Hendpoints=>/=. by rewrite quot_kernelE. 
-   - rewrite Hvlabel.
-     (* TOCLEAN *)
-     apply eq_eqv, eq_bigl=>x.
-     apply /idP/idP =>/eqP E.
-     * apply /eqP. move:E=>/Hr/eqquotP E. rewrite E. apply reprK. 
+   Iso (quot_kernel Hr Hsurj) fe fd. split; intros=>/=.
+   - by rewrite (endpoint_hom (is_hom := Hhom)) quot_kernelE. 
+   - rewrite vlabel_hom. apply: eqv_bigl => x. apply/eqP/eqP => E.
+     * move:E=>/Hr/eqquotP E. rewrite E. apply reprK. 
      * by rewrite -E quot_kernelE.
-   - apply Helabel.
+   - exact:(elabel_hom (is_hom := Hhom)). 
  Defined.
  Lemma merge_surjE (x: G): merge_surj (\pi x) = fv x.
  Proof. by rewrite quot_kernelE. Qed.
@@ -400,11 +441,11 @@ Section h_merge_nothing'.
  Hypothesis H: forall x y: F, r x y -> x=y.
  Lemma merge_nothing': merge F r ≃ F.
  Proof.
-   apply merge_surj with id id bij_id=>//.
+   apply merge_surj with id id bij_id xpred0 =>//.
    - intros. apply Bool.iff_reflect.
      split. intros ->. by rewrite equiv_refl.
      intro E. apply H. by rewrite E.
-   - move => y. by rewrite big_pred1_eq.
+   - exact: hom_id.
  Defined.
  Lemma merge_nothing'E x: merge_nothing' (\pi x) = x.
  Proof. by rewrite /=merge_surjE. Qed.
@@ -413,7 +454,7 @@ Global Opaque merge_nothing'.
 
 Section merge_merge.
   Variables (F: graph) (e: equiv_rel F) (e': equiv_rel (merge F e)).
-  Lemma hom_merge_merge: is_hom (quot_quot e': merge _ e' -> merge F _) bij_id xpred0.
+  Lemma hom_merge_merge: is_ihom (quot_quot e': merge _ e' -> merge F _) bij_id xpred0.
   Proof.
     split; intros=>//=; first by rewrite -equiv_comp_pi.
     rewrite [X in X ≡ _](partition_big (fun x => \pi x) (fun w => \pi w == v)). 
@@ -436,7 +477,7 @@ Section merge.
   Defined. 
   Lemma h_mergeE (x: F): h_merge (\pi x) = \pi h x.
   Proof. by rewrite /=quot_bijE quot_sameE. Qed.
-  Lemma merge_hom: is_hom h_merge h.e h.d.
+  Lemma merge_hom: is_ihom h_merge h.e h.d.
   Proof.
     split; intros=>/=. 
     - rewrite endpoint_iso. symmetry. apply h_mergeE. 
@@ -458,7 +499,7 @@ Global Opaque h_merge merge_iso.
 Section merge_same'.
  Variables (F: graph) (h k: equiv_rel F).
  Hypothesis H: h =2 k. 
- Lemma merge_same'_hom: is_hom (quot_same H: merge _ h -> merge _ k) bij_id xpred0.
+ Lemma merge_same'_hom: is_ihom (quot_same H: merge _ h -> merge _ k) bij_id xpred0.
  Proof.
    split; intros=>//; try (rewrite /=; apply/eqquotP; rewrite -H; apply: piK').
    (* TOCLEAN *)
@@ -544,7 +585,7 @@ Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
   Definition h_union_merge_l: bij (merge_seq F l ⊎ G) (merge_seq (F ⊎ G) (map_pairs unl l)).
   Proof. eapply bij_comp. apply union_quot_l. apply quot_same. apply union_equiv_l_eqv_clot. Defined.
-  Lemma hom_union_merge_l: is_hom h_union_merge_l bij_id xpred0.
+  Lemma hom_union_merge_l: is_ihom h_union_merge_l bij_id xpred0.
   Proof.
     split; try by case; intros=>//=; rewrite ?union_quot_lEl ?union_quot_lEr quot_sameE //.
     move=> x. rewrite /=quot_sameE. case:x=>[x|x].
@@ -651,7 +692,7 @@ Section merge_union_K.
     exists h_merge_union_Ke1 inl=>x//. by case x.
   Defined.
 
-  Lemma hom_merge_union_K: is_hom h_merge_union_K h_merge_union_Ke xpred0.
+  Lemma hom_merge_union_K: is_ihom h_merge_union_K h_merge_union_Ke xpred0.
   Proof.
     split; try (case; intros =>//=; by rewrite quot_union_KE quot_sameE).
     move=> v/=.
@@ -686,7 +727,7 @@ Proof. move => F G h a b ab. apply (union_iso h (unit_graph_iso ab)). Defined.
 (** ** Subgraphs and Induced Subgraphs *)
 
 Definition subgraph (H G : graph) := 
-  exists hv he hd, @is_hom H G hv he hd /\ injective hv /\ injective he.
+  exists hv he hd, @is_ihom H G hv he hd /\ injective hv /\ injective he.
 
 Section Subgraphs.
   Variables (G : graph) (V : {set G}) (E : {set edge G}).
@@ -799,7 +840,7 @@ Proof.
   apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
 Qed.
 
-Lemma setT_bij_hom (G : graph) : @is_hom (subgraph_for (@consistentTT G)) G setT_bij setT_bij xpred0. 
+Lemma setT_bij_hom (G : graph) : @is_ihom (subgraph_for (@consistentTT G)) G setT_bij setT_bij xpred0. 
 Proof. by []. Qed.
 
 Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G :=
@@ -902,7 +943,7 @@ Section MergeSubgraph.
   Definition merge_subgraph_e : bij (edge G1 + edge G2) (edge G12) := 
     merge_disjoint_union disE.
 
-  Lemma merge_subgraph_hom : is_hom merge_subgraph_v merge_subgraph_e xpred0.
+  Lemma merge_subgraph_hom : is_ihom merge_subgraph_v merge_subgraph_e xpred0.
   Proof.
     rewrite /merge_subgraph_e /merge_subgraph_v. 
     split=>//.

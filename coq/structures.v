@@ -320,6 +320,10 @@ case Ptt : (P tt); last by rewrite big_pred0 // => -[].
 by rewrite (@big_pred1 _ tt) //; case.
 Qed.
 
+Lemma big_inj2_eq (I1 I2 : finType) (F : I1 -> X) (f : I1 -> I2) (y : I1) :
+  injective f -> \big[mon2/mon0]_(x | f x == f y) F x ≡ F y.
+Proof. move => inj_f; rewrite (@big_pred1 _ y) //= => x; exact: inj_eq. Qed.
+
 End Theory.
 Arguments reindex_onto [X mon0 mon2 _ I J] h h' [P F].
 Arguments reindex [X mon0 mon2 _ I J] h [P F].

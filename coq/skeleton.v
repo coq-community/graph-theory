@@ -644,12 +644,12 @@ Proof. apply: iso_subgraph; exact: iso_pointxx. Qed.
 Lemma sub_sub (G H : graph) : 
   subgraph G H -> sgraph.subgraph G H.
 Proof.
-  intros (hv&he&hd&hom&inj_hv&inj_he). 
+  case => hv [he] [hd] [hom] [inj_hv inj_he].
   exists hv => // x y xy _. move: x y xy. 
   apply skelP; first by move=> x y; rewrite sg_sym.
   move=> e sNt. (* by *) rewrite /edge_rel/= (inj_eq inj_hv) sNt.
-  generalize (endpoint_hom (is_hom:=hom) e false).
-  generalize (endpoint_hom (is_hom:=hom) e true).
+  generalize (endpoint_ihom (is_ihom:=hom) e false).
+  generalize (endpoint_ihom (is_ihom:=hom) e true).
   case (hd e)=>/= <- <-.
   by rewrite adjacent_sym adjacent_edge. 
   by apply adjacent_edge. 
@@ -763,7 +763,7 @@ Qed.
 Lemma component_can_e' : cancel component_e' component_e.
 Proof. move => x; rewrite /component_e/component_e'; by case (decE _). Qed.
 
-Lemma component_hom : is_hom component_v component_e xpred0.
+Lemma component_hom : is_ihom component_v component_e xpred0.
 Proof. repeat split; by case. Qed.
 
 Definition iso_component : iso (union (induced C) (induced (~: C))) G := 

@@ -57,20 +57,19 @@ Proof.
         | inl (inr _) => inr (inr tt)
         | inr tt => inl (inr tt)
         end)
-     (two_option_void)
-     _ _ _ _ _).
-  6,7: apply merge_surjE.
+     (two_option_void) 
+     xpred0 _ _ _).
+  4,5: apply merge_surjE.
   - apply kernel_eqv_clot.
     * by repeat constructor.
     * case=>[[[]|[]]|[[]|[]]]; case=>[[[]|[]]|[[]|[]]]//= _; eqv.
   - by repeat case. 
-  - by repeat case.
-  - by repeat case.
-  - move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
-    by case: y ; [case; case | case]; rewrite /= ?monUl ?monU.
+  - split. 
+    + by repeat case.
+    + move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+      by case: y ; [case; case | case]; rewrite /= ?monUl ?monU.
+    + by repeat case.
 Qed.
-
-
 
 Definition two_option_void': bij (option (void+void) + option (void+void)) (option (option (void+void))).
 Proof.
@@ -96,16 +95,17 @@ Proof.
         end)
      (inl)
      (two_option_void')
-     _ _ _ _ _ ).
-  6,7: apply merge_surjE.
+     xpred0 _ _ _ ).
+  4,5: apply merge_surjE.
   - apply kernel_eqv_clot.
     * by repeat constructor.
     * case=>[[[]|[]]|[[]|[]]]; case=>[[[]|[]]|[[]|[]]]//= _; eqv.
   - by repeat case. 
-  - by repeat case.
-  - by repeat case.
-  - move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
-    by case: y => [[]|[]] /=; rewrite ?monU ?monUl.
+  - split.
+    + by repeat case.
+    + move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+      by case: y => [[]|[]] /=; rewrite ?monU ?monUl.
+    + by repeat case.
 Qed.
 
 End prelim.

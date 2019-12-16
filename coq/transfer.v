@@ -18,7 +18,7 @@ Set Bullet Behavior "Strict Subproofs".
 Ltac e2split := do 2 eexists; split; [split|].
 
 Lemma iso2_intro (L : labels) (G H : graph2 L) (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
-  is_hom hv he hd -> hv input = input -> hv output = output -> G ≃2 H.
+  is_ihom hv he hd -> hv input = input -> hv output = output -> G ≃2 H.
 Proof. move => hom_h. by exists (Iso hom_h). Defined.
 
 Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) := 
@@ -414,8 +414,7 @@ Qed.
 Lemma oiso2_lv (F G : pre_graph) (i : F ⩭2 G) x : 
   x \in vset F -> lv G (i x) ≡ lv F x.
 Proof. 
-  case: i => isF isG i Ee /=. rewrite vfun_bodyE /=. 
-  exact: (vlabel_hom (is_hom := (iso_hom i))). (* this needs a bit of help ? *)
+  case: i => isF isG i Ee /=. rewrite vfun_bodyE /=. exact: (vlabel_iso i).
 Qed.
 
 Lemma oiso2_le (F G : pre_graph) (i : F ⩭2 G) e : e \in eset F ->

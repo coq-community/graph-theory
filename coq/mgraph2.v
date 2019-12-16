@@ -247,17 +247,16 @@ Lemma merge_iso2 (F G : graph) (h: F ≃ G) l (i o: F):
   point (merge_seq G (map_pairs h l)) (\pi (h i)) (\pi (h o)).
 Proof. Iso2 (merge_iso h l); by rewrite h_mergeE. Defined.
 
-Lemma merge2_surj (G: graph2) (r: equiv_rel G) (H: graph2) (fv : G -> H) (fv': H -> G) (fe : bij (edge G) (edge H)):
+Lemma merge2_surj (G: graph2) (r: equiv_rel G) (H: graph2) 
+    (fv : G -> H) (fv': H -> G) (fe : bij (edge G) (edge H)) fd :
   (forall x y, reflect (kernel fv x y) (r x y)) ->
   cancel fv' fv ->
-  (forall b e, fv (endpoint b e) = endpoint b (fe e)) ->
-  (forall e, elabel (fe e) ≡ elabel e) ->
-  (forall y: H, vlabel y ≡ \big[mon2/mon0]_(x | fv x == y) vlabel x) ->
+  is_hom fv fe fd ->
   fv input = input -> fv output = output ->
   merge2 G r ≃2 H.
 Proof.
-  intros H1 H2 H3 H4 H5 I O.
-  Iso2 (merge_surj H1 H2 H3 H4 H5); by rewrite merge_surjE.
+  intros H1 H2 H3 I O.
+  Iso2 (merge_surj H1 H2 H3); by rewrite merge_surjE.
 Defined.
 
 Lemma merge_same (F : graph) (h k: equiv_rel F) (i i' o o': F):
@@ -397,18 +396,19 @@ Proof.
      (G [tst output <- a])
      (fun x => match x with inl y => y | inr tt => output end)
      (fun x => unl x)
-     sumxU _ _ _ _ _).
-  6,7: by rewrite merge_surjE.
+     sumxU xpred0 _ _ _).
+  4,5: by rewrite merge_surjE.
   - apply kernel_eqv_clot.
     * by constructor.
     * case=>[x|[]]; case=>[y|[]]=>//->; eqv. 
   - by []. 
-  - by move=>b [e|[]].
-  - by case. 
-  - move=>x/=. rewrite (big_sum x tt) big_pred1_eq. 
+  - split. 
+    + by move=> [e|[]] b.
+    + move=>x/=. rewrite (big_sum x tt) big_pred1_eq. 
     case: (altP (x =P output)) => [?|xDo]; subst.
-    + by rewrite (big_pred1 tt) => [|[]]; rewrite 1?monC /= ?eqxx.
-    + rewrite big_pred0 ?monU // => [[]]. by rewrite eq_sym (negbTE xDo).
+    * by rewrite (big_pred1 tt) => [|[]]; rewrite 1?monC /= ?eqxx.
+    * rewrite big_pred0 ?monU // => [[]]. by rewrite eq_sym (negbTE xDo).
+    + by case.  
 Qed.
 
 Local Close Scope labels.
@@ -677,16 +677,16 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
    (@merge_surj _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt])
      (fun _ => tt)
      (fun _ => inr tt)
-     (bij_comp sumxU (option_bij sumxU)) _ _ _ _ _).
-  (* 6,7: by rewrite merge_surjE. *)
+     (bij_comp sumxU (option_bij sumxU)) xpred0 _ _ _).
   - apply kernel_eqv_clot.
-    * by repeat constructor.
-    * (repeat case)=>//=_; try eqv; apply eqv_clot_trans with (inr tt); eqv.
+    + by repeat constructor.
+    + (repeat case)=>//=_; try eqv; apply eqv_clot_trans with (inr tt); eqv.
   - by case. 
-  - move=>d. by repeat case. 
-  - by repeat case.
-  - repeat case=>//=. rewrite eqxx /= (big_sum (inl tt) tt) (big_sum tt tt). 
-    by rewrite !(big_pred1 tt) ?monA //.
+  - split.
+    + move=>d. by repeat case. 
+    + repeat case=>//=. rewrite eqxx /= (big_sum (inl tt) tt) (big_sum tt tt). 
+      by rewrite !(big_pred1 tt) ?monA //.
+    + by repeat case.
 Qed.
 
 
