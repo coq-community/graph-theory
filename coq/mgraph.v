@@ -140,6 +140,19 @@ Proof.
     + apply transitivity. 
 Qed.
 
+(** ** Isomorphisms *)
+
+(* Definition 4.8 *)
+
+(** When the underlying functions are bijective, as is the case with
+isomorphisms, the definition of homomorphism simlifies to the
+follwing, which does not require a bigop for gathering vertex labels *)
+
+Class is_ihom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := IHom
+  { endpoint_ihom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
+    vlabel_ihom: forall v, vlabel (hv v) ≡ vlabel v;
+    elabel_ihom: forall e, elabel (he e) ≡[hd e] elabel e }.
+
 Lemma big_bij_eq (I1 I2 : finType) (F : I1 -> lv L) (f : bij I1 I2) (y : I2) :
   \big[mon2/1]_(x | f x == y) F x ≡ F (f^-1 y).
 Proof. apply: big_pred1 => x /=. exact: bij_eqLR. Qed.
@@ -149,31 +162,6 @@ Lemma big_bij_eq' (I1 I2 : finType) (F : I1 -> lv L) (f : bij I2 I1) (y : I2) :
   \big[mon2/mon0]_(x | f^-1 x == y) F x ≡ F (f y).
 Proof. apply: big_pred1 => x /=. by rewrite eq_sym -bij_eqLR eq_sym. Qed.
 
-Lemma hom_sym (F G: graph) (hv: bij F G) (he: bij (edge F) (edge G)) hd:
-  is_hom hv he hd -> 
-  is_hom hv^-1 he^-1 (hd \o he^-1).
-Proof.
-  intro H. split.
-  - move=>e b=>/=. by rewrite -{3}(bijK' he e) endpoint_hom bijK addbA addbb. 
-  - move=>x/=. rewrite big_bij_eq' vlabel_hom (big_pred1 x) => //= u. 
-    by rewrite bij_eqLR bijK.
-  - move=>e/=. generalize (@elabel_hom _ _ _ _ _ H (he^-1 e)). 
-    rewrite -{3}(bijK' he e) bijK'. by symmetry. 
-Qed.
-
-(** ** Isomorphisms *)
-
-(* Definition 4.8 *)
-
-(** When the underlying functions are injective, as is the case with
-isomorphisms, the definition of homomorphism simlifies to the
-follwing, which does not require a bigop for gathering vertex labels *)
-
-Class is_ihom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := IHom
-  { endpoint_ihom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
-    vlabel_ihom: forall v, vlabel (hv v) ≡ vlabel v;
-    elabel_ihom: forall e, elabel (he e) ≡[hd e] elabel e }.
-Universe S.
 
 Lemma ihom_id G: @is_ihom G G id id xpred0.
 Proof. by split. Qed.
@@ -197,7 +185,7 @@ Lemma ihom_hom (F G: graph) (hv: bij F G) (he: (edge F) -> (edge G)) hd :
   is_ihom hv he hd -> is_hom hv he hd.
 Proof. move => [? H ?]. split => // v. by rewrite big_bij_eq -H bijK'. Qed.
 
-
+Universe S.
 Set Primitive Projections.
 Record iso (F G: graph): Type@{S} :=
   Iso { iso_v:> bij F G;
@@ -218,7 +206,7 @@ Lemma vlabel_iso F G (h: iso F G) v: vlabel (h v) ≡ vlabel v.
 Proof. exact: vlabel_ihom. Qed.
 
 Lemma elabel_iso F G (h: iso F G) e: elabel (h.e e) ≡[h.d e] elabel e.
-Proof. apply elabel_ihom. Qed.
+Proof. exact: elabel_ihom. Qed.
 
 Definition iso_id {G}: G ≃ G := @Iso _ _ bij_id bij_id _ (ihom_id G). 
 Hint Resolve iso_id : core.    (* so that [by] gets it... *)
