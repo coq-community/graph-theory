@@ -2,7 +2,7 @@ Require Import Setoid Morphisms.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient bij preliminaries digraph sgraph treewidth minor checkpoint.
-Require Import structures mgraph mgraph2.
+Require Import bigop_plus structures mgraph mgraph2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

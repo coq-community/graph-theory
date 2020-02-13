@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries structures.
+Require Import edone preliminaries bigop_plus structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
