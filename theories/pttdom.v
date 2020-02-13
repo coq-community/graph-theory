@@ -174,7 +174,7 @@ Section derived.
  
  Canonical Structure pttdom_labels: labels :=
    Labels
-     (MonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
+     (mkCommoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
      eqv'_sym eqv01 eqv11.
  
  (* Lemmas to turn pttdom expressions into (projections of) tests *)

@@ -60,7 +60,7 @@ Record labels :=
       lv: setoid;
       mon0: lv;
       mon2: lv -> lv -> lv;
-      lv_monoid: monoidLaws mon0 mon2;
+      lv_monoid: commoidLaws mon0 mon2;
       le: setoid;
       eqv': relation le;
       Eqv'_sym: Symmetric eqv';
@@ -114,7 +114,7 @@ Hint Resolve eq_unit: core.
 (* label structure for letter-labeled graphs (Definition 4.2) *)
 Definition flat_labels (X: Type): labels.
   refine (@Labels (eq_setoid unit) tt (fun _ _ => tt) _ (eq_setoid X) (fun _ _ => False) _ _ _).
-  abstract by split.
+  abstract by repeat split.
   all: abstract by []. 
 Defined.
   

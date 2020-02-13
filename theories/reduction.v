@@ -394,7 +394,7 @@ Notation steps := (@steps (tm_pttdom A)).
 (* TODO: get rid of this hack... *)
 Canonical Structure tm_labels :=
   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
-          (MonoidLaws (@tst_dot_eqv (tm_pttdom A)) 
+          (mkCommoidLaws (@tst_dot_eqv (tm_pttdom A)) 
                       (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A))) 
           (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
           (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
