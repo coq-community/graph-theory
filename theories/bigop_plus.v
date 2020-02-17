@@ -215,15 +215,16 @@ Lemma big_unitType (P : pred unit) (F : unit -> X) :
   \big[*%M/1]_(x | P x) F x ≡ if P tt then F tt else 1.
 Proof. by rewrite ![index_enum _]unlock [@Finite.enum]unlock big_mkcond big_seq1. Qed.
 
-Lemma big_inj2_eq (I1 I2 : finType) (F : I1 -> X) (f : I1 -> I2) (y : I1) :
-  injective f -> \big[*%M/mon0]_(x | f x == f y) F x ≡ F y.
-Proof. move => inj_f; rewrite (@big_pred1 _ _ y) //= => x; exact: inj_eq. Qed.
-
+(** in conjunction with [bij_perm_enum] *)
 Lemma eqv_big_bij (I1 I2 : finType) (f : I1 -> I2) 
    (r1 : seq I1) (r2 : seq I2) (P1 : pred I1) (P2 : pred I2) (F1 : I1 -> X) (F2 : I2 -> X) :
    perm_eq r2 (map f r1) -> (forall x, P1 x = P2 (f x)) -> (forall i : I1, P1 i -> F1 i ≡ F2 (f i)) -> 
    \big[*%M/1]_(i <- r1 | P1 i) F1 i ≡ \big[*%M/1]_(i <- r2 | P2 i) F2 i.
 Proof. move => pr HP HF. rewrite (perm_big _ _ pr). exact: eqv_map. Qed.
+
+Lemma big_inj2_eq (I1 I2 : finType) (F : I1 -> X) (f : I1 -> I2) (y : I1) :
+  injective f -> \big[*%M/mon0]_(x | f x == f y) F x ≡ F y.
+Proof. move => inj_f; rewrite (@big_pred1 _ _ y) //= => x; exact: inj_eq. Qed.
 
 End CommoidTheory.
 End SetoidTheory.

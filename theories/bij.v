@@ -224,11 +224,11 @@ Arguments bij_same [A B] f f_inv i _ _.
 Lemma perm_index_enum (I1 I2 : finType) (f : I1 -> I2) :
   bijective f -> perm_eq (index_enum I2) [seq f i | i <- index_enum I1].
 Proof.
-  move => bij_f. rewrite /index_enum -!enumT. apply: uniq_perm.
-  - exact: enum_uniq.
-  - rewrite map_inj_uniq. apply: enum_uniq. exact: bij_inj.
-  - case: bij_f => g can_f can_g x. rewrite -{2}[x]can_g [RHS]mem_map ?mem_enum //.
-    exact: can_inj can_f.
+  move => bij_f. apply: uniq_perm.
+  - exact: index_enum_uniq.
+  - rewrite map_inj_uniq. apply: index_enum_uniq. exact: bij_inj.
+  - case: bij_f => g can_f can_g x. 
+    rewrite -{2}[x]can_g [RHS]mem_map ?mem_index_enum //; exact: can_inj can_f.
 Qed.
 
 Lemma bij_perm_enum (I1 I2 : finType) (f : bij I1 I2) :
