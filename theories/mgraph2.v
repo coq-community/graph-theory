@@ -404,7 +404,7 @@ Proof.
   - by []. 
   - split. 
     + by move=> [e|[]] b.
-    + move=>x/=. rewrite (big_sum x tt) big_pred1_eq. 
+    + move=>x/=. rewrite big_sumType big_pred1_eq. 
     case: (altP (x =P output)) => [?|xDo]; subst.
     * by rewrite (big_pred1 tt) => [|[]]; rewrite 1?monC /= ?eqxx.
     * rewrite big_pred0 ?monU // => [[]]. by rewrite eq_sym (negbTE xDo).
@@ -684,8 +684,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
   - by case. 
   - split.
     + move=>d. by repeat case. 
-    + repeat case=>//=. rewrite eqxx /= (big_sum (inl tt) tt) (big_sum tt tt). 
-      by rewrite !(big_pred1 tt) ?monA //.
+    + repeat case=>//=. by rewrite eqxx /= !big_sumType !big_unitType monA.
     + by repeat case.
 Qed.
 

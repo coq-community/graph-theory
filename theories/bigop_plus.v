@@ -205,25 +205,15 @@ rewrite (bigID (fun i => p i == j)) => /=. apply: mon_eqv; apply: eqv_bigl => i.
 by rewrite andbA.
 Qed.
 
-(* TODO: eliminate [i1] and [i2], which are only used as defaults for reindexing *)
-Lemma big_sum (I1 I2 : finType) (i1 : I1) (i2 : I2) (P : pred (I1 + I2)) (F : (I1 + I2) -> X) : 
+Lemma big_sumType (I1 I2 : finType) (P : pred (I1 + I2)) (F : (I1 + I2) -> X) : 
   \big[*%M/1]_(x | P x) F x ≡ 
   (\big[*%M/1]_(x | P (inl x)) F (inl x)) ⊗ (\big[*%M/1]_(x | P (inr x)) F (inr x)).
-Proof.
-  rewrite (bigID is_inl). apply: mon_eqv. 
-  - rewrite (reindex inl). by apply: eqv_bigl; by move => x; rewrite andbT.
-    exists (fun x => if x is inl x then x else i1) => //. move => [x|x] //. by rewrite inE /= andbF.
-  - rewrite (reindex inr). by apply: eqv_bigl; by move => x; rewrite andbT.
-    exists (fun x => if x is inr x then x else i2) => //. move => [x|x] //. by rewrite inE /= andbF.
-Qed.
-Arguments big_sum [I1 I2] i1 i2 P F.
+Proof. by rewrite ![index_enum _]unlock [@Finite.enum in X in X ≡ _]unlock big_cat !big_map. Qed.
+Arguments big_sumType [I1 I2] P F.
 
-Lemma big_unit (P : pred unit) (F : unit -> X) : 
+Lemma big_unitType (P : pred unit) (F : unit -> X) : 
   \big[*%M/1]_(x | P x) F x ≡ if P tt then F tt else 1.
-Proof.
-case Ptt : (P tt); last by rewrite big_pred0 // => -[]. 
-by rewrite (@big_pred1 _ _ tt) //; case.
-Qed.
+Proof. by rewrite ![index_enum _]unlock [@Finite.enum]unlock big_mkcond big_seq1. Qed.
 
 Lemma big_inj2_eq (I1 I2 : finType) (F : I1 -> X) (f : I1 -> I2) (y : I1) :
   injective f -> \big[*%M/mon0]_(x | f x == f y) F x ≡ F y.

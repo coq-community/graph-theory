@@ -66,7 +66,7 @@ Proof.
   - by repeat case. 
   - split. 
     + by repeat case.
-    + move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+    + move => y. rewrite !big_sumType !big_unitType.
       by case: y ; [case; case | case]; rewrite /= ?monUl ?monU.
     + by repeat case.
 Qed.
@@ -103,7 +103,7 @@ Proof.
   - by repeat case. 
   - split.
     + by repeat case.
-    + move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+    + move => y. rewrite !big_sumType !big_unitType.
       by case: y => [[]|[]] /=; rewrite ?monU ?monUl.
     + by repeat case.
 Qed.
