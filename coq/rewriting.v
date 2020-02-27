@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Export pttdom mgraph2.
+Require Import pttdom mgraph mgraph2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

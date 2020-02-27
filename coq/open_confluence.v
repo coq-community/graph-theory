@@ -2,7 +2,7 @@ Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Import pttdom mgraph mgraph2 rewriting.
+Require Import structures pttdom rewriting.
 
 Require Import finmap_plus.
 Open Scope fset_scope.
@@ -88,8 +88,8 @@ exact: Build_inh_type (1%ptt).
 Defined.
 
 Notation pre_graph := (pre_graph test (car (setoid_of_ops (pttdom.ops tm)))).
-Notation graph := (graph (pttdom_labels tm)).
-Notation graph2 := (graph2 (pttdom_labels tm)).
+(* Notation graph := (graph (pttdom_labels tm)). *)
+(* Notation graph2 := (graph2 (pttdom_labels tm)). *)
 
 (** ** Strong Equivalence *)
 
@@ -340,7 +340,7 @@ Definition add_vertex (G : pre_graph) (x : VT) a :=
      p_in := p_in G;
      p_out := p_out G |}.
 
-Notation "G  ∔  [ x , a ]" := (add_vertex G x a) (at level 20) : open_scope.
+Notation "G  ∔  [ x , a ]" := (add_vertex G x a) (at level 20, left associativity) : open_scope.
 
 Global Instance add_vertex_graph (G : pre_graph) {graph_G : is_graph G} (x : VT) a : 
   is_graph (add_vertex G x a).
@@ -1568,7 +1568,7 @@ Qed.
 End PttdomGraphTheory.
 Notation "G ≡G H" := (eqvG G H) (at level 79).
 Notation "G \ x" := (remove_vertex G x) (at level 29,left associativity) : open_scope.
-Notation "G  ∔  [ x , a ]" := (add_vertex G x a) (at level 20) : open_scope.
+Notation "G  ∔  [ x , a ]" := (add_vertex G x a) (at level 20,left associativity) : open_scope.
 Notation "G - E" := (remove_edges G E) : open_scope.
 Notation "G ∔ [ x , u , y ]" := (add_edge G x u y) (at level 20,left associativity) : open_scope.
 Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left associativity) : open_scope.

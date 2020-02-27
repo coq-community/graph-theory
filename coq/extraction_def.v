@@ -4,8 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries.
 Require Import digraph sgraph minor checkpoint cp_minor. 
-Require Import mgraph mgraph2 skeleton bounded.
-Require Import ptt.
+Require Import structures pttdom ptt mgraph mgraph2 skeleton bounded.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

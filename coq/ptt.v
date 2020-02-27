@@ -1,7 +1,6 @@
-Require Export Setoid Morphisms.
+Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries.
-Require Export structures pttdom.
+Require Import edone preliminaries structures pttdom.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

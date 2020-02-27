@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Export structures mgraph ptt.
+Require Import structures pttdom mgraph ptt.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
