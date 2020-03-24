@@ -1,6 +1,6 @@
 COQVERSION=$(shell coqc -v | grep version | cut -d' ' -f 6 )
 
-EXTRA_DIR:=coqdocjs/extra
+EXTRA_DIR:=../coqdocjs/extra
 PACK:=graphs
 VERSION:=current
 PACKED_FILES:= \
