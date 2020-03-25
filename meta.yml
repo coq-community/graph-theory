@@ -42,7 +42,7 @@ maintainers:
 - name: Damien Pous
   nickname: damien-pous
 
-opam-file-maintainer: palmskog@gmail.com
+opam-file-maintainer: christian.doczkal@inria.fr
 
 opam-file-version: dev
 

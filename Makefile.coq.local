@@ -1,0 +1,35 @@
+GLOBFILES = $(VFILES:.v=.glob)
+COQDOCJS_DIR ?= coqdocjs
+EXTRA_DIR = $(COQDOCJS_DIR)/extra
+HEADER = $(EXTRA_DIR)/header.html
+FOOTER = $(EXTRA_DIR)/footer.html
+RESOURCES = $(EXTRA_DIR)/resources
+
+VERSION ?= current
+PREFIX = $(COQMF_INSTALLCOQDOCROOT)
+
+DOCDIR = docs
+COQDOCDIR = $(DOCDIR)/coqdoc
+
+COQDOCHTMLFLAGS = --toc -s --external 'http://math-comp.github.io/htmldoc/' mathcomp --html \
+  --with-header $(HEADER) --with-footer $(FOOTER) --index indexpage --parse-comments
+
+coqdoc: $(GLOBFILES) $(VFILES) $(HEADER) $(FOOTER) $(RESOURCES)
+	$(SHOW)'COQDOC -d $(COQDOCDIR)'
+	$(HIDE)mkdir -p $(COQDOCDIR)
+	$(HIDE)$(COQDOC) $(COQDOCHTMLFLAGS) $(COQDOCLIBS) -d $(COQDOCDIR) $(VFILES)
+	$(SHOW)'COPY extra'
+	$(HIDE)cp $(RESOURCES)/* $(COQDOCDIR)
+.PHONY: coqdoc
+
+graph: Makefile.coq
+	$(COQBIN)coqdep $(COQMF_COQLIBS) -dyndep var -c -dumpgraph depend-graph.gv $(COQMF_VFILES) >/dev/null
+	sed -i "s|theories/||g" depend-graph.gv
+	sed -i '1d;s/\[label=\"\([^"]*\)\"]/[label="\1";URL=".\/$(VERSION)\/$(PREFIX).\1.html"]/g' depend-graph.gv
+	cat depend-colors.gv depend-graph.gv | dot -o depend-graph.dot
+	dot -Tsvg depend-graph.dot -o depend-graph.svg
+
+clean::
+	$(HIDE)rm -rf $(DOCDIR) depend-graph.*
+
+
