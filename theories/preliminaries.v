@@ -397,9 +397,8 @@ Inductive maxn_cases n m : nat -> Type :=
 
 Lemma maxnP n m : maxn_cases n m (maxn n m).
 Proof. 
-  case: (leqP n m) => H.
-  - rewrite (maxn_idPr H). by constructor.
-  - rewrite (maxn_idPl _); [by constructor|exact: ltnW].
+(* compat:mathcomp-1.10.0 *)
+by case: (leqP n m) => H; rewrite ?(maxn_idPr H) ?(maxn_idPl (ltnW H)); constructor.
 Qed.
 
 Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
