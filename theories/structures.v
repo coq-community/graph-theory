@@ -1,6 +1,6 @@
 Require Import RelationClasses Morphisms Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries bigop_plus.
+Require Import edone preliminaries setoid_bigop.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -60,7 +60,7 @@ Record labels :=
       lv: setoid;
       mon0: lv;
       mon2: lv -> lv -> lv;
-      lv_monoid: commoidLaws mon0 mon2;
+      lv_monoid: comMonoidLaws mon0 mon2;
       le: setoid;
       eqv': relation le;
       Eqv'_sym: Symmetric eqv';

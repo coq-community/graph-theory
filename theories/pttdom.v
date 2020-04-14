@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries bigop_plus structures.
+Require Import edone preliminaries setoid_bigop structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -174,7 +174,7 @@ Section derived.
  
  Canonical Structure pttdom_labels: labels :=
    Labels
-     (mkCommoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
+     (mkComMonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
      eqv'_sym eqv01 eqv11.
  
  (* Lemmas to turn pttdom expressions into (projections of) tests *)

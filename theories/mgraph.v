@@ -1,7 +1,7 @@
 Require Import Morphisms RelationClasses.
 Require CMorphisms CRelationClasses. (* To be used explicitly *)
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries bij equiv digraph bigop_plus structures.
+Require Import edone finite_quotient preliminaries bij equiv digraph setoid_bigop structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

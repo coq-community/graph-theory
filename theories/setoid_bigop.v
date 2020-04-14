@@ -38,8 +38,8 @@ Class monoidLaws {X : setoid} (mon0 : X) (mon2 : X -> X -> X) :=
     }.
 Global Existing Instance mon_eqv.
 
-Class commoidLaws {X:setoid} (mon0 : X) (mon2 : X -> X -> X) :=
-  CommoidLaws { 
+Class comMonoidLaws {X:setoid} (mon0 : X) (mon2 : X -> X -> X) :=
+  ComMonoidLaws { 
       mon_of_com :> monoidLaws mon0 mon2;
       monC : forall x y, mon2 x y ≡ mon2 y x 
     }.
@@ -54,12 +54,12 @@ Lemma monUl_of_com :
   (forall x, mon2 x mon0 ≡ x) -> (forall x y, mon2 x y ≡ mon2 y x) -> forall x, mon2 mon0 x ≡ x.
 Proof. move => monU monC x. by rewrite monC monU. Qed.
 
-Definition mkCommoidLaws
+Definition mkComMonoidLaws
   (mon_eqv: Proper (eqv ==> eqv ==> eqv) mon2)
   (monA: forall x y z, mon2 x (mon2 y z) ≡ mon2 (mon2 x y) z)
   (monC : forall x y, mon2 x y ≡ mon2 y x)
   (monU: forall x, mon2 x mon0 ≡ x) :=
-  CommoidLaws (MonoidLaws mon_eqv monA monU (monUl_of_com monU monC)) monC.
+  ComMonoidLaws (MonoidLaws mon_eqv monA monU (monUl_of_com monU monC)) monC.
 
 Section MonoidTheory.
 Context {X_monoid : monoidLaws mon0 mon2}.
@@ -117,8 +117,8 @@ Qed.
 
 End MonoidTheory.
 
-Section CommoidTheory.
-Context {X_commoid : commoidLaws mon0 mon2}.
+Section ComMonoidTheory.
+Context {X_comMonoid : comMonoidLaws mon0 mon2}.
 
 Local Notation "1" := mon0.
 Local Notation "*%M" := mon2 (at level 0).
@@ -226,7 +226,7 @@ Lemma big_inj2_eq (I1 I2 : finType) (F : I1 -> X) (f : I1 -> I2) (y : I1) :
   injective f -> \big[*%M/mon0]_(x | f x == f y) F x ≡ F y.
 Proof. move => inj_f; rewrite (@big_pred1 _ _ y) //= => x; exact: inj_eq. Qed.
 
-End CommoidTheory.
+End ComMonoidTheory.
 End SetoidTheory.
 
 Arguments reindex_onto [X mon0 mon2 _ I J] h h' [P F].

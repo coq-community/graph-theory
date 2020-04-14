@@ -9,7 +9,7 @@
 theories/edone.v
 theories/bounded.v
 theories/preliminaries.v
-theories/bigop_plus.v
+theories/setoid_bigop.v
 theories/finmap_plus.v
 theories/set_tac.v
 theories/bij.v

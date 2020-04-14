@@ -2,7 +2,7 @@ Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Import bigop_plus structures pttdom rewriting.
+Require Import setoid_bigop structures pttdom rewriting.
 
 Require Import finmap_plus.
 Open Scope fset_scope.

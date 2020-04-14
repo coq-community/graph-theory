@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries bij.
-Require Import bigop_plus structures mgraph pttdom mgraph2 rewriting reduction open_confluence transfer.
+Require Import setoid_bigop structures mgraph pttdom mgraph2 rewriting reduction open_confluence transfer.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
