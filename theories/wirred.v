@@ -160,11 +160,24 @@ Proof.
   + by case: cond2_newgraph_rel => [? | ?]; [left; rewrite cl_sg_sym | right].
 Qed.
 
+(* Alternative lemmas, not sure if necessary but gives an idea on how to manipulate things *)
+Lemma G'_vertex_def' : forall x : G', (val x).1 -*- (val x).2.
+Proof.
+  move=> /= [x xinV'] /=.
+  move: xinV'.
+  by rewrite in_set.
+Qed.
+
+Lemma G'_edge_def' : forall x y : G', x -- y -> (val x != val y) /\
+          ((val y).1 -*- (val x).2 \/ (val y).2 -*- (val x).1).
+Proof. by move=> [x _] [y _] /andP /= [x_neq_y /orP cond2_newgraph_rel]. Qed.
 
 
 
 
-(* Function h_vv goes from a vertex v in G to its counterpart vv in G' *)
+
+
+(* Function h_vv maps a vertex v in G to its counterpart vv in G' *)
 Section h_counterpart_definition.
 
 Variable v : G.
@@ -172,7 +185,8 @@ Variable v : G.
 Lemma vv_in_V' : (v, v) \in V' G.
 Proof. by rewrite /V' in_set /fst /snd cl_sg_refl. Qed.
 
-Definition h_vv := Sub (v, v) vv_in_V' : G'.
+Definition h_vv := Sub (v, v) vv_in_V' : G'. (* i.e. {x : G * G | x \in V' G} *)
+
 Lemma h_vv1 : (val h_vv).1 = v.
 Proof. by rewrite /=. Qed.
 
@@ -181,35 +195,54 @@ Proof. by rewrite /=. Qed.
 
 End h_counterpart_definition.
 
-Theorem abeqcd : forall a b c d : G,  (a, b) == (c, d) = (a == c) && (b == d).
-Proof. by move=> a b c d ; rewrite /=. Qed.
-
 Theorem subgraph_G_G' : subgraph G G'.
 Proof.
   rewrite /subgraph.
   exists h_vv.
-
-  (* injective *)
+  (* h_vv is injective *)
   rewrite /injective.
-  move=> x1 x2 H.
-  have h_vv1x2: (val (h_vv x2)).1 == x2 by rewrite /=.
-  rewrite -H (h_vv1 x1) in h_vv1x2.
-  by apply/eqP.
-
-  (* induced_hom *)
+  move=> x y H1.
+  move: (h_vv1 x) <-.
+  move: (h_vv1 y) <-.
+  by rewrite H1.
+  (* h_vv is an induced homomorphism *)
   rewrite /induced_hom.
   move=> x y.
+  set x' := h_vv x.
+  set y' := h_vv y.
+  rewrite /iff ; split.
+  (* case x -- y -> x' -- y' *)
+  move=> adjxy.
+  suff: ((x, x) != (y, y)) && (y -*- x || y -*- x) by rewrite /=.
+  apply/andP ; split.
+  move: (negbT (sg_edgeNeq adjxy)).
+  apply: contra => /eqP.
+  rewrite pair_equal_spec => [[xeqy _]].
+  by move: xeqy->.
+  by rewrite orbb cl_sg_sym /cl_sedge adjxy orTb.
+  (* case x' -- y' -> x -- y *)
+  move=> adjx'y'.
+  have H2: ((x, x) != (y, y)) && (y -*- x || y -*- x) by exact: adjx'y'.
+  move/andP: H2 => [x'neqy'].
+  rewrite orbb cl_sg_sym /cl_sedge => xdomy.
+  have xneqy: x != y.
+  move: x'neqy'.
+  apply: contra.
+  by move/eqP->.
+  by rewrite (aorbNb xdomy xneqy).
+
+(* Prueba de induced homomorphism de Mauricio:
   rewrite/iff ; split.
   (* first case: -> *)
   move=> adjxy.
   have H: newgraph_rel (h_vv x) (h_vv y).
   rewrite /newgraph_rel /=.
   apply/andP ; split.
-  rewrite abeqcd negb_and borb.
+  rewrite abeqcd negb_and orbb.
   move/sg_edgeNeq: adjxy.
   rewrite -[in X in X = false -> _](negbK (x == y)). (* Esto me costó bastante. Se puede simplificar? *)
   exact: negbFE.
-  rewrite borb /cl_sedge ; apply/orP/or_introl.
+  rewrite orbb /cl_sedge ; apply/orP/or_introl.
   by rewrite sg_sym.
   exact: H.
   (* second case: <- *)
@@ -217,11 +250,11 @@ Proof.
   have H: newgraph_rel (h_vv x) (h_vv y) by exact: h_xxadjh_yy.
   rewrite /newgraph_rel /= in H.
   move: H => /andP [xneqy ydomx].
-  rewrite abeqcd negb_and borb in xneqy.
-  rewrite borb in ydomx.
+  rewrite abeqcd negb_and orbb in xneqy.
+  rewrite orbb in ydomx.
   rewrite cl_sg_sym /cl_sedge in ydomx.
   move/aorbNb in ydomx.
-  exact: (ydomx xneqy).
+  exact: (ydomx xneqy). *)
 Qed.
 
 
