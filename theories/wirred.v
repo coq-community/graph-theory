@@ -17,7 +17,7 @@ Set Bullet Behavior "Strict Subproofs".
 Section Basic_Facts_Induced_Homomorphism_Isomorphism.
 
 Definition induced_hom (G1 G2 : sgraph) (h : G1 -> G2) :=
-          forall x y : G1, x -- y = h x -- h y.
+          forall x y : G1, x -- y <-> h x -- h y.
 
 Definition subgraph (G1 G2 : sgraph) :=
           exists2 h : G1 -> G2, injective h & induced_hom h.
@@ -172,21 +172,57 @@ Variable v : G.
 Lemma vv_in_V' : (v, v) \in V' G.
 Proof. by rewrite /V' in_set /fst /snd cl_sg_refl. Qed.
 
-Definition h_vv := Sub (v, v) vv_in_V' : {x : G * G | x \in V' G}.
-
-Lemma h_vv1 : (val h_vv).1 == v.
+Definition h_vv := Sub (v, v) vv_in_V' : G'.
+Lemma h_vv1 : (val h_vv).1 = v.
 Proof. by rewrite /=. Qed.
 
-Lemma h_vv2 : (val h_vv).2 == v.
+Lemma h_vv2 : (val h_vv).2 = v.
 Proof. by rewrite /=. Qed.
 
 End h_counterpart_definition.
 
+Theorem abeqcd : forall a b c d : G,  (a, b) == (c, d) = (a == c) && (b == d).
+Proof. by move=> a b c d ; rewrite /=. Qed.
+
 Theorem subgraph_G_G' : subgraph G G'.
-Admitted.
+Proof.
+  rewrite /subgraph.
+  exists h_vv.
 
+  (* injective *)
+  rewrite /injective.
+  move=> x1 x2 H.
+  have h_vv1x2: (val (h_vv x2)).1 == x2 by rewrite /=.
+  rewrite -H (h_vv1 x1) in h_vv1x2.
+  by apply/eqP.
 
-
+  (* induced_hom *)
+  rewrite /induced_hom.
+  move=> x y.
+  rewrite/iff ; split.
+  (* first case: -> *)
+  move=> adjxy.
+  have H: newgraph_rel (h_vv x) (h_vv y).
+  rewrite /newgraph_rel /=.
+  apply/andP ; split.
+  rewrite abeqcd negb_and borb.
+  move/sg_edgeNeq: adjxy.
+  rewrite -[in X in X = false -> _](negbK (x == y)). (* Esto me costó bastante. Se puede simplificar? *)
+  exact: negbFE.
+  rewrite borb /cl_sedge ; apply/orP/or_introl.
+  by rewrite sg_sym.
+  exact: H.
+  (* second case: <- *)
+  move=> h_xxadjh_yy.
+  have H: newgraph_rel (h_vv x) (h_vv y) by exact: h_xxadjh_yy.
+  rewrite /newgraph_rel /= in H.
+  move: H => /andP [xneqy ydomx].
+  rewrite abeqcd negb_and borb in xneqy.
+  rewrite borb in ydomx.
+  rewrite cl_sg_sym /cl_sedge in ydomx.
+  move/aorbNb in ydomx.
+  exact: (ydomx xneqy).
+Qed.
 
 
 (* For a given irredundant set D of G, there exists a stable set of G' such that w(D) = w'(G') *)

@@ -1006,6 +1006,9 @@ Proof. move=> a b. by case: a ; case: b. Qed.
 Lemma aorbNb: forall a b : bool, (a || b) -> ~~ b -> a.
 Proof. move=> a b. by case: a ; case: b. Qed.
 
+Lemma borb: forall b : bool, (b || b) = b.
+Proof. move=> b. by case: b. Qed.
+
 Variable T : finType.
 Variables u v : T.
 Variables A B : {set T}.
