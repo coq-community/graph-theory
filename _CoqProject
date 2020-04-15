@@ -44,3 +44,7 @@ theories/mgraph2_tw2.v
 theories/extraction_def.v
 theories/extraction_iso.v
 theories/extraction_top.v
+
+## Domination Theory
+theories/dom.v
+theories/wirred.v

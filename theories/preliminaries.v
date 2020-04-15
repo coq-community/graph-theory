@@ -994,3 +994,178 @@ Require Import Setoid Morphisms.
 Instance ex2_iff_morphism (A : Type) :  
   Proper (pointwise_relation A iff ==> pointwise_relation A iff ==> iff) (@ex2 A).
 Proof. by firstorder. Qed.
+
+
+(*********************************************************************************)
+(** * Preliminaries (used in Domination Theory) *)
+Section Preliminaries1.
+
+Lemma aorbNa: forall a b : bool, (a || b) -> ~~ a -> b.
+Proof. move=> a b. by case: a ; case: b. Qed.
+
+Lemma aorbNb: forall a b : bool, (a || b) -> ~~ b -> a.
+Proof. move=> a b. by case: a ; case: b. Qed.
+
+Variable T : finType.
+Variables u v : T.
+Variables A B : {set T}.
+
+Lemma sum_disjoint_union : forall f : T -> nat, A :&: B = set0 ->
+          \sum_(i in T | i \in (A :|: B)) f i = \sum_(i in T | i \in A) f i + \sum_(i in T | i \in B) f i.
+Proof.
+  move=> f /eqP disjAB.
+  rewrite setI_eq0 in disjAB.
+  have H1 : forall i : T, i \in (A :|: B) = (i \in [predU A & B]).
+  move=> i ; by rewrite in_setU.
+  have H2 : \sum_(i in T | i \in (A :|: B)) f i = \sum_(i in T | i \in [predU A & B]) f i.
+  apply: eq_bigl => i ; by rewrite H1.
+  rewrite H2.
+  exact: bigU.
+Qed.
+
+Lemma sum_empty : forall f : T -> nat, \sum_(i in T | i \in set0) f i = 0.
+Proof.
+  move=> f.
+  rewrite (eq_bigl (fun i => false)).
+  by rewrite big_pred0_eq.
+  move=> i ; by rewrite in_set0 andbF.
+Qed.
+
+Lemma sum_singleton : forall f : T -> nat, \sum_(i in T | i \in [set u]) f i = f u.
+Proof.
+  move=> f.
+  rewrite (eq_bigl (fun i => i == u)) ; last first.
+  move=> i.
+  by rewrite in_set1.
+  rewrite -big_filter.
+  have H1: \sum_(i <- (cons u nil)) f i = f u by rewrite big_cons big_nil addn0.
+  rewrite -H1.
+  apply congr_big => [ | // | //].
+  by rewrite filter_index_enum enum1.
+Qed.
+
+Lemma set_minus_union : B \subset A -> A = (A :\: B) :|: B.
+Proof.
+  move=> BinA.
+  apply/eqP.
+  rewrite eqEsubset.
+  apply/andP ; split.
+  (* first case: x \in A implies x \in (A - B cup B) *)
+  apply/subsetP => x xinA.
+  by rewrite in_setU in_setD orb_andl xinA orNb andTb orTb.
+  (* second case: x \in (A - B cup B) -> x \in A *)
+  apply/subsetP => x.
+  rewrite in_setU in_setD orb_andl orNb andTb => /orP.
+  elim=> //.
+  by apply (subsetP BinA).
+Qed.
+
+Lemma set_minus_disjoint : (A :\: B) :&: B = set0.
+Proof. by rewrite setIDAC -setIDA setDv setI0. Qed.
+
+Lemma set_pair_disjoint : (u != v) -> [set u] :&: [set v] = set0.
+Proof.
+  move=> uneqv.
+  apply/setP => x.
+  apply/setIP.
+  rewrite in_set0 !in_set1.
+  move=> [/eqP xisu /eqP xisv].
+  move: xisu xisv uneqv ->.
+  by move/eqP->.
+Qed.
+
+Lemma pair_absorb : [set u; u] = [set u].
+Proof. apply/setP => x ; by rewrite in_set1 in_set2 orbb. Qed.
+
+Lemma pair_commute : [set u; v] = [set v; u].
+Proof. apply/setP => x ; by rewrite !in_set2 orbC. Qed.
+
+End Preliminaries1.
+
+
+(**********************************************************************************)
+Section Preliminaries2.
+
+Variable T : finType.
+
+Lemma set_minus_union1 : forall (u : T) (A : {set T}), u \in A -> A = (A :\: [set u]) :|: [set u].
+Proof.
+  move=> u A uinA.
+  apply: set_minus_union.
+  apply/subsetP => i.
+  rewrite in_set1 => ieqx.
+  by move/eqP: ieqx ->.
+Qed.
+
+Lemma set21_subset : forall (u v : T) (A : {set T}), [set u; v] \subset A -> u \in A.
+Proof. move=> u v A uvsubA ; apply: (subsetP uvsubA u) ; exact: set21. Qed.
+
+Lemma set22_subset : forall (u v : T) (A : {set T}), [set u; v] \subset A -> v \in A.
+Proof. move=> u v A ; rewrite pair_commute ; exact: set21_subset. Qed.
+
+Lemma doubleton_eq_left : forall u v w : T, [set u; v] = [set u; w] <-> v = w.
+Proof.
+  move=> u v w.
+  rewrite /iff ; split ; last by move->.
+  (* we prove the hard case: {u, v} = {u, w} -> v = w *)
+  move=> uvisuw.
+  apply/eqP.
+  move: (set22 u v) => H1.
+  rewrite uvisuw in_set2 in H1.
+  case/orP: H1 => [visu | // ].
+  rewrite -!(eqP visu) pair_absorb in uvisuw.
+  move: (set22 v w) => H2.
+  by rewrite eq_sym -in_set1 uvisuw.
+Qed.
+
+Lemma doubleton_eq_right : forall u v w : T, [set u; w] = [set v; w] <-> u = v.
+Proof.
+  move=> u v w.
+  rewrite (pair_commute u w) (pair_commute v w).
+  exact: doubleton_eq_left.
+Qed.
+
+Lemma doubleton_eq_iff : forall u v w x: T, [set u; v] = [set w; x] <->
+          ((u = w /\ v = x) \/ (u = x /\ v = w)).
+Proof.
+  move=> u v w x.
+  rewrite /iff ; split ; last first.
+  (* first case : <- *)
+  case => [ [uisw visx] | [uisx visw] ]. 
+  by rewrite uisw visx.
+  by rewrite uisx visw pair_commute.
+  (* second case : -> *)
+  move=> uviswx.
+  move: (set21 u v) => uinwx.
+  rewrite uviswx in_set2 in uinwx.
+  case/orP: uinwx => [/eqP uisw|/eqP uisx].
+  left ; split => //.
+  move: (doubleton_eq_left w v x) => [dbl_eq_left _].
+  apply: dbl_eq_left.
+  by rewrite -[in X in X = _] uisw.
+  right ; split => //.
+  move: (doubleton_eq_right v w x) => [dbl_eq_right _].
+  apply: dbl_eq_right.
+  rewrite -[in X in X = _] uisx -uviswx.
+  exact: pair_commute.
+Qed.
+
+Lemma pair_neq_card2 : forall u v : T, (u != v) <-> #|[set u; v]| = 2.
+Proof.
+  move=> u v.
+  rewrite /iff ; split.
+  (* first case: -> *)
+  move=> uneqv.
+  rewrite cardsU !cards1.
+  by rewrite (set_pair_disjoint uneqv) cards0.
+  (* second case: <- *)
+  move=> eis2.
+  apply/eqP => ueqv.
+  move: eis2.
+  by rewrite ueqv pair_absorb cards1.
+Qed.
+
+End Preliminaries2.
+
+
+
