@@ -28,6 +28,8 @@ Definition cl_sedge : G -> G -> bool := fun u v => (u -- v) || (u == v).
 Definition edge_set_pred : pred {set G} :=
           fun e => (#|e| == 2) && [forall u, forall v, (e == [set u; v]) ==> (u -- v) ].
 
+(* TO DO: A similar definition is already given in connectivity.v (see "edges").
+ * Is the definition given below worth retaining? *)
 Definition edge_set := [set e | edge_set_pred e].
 
 Definition isolate_graph := edge_set = set0.
