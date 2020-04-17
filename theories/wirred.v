@@ -258,6 +258,48 @@ Proof.
 Qed.
 
 
+(* Function h_vw maps a vertex v in D (an irredundant set) to (v,w) where w is one of its
+ * private vertices *)
+Section h_vertex_and_its_private_definition.
+
+Variable D : {set G}. 
+
+Hypothesis Dirr : irredundant D.
+
+Variable v : G.
+
+Hypothesis vinD : v \in D.
+
+Local Lemma w_exists : {w : G | private D v w}.
+Proof.
+  move/irredundantP: Dirr.
+  move=> /(_ v vinD) /(private_set_not_empty vinD).
+  Fail elim=> w. (* PORQUE NO FUNCIONA? *)
+  Check {w : G | private D v w}. (* SERA PORQUE ES DE TIPO Type Y NO Prop? *)
+Admitted.
+
+Let w : G := sval w_exists.
+Let w_is_private : private D v w := svalP w_exists.
+
+Lemma vw_in_V' : (v, w) \in V' G.
+Proof.
+  rewrite /V' in_set /=.
+  move: w_is_private.
+  rewrite /private.
+  by move/andP=> [ vdomw _ ].
+Qed.
+
+Definition h_vw := Sub (v, w) vw_in_V' : G'. (* i.e. {x : G * G | x \in V' G} *)
+
+Lemma h_vw1 : (val h_vw).1 = v.
+Proof. by rewrite /=. Qed.
+
+Lemma h_vw2 : private D v (val h_vw).2.
+Proof. by rewrite /= w_is_private. Qed.
+
+End h_vertex_and_its_private_definition.
+
+
 (* For a given irredundant set D of G, there exists a stable set of G' such that w(D) = w'(G') *)
 Theorem irred_G_to_stable_G' : forall D : {set G}, irredundant D ->
           exists2 S : {set G'}, stable S & weight_set weight D = weight_set weight' S.
