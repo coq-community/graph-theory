@@ -19,13 +19,13 @@ Section Basic_Facts_Induced_Homomorphism_Isomorphism.
 Definition induced_hom (G1 G2 : sgraph) (h : G1 -> G2) :=
           forall x y : G1, x -- y <-> h x -- h y.
 
-Definition subgraph (G1 G2 : sgraph) :=
+Definition induced_subgraph (G1 G2 : sgraph) :=
           exists2 h : G1 -> G2, injective h & induced_hom h.
 
-Lemma induced_sub : forall (G : sgraph) (S : {set G}), subgraph (induced S) G.
+Lemma induced_S_is_sub : forall (G : sgraph) (S : {set G}), induced_subgraph (induced S) G.
 Proof.
   move=> G S.
-  rewrite /subgraph /induced_hom.
+  rewrite /induced_subgraph /induced_hom.
   exists val => // ; exact: val_inj.
 Qed.
 
@@ -35,11 +35,11 @@ Definition isomorphic (G1 G2 : sgraph) :=
 Variables G1 G2 : sgraph.
 Hypothesis iso_G1_G2 : isomorphic G1 G2.
 
-Lemma sub_G1_G2 : subgraph G1 G2.
+Lemma sub_G1_G2 : induced_subgraph G1 G2.
 Proof.
   elim: iso_G1_G2 => f.
   elim=> g can_f_g can_g_f hom_f.
-  rewrite /subgraph.
+  rewrite /induced_subgraph.
   exists f => //.
   exact: (can_inj can_f_g).
 Qed.
@@ -67,7 +67,7 @@ Qed.
 
 End Basic_Facts_Induced_Homomorphism_Isomorphism.
 
-Lemma sub_G2_G1 : forall G1 G2 : sgraph, isomorphic G1 G2 -> subgraph G2 G1.
+Lemma sub_G2_G1 : forall G1 G2 : sgraph, isomorphic G1 G2 -> induced_subgraph G2 G1.
 Proof. move=> G1 G2 /iso_G2_G1 ; exact: sub_G1_G2. Qed.
 
 
@@ -180,24 +180,24 @@ Proof. by move=> [x _] [y _] /andP /= [x_neq_y /orP cond2_newgraph_rel]. Qed.
 (* Function h_vv maps a vertex v in G to its counterpart vv in G' *)
 Section h_counterpart_definition.
 
-Variable v : G.
+  Variable v : G.
 
-Lemma vv_in_V' : (v, v) \in V' G.
-Proof. by rewrite /V' in_set /fst /snd cl_sg_refl. Qed.
+  Lemma vv_in_V' : (v, v) \in V' G.
+  Proof. by rewrite /V' in_set /fst /snd cl_sg_refl. Qed.
 
-Definition h_vv := Sub (v, v) vv_in_V' : G'. (* i.e. {x : G * G | x \in V' G} *)
+  Definition h_vv := Sub (v, v) vv_in_V' : G'. (* i.e. {x : G * G | x \in V' G} *)
 
-Lemma h_vv1 : (val h_vv).1 = v.
-Proof. by rewrite /=. Qed.
+  Lemma h_vv1 : (val h_vv).1 = v.
+  Proof. by rewrite /=. Qed.
 
-Lemma h_vv2 : (val h_vv).2 = v.
-Proof. by rewrite /=. Qed.
+  Lemma h_vv2 : (val h_vv).2 = v.
+  Proof. by rewrite /=. Qed.
 
 End h_counterpart_definition.
 
-Theorem subgraph_G_G' : subgraph G G'.
+Theorem subgraph_G_G' : induced_subgraph G G'.
 Proof.
-  rewrite /subgraph.
+  rewrite /induced_subgraph.
   exists h_vv.
   (* h_vv is injective *)
   rewrite /injective.
@@ -262,40 +262,40 @@ Qed.
  * private vertices *)
 Section h_vertex_and_its_private_definition.
 
-Variable D : {set G}. 
+  Variable D : {set G}. 
 
-Hypothesis Dirr : irredundant D.
+  Hypothesis Dirr : irredundant D.
 
-Variable v : G.
+  Variable v : G.
 
-Hypothesis vinD : v \in D.
+  Hypothesis vinD : v \in D.
 
-Local Lemma w_exists : {w : G | private D v w}.
-Proof.
-  move/irredundantP: Dirr.
-  move=> /(_ v vinD) /(private_set_not_empty vinD).
-  Fail elim=> w. (* PORQUE NO FUNCIONA? *)
-  Check {w : G | private D v w}. (* SERA PORQUE ES DE TIPO Type Y NO Prop? *)
-Admitted.
+  Local Lemma w_exists : {w : G | private D v w}.
+  Proof.
+    move/irredundantP: Dirr.
+    move=> /(_ v vinD) /(private_set_not_empty vinD).
+    Fail elim=> w. (* PORQUE NO FUNCIONA? *)
+    Check {w : G | private D v w}. (* SERA PORQUE ES DE TIPO Type Y NO Prop? *)
+  Admitted.
 
-Let w : G := sval w_exists.
-Let w_is_private : private D v w := svalP w_exists.
+  Let w : G := sval w_exists.
+  Let w_is_private : private D v w := svalP w_exists.
 
-Lemma vw_in_V' : (v, w) \in V' G.
-Proof.
-  rewrite /V' in_set /=.
-  move: w_is_private.
-  rewrite /private.
-  by move/andP=> [ vdomw _ ].
-Qed.
+  Lemma vw_in_V' : (v, w) \in V' G.
+  Proof.
+    rewrite /V' in_set /=.
+    move: w_is_private.
+    rewrite /private.
+    by move/andP=> [ vdomw _ ].
+  Qed.
 
-Definition h_vw := Sub (v, w) vw_in_V' : G'. (* i.e. {x : G * G | x \in V' G} *)
+  Definition h_vw := Sub (v, w) vw_in_V' : G'. (* i.e. {x : G * G | x \in V' G} *)
 
-Lemma h_vw1 : (val h_vw).1 = v.
-Proof. by rewrite /=. Qed.
+  Lemma h_vw1 : (val h_vw).1 = v.
+  Proof. by rewrite /=. Qed.
 
-Lemma h_vw2 : private D v (val h_vw).2.
-Proof. by rewrite /= w_is_private. Qed.
+  Lemma h_vw2 : private D v (val h_vw).2.
+  Proof. by rewrite /= w_is_private. Qed.
 
 End h_vertex_and_its_private_definition.
 
