@@ -270,16 +270,27 @@ Section h_vertex_and_its_private_definition.
 
   Hypothesis vinD : v \in D.
 
-  Local Lemma w_exists : {w : G | private D v w}.
-  Proof.
-    move/irredundantP: Dirr.
-    move=> /(_ v vinD) /(private_set_not_empty vinD).
-    Fail elim=> w. (* PORQUE NO FUNCIONA? *)
-    Check {w : G | private D v w}. (* SERA PORQUE ES DE TIPO Type Y NO Prop? *)
-  Admitted.
+(* Alternative (that uses "pick"):
 
-  Let w : G := sval w_exists.
-  Let w_is_private : private D v w := svalP w_exists.
+  Let w_opt := [pick u | private D v u].
+  Let w := if w_opt is Some u then u else v.
+
+  Local Lemma w_is_private : private D v w.
+  Proof.
+    rewrite /w /w_opt.
+    case: pickP => [? ? | private_eq_pred0]; first by done.
+    move/irredundantP: Dirr => /(_ v vinD) /(private_set_not_empty vinD).
+    elim => u.
+    by rewrite private_eq_pred0.
+  Qed. *)
+
+
+  Local Lemma w_exists : exists w : G, private D v w.
+  Proof. by  move/irredundantP: Dirr => /(_ v vinD) /(private_set_not_empty vinD).
+  Qed.
+
+  Let w : G := xchoose w_exists.
+  Let w_is_private : private D v w := xchooseP w_exists.
 
   Lemma vw_in_V' : (v, w) \in V' G.
   Proof.
