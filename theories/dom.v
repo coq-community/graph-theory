@@ -2,7 +2,7 @@
 (* New version of the Domination Theory in Graphs *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import preliminaries digraph sgraph.
+Require Import preliminaries digraph sgraph connectivity.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -17,24 +17,13 @@ Section Neighborhoods_definitions.
 
 Variable G : sgraph.
 
-Definition open_neigh : G -> {set G} := fun u => [set v | sedge u v].
+Definition open_neigh (u : G) := [set v | sedge u v].
 Local Notation "N( x )" := (open_neigh x) (at level 0, x at level 99).
 
-Definition closed_neigh : G -> {set G} := fun u => N(u) :|: [set u].
+Definition closed_neigh (u : G) := N(u) :|: [set u].
 Local Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99).
 
-Definition cl_sedge : G -> G -> bool := fun u v => (u -- v) || (u == v).
-
-Definition edge_set_pred : pred {set G} :=
-          fun e => (#|e| == 2) && [forall u, forall v, (e == [set u; v]) ==> (u -- v) ].
-
-(* TO DO: A similar definition is already given in connectivity.v (see "edges").
- * Is the definition given below worth retaining? *)
-Definition edge_set := [set e | edge_set_pred e].
-
-Definition isolate_graph := edge_set = set0.
-
-Definition deg : G -> nat := fun v => #|N(v)|.
+Definition cl_sedge (u v : G) : bool := (u -- v) || (u == v).
 
 Variable D : {set G}.
 
@@ -50,13 +39,11 @@ Notation "N( x )" := (open_neigh x) (at level 0, x at level 99, only parsing).
 Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99, only parsing).
 Notation "x -*- y" := (cl_sedge x y) (at level 30).
 Notation "V( G )" := (setT : {set G}) (at level 0, G at level 99).
-Notation "E( G )" := (@edge_set G) (at level 0, G at level 99).
+Notation "E( G )" := (edges G) (at level 0, G at level 99).
 Notation "NS( G ; D )" := (@open_neigh_set G D) (at level 0, G at level 99, D at level 99).
 Notation "NS( D )" := (open_neigh_set D) (at level 0, D at level 99).
 Notation "NS[ G ; D ]" := (@closed_neigh_set G D) (at level 0, G at level 99, D at level 99).
 Notation "NS[ D ]" := (closed_neigh_set D) (at level 0, D at level 99).
-
-Global Arguments deg : clear implicits.
 
 
 (**********************************************************************************)
@@ -87,50 +74,35 @@ Proof. rewrite /reflexive /cl_sedge /closed_neigh => u ; by rewrite eq_refl orbT
 Lemma v_in_clneigh : forall v : G, v \in N[v].
 Proof. move=> v ; by rewrite -clsg_clneigh cl_sg_refl. Qed.
 
-Lemma edges_size_two : forall e : {set G}, e \in E(G) -> #|e| = 2.
-Proof. move=> e ; rewrite /edge_set in_set => /andP [eis2 _] ; exact: eqP eis2. Qed.
-
-Proposition edge_setP : forall e : {set G},
-          reflect ((#|e| = 2) /\ forall u v : G, e = [set u; v] -> (u -- v)) (edge_set_pred e).
+Lemma opneigh_proper_clneigh : forall v : G, N(v) \proper N[v].
 Proof.
-  move=> e.
-  rewrite /edge_set_pred.
-  apply: (iffP andP).
-  (* first case: bool to Prop *)
-  move=> [/eqP eis2 /forallP H1].
-  split ; [exact: eis2 | ].
-  move=> u v.
-  move: (H1 u) => /forallP /(_ v) /implyP => H2.
-  by move/eqP.
-  (* second case: Prop to bool *)
-  move=> [/eqP eis2 H2].
-  split ; [exact: eis2 | ].
-  apply/forallP => u.
-  apply/forallP => v.
-  move: ((H2 u) v) => H3.
-  apply/implyP.
-  by move/eqP.
+  move=> v.
+  apply/properP.
+  rewrite /closed_neigh.
+  split.
+  by rewrite subsetUl.
+  exists v.
+  by rewrite in_set in_set1 eq_refl orbT.
+  exact: v_notin_opneigh.
 Qed.
 
-Proposition sg_in_edge_set : forall u v : G, (u -- v) <-> ([set u; v] \in E(G)).
+Proposition sg_in_edge_set : forall u v : G, (u -- v) <-> [set u; v] \in E(G).
 Proof.
   move=> u v.
-  rewrite /edge_set in_set.
   rewrite /iff ; split.
   (* case: -> *)
   move=> adjuv.
-  apply/edge_setP.
-  split.
-  rewrite -pair_neq_card2.
-  exact: negbT (sg_edgeNeq adjuv).
-  move=> u' v'.
-  rewrite doubleton_eq_iff.
-  case=> [ [uisu' visv'] | [uisv' visu'] ].
-  by rewrite -uisu' -visv'.
-  by rewrite -uisv' -visu' sg_sym.
+  apply/edgesP.
+  exists u.
+  exists v.
+  split => //.
   (* case: <- *)
-  move/edge_setP => [_ H1].
-  by apply/(H1 u v).
+  move/edgesP.
+  elim=> x.
+  elim=> y.
+  rewrite (doubleton_eq_iff u v x y) ; elim ; case ; case.
+  by move-> ; move->.
+  by move-> ; move-> ; rewrite sg_sym.
 Qed.
 
 Variables D1 D2 : {set G}.
@@ -187,6 +159,55 @@ Proof.
 Qed.
 
 End Basic_Facts_Neighborhoods.
+
+
+(**********************************************************************************)
+Section Degree_of_vertices.
+
+Variable G : sgraph.
+
+Definition deg (v : G) := #|N(v)|.
+
+Lemma max_deg_is_n_minus_one : forall v : G, deg v <= #|V(G)| - 1.
+Proof.
+  move=> v.
+  rewrite cardsT.
+  suff: deg v < #|G| by move=> H ; rewrite (pred_Sn (deg v)) -subn1 (leq_sub2r 1 H).
+  have H1: #|N[v]| <= #|G| by rewrite max_card.
+  rewrite /deg.
+  exact: leq_trans (proper_card (opneigh_proper_clneigh v)) H1.
+Qed.
+
+Hypothesis G_not_empty : V(G) != set0.
+
+Let some_vertex_with_degree (n : nat) := [exists v, deg v == n].
+
+Local Lemma some_degree_exists : exists (n : nat), some_vertex_with_degree n.
+Proof.
+  move/set0Pn: G_not_empty.
+  elim=> w _.
+  exists (deg w).
+  rewrite /some_vertex_with_degree.
+  apply/existsP.
+  by exists w.
+Qed.
+
+Local Lemma some_degree_is_less_than_n : forall n : nat,
+          some_vertex_with_degree n -> n <= #|V(G)| - 1.
+Proof.
+  move=> n /existsP.
+  elim=> w.
+  rewrite eq_sym.
+  move/eqP.
+  move->.
+  exact: max_deg_is_n_minus_one.
+Qed.
+
+Definition minimum_deg := ex_minn some_degree_exists.
+
+Definition maximum_deg := ex_maxn some_degree_exists some_degree_is_less_than_n.
+
+End Degree_of_vertices.
 
 
 (**********************************************************************************)
@@ -475,7 +496,7 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 Variable p : pred {set G}.     (* p : {set G} -> bool *)
 Variable D : {set G}.
 
-Definition weight_set : {set G} -> nat := fun S => \sum_(v in G | v \in S) weight v.
+Definition weight_set (S : {set G}) := \sum_(v in G | v \in S) weight v.
 
 Lemma weight_set_natural : forall A : {set G}, weight_set A >= 0.
 Proof. move=> A ; exact: leq0n. Qed.
@@ -833,11 +854,10 @@ Section Irredundant_Set.
 
 Variable D : {set G}.
 
-Definition private_set : G -> {set G} := fun v => N[v] :\: NS[D :\: [set v]].
+Definition private_set (v : G) := N[v] :\: NS[D :\: [set v]].
 
 (* private v w = w is a private vertex of v *)
-Definition private : G -> G -> bool :=
-          fun v w => v -*- w && [forall u : G, (u \in D) ==> (u -*- w) ==> (u == v)].
+Definition private (v w : G) : bool := v -*- w && [forall u : G, (u \in D) ==> (u -*- w) ==> (u == v)].
 
 Proposition privateP : forall v w : G, reflect 
           (v -*- w /\ (forall u : G, u \in D -> u -*- w -> u = v)) (private v w).
@@ -1583,6 +1603,10 @@ End Classic_domination_parameters.
 
 End Domination_Theory.
 
+
+Arguments deg : clear implicits.
+Arguments minimum_deg : clear implicits.
+Arguments maximum_deg : clear implicits.
 Arguments ir_w : clear implicits.
 Arguments gamma_w : clear implicits.
 Arguments ii_w : clear implicits.
