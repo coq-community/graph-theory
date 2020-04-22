@@ -1286,7 +1286,7 @@ Section AddNode.
     have q' : @pathp add_node (Some x) (Some y) q0.
       move: p'; rewrite /pathp/= last_map (inj_eq (@Some_inj _)).
       move=> /andP[p' ->]; rewrite andbT.
-      exact: project_path p'.
+      exact: homo_path p'.
     by exists (Sub _ q'); rewrite !nodesE /=.
   Qed.
 End AddNode.

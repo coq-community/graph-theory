@@ -65,22 +65,6 @@ Proof. move => A. by apply: contraPN => /eqP. Qed.
 Lemma contraPeq (T:eqType) (a b : T) (P : Prop) : (a != b -> ~ P) -> (P -> a = b).
 Proof. move => H HP. by apply: contraTeq isT => /H /(_ HP). Qed.
 
-Lemma existsPn {T : finType} {P : pred T} : 
-  reflect (forall x, ~~ P x) (~~ [exists x, P x]).
-Proof. rewrite negb_exists. exact: forallP. Qed.
-
-Lemma forallPn {T : finType} {P : pred T} : 
-  reflect (exists x, ~~ P x) (~~ [forall x, P x]).
-Proof. rewrite negb_forall. exact: existsP. Qed.
-
-Lemma exists_inPn {T : finType} {A P : pred T} : 
-  reflect (forall x, x \in A -> ~~ P x) (~~ [exists x in A, P x]).
-Proof. rewrite negb_exists_in. exact: forall_inP. Qed.
-
-Lemma forall_inPn {T : finType} {A P : pred T} : 
-  reflect (exists2 x, x \in A & ~~ P x) (~~ [forall x in A, P x]).
-Proof. rewrite negb_forall_in. exact: exists_inP. Qed.
-
 Lemma existsb_eq (T : finType) (P Q : pred T) : 
   (forall b, P b = Q b) -> [exists b, P b] = [exists b, Q b].
 Proof. move => E. apply/existsP/existsP; case => b Hb; exists b; congruence. Qed.
@@ -712,10 +696,6 @@ Proof.
   rewrite !belast_rcons !last_rcons => ?. congruence.
 Qed.
 
-Lemma project_path (aT rT : Type) (e : rel aT) (e' : rel rT) (f : aT -> rT) a p : 
-  {homo f : x y / e x y >-> e' x y} -> path e a p -> path e' (f a) (map f p).
-Proof. move => A. elim: p a => //= b p IHp a /andP [H1 H2]. by rewrite A ?IHp. Qed.
-
 Lemma lift_path (aT : finType) (rT : eqType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a p' : 
   (forall x y, f x \in f a :: p' -> f y \in f a :: p' -> e' (f x) (f y) -> e x y) ->
   path e' (f a) p' -> {subset p' <= codom f} -> exists p, path e a p /\ map f p = p'.
@@ -789,7 +769,7 @@ Lemma connect_img (aT rT : finType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a 
   {homo f : x y / e x y >-> e' x y} -> connect e a b -> connect e' (f a) (f b).
 Proof. 
   move => A. case/connectP => p p1 p2. apply/connectP. 
-  exists (map f p); by [exact: project_path p1|rewrite last_map -p2].
+  exists (map f p); by [exact: homo_path p1|rewrite last_map -p2].
 Qed.
 
 Definition sc (T : Type) (e : rel T) := [rel x y | e x y || e y x].
