@@ -168,7 +168,7 @@ Variable G : sgraph.
 
 Definition deg (v : G) := #|N(v)|.
 
-Lemma max_deg_is_n_minus_one : forall v : G, deg v <= #|V(G)| - 1.
+Lemma max_deg_ltn_n_minus_one : forall v : G, deg v <= #|V(G)| - 1.
 Proof.
   move=> v.
   rewrite cardsT.
@@ -192,7 +192,7 @@ Proof.
   by exists w.
 Qed.
 
-Local Lemma some_degree_is_less_than_n : forall n : nat,
+Local Lemma some_degree_ltn_n_minus_one : forall n : nat,
           some_vertex_with_degree n -> n <= #|V(G)| - 1.
 Proof.
   move=> n /existsP.
@@ -200,12 +200,50 @@ Proof.
   rewrite eq_sym.
   move/eqP.
   move->.
-  exact: max_deg_is_n_minus_one.
+  exact: max_deg_ltn_n_minus_one.
 Qed.
 
 Definition minimum_deg := ex_minn some_degree_exists.
 
-Definition maximum_deg := ex_maxn some_degree_exists some_degree_is_less_than_n.
+Definition maximum_deg := ex_maxn some_degree_exists some_degree_ltn_n_minus_one.
+
+Lemma minimum_deg_is_minimum : forall v : G, deg v >= minimum_deg.
+Proof.
+  move=> v.
+  have H1: some_vertex_with_degree (deg v).
+  rewrite /some_vertex_with_degree.
+  apply/existsP.
+  by exists v.
+  move: (ex_minnP some_degree_exists).
+  rewrite -/minimum_deg.
+  move=> [n _ n_is_minimum].
+  exact: (n_is_minimum (deg v) H1).
+Qed.
+
+Lemma maximum_deg_is_minimum : forall v : G, deg v <= maximum_deg.
+Proof.
+  move=> v.
+  have H1: some_vertex_with_degree (deg v).
+  rewrite /some_vertex_with_degree.
+  apply/existsP.
+  by exists v.
+  move: (ex_maxnP some_degree_exists some_degree_ltn_n_minus_one).
+  rewrite -/maximum_deg.
+  move=> [n _ n_is_maximum].
+  exact: (n_is_maximum (deg v) H1).
+Qed.
+
+Lemma maximum_deg_ltn_n_minus_one : maximum_deg <= #|V(G)| - 1.
+Proof.
+  (* we first obtain the vertex "w" such that deg w = meximum_deg *)
+  move: (ex_maxnP some_degree_exists some_degree_ltn_n_minus_one).
+  rewrite -/maximum_deg.
+  move=> [n n_is_from_someone _].
+  move/existsP: n_is_from_someone.
+  elim=> w.
+  move/eqP<-.
+  exact: (max_deg_ltn_n_minus_one w).
+Qed.
 
 End Degree_of_vertices.
 
