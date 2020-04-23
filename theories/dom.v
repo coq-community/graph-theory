@@ -733,7 +733,8 @@ Proposition stableF : stable -> {in S&, forall u v, u -- v = false}.
 
 The rationale is that boolean negations on boolean atoms are quite well
 behaved (e.g., rewriting the boolean makes the negation simplify). *)
-Proposition stableP : reflect (forall u v : G, u \in S -> v \in S -> ~ (u -- v)) stable.
+
+Proposition stableP : reflect {in S&, forall u v, ~ u -- v} stable.
 Proof.
   rewrite /stable.
   apply: (iffP forallP).
@@ -898,7 +899,7 @@ Definition private_set (v : G) := N[v] :\: NS[D :\: [set v]].
 Definition private (v w : G) : bool := v -*- w && [forall u : G, (u \in D) ==> (u -*- w) ==> (u == v)].
 
 Proposition privateP : forall v w : G, reflect 
-          (v -*- w /\ (forall u : G, u \in D -> u -*- w -> u = v)) (private v w).
+          (v -*- w /\ {in D, forall u, u -*- w -> u = v}) (private v w).
 Proof.
   move=> v w.
   rewrite /private.
@@ -951,8 +952,7 @@ Proof.
   by rewrite -clsg_clneigh cl_sg_sym.
 Qed.
 
-Lemma private_set_not_empty : forall v : G, v \in D ->
-          (private_set v != set0) <-> (exists w : G, private v w).
+Lemma private_set_not_empty : {in D, forall v, (private_set v != set0) <-> (exists w : G, private v w)}.
 Proof.
   move=> v.
   rewrite /private_set /iff  ; split.
@@ -970,7 +970,7 @@ Qed.
 
 Definition irredundant : bool := [forall v : G, (v \in D) ==> (private_set v != set0)].
 
-Proposition irredundantP: reflect (forall v : G, v \in D -> (private_set v != set0)) irredundant.
+Proposition irredundantP: reflect {in D, forall v, (private_set v != set0)} irredundant.
 Proof.
   rewrite /irredundant.
   apply: (iffP forallP).
@@ -1169,7 +1169,7 @@ Proof.
   exists w.
 
   (* We need this result to show that if there is a private vertice of v, should be w *)
-  have wprivatev: forall u : G, u \in D -> u -*- w -> u = v.
+  have wprivatev: {in D, forall u, u -*- w -> u = v}.
   move=> u uinD udomw.
   apply/eqP. 
   move: (H2 u).
