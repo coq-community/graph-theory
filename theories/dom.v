@@ -105,9 +105,53 @@ Proof.
   by move-> ; move-> ; rewrite sg_sym.
 Qed.
 
+Proposition empty_open_neigh : NS(set0 : {set G}) = set0.
+Proof.
+  apply/eqP.
+  rewrite -subset0.
+  apply/subsetP => x.
+  rewrite /open_neigh_set.
+  move/bigcupP.
+  elim=> z /andP [_ zinset0] _.
+  move: zinset0.
+  apply: contraLR => _.
+  by rewrite in_set0.
+Qed.
+
+Proposition empty_closed_neigh : NS[set0 : {set G}] = set0.
+Proof.
+  apply/eqP.
+  rewrite -subset0.
+  apply/subsetP => x.
+  rewrite /closed_neigh_set.
+  move/bigcupP.
+  elim=> z /andP [_ zinset0] _.
+  move: zinset0.
+  apply: contraLR => _.
+  by rewrite in_set0.
+Qed.
+
 Variables D1 D2 : {set G}.
 
-Proposition D_in_closed_neight_set : D1 \subset NS[D1].
+Proposition neigh_in_open_neigh : {in D1, forall v, N(v) \subset NS(D1)}.
+Proof.
+  move=> v vinD1.
+  apply/subsetP => x xinD1.
+  rewrite /open_neigh_set.
+  apply/bigcupP.
+  by exists v.
+Qed.
+
+Proposition neigh_in_closed_neigh : {in D1, forall v, N[v] \subset NS[D1]}.
+Proof.
+  move=> v vinD1.
+  apply/subsetP => x xinD1.
+  rewrite /closed_neigh_set.
+  apply/bigcupP.
+  by exists v.
+Qed.
+
+Proposition D_in_closed_neigh_set : D1 \subset NS[D1].
 Proof.
   apply/subsetP => x xinD1.
   rewrite /closed_neigh_set.
@@ -838,7 +882,7 @@ Proof.
   apply/subsetP => x.
   move: (set_minus_union (subsetT D)) ->.
   rewrite in_setU.
-  case/orP ; [ | apply/subsetP ; exact: D_in_closed_neight_set].
+  case/orP ; [ | apply/subsetP ; exact: D_in_closed_neigh_set].
   (* case when x \notin D *)
   rewrite in_setD => /andP [xnotinD _].
   move/implyP: (H1 x) => H2.
@@ -867,7 +911,7 @@ Lemma dom_VG : dominating V(G).
 Proof.
   rewrite dominating_eq_dominating_alt.
   rewrite /dominating_alt eqEsubset subsetT andbT.
-  exact: D_in_closed_neight_set.
+  exact: D_in_closed_neigh_set.
 Qed.
 
 (* if D is dominating, any supraset of D is also dominating *)
@@ -895,7 +939,7 @@ Variable D : {set G}.
 
 Definition private_set (v : G) := N[v] :\: NS[D :\: [set v]].
 
-(* private v w = w is a private vertex of v *)
+(* private v w = w is a private vertex of v (assuming v \in D) *)
 Definition private (v w : G) : bool := v -*- w && [forall u : G, (u \in D) ==> (u -*- w) ==> (u == v)].
 
 Proposition privateP : forall v w : G, reflect 
@@ -966,6 +1010,35 @@ Proof.
   rewrite private_belongs_to_private_set => H1.
   apply/set0Pn.
   by exists w.
+Qed.
+
+(* This alternative definition of private_set contemplates cases where v \notin D.
+ * If v belongs to D, it returns the set of private vertices; otherwise, it returns an empty set. *)
+Definition private_set' (v : G) := NS[D :&: [set v]] :\: NS[D :\: [set v]].
+
+Lemma private_set'_equals_private_set : {in D, forall v, private_set' v == private_set v}.
+Proof.
+  move=> v vinD.
+  rewrite /private_set /private_set'.
+  suff: N[v] = NS[D :&: [set v]] by move->.
+  move: (set_intersection_singleton vinD)->.
+  apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
+  apply: neigh_in_closed_neigh.
+  by rewrite in_set1.
+  apply/subsetP => x.
+  move/bigcupP.
+  elim=> z.
+  rewrite in_set1 => /andP [_ /eqP zisv].
+  by rewrite zisv.
+Qed.
+
+Lemma private_set'_equals_empty : forall v : G, v \notinD -> private_set' v = set0.
+Proof.
+  move=> v vnotinD.
+  rewrite /private_set'.
+  move: (set_intersection_empty vnotinD)->.
+  move: empty_closed_neigh->.
+  exact: set0D.
 Qed.
 
 Definition irredundant : bool := [forall v : G, (v \in D) ==> (private_set v != set0)].

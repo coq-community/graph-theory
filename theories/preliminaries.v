@@ -1074,6 +1074,22 @@ Proof.
   by move/eqP->.
 Qed.
 
+Lemma set_intersection_singleton : v \in A -> A :&: [set v] = [set v].
+Proof. move=> vinA ; apply: setIidPr ; by rewrite sub1set. Qed.
+
+Lemma set_intersection_empty : v \notin A -> A :&: [set v] = set0.
+Proof.
+  move=> vnotinA.
+  apply/eqP.
+  rewrite -subset0.
+  apply/subsetP => x.
+  move/setIP.
+  rewrite in_set1 => [[xinA /eqP xisv]].
+  move: xinA.
+  rewrite xisv.
+  by apply: contraLR.
+Qed.
+
 Lemma pair_absorb : [set u; u] = [set u].
 Proof. apply/setP => x ; by rewrite in_set1 in_set2 orbb. Qed.
 
