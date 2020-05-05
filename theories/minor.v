@@ -245,7 +245,7 @@ Qed.
 Lemma minor_of_clique (G : sgraph) (S : {set G}) n :
   n <= #|S| -> clique S -> minor G 'K_n.
 Proof.
-  case/card_gtnP => s [uniq_s /eqP size_s sub_s clique_S].
+  case/card_geqP => s [uniq_s /eqP size_s sub_s clique_S].
   pose t := Tuple size_s.
   pose phi (i : 'K_n) := [set tnth t i].
   suff H: minor_rmap phi by apply (minor_of_map (minor_map_rmap H)).

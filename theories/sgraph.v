@@ -971,7 +971,7 @@ Proof.
 Qed.
 
 Lemma small_clique (S : {set G}) : #|S| <= 1 -> clique S.
-Proof. move/card_le1P => H x y xS yS. by rewrite (H x y) ?eqxx. Qed.
+Proof. move/card_le1_eqP => H x y xS yS. by rewrite (H x y) ?eqxx. Qed.
 
 
 End Cliques.
@@ -1001,9 +1001,9 @@ Proof.
   apply: (iffP idP) => [H x y p q [Ip Sp] [Iq Sq]|H].
     move/forallP/(_ x)/forallP/(_ y) : H => H.
     suff: Sub p Ip == Sub q Iq :> IPath x y by rewrite -val_eqE => /eqP.
-    apply/eqP. apply: card_le1 H _ _; by rewrite inE.
+    apply/eqP. apply:(card_le1_eqP H); by rewrite inE.
   - apply/forallP => x. apply/forallP => y. 
-    apply/card_le1P => [[p Ip]] [q Iq]. rewrite !inE /= => pS qS.
+    apply/card_le1_eqP => [[p Ip]] [q Iq]. rewrite !inE /= => pS qS.
     apply: val_inj => /=. exact: H.
 Qed.
 

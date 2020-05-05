@@ -44,26 +44,36 @@ Qed.
 Lemma enum_unit (p : pred unit) : enum p = filter p [:: tt].
 Proof. by rewrite /enum_mem unlock. Qed.
 
+(** The [contra] lemmas below have been proposed for inclusion in Coq/mathcomp 
+    (https://github.com/math-comp/math-comp/pull/499) *)
+
+Lemma contra_not (P Q : Prop) : (Q -> P) -> (~ P -> ~ Q). Proof. by auto. Qed.
+Lemma contraPnot (P Q : Prop) : (Q -> ~ P) -> (P -> ~ Q). Proof. by auto. Qed.
+
 Lemma contraTnot b (P : Prop) : (P -> ~~ b) -> (b -> ~ P).
 Proof. by case: b => //= H _ /H. Qed.
 
 Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
-Proof. rewrite -{1}[b]negbK. exact: contraTnot. Qed.
+Proof. rewrite -{1}[b]negbK; exact: contraTnot. Qed.
 
 Lemma contraPT (P : Prop) (b : bool) : (~~ b -> ~ P) -> P -> b.
-Proof. case: b => //= H1 H2. exfalso. exact: H1. Qed.
+Proof. by case: b => //= /(_ isT) nP /nP. Qed.
 
 Lemma contra_notT (b : bool) (P : Prop) : (~~ b -> P) -> ~ P -> b.
-Proof. by case: b => //= *; exfalso; auto. Qed.
+Proof. by case: b => //= /(_ isT) HP /(_ HP). Qed.
+
+Lemma contra_notN (b : bool) (P : Prop) : (b -> P) -> ~ P -> ~~ b.
+Proof. rewrite -{1}[b]negbK; exact: contra_notT. Qed.
 
 Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).
-Proof. case: b => //=. by move/(_ isT) => H /H. Qed.
+Proof. by case: b => //=; move/(_ isT) => HP /HP. Qed.
 
 Lemma contraPneq (T:eqType) (a b : T) (P : Prop) : (a = b -> ~ P) -> (P -> a != b).
-Proof. move => A. by apply: contraPN => /eqP. Qed.
+Proof. by move => ?; by apply: contraPN => /eqP. Qed.
 
 Lemma contraPeq (T:eqType) (a b : T) (P : Prop) : (a != b -> ~ P) -> (P -> a = b).
-Proof. move => H HP. by apply: contraTeq isT => /H /(_ HP). Qed.
+Proof. move => Hab HP. by apply: contraTeq isT => /Hab /(_ HP). Qed.
+
 
 Lemma existsb_eq (T : finType) (P Q : pred T) : 
   (forall b, P b = Q b) -> [exists b, P b] = [exists b, Q b].
@@ -246,59 +256,52 @@ Proof.
   - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
 Qed.
 
-Lemma card_le1 (T : finType) (D : pred T) (x y : T) : 
-  #|D| <= 1 -> x \in D -> y \in D -> x = y.
-Proof.
-  case: (posnP #|D|) => A B; first by rewrite (card0_eq A).
-  have/card1P [z E] : #|D| == 1 by rewrite eqn_leq B.
-  by rewrite !E !inE => /eqP-> /eqP->.
-Qed.
+Lemma take_uniq (T : eqType) (s : seq T) n : uniq s -> uniq (take n s).
+Proof. exact/subseq_uniq/take_subseq. Qed.
 
-Lemma uniq_take (T : eqType) (s : seq T) n : uniq s -> uniq (take n s).
-Proof. 
-  elim: n s => /= => [|n IHn] s; first by rewrite take0.
-  case: s => [|a s] //= /andP [A B]. rewrite IHn // andbT. 
-  apply: contraNN A. exact: mem_take.
-Qed.
-
-Lemma card_gtnP {T : finType} {A : pred T} {n} : 
+Lemma card_geqP {T : finType} {A : pred T} {n} : 
   reflect (exists s, [/\ uniq s, size s = n & {subset s <= A}]) (n <= #|A|).
 Proof.
-  apply: (iffP idP) => [H|[s] [S1 S2 /subsetP S3]].
-  - exists (take n (enum A)). rewrite uniq_take ?enum_uniq // size_take. split => //. 
-    + case: (ltnP n (size (enum A))) => // H'. 
-      apply/eqP. by rewrite eqn_leq H' -cardE H.
-    + move => x /mem_take. by rewrite mem_enum.
-  - rewrite -S2 -(card_uniqP S1). exact: subset_leq_card. 
+apply: (iffP idP) => [n_le_A|[s] [uniq_s size_s /subsetP subA]]; last first.
+  by rewrite -size_s -(card_uniqP uniq_s); exact: subset_leq_card. 
+exists (take n (enum A)); rewrite take_uniq ?enum_uniq // size_take.
+split => //; last by move => x /mem_take; rewrite mem_enum.
+case: (ltnP n (size (enum A))) => // size_A.
+by apply/eqP; rewrite eqn_leq size_A -cardE n_le_A.
 Qed.
 
-Lemma card_gt1P {T : finType}  {D : pred T} : 
-  reflect (exists x y, [/\ x \in D, y \in D & x != y]) (1 < #|D|).
+Lemma card_gt1P {T : finType}  {A : pred T} : 
+  reflect (exists x y, [/\ x \in A, y \in A & x != y]) (1 < #|A|).
 Proof. 
-  apply: (iffP card_gtnP) => [[s] []|[x] [y]].
-  - case: s => [//|a [//|b [|//]]] /=. rewrite inE andbT => A _ B.
-    exists a; exists b. by rewrite A !B ?inE ?eqxx.
-  - move => [xD yD xy]. exists [:: x;y] => /=. rewrite inE xy.
-    split => // z. by rewrite !inE => /orP [] /eqP->.
+apply: (iffP card_geqP) => [[s] []|[x] [y] [xA yA xDy]].
+- case: s => [|a [|b [|]]] //=; rewrite inE andbT => aDb _ subD.
+  by exists a; exists b; rewrite aDb !subD ?inE ?eqxx.
+- exists [:: x;y]; rewrite /= !inE xDy ; split => // z. 
+  by rewrite !inE; case/pred2P => ->.
 Qed.
 
-Lemma card_gt2P {T : finType}  {D : pred T} : 
-  reflect (exists x y z, [/\ x \in D, y \in D & z \in D] /\ [/\ x!=y, y!=z & z!=x]) (2 < #|D|).
+Lemma card_gt2P {T : finType}  {A : pred T} : 
+  reflect (exists x y z, [/\ x \in A, y \in A & z \in A] /\ [/\ x!=y, y!=z & z!=x]) 
+          (2 < #|A|).
 Proof.
-  apply: (iffP card_gtnP) => [[s] []|[x] [y] [z]].
-  - case: s => [|a [|b [|c [|]]]] //=. rewrite !inE !andbT negb_or -andbA. 
-    move => /and3P [A B C] _ S. exists a;exists b;exists c. by rewrite A C eq_sym B !S ?inE ?eqxx.
-  - move => [[xD yD zD] [A B C]]. exists [:: x;y;z] => /=. rewrite !inE negb_or A B eq_sym C.
-    split => // z'. by rewrite !inE => /or3P [] /eqP->.
+apply: (iffP card_geqP) => [[s] []|[x] [y] [z] [[xD yD zD] [xDy xDz yDz]]].
+- case: s => [|x [|y [|z [|]]]] //=; rewrite !inE !andbT negb_or -andbA. 
+  case/and3P => xDy xDz yDz _ subA.
+  by exists x;exists y;exists z; rewrite xDy yDz eq_sym xDz !subA ?inE ?eqxx.
+- exists [:: x;y;z]; rewrite /= !inE negb_or xDy xDz eq_sym yDz; split => // u.
+  by rewrite !inE => /or3P [] /eqP->.
 Qed.
 
-Lemma card_le1P (T : finType) (A : pred T) : 
-  reflect {in A &, forall x y : T, x = y} (#|A| <= 1).
+Lemma card_le1_eqP {T : finType} {A : pred T} : 
+  reflect {in A&, forall x, all_equal_to x} (#|A| <= 1).
 Proof.
-  apply: introP => [H x y|]; first exact: card_le1.
-  rewrite leqNgt negbK. move/card_gt1P => [x] [y] [xA yA xy] H.
-  apply:(negP xy). by rewrite (H y x).
+apply: (iffP card_le1P) => [Ale1 x y xA yA /=|all_eq x xA y]. 
+  by apply/eqP; rewrite -[_ == _]/(y \in pred1 x) -Ale1.
+by rewrite inE; case: (altP (y =P x)) => [->//|]; exact/contra_neqF/all_eq.
 Qed.
+
+Lemma fintype_le1P (T : finType) : reflect (forall x : T, all_equal_to x) (#|T| <= 1).
+Proof. apply: (iffP card_le1_eqP); [exact: in2T|exact: in2W]. Qed.
 
 Lemma cards2P (T : finType) (A : {set T}): 
   reflect (exists x y : T, x != y /\ A = [set x;y]) (#|A| == 2).
