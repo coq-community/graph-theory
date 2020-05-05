@@ -323,9 +323,6 @@ Proof.
   - right. apply/cards2P. by rewrite eqn_leq H2 H3.
 Qed.
 
-Lemma cardsI (T : finType) (A : {set T}) : #|[pred x in A]| = #|A|.
-Proof. exact: eq_card. Qed.
-
 Lemma cardsCT (T : finType) (A : {set T}) : 
   (#|~:A| < #|T|) = (0 < #|A|).
 Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
@@ -334,37 +331,39 @@ Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
   \bigcup_(i in [set i0]) F i = F i0.
 Proof. by rewrite (big_pred1 i0) // => i; rewrite inE. Qed.
 
-Lemma wf_leq X (f : X -> nat) : well_founded (fun x y => f x < f y).
-Proof. by apply: (@Wf_nat.well_founded_lt_compat _ f) => x y /ltP. Qed.
-
-Lemma nat_size_ind (X:Type) (P : X -> Type) (f : X -> nat) :
-   (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
-Proof. move => H. apply: well_founded_induction_type; last exact H. exact: wf_leq. Qed.
-
-(** TODO: this form allows giving f without giving P which allows using [elim/(size_ind f)] *)
-Definition size_ind (X : Type) (f : X -> nat) (P : X -> Prop) := @nat_size_ind X P f.
+(** usage: [elim/(size_ind f) : x] *)
+Lemma size_ind (X : Type) (f : X -> nat) (P : X -> Type) : 
+  (forall x, (forall y, (f y < f x) -> P y) -> P x) -> forall x, P x.
+Proof.
+move => ind x; have [n] := ubnP (f x); elim: n x => // n IHn x le_n. 
+apply: ind => y f_y_x; apply: IHn; exact: leq_trans f_y_x _.
+Qed.
 Arguments size_ind [X] f [P].
 
 
-Lemma wf_proper (T:finType) : well_founded (fun B A : pred T => B \proper A).
-Proof. 
-  apply: (@Wf_nat.well_founded_lt_compat _ (fun x : pred T => #|x|)) => A B A_proper_B.
-  apply/ltP. exact: proper_card.
-Qed.
+Notation card_ind T := (size_ind (fun x : T => #|x|)). 
+
+(* TOTHINK: is there a [card_ind] lemma that does not require manual
+instantiation? The following works for [pred T] but not for [{set T}]. *)
+(*
+Lemma card_ind' (T : finType) (pT : predType T) (P : pT -> Type) : 
+  (forall x : pT, (forall y : pT, (#|y| < #|x|) -> P y) -> P x) -> forall x : pT, P x. 
+Proof. exact: size_ind. Qed. 
+*)
 
 Lemma proper_ind (T: finType) (P : pred T  -> Type) : 
   (forall A : pred T, (forall B : pred T, B \proper A -> P B) -> P A) -> forall A, P A.
-Proof. move => H. apply: well_founded_induction_type H. exact: wf_proper. Qed.
-
-Lemma wf_propers (T:finType) : well_founded (fun B A : {set T} => B \proper A).
 Proof. 
-  apply: (@Wf_nat.well_founded_lt_compat _ (fun x : {set T} => #|x|)) => A B A_proper_B.
-  apply/ltP. exact: proper_card.
+move => ind; elim/(card_ind (pred T)) => A IH.
+apply: ind => B /proper_card; exact: IH.
 Qed.
 
 Lemma propers_ind (T: finType) (P : {set T} -> Type) : 
   (forall A : {set T}, (forall B : {set T}, B \proper A -> P B) -> P A) -> forall A, P A.
-Proof. move => H. apply: well_founded_induction_type H. exact: wf_propers. Qed.
+Proof.
+move => ind; elim/(card_ind {set T}) => A IH.
+apply: ind => B /proper_card; exact: IH.
+Qed.
 
 Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, P V -> #|U| <= #|V|.
 
@@ -395,7 +394,7 @@ Proof. case: maxnP; by rewrite !eqxx. Qed.
 Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
   p x0 -> exists2 x, p x & forall y, p y -> m x <= m y.
 Proof.
-  move: x0. apply: (nat_size_ind (f := m)) => x0 IH p0.
+  elim/(size_ind m) : x0 => x0 IH p0.
   case: (boolP [exists x in p, m x < m x0]).
   - case/exists_inP => x *. exact: (IH x).
   - move/exists_inPn => H. exists x0 => // y /H. by rewrite -leqNgt.

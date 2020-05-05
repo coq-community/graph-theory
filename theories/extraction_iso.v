@@ -350,7 +350,7 @@ Qed.
 Theorem term_of_iso (G : graph2) : 
   CK4F G -> G ≃2 graph_of_term (term_of G).
 Proof.
-  elim: (wf_leq (@term_of_measure sym) G) => {G} G _ IH CK4F_G.
+  elim/(size_ind (@term_of_measure sym)) : G => G IH CK4F_G.
   rewrite term_of_eq // /term_of_rec. 
   case: ifP => [C1|/negbT C1].
   - (* selfloops / io-redirect *)

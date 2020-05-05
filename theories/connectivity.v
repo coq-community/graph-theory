@@ -627,7 +627,7 @@ Qed.
 Theorem Menger (G : diGraph) (A B : {set G}) s : 
   (forall S, separator G A B S -> s <= #|S|) -> exists (p : 'I_s -> pathS G), connector A B p.
 Proof.
-  move: G s A B. apply: (nat_size_ind (f := num_edges)) => G IH s A B min_s. 
+  move: G s A B. elim/(size_ind num_edges) => G IH s A B min_s. 
   case: (boolP [exists x : G, exists y : G, x -- y]) => [E|E0]; last first.
   - suff Hs : s <= #|A :&: B|. 
     { case: (trivial_connector A B) => p. exact: sub_connector. }
