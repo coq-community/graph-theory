@@ -1032,12 +1032,13 @@ Proof.
   by rewrite zisv.
 Qed.
 
-Lemma private_set'_equals_empty : forall v : G, v \notinD -> private_set' v = set0.
+Lemma private_set'_equals_empty : forall v : G, v \notinD -> (private_set' v == set0).
 Proof.
   move=> v vnotinD.
   rewrite /private_set'.
   move: (set_intersection_empty vnotinD)->.
   move: empty_closed_neigh->.
+  apply/eqP.
   exact: set0D.
 Qed.
 

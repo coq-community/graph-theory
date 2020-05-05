@@ -262,15 +262,13 @@ Qed.
  * private vertices *)
 Section h_vertex_and_its_private_definition.
 
-  Variable D : {set G}. 
+  Variable D : {set G}.
 
   Hypothesis Dirr : irredundant D.
 
-  Variable v : G.
+  Variable v: G.
 
-  Hypothesis vinD : v \in D.
-
-(* Alternative (that uses "pick"):
+(*  Alternative (that uses "pick"):
 
   Let w_opt := [pick u | private D v u].
   Let w := if w_opt is Some u then u else v.
@@ -284,7 +282,22 @@ Section h_vertex_and_its_private_definition.
     by rewrite private_eq_pred0.
   Qed. *)
 
+  Lemma vw_in_V' : if [pick w in private_set' D v] is Some w then (v, w) \in V' G else true.
+  Proof.
+    case: pickP=> w ; last by auto.
+    move=> winPrivateSet.
+    have privateSetNotEmpty: private_set' D v != set0 by apply/set0Pn ; exists w.
+    move: (contraR (@private_set'_equals_empty G D v) privateSetNotEmpty)=> vinD.
+    move/eqP: (private_set'_equals_private_set vinD)=> psEq.
+    rewrite psEq in winPrivateSet ; move/private_belongs_to_private_set in winPrivateSet.
+    rewrite/private in winPrivateSet ; move/andP in winPrivateSet.
+    move: winPrivateSet=> [vdomw _].
+    by rewrite in_set.
+  Qed.
 
+  Definition setw v := if [pick w in private_set' D v] is Some w then Sub (v, w) vw_in_V' : {set G'} else set0.
+
+(*
   Local Lemma w_exists : exists w : G, private D v w.
   Proof. by  move/irredundantP: Dirr => /(_ v vinD) /(private_set_not_empty vinD).
   Qed.
@@ -306,14 +319,27 @@ Section h_vertex_and_its_private_definition.
   Proof. by rewrite /=. Qed.
 
   Lemma h_vw2 : private D v (val h_vw).2.
-  Proof. by rewrite /= w_is_private. Qed.
+  Proof. by rewrite /= w_is_private. Qed.*)
 
 End h_vertex_and_its_private_definition.
 
-
-(* For a given irredundant set D of G, there exists a stable set of G' such that w(D) = w'(G') *)
+(* For a given irredundant set D of G, there exists a stable set S of G' such that w(D) = w'(S) *)
 Theorem irred_G_to_stable_G' : forall D : {set G}, irredundant D ->
           exists2 S : {set G'}, stable S & weight_set weight D = weight_set weight' S.
+Proof.
+  move=> D Dirr.
+  (*case: (boolP (D != set0)).
+  move/set0Pn.*)
+  Check setvw D.
+  set S := Sub (v, w) : G.
+  set S := \bigcup_(v in G) (setvw D v).
+  exists S.
+  (* case D == set0 
+  rewrite negbK ; move/eqP=> Disempty.
+  exists set0.
+  exact: st_empty.
+  move: Disempty; rewrite (empty_set_zero_weight positive_weights)=> Diesmpty.
+  Check (empty_set_zero_weight).*)
 Admitted.
 
 (* For a given stable set S of G', there exists an irredundant set D of G such that w(D) = w'(G') *)
@@ -321,7 +347,7 @@ Theorem stable_G'_to_irred_G : forall S : {set G'}, stable S ->
           exists2 D : {set G}, irredundant D & weight_set weight D = weight_set weight' S.
 Admitted.
 
-(* Main theorem: the construction works! *)
+(* Main theorem: the construction works! 
 Theorem IR_w_G_is_alpha_w_G' : IR_w G weight = alpha_w G' weight'.
 Proof.
   apply/eqP; rewrite eqn_leq ; apply/andP ; split.
@@ -348,6 +374,6 @@ Proof.
   move: (@maximum_set_welldefined G weight (irredundant (G:=G)) set0 (irr_empty G)).
   move/maximumP => [_ set_is_max].
   exact: (set_is_max D Dirr).
-Qed.
+Qed.*)
 
 End Upper_Weighted_Irredundant_Problem.
