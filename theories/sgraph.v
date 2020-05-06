@@ -481,7 +481,8 @@ Section PathIndexing.
         rewrite inE eq_sym. case: (boolP (c == a)) => //= B C D. 
         rewrite IH //. 
         * by rewrite inE C.
-        * case/and3P:D => D1 D2 D3. rewrite /= D3 andbT. exact: notin_tail D1.
+        * case/and3P:D => D1 D2 D3. rewrite /= D3 andbT. 
+          apply: contraNN D1; exact: mem_tail.
   Qed.
 
   Lemma index_rev (T : eqType) a (s : seq T) : 

@@ -90,6 +90,10 @@ Proof.
   - move => x /predU1P [-> //|]. exact: B.
 Qed.
 
+Lemma cons_subset (T : eqType) (a:T) s1 (s2 : pred T) : 
+  {subset a::s1 <= s2} <-> a \in s2 /\ {subset s1 <= s2}.
+Proof. exact: all_cons. Qed.
+
 Lemma subrelP (T : finType) (e1 e2 : rel T) : 
   reflect (subrel e1 e2) ([pred x | e1 x.1 x.2] \subset [pred x | e2 x.1 x.2]).
 Proof. apply: (iffP subsetP) => [S x y /(S (x,y)) //|S [x y]]. exact: S. Qed.
@@ -308,19 +312,6 @@ Proof.
   apply/card_gt2P. exists x;exists y;exists z => //. by rewrite [_ == z]eq_sym. 
 Qed.  
 
-Lemma card12 (T : finType) (A : {set T}) :
-  0 < #|A| -> #|A| <= 2 -> 
-                  (exists x, A = [set x]) \/ exists x y, x != y /\ A = [set x;y].
-Proof.
-  move => H1 H2. case: (ltnP #|A| 2) => H3.
-  - left. apply/cards1P. by rewrite eqn_leq -ltnS H3.
-  - right. apply/cards2P. by rewrite eqn_leq H2 H3.
-Qed.
-
-Lemma cardsCT (T : finType) (A : {set T}) : 
-  (#|~:A| < #|T|) = (0 < #|A|).
-Proof. by rewrite -[#|~: A|]add0n -(cardsC A) ltn_add2r. Qed.
-
 Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
   \bigcup_(i in [set i0]) F i = F i0.
 Proof. by rewrite (big_pred1 i0) // => i; rewrite inE. Qed.
@@ -385,8 +376,9 @@ Qed.
 Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
 Proof. case: maxnP; by rewrite !eqxx. Qed.
 
-Lemma sub_in11W (T1 : predArgType) (D1 D2 : pred T1) (P1 : T1 -> T1 -> Prop) :
- {subset D1 <= D2} -> {in D2&D2, forall x y : T1, P1 x y} -> {in D1&D1, forall x y: T1, P1 x y}.
+Lemma sub_in2W (T1 : predArgType) (D1 D2 D1' D2' : pred T1) (P1 : T1 -> T1 -> Prop) :
+ {subset D1 <= D1'} -> {subset D2 <= D2'} -> 
+ {in D1' & D2', forall x y : T1, P1 x y} -> {in D1&D2, forall x y: T1, P1 x y}.
 Proof. firstorder. Qed.
 
 Definition restrict (T:Type) (A : pred T) (e : rel T) :=
@@ -479,34 +471,6 @@ Qed.
 Lemma disjoints1 (T : finType) (x : T) (A : pred T) : [disjoint [set x] & A] = (x \notin A).
 Proof. rewrite (@eq_disjoint1 _ x) // => ?. by rewrite !inE. Qed.
 
-
-Section Disjoint3.
-Variables (T : finType) (A B C : mem_pred T).
-
-CoInductive disjoint3_cases (x : T) : bool -> bool -> bool -> Type :=  
-| Dis3In1   of x \in A : disjoint3_cases x true false false
-| Dis3In2   of x \in B : disjoint3_cases x false true false
-| Dis3In3   of x \in C : disjoint3_cases x false false true
-| Dis3Notin of x \notin A & x \notin B & x \notin C : disjoint3_cases x false false false.
-
-Lemma disjoint3P x : 
-  [&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]] ->
-  disjoint3_cases x (x \in A) (x \in B) (x \in C).
-Proof.
-  case/and3P => D1 D2 D3.
-  case: (boolP (x \in A)) => HA. 
-  { rewrite (disjointFr D1 HA) (disjointFl D3 HA). by constructor. }
-  case: (boolP (x \in B)) => HB. 
-  { rewrite (disjointFr D2 HB). by constructor. }
-  case: (boolP (x \in C)) => ?; by constructor.
-Qed.
-End Disjoint3.
-
-Notation "[ 'disjoint3' A & B & C ]" :=
-  ([&& [disjoint A & B], [disjoint B & C] & [disjoint C & A]])
-  (format "[ 'disjoint3'  A  &  B  &  C ]" ).
-
-
 (** *** Function Update *)
 
 Section update.
@@ -536,39 +500,16 @@ Proof. move => y. rewrite /update. by case: (altP (y =P x)) => [->|]. Qed.
 
 Lemma tnth_uniq (T : eqType) n (t : n.-tuple T) (i j : 'I_n) : 
   uniq t -> (tnth t i == tnth t j) = (i == j).
-Proof.
+Proof. 
   move => uniq_t. 
   rewrite /tnth (set_nth_default (tnth_default t j)) ?size_tuple ?ltn_ord //. 
   by rewrite nth_uniq // size_tuple ltn_ord.
 Qed.
 
-Lemma tnth_map_in (T:eqType) rT (s : seq T) (f : T -> rT) e 
-  (He : index e s < size [seq f x | x <- s]) : e \in s ->
-  tnth (in_tuple [seq f x | x <- s]) (Ordinal He)  = f e.
-Proof.
-  move => in_s. rewrite /tnth /= (nth_map e) ?nth_index //. 
-  apply: leq_trans He _. by rewrite size_map.
-Qed.
-
-Lemma tnth_cons (T : Type) a (s : seq T) (i : 'I_(size s).+1) (j : 'I_(size s)) :
-  j.+1 = i -> tnth (in_tuple (a :: s)) i = tnth (in_tuple s) j.
-Proof. move => E. rewrite /tnth -E /=. exact: set_nth_default. Qed.
-Arguments tnth_cons [T a s i j].
-
 Lemma mem_tail (T : eqType) (x y : T) s : y \in s -> y \in x :: s.
 Proof. by rewrite inE => ->. Qed.
 Arguments mem_tail [T] x [y s].
 
-Lemma notin_tail (X : eqType) (x y : X) s : y \notin x :: s -> y \notin s.
-Proof. apply: contraNN. exact: mem_tail. Qed.
-
-Lemma subset_cons (T : eqType) (a:T) s1 (s2 : pred T) : 
-  {subset a::s1 <= s2} <-> {subset s1 <= s2} /\ a \in s2.
-Proof. 
-  split => [A /=|[A B] x]. 
-  - by split => [x B|]; apply A; rewrite inE ?eqxx ?B ?orbT.
-  - case/predU1P => [-> //|]. exact: A.
-Qed.
 
 Lemma subset_seqR (T : finType) (A : pred T) (s : seq T) : 
   (A \subset s) = (A \subset [set x in s]).
@@ -594,13 +535,13 @@ Lemma path_restrict (T : eqType) (e : rel T) (a : pred T) x p :
   path (restrict a e) x p -> {subset p <= a}.
 Proof.
   elim: p x => //= b p IH x. rewrite -!andbA => /and4P[H1 H2 H3 H4].
-  apply/subset_cons. by split; eauto.
+  apply/cons_subset. by split; eauto.
 Qed.
 
 Lemma restrict_path (T : eqType) (e : rel T) (A : pred T) x p :
   path e x p -> x \in A -> {subset p <= A} -> path (restrict A e) x p.
 Proof.
-  elim: p x => [//|a p IH] x /= /andP[-> pth_p] -> /subset_cons [? Ha] /=.
+  elim: p x => [//|a p IH] x /= /andP[-> pth_p] -> /cons_subset [Ha ?] /=.
   rewrite /= Ha. exact: IH.
 Qed.
 
@@ -630,8 +571,8 @@ Lemma lift_path (aT : finType) (rT : eqType) (e : rel aT) (e' : rel rT) (f : aT 
   path e' (f a) p' -> {subset p' <= codom f} -> exists p, path e a p /\ map f p = p'.
 Proof.
   move => f_inv.
-  elim: p' a f_inv => /= [|fb p' IH a H /andP[A B] /subset_cons[S1 S2]]; first by exists [::].
-  case: (codomP S2) => b E. subst. case: (IH b) => // => [x y Hx Hy|p [] *]. 
+  elim: p' a f_inv => /= [|fb p' IH a H /andP[A B] /cons_subset[S1 S2]]; first by exists [::].
+  case: (codomP S1) => b E. subst. case: (IH b) => // => [x y Hx Hy|p [] *]. 
   - by apply: H; rewrite inE ?Hx ?Hy.
   - exists (b::p) => /=. suff: e a b by move -> ; subst. by rewrite H ?inE ?eqxx.
 Qed.
@@ -679,12 +620,10 @@ Qed.
 
 Lemma connect_symI (T : finType) (e : rel T) : symmetric e -> connect_sym e.
 Proof.
-  move => sym_e. 
-  suff S x y : connect e x y -> connect e y x.
-  { move => x y. apply/idP/idP; exact: S. }
-  case/connectP => p. elim: p x y => /= [x y _ -> //|z p IH x y /andP [A B] C].
-  apply: (connect_trans (y := z)) (connect1 _); first exact: IH.
-  by rewrite sym_e.
+move => sym_e; suff S x y : connect e x y -> connect e y x.
+  move => x y. apply/idP/idP; exact: S.
+case/connectP => p; elim: p x y => /= [x y _ -> //|z p IH x y /andP [A B] C].
+rewrite sym_e in A; apply: connect_trans (connect1 A); exact: IH.
 Qed.
 
 Lemma equivalence_rel_of_sym (T : finType) (e : rel T) :
@@ -694,11 +633,11 @@ Proof.
   rewrite connect_symI // in A. exact: connect_trans A.
 Qed.
 
-Lemma connect_img (aT rT : finType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a b :
+Lemma homo_connect (aT rT : finType) (e : rel aT) (e' : rel rT) (f : aT -> rT) a b :
   {homo f : x y / e x y >-> e' x y} -> connect e a b -> connect e' (f a) (f b).
 Proof. 
-  move => A. case/connectP => p p1 p2. apply/connectP. 
-  exists (map f p); by [exact: homo_path p1|rewrite last_map -p2].
+move => hom_f; case/connectP => p p1 p2; apply/connectP.
+exists (map f p); by [exact: homo_path p1|rewrite last_map -p2].
 Qed.
 
 Definition sc (T : Type) (e : rel T) := [rel x y | e x y || e y x].
@@ -740,9 +679,9 @@ Lemma lift_equiv (T1 T2 : finType) (E1 : rel T1) (E2 : rel T2) h :
   (forall x y, equiv_of E1 x y = equiv_of E2 (h x) (h y)).
 Proof.
   move=> [hinv] hK hinvK hE x y. rewrite /equiv_of. apply/idP/idP.
-  - by apply: connect_img => {x y} x y /=; rewrite !hE.
+  - by apply: homo_connect => {x y} x y /=; rewrite !hE.
   - rewrite -{2}(hK x) -{2}(hK y).
-    by apply: connect_img => {x y} x y /=; rewrite !hE !hinvK.
+    by apply: homo_connect => {x y} x y /=; rewrite !hE !hinvK.
 Qed.
 
 Hint Resolve Some_inj inl_inj inr_inj : core.

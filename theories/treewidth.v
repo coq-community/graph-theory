@@ -194,14 +194,14 @@ Section JoinT.
       { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
       move => [x|x] [t1|t1] [t2|t2] /= ; rewrite ?inl_inr ?inr_inl // => A B. 
       + pose e := restrict [pred t | x \in D1 t] sedge.
-        apply: (connect_img (e:= e) (f := inl)).
+        apply: (homo_connect (e:= e) (f := inl)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
           by rewrite !mem_imset.
         * apply: sbag_conn => //. 
           move: A. by case/imsetP => ? ? [->].
           move: B. by case/imsetP => ? ? [->].
       + pose e := restrict [pred t | x \in D2 t] sedge.
-        apply: (connect_img (e:= e) (f := inr)).
+        apply: (homo_connect (e:= e) (f := inr)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
           by rewrite !mem_imset.
         * apply: sbag_conn => //. 
@@ -429,10 +429,10 @@ Section Link.
                 (Some a) None.
       { move => H1 H2. move/(subsetP HA) : (H2) => /bigcupP [t Ht1 Ht2].
         apply: (connect_trans (y := Some t)).
-        - move: (sbag_conn decD H1 Ht2). exact: connect_img.
+        - move: (sbag_conn decD H1 Ht2). exact: homo_connect.
         - apply: connect1 => /=; by rewrite !in_simpl H2 Ht1. }
       move => x [a|] [b|] /= H1 H2; last exact: connect0. 
-      + move: (sbag_conn decD H1 H2). exact: connect_img. 
+      + move: (sbag_conn decD H1 H2). exact: homo_connect. 
       + exact: X.
       + rewrite (@srestrict_sym link). exact: X. 
   Qed.
@@ -496,7 +496,7 @@ Section DecompTheory.
         { case: (IH S0 _ _) => [|||t Ht]; last by exists t.
           - by rewrite [#|S|](cardsD1 v) Hv.
           - apply/card_gt0P. exists v0. by rewrite !inE eq_sym X.
-          - apply: sub_in11W clique_S. apply/subsetP. by rewrite subD1set. }
+          - apply: sub_in2W clique_S; apply/subsetP; by rewrite subD1set. }
         have A : v0 \in B t. { apply (subsetP Ht). by rewrite !inE eq_sym X. }
         have/uPathRP [|p Ip _] := (sbag_conn decD v0 c t Hc2 A).
         { apply: contraTneq inC => ->. by rewrite !inE Ht. }
