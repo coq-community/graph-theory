@@ -124,7 +124,7 @@ Section Quotients.
       + rewrite (bigop.reindex Some) /=.
         * apply: (@leq_trans (maxn (width D1) (width D2))); last by rewrite geq_max W1 W2.
           apply: leq_trans (join_width _ _). 
-          apply: max_mono => t. exact: leq_imset_card.
+          apply: bigmax_leq_pointwise => t _. exact: leq_imset_card.
         * apply: subon_bij; last by (apply bij_on_codom => //; exact: (inl t1)). 
           by move => [x|]; rewrite !in_simpl // codom_f. 
   Qed.

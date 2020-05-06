@@ -164,11 +164,11 @@ Proof.
   apply: leq_ltn_trans H. exact: card_size.
 Qed.
 
-Lemma max_mono (I :Type) (r : seq I) P (F G : I -> nat) :
-  (forall x, F x <= G x) -> \max_(i <- r | P i) F i <= \max_(i <- r | P i) G i.
+Lemma bigmax_leq_pointwise (I :finType) (P : pred I) (F G : I -> nat) :
+  {in P, forall x, F x <= G x} -> \max_(i | P i) F i <= \max_(i | P i) G i.
 Proof.
-  move => ?. elim/big_ind2 : _ => // y1 y2 x1 x2 A B.
-  by rewrite geq_max !leq_max A B orbT.
+move => ?. elim/big_ind2 : _ => // y1 y2 x1 x2 A B.
+by rewrite geq_max !leq_max A B orbT.
 Qed.
 
 Lemma leq_subn n m o : n <= m -> n - o <= m.
@@ -183,7 +183,7 @@ Proof. exact: (Bijective (g := id)). Qed.
 Lemma set2C (T : finType) (x y : T) : [set x;y] = [set y;x].
 Proof. apply/setP => z. apply/set2P/set2P; tauto. Qed.
 
-Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|{: T}|.
+Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|T|.
 Proof. 
   move => A. apply/proper_card. rewrite properE. 
   apply/andP; split; first by apply/subsetP.
@@ -234,30 +234,20 @@ Proof.
   apply: leq_subn. rewrite ltnS. exact: leq_subn.
 Qed.
 
-Lemma card1P (T : finType) (A : pred T) : 
-  reflect (exists x, A =i pred1 x) (#|A| == 1).
+Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
+  reflect (x \in A /\ {in A, all_equal_to x}) (A == [set x]).
 Proof.
-  rewrite -cardsE. apply: (iffP cards1P).
-  - move => [x /setP E]. exists x => y. move: (E y). by rewrite !inE.
-  - move => [x E]. exists x. apply/setP => y. by rewrite !inE E.
+apply: (iffP eqP) => [->|]; first by rewrite !in_set1; by split => // y /set1P.
+case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
 Qed.
 
 Lemma setN01E (T : finType) A (x:T) : 
   A != set0 -> A != [set x] -> exists2 y, y \in A & y != x.
 Proof.
-  case/set0Pn => y Hy H1. apply/exists_inP. apply: contraNT H1.
-  rewrite negb_exists_in => /forall_inP H. 
-  rewrite eqEsubset sub1set (_ : x \in A) ?andbT. 
-  - apply/subsetP => z. rewrite !inE => /H. by rewrite negbK.
-  - move/H : (Hy) => /negPn/eqP Hy'. by subst.
-Qed.
-
-Lemma eq_set1P (T : finType) (A : {set T}) (x : T) : 
-  reflect (x \in A /\ forall y, y \in A -> y = x) (A == [set x]).
-Proof.
-  apply: (iffP eqP).
-  - move->. rewrite !inE eqxx. by split => // y /set1P.
-  - case => H1 H2. apply/setP => y. apply/idP/set1P;[exact: H2| by move ->].
+case/set0Pn => y Hy H1; apply/exists_inP.
+apply: contraNT H1 => /exists_inPn => H; apply/eq_set1P.
+suff S: {in A, all_equal_to x} by rewrite -{1}(S y).
+by move => z /H /negPn/eqP.
 Qed.
 
 Lemma take_uniq (T : eqType) (s : seq T) n : uniq s -> uniq (take n s).
@@ -381,6 +371,7 @@ Lemma above_largest (T : finType) P (U V : {set T}) :
   largest P U -> #|V| > #|U| -> ~ P V.
 Proof. move => [_ large_U]. rewrite ltnNge; exact/contraNnot/large_U. Qed.
 
+(** in mathcomp-1.11, this will be subsumed by leqP *)
 Inductive maxn_cases n m : nat -> Type := 
 | MaxnR of n <= m : maxn_cases n m m
 | MaxnL of m < n : maxn_cases n m n.

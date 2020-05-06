@@ -239,7 +239,7 @@ Proof.
         -- move => {p IH H4 H5 y0 Y1 Y2 X2}. rewrite !inE in H1 H2.
            exact: conn_pre1 X1 T1.
         -- apply: IH H4 H5 => //. by rewrite inE in H2.
-  - apply: max_mono => t. exact: pimset_card.
+  - apply: bigmax_leq_pointwise => t _. exact: pimset_card.
 Qed.
 
 Lemma minor_of_clique (G : sgraph) (S : {set G}) n :

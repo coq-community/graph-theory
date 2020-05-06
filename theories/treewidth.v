@@ -127,7 +127,7 @@ Qed.
 
 Lemma rename_width (T : forest) (G : sgraph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
   width (rename D h) <= width D.
-Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
+Proof. apply: bigmax_leq_pointwise => t _. exact: leq_imset_card. Qed.
 
 (** ** Disjoint Union *)
 
