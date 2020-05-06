@@ -11,6 +11,5 @@ E:\Coq\bin\coqc.exe -R theories GraphTheory -w -notation-overridden theories\mgr
 E:\Coq\bin\coqc.exe -R theories GraphTheory -w -notation-overridden theories\connectivity.v
 
 E:\Coq\bin\coqc.exe -R theories GraphTheory -w -notation-overridden theories\dom.v
-E:\Coq\bin\coqc.exe -R theories GraphTheory -w -notation-overridden theories\wirred.v
 
 PAUSE

@@ -47,4 +47,3 @@ theories/extraction_top.v
 
 ## Domination Theory
 theories/dom.v
-theories/wirred.v
