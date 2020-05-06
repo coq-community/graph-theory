@@ -114,26 +114,30 @@ Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) 
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
 
-(** TODO: this should be subsumed by valK' below *)
-Lemma valK'' (T : eqType) (P : pred T) (u : sig_subType P) (Px : val u \in P) : 
-  Sub (val u) Px = u.
-Proof. exact: val_inj. Qed.
-
 Lemma valK' (T : Type) (P : pred T) (sT : subType P) (x : sT) (p : P (val x)) : 
   Sub (val x) p = x.
 Proof. apply: val_inj. by rewrite SubK. Qed.
 
-Lemma Some_eqE (T : eqType) (x y : T) : 
-  (Some x == Some y) = (x == y).
-Proof. by apply/eqP/eqP => [[//]|->]. Qed.
+Lemma inl_inj (A B : Type) : injective (@inl A B).
+Proof. by move => a b []. Qed.
 
-Lemma inl_eqE (A B : eqType) x y : 
-  (@inl A B x == @inl A B y) = (x == y).
-Proof. by apply/eqP/eqP => [[]|->]. Qed.
+Lemma inr_inj (A B : Type) : injective (@inr A B).
+Proof. by move => a b []. Qed.
 
-Lemma inr_eqE (A B : eqType) x y : 
-  (@inr A B x == @inr A B y) = (x == y).
-Proof. by apply/eqP/eqP => [[]|->]. Qed.
+Lemma inr_codom_inl (T1 T2 : finType) x : inr x \in codom (@inl T1 T2) = false.
+Proof. apply/negbTE/negP. by case/mapP. Qed.
+
+Lemma inl_codom_inr (T1 T2 : finType) x : inl x \in codom (@inr T1 T2) = false.
+Proof. apply/negbTE/negP. by case/mapP. Qed.
+
+Lemma Some_eqE (T : eqType) (x y : T) : (Some x == Some y) = (x == y).
+Proof. exact: inj_eq. Qed.
+
+Lemma inl_eqE (A B : eqType) x y : (@inl A B x == @inl A B y) = (x == y).
+Proof. exact/inj_eq/inl_inj. Qed.
+
+Lemma inr_eqE (A B : eqType) x y : (@inr A B x == @inr A B y) = (x == y).
+Proof. exact/inj_eq/inr_inj. Qed. 
 
 Definition sum_eqE := (inl_eqE,inr_eqE).
 
@@ -369,13 +373,13 @@ Definition smallest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, 
 
 Lemma below_smallest (T : finType) P (U V : {set T}) : 
   smallest P U -> #|V| < #|U| -> ~ P V.
-Proof. move => [_ small_U] V_leq_U P_V. by rewrite leqNgt ltnS small_U in V_leq_U. Qed.
+Proof. move => [_ small_U]; rewrite ltnNge; exact/contraNnot/small_U. Qed.
 
 Definition largest (T : finType) P (U : {set T}) := P U /\ forall V : {set T}, P V -> #|V| <= #|U|.
 
 Lemma above_largest (T : finType) P (U V : {set T}) : 
   largest P U -> #|V| > #|U| -> ~ P V.
-Proof. move => [_ large_U] U_leq_V P_V. by rewrite leqNgt ltnS large_U in U_leq_V. Qed.
+Proof. move => [_ large_U]. rewrite ltnNge; exact/contraNnot/large_U. Qed.
 
 Inductive maxn_cases n m : nat -> Type := 
 | MaxnR of n <= m : maxn_cases n m m
@@ -389,16 +393,6 @@ Qed.
 
 Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
 Proof. case: maxnP; by rewrite !eqxx. Qed.
-
-(** TOTHINK: It would suffice if { y | m y <= m x} were enumerable for every [x] *) 
-Lemma ex_smallest (T : finType) (p : pred T) (m : T -> nat) x0 : 
-  p x0 -> exists2 x, p x & forall y, p y -> m x <= m y.
-Proof.
-  elim/(size_ind m) : x0 => x0 IH p0.
-  case: (boolP [exists x in p, m x < m x0]).
-  - case/exists_inP => x *. exact: (IH x).
-  - move/exists_inPn => H. exists x0 => // y /H. by rewrite -leqNgt.
-Qed.
 
 Lemma sub_in11W (T1 : predArgType) (D1 D2 : pred T1) (P1 : T1 -> T1 -> Prop) :
  {subset D1 <= D2} -> {in D2&D2, forall x y : T1, P1 x y} -> {in D1&D1, forall x y: T1, P1 x y}.
@@ -420,31 +414,9 @@ Lemma symmetric_restrict (T : Type) (A : pred T) (e : rel T) :
 Proof. move => sym_e x y /=. by rewrite sym_e [(x \in A) && _]andbC. Qed.
 
 
-Inductive void : Type :=.
 Notation vfun := (fun x: void => match x with end).  
-
-Lemma void_eqP : @Equality.axiom void [rel _ _ | false].
-Proof. by case. Qed.
-
-Canonical void_eqType := EqType void (EqMixin void_eqP).
-
-Lemma void_pcancel : pcancel vfun (fun x: unit => None).
-Proof. by case. Qed.
-
-Definition void_choiceMixin := PcanChoiceMixin void_pcancel.
-Canonical void_choiceType := ChoiceType void void_choiceMixin.
-Definition void_countMixin := PcanCountMixin void_pcancel.
-Canonical void_countType := CountType void void_countMixin.
-
-Lemma void_enumP : @Finite.axiom [countType of void] [::].
-Proof. by case. Qed.
-
-Canonical void_finType := FinType void (FinMixin void_enumP).
-
-Lemma card_void : #|{: void}| = 0.
-Proof. exact: eq_card0. Qed.
-
 Notation rel0 := [rel _ _ | false].
+Definition surjective (aT : finType) (rT : eqType) (f : aT -> rT) := forall x, x \in codom f.
 
 Fact rel0_irrefl {T:Type} : @irreflexive T rel0.
 Proof. done. Qed.
@@ -455,42 +427,6 @@ Proof. done. Qed.
 Lemma relU_sym' (T : Type) (e e' : rel T) :
   symmetric e -> symmetric e' -> symmetric (relU e e').
 Proof. move => sym_e sym_e' x y /=. by rewrite sym_e sym_e'. Qed.
-
-
-Definition surjective aT (rT:eqType) (f : aT -> rT) := forall y, exists x, f x == y.
-
-Lemma id_surj (T : eqType) : surjective (@id T).
-Proof. move => y. by exists y. Qed.
-
-Lemma bij_surj A (B : eqType) (f : A -> B) : bijective f -> surjective f.
-Proof. case => g g1 g2 x. exists (g x). by rewrite g2. Qed.
-
-Definition cr {X : choiceType} {Y : eqType} {f : X -> Y} (Sf : surjective f) y : X :=
-  xchoose (Sf y).
-
-Lemma crK {X : choiceType} {Y : eqType} {f : X->Y} {Sf : surjective f} x: f (cr Sf x) = x.
-Proof. by rewrite (eqP (xchooseP (Sf x))). Qed.
-
-Lemma fun_decompose (aT rT : finType) (f : aT -> rT) : 
-  exists (T:finType) (f1 : aT -> T) (f2 : T -> rT), 
-    [/\ (forall x, f2 (f1 x) = f x),surjective f1 & injective f2].
-Proof.
-  exists [finType of seq_sub (codom f)]. exists (fun x => SeqSub (codom_f f x)). exists val.
-  split => //; last exact: val_inj. 
-  case => y Hy. case/codomP : (Hy) => x Hx. exists x.  change (f x == y). by rewrite -Hx.
-Qed.
-
-Lemma inl_inj (A B : Type) : injective (@inl A B).
-Proof. by move => a b []. Qed.
-
-Lemma inr_inj (A B : Type) : injective (@inr A B).
-Proof. by move => a b []. Qed.
-
-Lemma inr_codom_inl (T1 T2 : finType) x : inr x \in codom (@inl T1 T2) = false.
-Proof. apply/negbTE/negP. by case/mapP. Qed.
-
-Lemma inl_codom_inr (T1 T2 : finType) x : inl x \in codom (@inr T1 T2) = false.
-Proof. apply/negbTE/negP. by case/mapP. Qed.
 
 Lemma codom_Some (T : finType) (s : seq (option T)) : 
   None \notin s -> {subset s <= codom Some}.
@@ -915,7 +851,7 @@ Qed.
 Lemma equivalence_partition_gt1P (T : finType) (R : rel T) (D : {set T}) :
    {in D & &, equivalence_rel R} ->
    reflect (exists x y, [/\ x \in D, y \in D & ~~ R x y]) (1 < #|equivalence_partition R D|).
-Proof.
+Proof. 
   move => E. 
   set P := equivalence_partition R D.
   have EP : partition P D by apply: equivalence_partitionP. 
@@ -948,25 +884,6 @@ Proof.
   move => D1 D2 D3. apply/trivIsetP => X Y. rewrite !inE -!orbA.
   do 2 (case/or3P => /eqP->); try by rewrite ?eqxx // 1?disjoint_sym. 
 Qed.
-
-(* foldr1 *)
-
-Definition foldr1 (I R : Type) (x0 : R) (op : R -> R -> R) F  := 
-  fix foldr1_rec (s : seq I) : R :=
-    match s with
-    | [::] => x0
-    | a :: s' => if nilp s' then F a else op (F a) (foldr1_rec s')
-    end.
-
-Section Foldr1.
-Variables (I R : Type) (op : R -> R -> R) (F : I -> R).
-
-
-Lemma foldr1_set_default x0 x1 s : 
-  ~~ nilp s -> foldr1 x0 op F s = foldr1 x1 op F s.
-Proof. elim: s => //= a s. case: (nilp s) => //= IH. by rewrite IH. Qed.
-
-End Foldr1.
 
 (** Extra Morphism declatations *)
 

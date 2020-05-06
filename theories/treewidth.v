@@ -104,8 +104,8 @@ Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h : G
 Proof.
   move => hom_h sur_h sur_e comp_h. 
   split. 
-  - move => x. pose x0 := cr sur_h x. case: (sbag_cover dec_D x0) => t Ht.
-    exists t. apply/imsetP. exists x0; by rewrite ?crK. 
+  - move => x. pose x0 := iinv (sur_h x). case: (sbag_cover dec_D x0) => t Ht.
+    exists t. apply/imsetP. by exists x0; rewrite // f_iinv.
   - move => x y xy. case: (sur_e _ _ xy) => x0 [y0] [hx0 hy0 e0].
     case: (sbag_edge dec_D e0) => t /andP [t1 t2]. 
     exists t. apply/andP;split;apply/imsetP;by [exists x0|exists y0].
@@ -584,7 +584,7 @@ Proof.
     case/Wrap: (rename_decomp dec12' h). case/(_ _ _ _ _)/Wrap.
     + by move => [u|u] [v|v].
     + move => v. 
-      case/setUP : (sepV.1 v) => Hv; by [exists (inl (Sub v Hv))|exists (inr (Sub v Hv))].
+      case/setUP : (sepV.1 v) => Hv; apply/codomP; by [exists (inl (Sub v Hv))|exists (inr (Sub v Hv))].
     + move => x y xy.
       suff: x \in V1 /\ y \in V1 \/ x \in V2 /\ y \in V2.
       { case => [[Hx Hy]|[Hx Hy]].

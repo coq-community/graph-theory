@@ -491,7 +491,7 @@ Lemma minimal_separation x y : x != y -> ~~ x -- y ->
 Proof.
   move => xDy xNy. 
   move/proper_vseparator/vseparatorP : (separate_nonadjacent xDy xNy) => sep.
-  case (ex_smallest (fun S => #|S|) sep) => U /vseparatorP sepU HU {sep xDy xNy}.
+  case: (arg_minP (fun S => #|S|) sep) => U /vseparatorP sepU HU {sep xDy xNy}.
   move: (vseparator_separation sepU) => [V1 [V2 [ps UV]]].
   exists V1; exists V2. repeat split => //; rewrite -UV // => V /vseparatorP. exact: HU.
 Qed.
