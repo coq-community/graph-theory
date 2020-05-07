@@ -1010,38 +1010,13 @@ Variable T : finType.
 Variables u v : T.
 Variables A B : {set T}.
 
-Lemma sum_disjoint_union : forall f : T -> nat, A :&: B = set0 ->
-          \sum_(i in T | i \in (A :|: B)) f i = \sum_(i in T | i \in A) f i + \sum_(i in T | i \in B) f i.
+(* The presmise shoudl maybe be [disjoint A & B] *)
+Lemma sum_disjoint_union (f : T -> nat) : A :&: B = set0 ->
+          \sum_(i in A :|: B) f i = \sum_(i in A) f i + \sum_(i in T | i \in B) f i.
 Proof.
-  move=> f /eqP disjAB.
-  rewrite setI_eq0 in disjAB.
-  have H1 : forall i : T, i \in (A :|: B) = (i \in [predU A & B]).
-  move=> i ; by rewrite in_setU.
-  have H2 : \sum_(i in T | i \in (A :|: B)) f i = \sum_(i in T | i \in [predU A & B]) f i.
-  apply: eq_bigl => i ; by rewrite H1.
-  rewrite H2.
-  exact: bigU.
-Qed.
-
-Lemma sum_empty : forall f : T -> nat, \sum_(i in T | i \in set0) f i = 0.
-Proof.
-  move=> f.
-  rewrite (eq_bigl (fun i => false)).
-  by rewrite big_pred0_eq.
-  move=> i ; by rewrite in_set0 andbF.
-Qed.
-
-Lemma sum_singleton : forall f : T -> nat, \sum_(i in T | i \in [set u]) f i = f u.
-Proof.
-  move=> f.
-  rewrite (eq_bigl (fun i => i == u)) ; last first.
-  move=> i.
-  by rewrite in_set1.
-  rewrite -big_filter.
-  have H1: \sum_(i <- (cons u nil)) f i = f u by rewrite big_cons big_nil addn0.
-  rewrite -H1.
-  apply congr_big => [ | // | //].
-  by rewrite filter_index_enum enum1.
+move => AB0.
+under [LHS]eq_bigl => i do rewrite in_setU -[_ || _]/(i \in [predU A & B]).
+by rewrite bigU //= -setI_eq0 AB0.
 Qed.
 
 Lemma set_minus_union : B \subset A -> A = (A :\: B) :|: B.
@@ -1090,12 +1065,6 @@ Proof.
   by apply: contraLR.
 Qed.
 
-Lemma pair_absorb : [set u; u] = [set u].
-Proof. apply/setP => x ; by rewrite in_set1 in_set2 orbb. Qed.
-
-Lemma pair_commute : [set u; v] = [set v; u].
-Proof. apply/setP => x ; by rewrite !in_set2 orbC. Qed.
-
 End Preliminaries1.
 
 
@@ -1117,7 +1086,7 @@ Lemma set21_subset : forall (u v : T) (A : {set T}), [set u; v] \subset A -> u \
 Proof. move=> u v A uvsubA ; apply: (subsetP uvsubA u) ; exact: set21. Qed.
 
 Lemma set22_subset : forall (u v : T) (A : {set T}), [set u; v] \subset A -> v \in A.
-Proof. move=> u v A ; rewrite pair_commute ; exact: set21_subset. Qed.
+Proof. move=> u v A ; rewrite setUC ; exact: set21_subset. Qed.
 
 Lemma doubleton_eq_left : forall u v w : T, [set u; v] = [set u; w] <-> v = w.
 Proof.
@@ -1129,27 +1098,23 @@ Proof.
   move: (set22 u v) => H1.
   rewrite uvisuw in_set2 in H1.
   case/orP: H1 => [visu | // ].
-  rewrite -!(eqP visu) pair_absorb in uvisuw.
+  rewrite -!(eqP visu) setUid in uvisuw.
   move: (set22 v w) => H2.
   by rewrite eq_sym -in_set1 uvisuw.
 Qed.
 
-Lemma doubleton_eq_right : forall u v w : T, [set u; w] = [set v; w] <-> u = v.
-Proof.
-  move=> u v w.
-  rewrite (pair_commute u w) (pair_commute v w).
-  exact: doubleton_eq_left.
-Qed.
+Lemma doubleton_eq_right (u v w : T) : [set u; w] = [set v; w] <-> u = v.
+Proof. rewrite ![[set _;w]]setUC; exact: doubleton_eq_left. Qed.
 
 Lemma doubleton_eq_iff : forall u v w x: T, [set u; v] = [set w; x] <->
           ((u = w /\ v = x) \/ (u = x /\ v = w)).
 Proof.
-  move=> u v w x.
+move=> u v w x. 
   rewrite /iff ; split ; last first.
   (* first case : <- *)
   case => [ [uisw visx] | [uisx visw] ]. 
   by rewrite uisw visx.
-  by rewrite uisx visw pair_commute.
+  by rewrite uisx visw setUC.
   (* second case : -> *)
   move=> uviswx.
   move: (set21 u v) => uinwx.
@@ -1163,25 +1128,10 @@ Proof.
   move: (doubleton_eq_right v w x) => [dbl_eq_right _].
   apply: dbl_eq_right.
   rewrite -[in X in X = _] uisx -uviswx.
-  exact: pair_commute.
+  exact: setUC.
 Qed.
 
 Lemma pair_neq_card2 : forall u v : T, (u != v) <-> #|[set u; v]| = 2.
-Proof.
-  move=> u v.
-  rewrite /iff ; split.
-  (* first case: -> *)
-  move=> uneqv.
-  rewrite cardsU !cards1.
-  by rewrite (set_pair_disjoint uneqv) cards0.
-  (* second case: <- *)
-  move=> eis2.
-  apply/eqP => ueqv.
-  move: eis2.
-  by rewrite ueqv pair_absorb cards1.
-Qed.
+Proof. by move => u v; rewrite cards2; case: (altP (u =P v)). Qed.
 
 End Preliminaries2.
-
-
-

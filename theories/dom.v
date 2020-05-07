@@ -590,7 +590,7 @@ Proof.
   move=> Dempty.
   rewrite /weight_set.
   move: Dempty ->.
-  exact: sum_empty.
+  exact: big_set0.
   (* second case: <- *)
   move=> /eqP weightzero.
   apply/eqP.
@@ -603,7 +603,7 @@ Proof.
   rewrite lt0n_neq0 //.
   (* now, we need to prove that the summation over (D - {x}) cup {x} is positive *)
   rewrite sum_disjoint_union ; last by rewrite set_minus_disjoint.
-  rewrite sum_singleton addnC ltn_addr => [// | ].
+  rewrite big_set1 addnC ltn_addr => [// | ].
   exact: positive_weights x.
 Qed.
 
@@ -638,7 +638,7 @@ Proof.
   rewrite [in X in _ < X](eq_bigl (fun v => v \in ((B :\: [set x]) :|: [set x]))) ; last first.
   move=> i ; by rewrite [in X in X = _](set_minus_union1 xinB).
   rewrite sum_disjoint_union ; last exact: set_minus_disjoint.
-  rewrite sum_singleton.
+  rewrite big_set1.
   rewrite -[in X in X < _](addn0 (\sum_(v in G | v \in (B :\: [set x])) weight v)).
   rewrite ltn_add2l.
   exact: positive_weights x.
