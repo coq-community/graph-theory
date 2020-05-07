@@ -332,7 +332,7 @@ Lemma add_edge_split_connected (G :sgraph) (s1 s2 : G) (A : {set G}):
 Proof. 
   move => conA s1A s2A x xA. case: (altP (s1 =P x)) => [->|s1Nx].
   { left. by rewrite inE connect0. }
-  case/PathRP: (conA s1 x s1A xA) => // p subA. 
+  case/uPathRP: (conA s1 x s1A xA) => // p _ subA. 
   case: (@split_at_last (@add_edge G s1 s2) (mem [set s1; s2]) s1 x p s1); 
     try by rewrite ?inE ?eqxx.
   move => z [p1 [p2 [catp zS Hlast]]].

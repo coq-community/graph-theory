@@ -681,7 +681,7 @@ Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
 Proof. 
   apply: (@connected_center _ x); last by rewrite inE.
   move => z. rewrite inE => A. case/psplitP : _ / A => {p} p1 p2.
-  apply: (connectRI (p := p1)) => u Hu. by rewrite inE mem_pcat Hu.
+  apply: (connectRI p1) => u Hu. by rewrite inE mem_pcat Hu.
 Qed.
 
 Lemma connected_in_subgraph (G : sgraph) (S : {set G}) (A : {set induced S}) : 
@@ -691,7 +691,7 @@ Proof.
   case: (boolP (x == y)) => [/eqP->|Hxy]; first exact: connect0.
   move: (conn_A _ _ xA yA) => /uPathRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
   case: (Path_from_induced p) => q sub_S Hq. 
-  apply: (connectRI (p := q)) => z.
+  apply: (connectRI q) => z.
   rewrite in_collective Hq => /mapP[z'] /subA Hz' ->.
   exact: mem_imset.
 Qed.
@@ -711,7 +711,7 @@ Lemma connected_card_gt1 (G : sgraph) (S : {set G}) :
   connected S -> {in S &, forall x y, x != y -> exists2 z, z \in S & x -- z }.
 Proof.
   move=> conn_S x y x_S y_S xNy.
-  move: conn_S => /(_ x y x_S y_S)/(PathRP xNy)[p]/subsetP p_S.
+  move: conn_S => /(_ x y x_S y_S)/(uPathRP xNy)[p] _ /subsetP p_S.
   case: (splitL p xNy) => [z] [xz] [p'] [_ eqi_p'].
   exists z; last by []; apply: p_S.
   by rewrite in_collective nodesE inE -eqi_p' path_begin.
@@ -744,7 +744,7 @@ Proof.
     wlog xNy : / x != y.
     { move=> Hyp. case: (altP (x =P y)) => [<- _|]; last exact: Hyp.
       exists (idp x). apply/subsetP=> z. by rewrite mem_idp => /eqP->. }
-    case/(PathRP xNy) => p p_sub. by exists p.
+    case/(uPathRP xNy) => p _ p_sub. by exists p.
   - case=> p /subsetP p_sub. rewrite pblock_equivalence_partition.
     + exact: connectRI p_sub.
     + exact: sedge_equiv_in.
@@ -792,6 +792,8 @@ Proof.
   by rewrite eqEsubset sub_UC components_subset.
 Qed.
 
+
+
 Lemma component_exit (G : sgraph) (V C : {set G}) (x y : G) :
   x -- y -> C \in components V -> x \in C -> y \in ~: V :|: C.
 Proof.
@@ -800,8 +802,7 @@ Proof.
   have x_V : x \in V by rewrite -compU; apply/bigcupP; exists C.
   rewrite -(def_pblock compI C_comp x_C) pblock_equivalence_partition //;
     last exact: sedge_equiv_in.
-  apply/PathRP; first by rewrite sg_edgeNeq.
-  exists (edgep xy); apply/subsetP=> z; rewrite mem_edgep.
+  apply: (connectRI (edgep xy)) => z; rewrite mem_edgep.
   by case/orP=> /eqP->.
 Qed.
 
@@ -824,8 +825,7 @@ Proof.
   case: (split_at_first x0_VC (path_end p)) => [x1][p1][p2][Ep x1_VC x1_first].
   have {p p2 Ep Ip} Ip1 : irred p1 by move: Ip; rewrite Ep irred_cat; case/and3P.
   apply: connect_trans (subr _ _ (VC_conn _ _ x1_VC x0_VC)).
-  rewrite inE in x1_VC. apply/PathRP; first by apply: contraNneq x1_VC => <-.
-  exists p1. apply/subsetP=> z z_p1. rewrite inE.
+  rewrite inE in x1_VC. apply: (connectRI p1) => z z_p1. rewrite inE.
   case: (altP (z =P x1)) => [->|zNx1]; first by apply: contraNN x1_VC; apply/subsetP.
   apply: contraNN xNC => z_C.
   rewrite -(def_pblock compI C_comp z_C). apply/components_pblockP.
@@ -1245,8 +1245,7 @@ Proof.
   have/uPathRP := H _ _ Hx0 Hy0. 
   case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
   case: (add_node_lift_Path U p) => q E. 
-  apply: (connectRI (p := q)) => ?. 
-  rewrite mem_path E.
+  apply: (connectRI q) => ?; rewrite mem_path E.
   case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
 Qed.
 

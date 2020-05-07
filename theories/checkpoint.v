@@ -150,7 +150,7 @@ Section CheckPoints.
   Proof using.
     move=> V_conn. rewrite subUset !sub1set. case/andP=> Hx Hy.
     case: (altP (x =P y)) => [<-|xNy]; first by rewrite cpxx sub1set.
-    have /(PathRP xNy)[p /subsetP pV] := V_conn x y Hx Hy.
+    have[p _ /subsetP pV] := uPathRP xNy (V_conn x y Hx Hy).
     by apply/subsetP=> u /cpP/(_ p)/pV.
   Qed.
 
@@ -469,7 +469,7 @@ Section CheckPoints.
     case=> u xu /connect_restrict_case[z_u|].
     - rewrite z_u. apply: connectRI (edgep xu) _ => v.
       rewrite mem_edgep. case/orP=> /eqP->; by [exact: setU11 | rewrite -z_u].
-    - case=> zNu _ Hu /(PathRP zNu)[p /subsetP p_sub].
+    - case=> zNu _ Hu /(uPathRP zNu)[p _ /subsetP p_sub].
       apply: connectRI (pcat (edgep xu) (prev p)) _ => v.
       rewrite mem_pcat mem_edgep mem_prev in_setU1 -orbA.
       case/or3P=> [->|/eqP->|/p_sub->] //. by rewrite Hu.
@@ -609,7 +609,7 @@ Section CheckPoints.
       + subst p. exists (idp x) => y _ . by rewrite mem_idp => /eqP.
       + case/(uPathRP px) : A => q irr_q /subsetP sub_q. 
         exists q => y CPy /sub_q. by rewrite !inE CPy => /eqP.
-    - apply: (connectRI (p := q)) => y y_in_q.
+    - apply: (connectRI q) => y y_in_q.
       rewrite inE. apply/implyP => A. by rewrite [y]Hq.
   Qed.
   
@@ -711,7 +711,7 @@ Section CheckPoints.
       rewrite srestrict_sym. exact: S. }
     move => Hz. case/uPathP : (G_conn z x) => p irr_p. 
     suff/subsetP sP : p \subset bag U x.
-    { rewrite srestrict_sym. exact: (connectRI (p := p)). }
+    { rewrite srestrict_sym. exact: (connectRI p). }
     apply/negPn/negP. move/subsetPn => [z' in_p N]. 
     case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D].
     suff ?: x \in p1 by rewrite -(D x) ?bag_id ?path_end // in N.

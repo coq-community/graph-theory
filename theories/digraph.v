@@ -650,14 +650,6 @@ Proof.
   right; split => //; by rewrite subA ?path_end ?path_begin.
 Qed.
 
-Lemma PathRP x y (A : pred D) : x != y ->
-  reflect (exists p: Path x y, p \subset A) (connect (restrict A edge_rel) x y).
-Proof.
-  move=> xNy; apply: (iffP (uPathRP xNy)); first by firstorder.
-  move=> [p] p_sub_A. case: (uncycle p) => [q] /subsetP q_sub_p Iq.
-  by exists q; last apply: subset_trans p_sub_A.
-Qed.
-
 Lemma connectRI (A : pred D) x y (p : Path x y) :
   {subset p <= A} -> connect (restrict A edge_rel) x y.
 Proof. 
@@ -668,7 +660,7 @@ Qed.
 
 End DiGraphTheory.
 Arguments uPathRP {D A x y}.
-Arguments PathRP {D x y A}.
+Arguments connectRI {D A x y} p.
 Arguments irred_is_edge [D x y] p.
 
 Section DiPathTheory.

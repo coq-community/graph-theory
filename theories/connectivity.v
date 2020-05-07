@@ -574,7 +574,7 @@ Proof.
   set S := V1 :&: V2.
   move => sepV x0 x x0NV2.
   case: (boolP (x0==x)) => [/eqP ? | x0x]; first by subst x0.
-  move => /(PathRP x0x) [p /subsetP Hp].
+  case/(uPathRP x0x) => p _ /subsetP Hp.
   case: (boolP(x \in V2)) => // xV2.
   case: (@split_at_first G (mem V2) x0 x p x) => //.
     move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE /= in H2.

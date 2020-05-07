@@ -92,7 +92,7 @@ Proof.
   rewrite !inE eq_sym sg_edgeNeq // andbT => /negbT iNq.
   exists z => //.
   rewrite pblock_equivalence_partition // ?inE ?(sg_edgeNeq zi) //.
-  + apply: (connectRI (p := q)) => x. rewrite !inE. by apply: contraTneq =>->.
+  + apply: (connectRI q) => x. rewrite !inE. by apply: contraTneq =>->.
   + exact: sedge_equiv_in.
 Qed.
 
