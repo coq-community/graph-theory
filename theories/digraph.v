@@ -623,8 +623,52 @@ Proof.
   case/orP => /eqP ?; subst => //. by rewrite path_begin in xp'.
 Qed.
 
-End DiGraphTheory.
+(** *** Between nodes (reflection lemmas) *)
 
+(** NOTE: need to require either x != y or x \in A since packaged
+paths are never empty *)
+Lemma uPathRP {A : pred D} x y : x != y ->
+  reflect (exists2 p: Path x y, irred p & p \subset A) 
+          (connect (restrict A edge_rel) x y).
+Proof.
+  move => Hxy. apply: (iffP connect_restrictP) => //.
+  - case => p [pth_p lst_p uniq_p sub_A]. 
+    have pvalP : pathp x y p by rewrite /pathp pth_p lst_p.
+    exists (Build_Path pvalP); first by rewrite irredE nodesE.
+    apply/subsetP => z. rewrite mem_path nodesE. exact: sub_A.
+  - case => p [Ip /subsetP subA]; exists (val p). 
+    by case/andP : (valP p) => ? /eqP ?; rewrite -nodesE -irredE.
+Qed.
+
+(* This is only useful if the [x = y] case does not require [x \in A] *)
+Lemma connect_restrict_case x y (A : pred D) : 
+  connect (restrict A edge_rel) x y -> 
+  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A edge_rel) x y].
+Proof.
+  case: (altP (x =P y)) => [|? conn]; first by left. 
+  case/uPathRP : (conn) => // p _ /subsetP subA. 
+  right; split => //; by rewrite subA ?path_end ?path_begin.
+Qed.
+
+Lemma PathRP x y (A : pred D) : x != y ->
+  reflect (exists p: Path x y, p \subset A) (connect (restrict A edge_rel) x y).
+Proof.
+  move=> xNy; apply: (iffP (uPathRP xNy)); first by firstorder.
+  move=> [p] p_sub_A. case: (uncycle p) => [q] /subsetP q_sub_p Iq.
+  by exists q; last apply: subset_trans p_sub_A.
+Qed.
+
+Lemma connectRI (A : pred D) x y (p : Path x y) :
+  {subset p <= A} -> connect (restrict A edge_rel) x y.
+Proof. 
+  case: (boolP (x == y)) => [/eqP ?|]; first by subst y; rewrite connect0. 
+  move => xy subA. apply/uPathRP => //. case: (uncycle p) => p' p1 p2.
+  exists p' => //. apply/subsetP => z /p1. exact: subA.
+Qed.
+
+End DiGraphTheory.
+Arguments uPathRP {D A x y}.
+Arguments PathRP {D x y A}.
 Arguments irred_is_edge [D x y] p.
 
 Section DiPathTheory.

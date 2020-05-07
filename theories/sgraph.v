@@ -32,7 +32,7 @@ Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
 Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
 
 Lemma sconnect_sym (G : sgraph) : connect_sym (@sedge G).
-Proof. apply: connect_symI. exact: sg_sym. Qed.
+Proof. exact/connect_symI/sg_sym. Qed.
 
 Lemma sedge_equiv (G : sgraph) : 
   equivalence_rel (connect (@sedge G)).
@@ -40,23 +40,19 @@ Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
 
 Lemma symmetric_restrict_sedge (G : sgraph) (A : pred G) :
   symmetric (restrict A sedge).
-Proof. apply: symmetric_restrict. exact: sg_sym. Qed.
-Hint Resolve symmetric_restrict_sedge : core.
+Proof. apply: restrict_sym. exact: sg_sym. Qed.
 
-Lemma srestrict_sym (G : sgraph) (A : pred G) : 
+Lemma srestrict_sym (G : sgraph) (A : pred G) :
   connect_sym (restrict A sedge).
-Proof. apply: connect_symI. exact: symmetric_restrict_sedge. Qed.
+Proof. exact/connect_symI/symmetric_restrict_sedge. Qed.
 
-Lemma sedge_in_equiv (G : sgraph) (A : {set G}) : 
-  equivalence_rel (connect (restrict (mem A) sedge)). 
-Proof. 
-  apply: equivalence_rel_of_sym.  
-  apply: symmetric_restrict. exact:sg_sym. 
-Qed.
+Lemma sedge_in_equiv (G : sgraph) (A : {set G}) :
+  equivalence_rel (connect (restrict A sedge)).
+Proof. exact/equivalence_rel_of_sym/symmetric_restrict_sedge. Qed.
 
 Lemma sedge_equiv_in (G : sgraph) (A : {set G}) :
-  {in A & &, equivalence_rel (connect (restrict (mem A) sedge))}.
-Proof. move: (sedge_in_equiv A). by firstorder. Qed.
+  {in A & &, equivalence_rel (connect (restrict A sedge))}.
+Proof. exact: in3W (sedge_in_equiv A). Qed.
 
 (** ** Disjoint Union *)
 
@@ -117,13 +113,10 @@ Section InducedSubgraph.
 
 End InducedSubgraph.
 
-Lemma irreflexive_restrict (T : Type) (e : rel T) (A : pred T) : 
-  irreflexive e -> irreflexive (restrict A e).
-Proof. move => irr_e x /=. by rewrite irr_e. Qed.
 
 Definition srestrict (G : sgraph) (A : pred G) :=
-  Eval hnf in SGraph (symmetric_restrict A (@sg_sym G))
-                     (irreflexive_restrict A (@sg_irrefl G)).
+  Eval hnf in SGraph (restrict_sym A (@sg_sym G))
+                     (restrict_irrefl A (@sg_irrefl G)).
 
 (** ** Isomorphism of simple graphs *)
 
@@ -239,14 +232,6 @@ Lemma upathPR (G : sgraph) (x y : G) A :
   reflect (exists p : seq G, @upath (srestrict A) x y p)
           (connect (restrict A sedge) x y).
 Proof. exact: (@upathP (srestrict A)). Qed.
-
-Lemma restrict_upath (G:sgraph) (x y:G) (A : pred G) (p : seq G) : 
-  @upath (srestrict A) x y p -> upath x y p.
-Proof. 
-  elim: p x => // z p IH x /upath_consE [/= /andP [_ u1] u2 u3]. 
-  rewrite upath_cons u1 u2 /=. exact: IH.
-Qed.
-
 
 (* TOTHINK: is this the best way to transfer path from induced subgraphs *)
 Lemma induced_path (G : sgraph) (S : {set G}) (x y : induced S) (p : seq (induced S)) : 
@@ -545,63 +530,10 @@ End PathIndexing.
 
 (** ** Connectedness *)
 
-(** *** Between nodes (reflection lemmas) *)
-
-(** NOTE: need to require either x != y or x \in A since packaged
-paths are never empty *)
-Lemma uPathRP (G : sgraph) {A : pred G} x y : x != y ->
-  reflect (exists2 p: Path x y, irred p & p \subset A) 
-          (connect (restrict A sedge) x y).
-Proof.
-  move => Hxy. apply: (iffP connectUP). 
-  - move => [p [p1 p2 p3]]. 
-    have pth_p : pathp x y p. 
-    { rewrite /pathp p2 eqxx andbT. 
-      apply: sub_path p1. exact: subrel_restrict. }
-    exists (Build_Path pth_p); first by rewrite /irred nodesE.
-    apply/subsetP => z. rewrite mem_path nodesE SubK inE. 
-    case: p p1 p2 {p3 pth_p} => [/= _ /eqP?|a p pth_p _]; first by contrab.
-    case/predU1P => [->|]; last exact: path_restrict pth_p _.
-    move: pth_p => /=. by case: (x \in A).
-  - move => [p irr_p subA]. case/andP: (valP p) => p1 /eqP p2.
-    exists (val p); split => //; last by rewrite /irred nodesE in irr_p.
-    have/andP [A1 A2] : (x \in A) && (val p \subset A).
-    { move/subsetP : subA => H. rewrite !H ?path_begin //=. 
-      apply/subsetP => z Hz. apply: H. by rewrite mem_path nodesE !inE Hz. }
-    apply: restrict_path => //. exact/subsetP.
-Qed.
-
-(* This is only useful if the [x = y] case does not require [x \in A] *)
-Lemma connect_restrict_case (G : sgraph) (x y : G) (A : pred G) : 
-  connect (restrict A sedge) x y -> 
-  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A sedge) x y].
-Proof.
-  case: (altP (x =P y)) => [|? conn]; first by left. 
-  case/uPathRP : (conn) => // p _ /subsetP subA. 
-  right; split => //; by rewrite subA ?path_end ?path_begin.
-Qed.
-
-Lemma PathRP (G : sgraph) {A : pred G} x y : x != y ->
-  reflect (exists p: Path x y, p \subset A)
-          (connect (restrict A sedge) x y).
-Proof.
-  move=> xNy; apply: (iffP (uPathRP xNy)); first by firstorder.
-  move=> [p] p_sub_A. case: (uncycle p) => [q] /subsetP q_sub_p Iq.
-  by exists q; last apply: subset_trans p_sub_A.
-Qed.
-
-Lemma connectRI (G : sgraph) (A : pred G) x y (p : Path x y) :
-  {subset p <= A} -> connect (restrict A sedge) x y.
-Proof. 
-  case: (boolP (x == y)) => [/eqP ?|]; first by subst y; rewrite connect0. 
-  move => xy subA. apply/uPathRP => //. case: (uncycle p) => p' p1 p2.
-  exists p' => //. apply/subsetP => z /p1. exact: subA.
-Qed.
-
 (** *** Of subsets *)
 
 Definition connected (G : sgraph) (S : {set G}) :=
-  {in S & S, forall x y : G, connect (restrict (mem S) edge_rel) x y}.
+  {in S & S, forall x y : G, connect (restrict S edge_rel) x y}.
 
 Lemma eq_connected (V : finType) (e1 e2 : rel V) (A : {set V}) 
   (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
@@ -617,7 +549,7 @@ Proof.
 Qed.
 
 Definition disconnected (G : sgraph) (S : {set G}) :=
-  exists x y : G, [/\ x \in S, y \in S & ~~ connect (restrict (mem S) edge_rel) x y].
+  exists x y : G, [/\ x \in S, y \in S & ~~ connect (restrict S edge_rel) x y].
 
 Lemma disconnectedE (G : sgraph) (S : {set G}) : disconnected S <-> ~ connected S.
 Proof.
@@ -695,7 +627,7 @@ Proof.
 Qed.
 
 Lemma connected_center (G:sgraph) x (S : {set G}) :
-  {in S, forall y, connect (restrict (mem S) sedge) x y} -> x \in S ->
+  {in S, forall y, connect (restrict S sedge) x y} -> x \in S ->
   connected S.
 Proof.
   move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
@@ -788,7 +720,7 @@ Qed.
 (** *** Connected components *)
 
 Definition components (G : sgraph) (H : {set G}) : {set {set G}} :=
-  equivalence_partition (connect (restrict (mem H) sedge)) H.
+  equivalence_partition (connect (restrict H sedge)) H.
 
 Lemma partition_components (G : sgraph) (H : {set G}) :
   partition (components H) H.
@@ -844,7 +776,7 @@ Proof.
   have CH: {subset C <= H}. 
   { move => z Hz. rewrite -compU. apply/bigcupP; by exists C. } 
   move/CH : (in_C) => in_H. 
-  suff -> : C = [set y in H | connect (restrict (mem H) sedge) x y].
+  suff -> : C = [set y in H | connect (restrict H sedge) x y].
   { exact: connected_restrict_in. }
   apply/setP => y. rewrite inE. case: (boolP (y \in H)) => /= [y_in_H|y_notin_H].
   - by rewrite -PEQ // ?(def_pblock _ C_comp).
@@ -879,10 +811,10 @@ Proof.
   move=> ? C_comp G_conn VC_conn.
   case/and3P: (partition_components V) => /eqP compU compI _.
   have sub : C \subset V by rewrite -compU; exact: bigcup_sup.
-  have subr : subrel (connect (restrict (mem (~: V)) sedge))
-                     (connect (restrict (mem (~: C)) sedge))
+  have subr : subrel (connect (restrict (~: V) sedge))
+                     (connect (restrict (~: C) sedge))
     by apply: connect_mono; apply: restrict_mono; apply/subsetP; rewrite setCS.
-  suff to_x0 (x : G) : x \in ~: C -> connect (restrict (mem (~: C)) sedge) x x0.
+  suff to_x0 (x : G) : x \in ~: C -> connect (restrict (~: C) sedge) x x0.
   { move=> x y /to_x0 x_x0 /to_x0. rewrite srestrict_sym. exact: connect_trans. }
   rewrite inE => xNC. wlog x_V : x xNC / x \in V.
   { move=> Hyp. case: (boolP (x \in V)); first exact: Hyp. move=> xNV.
@@ -1038,7 +970,7 @@ Proof.
 Qed.
 
 Definition connectedb S := 
-  [forall x in S, forall y in S, connect (restrict (mem S) sedge) x y].
+  [forall x in S, forall y in S, connect (restrict S sedge) x y].
 
 Lemma connectedP S : reflect (connected S) (connectedb S).
 Proof. 
@@ -1314,7 +1246,7 @@ Proof.
   case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
   case: (add_node_lift_Path U p) => q E. 
   apply: (connectRI (p := q)) => ?. 
-  rewrite !inE mem_path E.
+  rewrite mem_path E.
   case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
 Qed.
 

@@ -31,10 +31,10 @@ Proof.
   case: (altP (x =P y)) => [->|xDy]; first exact: connect0.
   case/uPathRP : (conA _ _ X1 Y1) => // p Ip subA. 
   case: (boolP (p \subset B)) => subB.
-  - apply connectRI with p => z zp. by clean_mem;set_tac.
+  - apply connectRI with p => z zp. by set_tac.
   - case/subsetPn : subB => z Z1 Z2. 
     gen have C,Cx : x y p Ip subA X1 X2 Y1 Y2 Z1 Z2 {xDy} / 
-        exists2 s, s \in S :&: A :&: B & connect (restrict (mem (A :&: B)) sedge) x s.
+        exists2 s, s \in S :&: A :&: B & connect (restrict (A :&: B) sedge) x s.
     { case: (split_at_first (A := [predC B]) Z2 Z1) => u' [p1] [p2] [P1 P2 P3].
       subst p. case/irred_catE : Ip => Ip1 Ip2 Ip.
       case/splitR : (p1); first by apply: contraNneq P2 => <-.
@@ -324,7 +324,7 @@ Qed.
 (** TODO: simplify below ... *)
 
 Definition component_in G (A : {set G}) s :=
-    [set z in A | connect (restrict (mem A) sedge) s z].
+    [set z in A | connect (restrict A sedge) s z].
 
 Lemma add_edge_split_connected (G :sgraph) (s1 s2 : G) (A : {set G}):
     connected (A : {set add_edge s1 s2}) -> s1 \in A -> s2 \in A ->
@@ -358,7 +358,7 @@ Proof.
   move => conA s1A s2A nconA. apply /disjointP => z.
   rewrite !inE => /andP [_ ps1z] /andP [_ ps2z].
   apply nconA. move => a b ai bi.
-  have cons1s2: @connect G (@restrict G (mem A) sedge) s1 s2.
+  have cons1s2: @connect G (restrict A (@sedge G)) s1 s2.
   { rewrite srestrict_sym in ps2z. apply connect_trans with z => //. }
   case: (add_edge_split_connected conA s1A s2A bi); rewrite inE => /andP [_ bC];
     [apply connect_trans with s1 |apply connect_trans with s2] => //; rewrite srestrict_sym.

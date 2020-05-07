@@ -96,13 +96,13 @@ Proof.
     elim: p z1 y1 y1_g z1_f => /= [|y1' p IHp] z1 y1 y1_g z1_f. 
     + move => _ ?; subst. 
       apply: connect_restrict_mono; [exact: bigcup_sup y1_g|exact: f2].
-    + rewrite !in_simpl -andbA => /and3P [/andP [H1 H2] H3 H4 H5].
+    + rewrite -andbA => /and3P [/andP [H1 H2] H3 H4 H5].
       case/neighborP: (f4 _ _ H3) => a [b] [a_fy1 b_fy1' ab].
       apply: connect_trans (IHp _ _ H2 b_fy1' H4 H5).
       apply: (@connect_trans _ _ a).
       * apply: connect_restrict_mono. apply: bigcup_sup y1_g. exact: f2.
       * apply: connect1 => /=. 
-        by rewrite !in_simpl ab andbT (mem_bigcup y1) ?(mem_bigcup y1'). 
+        by rewrite ab andbT (mem_bigcup y1) ?(mem_bigcup y1'). 
   - move/g3 => Dx. apply/disjointP => z. 
     case/bigcupP => y1 y1_g z_fy1; case/bigcupP => y2 y2_g z_fy2.
     suff: y1 != y2 by move/f3/disjointP/(_ z); apply.

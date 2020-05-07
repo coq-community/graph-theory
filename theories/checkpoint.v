@@ -446,7 +446,7 @@ Section CheckPoints.
   Qed.
 
   Lemma sinterval_connectL (x y z : G) : z \in sinterval x y ->
-    exists2 u, x -- u & connect (restrict (mem (sinterval x y)) sedge) z u.
+    exists2 u, x -- u & connect (restrict (sinterval x y) sedge) z u.
   Proof using.
     case: (altP (z =P x)) => [->|zNx]; first by rewrite sinterval_bounds.
     case/sintervalP2=> -[p']. case: (splitR p' zNx) => [u] [p] [ux] {p'}->.
@@ -706,7 +706,7 @@ Section CheckPoints.
   Lemma connected_bag x (U : {set G}) : x \in CP U -> connected (bag U x).
   Proof using G_conn.
     move => cp_x.
-    suff S z : z \in bag U x -> connect (restrict (mem (bag U x)) sedge) x z.
+    suff S z : z \in bag U x -> connect (restrict (bag U x) sedge) x z.
     { move => u v Hu Hv. apply: connect_trans (S _ Hv). 
       rewrite srestrict_sym. exact: S. }
     move => Hz. case/uPathP : (G_conn z x) => p irr_p. 

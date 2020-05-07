@@ -265,7 +265,7 @@ Proof.
 Qed.
 
 Lemma remove_edges_restrict (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
-  E \subset edge_set V -> connect (restrict (mem (~: V)) (@sk_rel _ G)) x y ->
+  E \subset edge_set V -> connect (restrict (~: V) (@sk_rel _ G)) x y ->
   connect (@sk_rel _ (remove_edges E)) x y.
 Proof.
   move=> E_subV. apply: connect_mono x y => x y /=. rewrite !inE -andbA.

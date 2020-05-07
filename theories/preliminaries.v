@@ -381,18 +381,23 @@ Lemma sub_in2W (T1 : predArgType) (D1 D2 D1' D2' : pred T1) (P1 : T1 -> T1 -> Pr
  {in D1' & D2', forall x y : T1, P1 x y} -> {in D1&D2, forall x y: T1, P1 x y}.
 Proof. firstorder. Qed.
 
-Definition restrict (T:Type) (A : pred T) (e : rel T) :=
-  [rel u v in A | e u v].
+Definition restrict_mem (T:Type) (A : mem_pred T) (e : rel T) := 
+  [rel u v | (in_mem u A) && (in_mem v A) && e u v].
+Notation restrict A := (restrict_mem (mem A)).
 
-Lemma subrel_restrict (T : Type) (e : rel T) (a : pred T) : 
+Lemma sub_restrict (T : Type) (e : rel T) (a : pred T) : 
   subrel (restrict a e) e.
 Proof. move => x y /=. by do 2 case: (_ \in a). Qed.
 
-Lemma restrict_mono (T : Type) (A B : pred T) (e : rel T) : 
-  subpred A B -> subrel (restrict A e) (restrict B e).
-Proof. move => H x y /= => /andP [/andP [H1 H2] ->]. by rewrite !unfold_in !H. Qed.
+Lemma restrict_mono (T : Type) (A B : {pred T}) (e : rel T) : 
+  {subset A <= B} -> subrel (restrict A e) (restrict B e).
+Proof. move => H x y /= => /andP [/andP [H1 H2] ->]. by rewrite !H. Qed.
 
-Lemma symmetric_restrict (T : Type) (A : pred T) (e : rel T) : 
+Lemma restrict_irrefl (T : Type) (e : rel T) (A : pred T) : 
+  irreflexive e -> irreflexive (restrict A e).
+Proof. move => irr_e x /=. by rewrite irr_e. Qed.
+
+Lemma restrict_sym (T : Type) (A : pred T) (e : rel T) : 
   symmetric e -> symmetric (restrict A e).
 Proof. move => sym_e x y /=. by rewrite sym_e [(x \in A) && _]andbC. Qed.
 
@@ -531,14 +536,14 @@ Proof.
 Qed.
 Arguments mem_catD [T x s1 s2].
 
-Lemma path_restrict (T : eqType) (e : rel T) (a : pred T) x p : 
+Lemma rpath_sub (T : eqType) (e : rel T) (a : pred T) x p : 
   path (restrict a e) x p -> {subset p <= a}.
 Proof.
   elim: p x => //= b p IH x. rewrite -!andbA => /and4P[H1 H2 H3 H4].
   apply/cons_subset. by split; eauto.
 Qed.
 
-Lemma restrict_path (T : eqType) (e : rel T) (A : pred T) x p :
+Lemma path_rpath (T : eqType) (e : rel T) (A : pred T) x p :
   path e x p -> x \in A -> {subset p <= A} -> path (restrict A e) x p.
 Proof.
   elim: p x => [//|a p IH] x /= /andP[-> pth_p] -> /cons_subset [Ha ?] /=.
@@ -602,7 +607,7 @@ Proof. move => A. apply: connect_sub. exact: sub_trans (sub_connect e2). Qed.
 
 Lemma sub_restrict_connect (T : finType) (e : rel T) (a : pred T) : 
   subrel (connect (restrict a e)) (connect e).
-Proof. apply: connect_mono. exact: subrel_restrict. Qed.
+Proof. apply: connect_mono. exact: sub_restrict. Qed.
 
 Lemma connect_restrict_mono (T : finType) (e : rel T) (A B : pred T) :
   A \subset B -> subrel (connect (restrict A e)) (connect (restrict B e)).
@@ -617,6 +622,18 @@ Proof.
   move => H x y. rewrite (eq_connect (e' := e)) //. 
   move => {x y} x y /=. by rewrite !H.
 Qed.
+
+Lemma connect_restrictP (T : finType) (e : rel T) (A : pred T) x y (xDy : x != y) :
+  reflect (exists p, [/\ path e x p, last x p = y, uniq (x::p) & {subset x::p <= A}])
+          (connect (restrict A e) x y).
+Proof.
+apply: (iffP connectUP) => [[p] [rpth_p lst_p uniq_p]|[p] [rpth_p lst_p uniq_p sub_p]].
+- exists p. rewrite (sub_path _ rpth_p); first split => //; last exact: sub_restrict.
+  apply/cons_subset; split; last exact: rpath_sub rpth_p.
+  case: p rpth_p lst_p {uniq_p} => /= [_ /eqP E|]; by [rewrite E in xDy| case: (x \in A)].
+- by exists p; case/cons_subset : sub_p => ? ?; rewrite path_rpath.
+Qed.
+Arguments connect_restrictP {T e A x y _}.
 
 Lemma connect_symI (T : finType) (e : rel T) : symmetric e -> connect_sym e.
 Proof.

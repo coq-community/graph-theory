@@ -663,7 +663,7 @@ Proof.
       exists (pblock P x). split; first exact: pblock_mem.
       + rewrite inE in Hx. apply: contraNneq Hx => <-. by rewrite mem_pblock.
       + by rewrite !in_setU mem_pblock x_cover. }
-  have : connect (restrict (mem (input |: (output |: D))) (@sedge G)) input x.
+  have : connect (restrict (input |: (output |: D)) (@sedge G)) input x.
   { apply: connected_component_set => //. exact: setU11. }
   apply connect_mono. apply: restrict_mono => z /=. rewrite !in_setU1.
   case/or3P=> [/eqP->//|/eqP->//|Hz].
