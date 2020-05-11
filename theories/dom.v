@@ -15,15 +15,15 @@ Set Bullet Behavior "Strict Subproofs".
 (** * Basic facts about graphs *)
 Section Neighborhoods_definitions.
 
-Variable G : sgraph.
+Variable G : diGraph.
 
-Definition open_neigh (u : G) := [set v | sedge u v].
-Local Notation "N( x )" := (open_neigh x) (at level 0, x at level 99).
+Definition open_neigh (u : G) := [set v | u -- v].
+Local Notation "N( x )" := (open_neigh x) (at level 0, x at level 99, format "N( x )").
 
-Definition closed_neigh (u : G) := N(u) :|: [set u].
-Local Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99).
+Definition closed_neigh (u : G) := u |: N(u).
+Local Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99, format "N[ x ]").
 
-Definition cl_sedge (u v : G) : bool := (u -- v) || (u == v).
+Definition cl_sedge (u v : G) : bool := (u == v) || (u -- v).
 
 Variable D : {set G}.
 
@@ -50,6 +50,7 @@ Notation "NS[ D ]" := (closed_neigh_set D) (at level 0, D at level 99).
 Section Basic_Facts_Neighborhoods.
 
 Variable G : sgraph.
+Implicit Types (u v : G).
 
 Lemma sg_opneigh : forall u v : G, (u -- v) = (u \in N(v)).
 Proof. move=> u v ; by rewrite /open_neigh in_set sg_sym. Qed.
@@ -57,52 +58,29 @@ Proof. move=> u v ; by rewrite /open_neigh in_set sg_sym. Qed.
 Lemma v_notin_opneigh : forall v : G, v \notin N(v).
 Proof. move=> v ; by rewrite -sg_opneigh sg_irrefl. Qed.
 
-Lemma clsg_clneigh : forall u v : G, (u -*- v) = (u \in N[v]).
-Proof.
-  move=> u v.
-  rewrite /closed_neigh in_set in_set1.
-  apply: orb_id2r => _.
-  exact: sg_opneigh.
-Qed.
+Lemma clsg_clneigh u v : (u -*- v) = (u \in N[v]).
+Proof. by rewrite /closed_neigh in_set in_set1 -sg_opneigh. Qed.
 
 Lemma cl_sg_sym : symmetric (@cl_sedge G). (* cl_sedge u v = cl_sedge v u *)
 Proof. rewrite /symmetric /cl_sedge /closed_neigh => x y ; by rewrite sg_sym eq_sym. Qed.
 
 Lemma cl_sg_refl : reflexive (@cl_sedge G). (* cl_sedge u u = true *)
-Proof. rewrite /reflexive /cl_sedge /closed_neigh => u ; by rewrite eq_refl orbT. Qed.
+Proof. by move => x; rewrite /cl_sedge eqxx. Qed.
+
 
 Lemma v_in_clneigh : forall v : G, v \in N[v].
 Proof. move=> v ; by rewrite -clsg_clneigh cl_sg_refl. Qed.
 
-Lemma opneigh_proper_clneigh : forall v : G, N(v) \proper N[v].
-Proof.
-  move=> v.
-  apply/properP.
-  rewrite /closed_neigh.
-  split.
-  by rewrite subsetUl.
-  exists v.
-  by rewrite in_set in_set1 eq_refl orbT.
-  exact: v_notin_opneigh.
+Lemma opneigh_proper_clneigh v : N(v) \proper N[v].
+Proof. 
+  apply/properP; rewrite subsetUr; split => //.
+  by exists v; rewrite !inE ?eqxx sgP.
 Qed.
 
-Proposition sg_in_edge_set : forall u v : G, (u -- v) <-> [set u; v] \in E(G).
-Proof.
-  move=> u v.
-  rewrite /iff ; split.
-  (* case: -> *)
-  move=> adjuv.
-  apply/edgesP.
-  exists u.
-  exists v.
-  split => //.
-  (* case: <- *)
-  move/edgesP.
-  elim=> x.
-  elim=> y.
-  rewrite (doubleton_eq_iff u v x y) ; elim ; case ; case.
-  by move-> ; move->.
-  by move-> ; move-> ; rewrite sg_sym.
+Proposition sg_in_edge_set u v : [set u; v] \in E(G) = (u -- v).
+Proof. 
+  apply/edgesP/idP => [[x] [y] []|]; last by exists u; exists v.
+  by case/doubleton_eq_iff => -[-> ->] //; rewrite sgP.
 Qed.
 
 Proposition empty_open_neigh : NS(set0 : {set G}) = set0.
@@ -179,7 +157,7 @@ Proof.
   elim=> v /andP [_ vinD1] uinNv.
   apply/bigcupP.
   exists v => [// | ].
-  by rewrite /closed_neigh in_setU uinNv orTb.
+  by rewrite /closed_neigh in_setU uinNv orbT.
 Qed.
 
 Proposition dominated_belongs_to_closed_neigh_set : forall u v : G, u \in D1 -> u -- v -> v \in NS[D1].
@@ -894,14 +872,9 @@ Proof.
   apply/dominatingP => v vnotinD.
   move/eqP: VisND (in_setT v) -> => /bigcupP.
   elim=> [x /andP [_ xinD] vinNx].
-  rewrite /closed_neigh in_setU /open_neigh in_set in vinNx.
-  case/orP: vinNx => [adjxv|visx].
-  exists x.
-  by split=> [// | //].
-  rewrite in_set1 in visx.
-  rewrite -(eqP visx) in xinD.
-  move: (negP vnotinD).
-  contradiction.
+  rewrite /closed_neigh in_setU /open_neigh !inE in vinNx.
+  case/predU1P : vinNx => [visx|adjxv]; last by exists x.
+  by subst; contrab.
 Qed.
 
 End Dominating_Set.
@@ -1226,7 +1199,7 @@ Proof.
   apply/implyP=> adjyw.
   rewrite in_setD1 negb_and orbC -implybE negbK.
   apply/implyP=> yinD.
-  have ydomw: y -*- w. by rewrite /cl_sedge adjyw.
+  have ydomw: y -*- w by rewrite /cl_sedge adjyw orbT.
   move: (H3 y yinD ydomw).
   by move->.
   (* first case: -> *)
@@ -1251,7 +1224,7 @@ Proof.
   case/orP.
   by rewrite in_setD1 uinD negb_and negbK orbF.
   move=> noadjuw.
-  have uisw : u == w by move: udomw noadjuw ; rewrite /cl_sedge ; apply: aorbNa.
+  have uisw : u == w by move: udomw noadjuw ; rewrite /cl_sedge orbC ; apply: aorbNa.
   move: wnotinDcupv.
   by rewrite -(eqP uisw) in_setD1 uinD andbT negbK.
 
@@ -1260,12 +1233,11 @@ Proof.
   move: wnotinDcupv.
   rewrite in_setD1 negb_and.
   case/orP.
-  rewrite negbK (eq_sym w v) /cl_sedge=> veqw.
-  by apply /orP /or_intror.
+  by rewrite negbK (eq_sym w v) /cl_sedge=> ->.
   move=> wnotinD ; move/dominatingP: dominatingD.
   move=> /(_ w wnotinD).
   elim=> b [binD adjbw].
-  have bdomw: b -*- w by rewrite /cl_sedge adjbw orTb.
+  have bdomw: b -*- w by rewrite /cl_sedge adjbw orbT.
   move: (wprivatev b binD bdomw) => beqv.
   by rewrite -beqv.
 Qed.
@@ -1306,7 +1278,7 @@ Proof.
   have uinDcupv: u \in D :|: [set v] by rewrite in_setU uinD orTb.
   move/forallP=> /(_ u).
   move/implyP=> /(_ uinDcupv).
-  rewrite /cl_sedge adjux orTb implyTb.
+  rewrite /cl_sedge adjux orbT implyTb.
   move/eqP=> ueqv ; rewrite -ueqv in vnotinD.
   by move/negP in vnotinD.
 Qed.
