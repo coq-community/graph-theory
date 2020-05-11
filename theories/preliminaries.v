@@ -325,11 +325,22 @@ apply: ind => y f_y_x; apply: IHn; exact: leq_trans f_y_x _.
 Qed.
 Arguments size_ind [X] f [P].
 
+Ltac eqxx := match goal with
+             | [ H : is_true (?x != ?x) |- _ ] => by rewrite eqxx in H
+             end.
 
-Notation card_ind T := (size_ind (fun x : T => #|x|)). 
+(** use tactics in terms to obtain the argument type when doing
+induction on the size of something (e.g., a type, set, or
+predicate). This works since at the time where [elim/V] evaluates [V],
+the last assumption is [_top_assumption_ : T] with [T] being the type of
+the variable one want's to do induction on. Usage: [elim/card_ind] *)
+Notation card_ind := 
+  (size_ind (fun x : (ltac:(match goal with  [ _ : ?X |- _ ] => exact X end)) => #|x|))
+  (only parsing). 
 
-(* TOTHINK: is there a [card_ind] lemma that does not require manual
-instantiation? The following works for [pred T] but not for [{set T}]. *)
+(* TOTHINK: is there a [card_ind] LEMMA that does not require manual
+instantiation or Ltac trickery?  The following works for [pred T] but
+not for [{set T}]. *)
 (*
 Lemma card_ind' (T : finType) (pT : predType T) (P : pT -> Type) : 
   (forall x : pT, (forall y : pT, (#|y| < #|x|) -> P y) -> P x) -> forall x : pT, P x. 
@@ -339,14 +350,14 @@ Proof. exact: size_ind. Qed.
 Lemma proper_ind (T: finType) (P : pred T  -> Type) : 
   (forall A : pred T, (forall B : pred T, B \proper A -> P B) -> P A) -> forall A, P A.
 Proof. 
-move => ind; elim/(card_ind (pred T)) => A IH.
+move => ind; elim/card_ind => A IH.
 apply: ind => B /proper_card; exact: IH.
 Qed.
 
 Lemma propers_ind (T: finType) (P : {set T} -> Type) : 
   (forall A : {set T}, (forall B : {set T}, B \proper A -> P B) -> P A) -> forall A, P A.
 Proof.
-move => ind; elim/(card_ind {set T}) => A IH.
+move => ind; elim/card_ind => A IH.
 apply: ind => B /proper_card; exact: IH.
 Qed.
 

@@ -607,7 +607,7 @@ Qed.
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  elim/(card_ind sgraph) : G => G Hind K4free. 
+  elim/card_ind : G => G Hind K4free. 
   (* Either G is small, or it has a smallest vseparator of size at most two *)
   case (no_K4_smallest_vseparator K4free) =>[|[S [ssepS Ssmall2]]].
   { exact: decomp_small. }

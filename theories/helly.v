@@ -32,7 +32,7 @@ Lemma helly3_lifting (T : finType) (P : {set T} -> Prop) :
     0 < #|F| -> (forall A, A \in F -> P A) -> {in F &, forall A B, A :&: B != set0} -> exists x, forall A, A \in F -> x \in A.
 Proof.
   move => closed_P helly3_P. 
-  elim/(card_ind {set {set T}}) => /= F IH inh_F F_sub_P F_pw_in.
+  elim/card_ind => /= F IH inh_F F_sub_P F_pw_in.
   case: (ltnP 1 #|F|) => card_F.
   - case/card_gt1P : card_F => /= X [Y] [XF YF XY].
     move def_F' : ((F :\: [set X;Y]) :|: [set X :&: Y]) => F'.

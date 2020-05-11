@@ -465,7 +465,7 @@ Section DecompTheory.
   Lemma decomp_clique (S : {set G}): 
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 
-    elim/(card_ind {set G}) : S => S IH inh_S clique_S.
+    elim/card_ind : S => S IH inh_S clique_S.
     case: (leqP #|S| 1) => [card_S | card_S {inh_S}]. 
     - have/cards1P [x ->] : #|S| == 1 by rewrite eqn_leq card_S.
       case: (sbag_cover decD x) => t A. exists t. by rewrite sub1set. 

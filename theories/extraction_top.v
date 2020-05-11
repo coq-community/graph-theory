@@ -149,7 +149,7 @@ Qed.
 Theorem term_of_iso' (G : graph2) : 
   K4_free (sskeleton G) -> G ≃2 graph_of_term (term_of' G).
 Proof.
-  elim/(card_ind graph2) : G => G IH K4F_G.
+  elim/card_ind : G => G IH K4F_G.
   rewrite term_of_eq' /term_of_rec'. case: pickP => [x /andP [X1 X2]|H].
   - rewrite /=. rewrite <- term_of_iso, <- IH.
    + apply: iso2_disconnected_component; by rewrite inE.
