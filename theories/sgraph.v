@@ -579,7 +579,7 @@ Proof.
   wlog suff W: u Hu / connect (restrict P sedge) x u.
   { apply: connect_trans (W _ Hv). rewrite srestrict_sym. exact: W. }
   case: (altP (x =P u)) => [-> //|xDu].
-  case/uPathRP : Hu => // p Ip Ap.
+  case/connect_irredRP : Hu => // p Ip Ap.
   apply connectRI with p => z in_p.
   rewrite -defP inE. case/psplitP : in_p Ap => p1 p2 Ap. 
   apply connectRI with p1. apply/subsetP. 
@@ -673,7 +673,7 @@ Proof.
   move => C Hx Hy. 
   case: (altP (x =P y)) => [?|D]. 
   - subst y. exists (idp x); rewrite ?irred_idp //. apply/subsetP => A. by rewrite mem_idp => /eqP->.
-  - case/uPathRP : (C _ _ Hx Hy) => // p Ip Sp. by exists p.
+  - case/connect_irredRP : (C _ _ Hx Hy) => // p Ip Sp. by exists p.
 Qed.
 
 Lemma connected_path (G : sgraph) (x y : G) (p : Path x y) :
@@ -689,7 +689,7 @@ Lemma connected_in_subgraph (G : sgraph) (S : {set G}) (A : {set induced S}) :
 Proof.
   move => conn_A ? ? /imsetP [/= x xA ->] /imsetP [/= y yA ->].
   case: (boolP (x == y)) => [/eqP->|Hxy]; first exact: connect0.
-  move: (conn_A _ _ xA yA) => /uPathRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
+  move: (conn_A _ _ xA yA) => /connect_irredRP. move/(_ Hxy) => [p irr_p /subsetP subA]. 
   case: (Path_from_induced p) => q sub_S Hq. 
   apply: (connectRI q) => z.
   rewrite in_collective Hq => /mapP[z'] /subA Hz' ->.
@@ -701,7 +701,7 @@ Lemma connected_induced (G : sgraph) (S : {set G}) :
 Proof.
   move => conn_S x y _ _. 
   rewrite restrictE => [|u]; last by rewrite inE.
-  have/uPathRP := conn_S _ _ (valP x) (valP y).
+  have/connect_irredRP := conn_S _ _ (valP x) (valP y).
   case: (boolP (val x == val y)) => [|E /(_ isT) [p] _ /subsetP sub_S].
   - rewrite val_eqE => /eqP-> _. exact: connect0.
   - case: (Path_to_induced sub_S) => q _. exact: Path_connect q.
@@ -711,7 +711,7 @@ Lemma connected_card_gt1 (G : sgraph) (S : {set G}) :
   connected S -> {in S &, forall x y, x != y -> exists2 z, z \in S & x -- z }.
 Proof.
   move=> conn_S x y x_S y_S xNy.
-  move: conn_S => /(_ x y x_S y_S)/(uPathRP xNy)[p] _ /subsetP p_S.
+  move: conn_S => /(_ x y x_S y_S)/(connect_irredRP xNy)[p] _ /subsetP p_S.
   case: (splitL p xNy) => [z] [xz] [p'] [_ eqi_p'].
   exists z; last by []; apply: p_S.
   by rewrite in_collective nodesE inE -eqi_p' path_begin.
@@ -744,7 +744,7 @@ Proof.
     wlog xNy : / x != y.
     { move=> Hyp. case: (altP (x =P y)) => [<- _|]; last exact: Hyp.
       exists (idp x). apply/subsetP=> z. by rewrite mem_idp => /eqP->. }
-    case/(uPathRP xNy) => p _ p_sub. by exists p.
+    case/(connect_irredRP xNy) => p _ p_sub. by exists p.
   - case=> p /subsetP p_sub. rewrite pblock_equivalence_partition.
     + exact: connectRI p_sub.
     + exact: sedge_equiv_in.
@@ -820,7 +820,7 @@ Proof.
   rewrite inE => xNC. wlog x_V : x xNC / x \in V.
   { move=> Hyp. case: (boolP (x \in V)); first exact: Hyp. move=> xNV.
     apply: subr. apply: VC_conn; by rewrite inE. }
-  case/uPathP: (connectedTE G_conn x x0) => p Ip.
+  case/connect_irredP: (connectedTE G_conn x x0) => p Ip.
   have x0_VC : x0 \in ~: V by rewrite inE.
   case: (split_at_first x0_VC (path_end p)) => [x1][p1][p2][Ep x1_VC x1_first].
   have {p p2 Ep Ip} Ip1 : irred p1 by move: Ip; rewrite Ep irred_cat; case/and3P.
@@ -1184,7 +1184,7 @@ Lemma add_edge_keep_connected_l (G : sgraph) s1 s2 A:
 Proof.
   move => H s1A x y xA yA. 
   case: (altP (x =P y)) => [-> //|xDy].
-  case/uPathRP : (H _ _ xA yA) => // p Ip subA. 
+  case/connect_irredRP : (H _ _ xA yA) => // p Ip subA. 
   case: (add_edge_avoid p) => [|q Hq]; first by rewrite notinD.
   apply connectRI with q. move => u. 
   rewrite mem_path Hq -(mem_path p). by set_tac.
@@ -1242,7 +1242,7 @@ Lemma connected_add_node (G : sgraph) (U A : {set G}) :
   connected A -> @connected (add_node G U) (Some @: A).
 Proof. 
   move => H x y /imsetP [x0 Hx0 ->] /imsetP [y0 Hy0 ->].
-  have/uPathRP := H _ _ Hx0 Hy0. 
+  have/connect_irredRP := H _ _ Hx0 Hy0. 
   case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
   case: (add_node_lift_Path U p) => q E. 
   apply: (connectRI q) => ?; rewrite mem_path E.

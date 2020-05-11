@@ -86,7 +86,7 @@ Proof.
   { rewrite card_gt0. by apply: contraTneq C_comp =>->. }
   have aNi : a \in [set~ input]. { rewrite -compU. by apply/bigcupP; exists C. }
   rewrite -{C C_comp a_C}(def_pblock compI C_comp a_C).
-  case/uPathP: (connectedTE G_conn a input) => p.
+  case/connect_irredP: (connectedTE G_conn a input) => p.
   move: (aNi); rewrite !inE. case/(splitR p) => [z][q][zi] {p}->.
   rewrite irred_cat. case/and3P=> _ _ /eqP/setP/(_ input).
   rewrite !inE eq_sym sg_edgeNeq // andbT => /negbT iNq.

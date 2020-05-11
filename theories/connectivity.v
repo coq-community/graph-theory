@@ -378,7 +378,7 @@ Fact separates0P x y : reflect (separates x y set0) (~~ connect edge_rel x y).
 Proof.
   apply:(iffP idP) => [nconn_xy|]. 
   - rewrite /separates !inE. split => // p. by rewrite Path_connect in nconn_xy.
-  - case => _ _ H. apply/negP. case/uPathP => p _. case: (H p) => z. by rewrite inE.
+  - case => _ _ H. apply/negP. case/connect_irredP => p _. case: (H p) => z. by rewrite inE.
 Qed.
 
 (** TODO: this does not actually depend on G being simple *)
@@ -387,7 +387,7 @@ Lemma separatesNE x y (U : {set G}) :
 Proof.
   move => xU yU /(introN separatesP). rewrite /separatesb xU yU !negb_and //= negb_forall.
   case: (altP (x =P y)) => [<-|xDy H]; first by rewrite connect0.
-  apply/uPathRP => //. case/existsP : H => p Hp. exists p => //. 
+  apply/connect_irredRP => //. case/existsP : H => p Hp. exists p => //. 
   by rewrite -disjoint_subset disjoint_exists.
 Qed.
 
@@ -470,7 +470,7 @@ Proof.
     + suff H: (x1 \in U) by rewrite !inE H.
       by rewrite /U -lock inE connect0.
     + rewrite !inE negb_or S2 (_ : x2 \notin U = true) //.
-      apply: contraTN isT. rewrite /U -lock inE => /uPathRP.
+      apply: contraTN isT. rewrite /U -lock inE => /connect_irredRP.
       case => [//|p Ip /subsetP subS].
       case: (P12 p) => z /subS. rewrite inE /= => *. contrab.
   - apply/setP => x. rewrite !inE. case E: (x \in U) => //=.
@@ -551,7 +551,7 @@ Proof.
   case: (altP (x =P y)) => [?|A];first subst y.
   - exists (idp x); first exact: irred_idp. 
     rewrite (@eq_disjoint1 _ x) // => y. by rewrite mem_idp.
-  - have/separatesNE/uPathRP : ~ separates x y U by apply vseparatorNE.
+  - have/separatesNE/connect_irredRP : ~ separates x y U by apply vseparatorNE.
     case => // p irr_p. rewrite -disjoint_subset. by exists p.
 Qed.
 
@@ -574,7 +574,7 @@ Proof.
   set S := V1 :&: V2.
   move => sepV x0 x x0NV2.
   case: (boolP (x0==x)) => [/eqP ? | x0x]; first by subst x0.
-  case/(uPathRP x0x) => p _ /subsetP Hp.
+  case/(connect_irredRP x0x) => p _ /subsetP Hp.
   case: (boolP(x \in V2)) => // xV2.
   case: (@split_at_first G (mem V2) x0 x p x) => //.
     move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE /= in H2.

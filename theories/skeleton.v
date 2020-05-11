@@ -549,7 +549,7 @@ Qed.
 Lemma has_edge (G : graph) (x y : G) : 
   connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
 Proof.
-  move/connectedTE/(_ x y). case/uPathP => p _ xy. 
+  move/connectedTE/(_ x y). case/connect_irredP => p _ xy. 
   case: (splitL p xy) => x' [/= xx'] _. apply/card_gt0P.
   case/andP: xx' => _. case/existsP=> e _. by exists e.
 Qed.

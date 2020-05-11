@@ -513,7 +513,8 @@ Qed.
 
 End Fixed.
 
-Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect di_edge x y).
+Lemma connect_irredP x y : 
+  reflect (exists p : Path x y, irred p) (connect di_edge x y).
 Proof.
   apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]].
   + exists (Sub p P).  by rewrite /irred nodesE.
@@ -627,7 +628,7 @@ Qed.
 
 (** NOTE: need to require either x != y or x \in A since packaged
 paths are never empty *)
-Lemma uPathRP {A : pred D} x y : x != y ->
+Lemma connect_irredRP {A : pred D} x y : x != y ->
   reflect (exists2 p: Path x y, irred p & p \subset A) 
           (connect (restrict A edge_rel) x y).
 Proof.
@@ -646,7 +647,7 @@ Lemma connect_restrict_case x y (A : pred D) :
   x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A edge_rel) x y].
 Proof.
   case: (altP (x =P y)) => [|? conn]; first by left. 
-  case/uPathRP : (conn) => // p _ /subsetP subA. 
+  case/connect_irredRP : (conn) => // p _ /subsetP subA. 
   right; split => //; by rewrite subA ?path_end ?path_begin.
 Qed.
 
@@ -654,12 +655,12 @@ Lemma connectRI (A : pred D) x y (p : Path x y) :
   {subset p <= A} -> connect (restrict A edge_rel) x y.
 Proof. 
   case: (boolP (x == y)) => [/eqP ?|]; first by subst y; rewrite connect0. 
-  move => xy subA. apply/uPathRP => //. case: (uncycle p) => p' p1 p2.
+  move => xy subA. apply/connect_irredRP => //. case: (uncycle p) => p' p1 p2.
   exists p' => //. apply/subsetP => z /p1. exact: subA.
 Qed.
 
 End DiGraphTheory.
-Arguments uPathRP {D A x y}.
+Arguments connect_irredRP {D A x y}.
 Arguments connectRI {D A x y} p.
 Arguments irred_is_edge [D x y] p.
 
