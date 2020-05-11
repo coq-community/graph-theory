@@ -27,7 +27,7 @@ Definition cl_sedge (u v : G) : bool := (u == v) || (u -- v).
 
 Variable D : {set G}.
 
-Definition open_neigh_set : {set G} := \bigcup_(w in G | w \in D) N(w).
+Definition open_neigh_set : {set G} := \bigcup_(w in D) N(w).
 
 Definition closed_neigh_set : {set G} := \bigcup_(w in G | w \in D) N[w].
 
@@ -84,30 +84,10 @@ Proof.
 Qed.
 
 Proposition empty_open_neigh : NS(set0 : {set G}) = set0.
-Proof.
-  apply/eqP.
-  rewrite -subset0.
-  apply/subsetP => x.
-  rewrite /open_neigh_set.
-  move/bigcupP.
-  elim=> z /andP [_ zinset0] _.
-  move: zinset0.
-  apply: contraLR => _.
-  by rewrite in_set0.
-Qed.
+Proof. by rewrite /open_neigh_set big_set0. Qed.
 
 Proposition empty_closed_neigh : NS[set0 : {set G}] = set0.
-Proof.
-  apply/eqP.
-  rewrite -subset0.
-  apply/subsetP => x.
-  rewrite /closed_neigh_set.
-  move/bigcupP.
-  elim=> z /andP [_ zinset0] _.
-  move: zinset0.
-  apply: contraLR => _.
-  by rewrite in_set0.
-Qed.
+Proof. by rewrite /closed_neigh_set big_set0. Qed.
 
 Variables D1 D2 : {set G}.
 
@@ -139,13 +119,11 @@ Proof.
   exact: v_in_clneigh.
 Qed.
 
-Proposition dominated_belongs_to_open_neigh_set : forall u v : G, u \in D1 -> u -- v -> v \in NS(D1).
+Proposition dominated_belongs_to_open_neigh_set u v : u \in D1 -> u -- v -> v \in NS(D1).
 Proof.
-  move=> u v uinD1 adjuv.
-  rewrite /open_neigh_set.
+  move=> uinD1 adjuv.
   apply/bigcupP.
-  exists u.
-  apply/andP ; split=> [// | //].
+  exists u => //.
   by rewrite -sg_opneigh sg_sym.
 Qed.
 
@@ -154,7 +132,7 @@ Proof.
   apply/subsetP => u.
   rewrite /open_neigh_set /closed_neigh_set.
   move/bigcupP.
-  elim=> v /andP [_ vinD1] uinNv.
+  elim=> v vinD1 uinNv.
   apply/bigcupP.
   exists v => [// | ].
   by rewrite /closed_neigh in_setU uinNv orbT.
@@ -781,7 +759,7 @@ Proof.
   elim=> u.
   rewrite in_setI => [/andP[uinNS uinS] ].
   move/bigcupP: uinNS.
-  elim=> v /andP[_ vinS].
+  elim=> v vinS.
   rewrite -sg_opneigh => adjuv.
   rewrite negb_forall.
   apply/existsP.
