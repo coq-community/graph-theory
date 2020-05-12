@@ -29,7 +29,7 @@ Variable D : {set G}.
 
 Definition open_neigh_set : {set G} := \bigcup_(w in D) N(w).
 
-Definition closed_neigh_set : {set G} := \bigcup_(w in G | w \in D) N[w].
+Definition closed_neigh_set : {set G} := \bigcup_(w in D) N[w].
 
 End Neighborhoods_definitions.
 
@@ -52,11 +52,11 @@ Section Basic_Facts_Neighborhoods.
 Variable G : sgraph.
 Implicit Types (u v : G).
 
-Lemma sg_opneigh : forall u v : G, (u -- v) = (u \in N(v)).
-Proof. move=> u v ; by rewrite /open_neigh in_set sg_sym. Qed.
+Lemma sg_opneigh u v : (u -- v) = (u \in N(v)).
+Proof. by rewrite /open_neigh in_set sg_sym. Qed.
 
-Lemma v_notin_opneigh : forall v : G, v \notin N(v).
-Proof. move=> v ; by rewrite -sg_opneigh sg_irrefl. Qed.
+Lemma v_notin_opneigh v : v \notin N(v).
+Proof. by rewrite -sg_opneigh sg_irrefl. Qed.
 
 Lemma clsg_clneigh u v : (u -*- v) = (u \in N[v]).
 Proof. by rewrite /closed_neigh in_set in_set1 -sg_opneigh. Qed.
@@ -67,9 +67,8 @@ Proof. rewrite /symmetric /cl_sedge /closed_neigh => x y ; by rewrite sg_sym eq_
 Lemma cl_sg_refl : reflexive (@cl_sedge G). (* cl_sedge u u = true *)
 Proof. by move => x; rewrite /cl_sedge eqxx. Qed.
 
-
-Lemma v_in_clneigh : forall v : G, v \in N[v].
-Proof. move=> v ; by rewrite -clsg_clneigh cl_sg_refl. Qed.
+Lemma v_in_clneigh v : v \in N[v].
+Proof. by rewrite -clsg_clneigh cl_sg_refl. Qed.
 
 Lemma opneigh_proper_clneigh v : N(v) \proper N[v].
 Proof. 
@@ -138,9 +137,9 @@ Proof.
   by rewrite /closed_neigh in_setU uinNv orbT.
 Qed.
 
-Proposition dominated_belongs_to_closed_neigh_set : forall u v : G, u \in D1 -> u -- v -> v \in NS[D1].
+Proposition dominated_belongs_to_closed_neigh_set u v : u \in D1 -> u -- v -> v \in NS[D1].
 Proof.
-  move=> u v uinD1 adjuv.
+  move=> uinD1 adjuv.
   apply: (subsetP open_neigh_set_subset_closed_neigh_set v).
   exact: dominated_belongs_to_open_neigh_set adjuv.
 Qed.
@@ -150,10 +149,9 @@ Proof.
   move=> D1subD2.
   rewrite /closed_neigh_set.
   apply/subsetP => x /bigcupP.
-  elim=> i /andP [_ iinD1] xinNi.
+  elim=> i iinD1 xinNi.
   apply/bigcupP.
   exists i.
-  apply/andP ; split=> //.
   exact: subsetP D1subD2 i iinD1.
   exact: xinNi.
 Qed.
@@ -168,9 +166,8 @@ Variable G : sgraph.
 
 Definition deg (v : G) := #|N(v)|.
 
-Lemma max_deg_ltn_n_minus_one : forall v : G, deg v <= #|V(G)| - 1.
+Lemma max_deg_ltn_n_minus_one (v : G) : deg v <= #|V(G)| - 1.
 Proof.
-  move=> v.
   rewrite cardsT.
   suff: deg v < #|G| by move=> H ; rewrite (pred_Sn (deg v)) -subn1 (leq_sub2r 1 H).
   have H1: #|N[v]| <= #|G| by rewrite max_card.
@@ -192,14 +189,12 @@ Proof.
   by exists w.
 Qed.
 
-Local Lemma some_degree_ltn_n_minus_one : forall n : nat,
-          some_vertex_with_degree n -> n <= #|V(G)| - 1.
+Local Lemma some_degree_ltn_n_minus_one (n : nat) : some_vertex_with_degree n -> n <= #|V(G)| - 1.
 Proof.
-  move=> n /existsP.
+  move/existsP.
   elim=> w.
   rewrite eq_sym.
-  move/eqP.
-  move->.
+  move/eqP->.
   exact: max_deg_ltn_n_minus_one.
 Qed.
 
@@ -207,9 +202,8 @@ Definition minimum_deg := ex_minn some_degree_exists.
 
 Definition maximum_deg := ex_maxn some_degree_exists some_degree_ltn_n_minus_one.
 
-Lemma minimum_deg_is_minimum : forall v : G, deg v >= minimum_deg.
+Lemma minimum_deg_is_minimum (v : G) : deg v >= minimum_deg.
 Proof.
-  move=> v.
   have H1: some_vertex_with_degree (deg v).
   rewrite /some_vertex_with_degree.
   apply/existsP.
@@ -220,9 +214,8 @@ Proof.
   exact: (n_is_minimum (deg v) H1).
 Qed.
 
-Lemma maximum_deg_is_minimum : forall v : G, deg v <= maximum_deg.
+Lemma maximum_deg_is_minimum (v : G) : deg v <= maximum_deg.
 Proof.
-  move=> v.
   have H1: some_vertex_with_degree (deg v).
   rewrite /some_vertex_with_degree.
   apply/existsP.
@@ -373,16 +366,10 @@ Definition ex_maximal : {set G} := s2val (maxset_exists pF).
 Definition ex_minimal : {set G} := s2val (minset_exists pF).
 
 Lemma maximal_exists : maximal p ex_maximal.
-Proof.
-  rewrite maximal_eq_maxset.
-  exact: s2valP (maxset_exists pF).
-Qed.
+Proof. rewrite maximal_eq_maxset ; exact: s2valP (maxset_exists pF). Qed.
 
 Lemma minimal_exists : minimal p ex_minimal.
-Proof.
-  rewrite minimal_eq_minset.
-  exact: s2valP (minset_exists pF).
-Qed.
+Proof. rewrite minimal_eq_minset. exact: s2valP (minset_exists pF). Qed.
 
 End MaxMin_sets_existence.
 
@@ -849,7 +836,7 @@ Proof.
   move=> VisND.
   apply/dominatingP => v vnotinD.
   move/eqP: VisND (in_setT v) -> => /bigcupP.
-  elim=> [x /andP [_ xinD] vinNx].
+  elim=> [x xinD vinNx].
   rewrite /closed_neigh in_setU /open_neigh !inE in vinNx.
   case/predU1P : vinNx => [visx|adjxv]; last by exists x.
   by subst; contrab.
@@ -924,7 +911,7 @@ Proof.
   split ; last first.
   by rewrite -clsg_clneigh cl_sg_sym.
   apply/bigcupP.
-  elim=> x /andP [_ xinDminusv] winNx.
+  elim=> x xinDminusv winNx.
   move: xinDminusv.
   rewrite in_setD in_set1 => /andP [xnotv xinD].
   move: winNx.
@@ -978,9 +965,8 @@ Proof.
   by rewrite in_set1.
   apply/subsetP => x.
   move/bigcupP.
-  elim=> z.
-  rewrite in_set1 => /andP [_ /eqP zisv].
-  by rewrite zisv.
+  elim=> z ; rewrite in_set1.
+  by move/eqP->.
 Qed.
 
 Lemma private_set'_equals_empty : forall v : G, v \notinD -> (private_set' v == set0).
