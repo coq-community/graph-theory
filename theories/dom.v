@@ -439,38 +439,34 @@ Proof.
   move=> p_hereditary.
   rewrite /iff ; split.
   (* first case: -> *)
-  rewrite /maximal.
-  move=> /andP [pD /forallP H1].
-  rewrite pD andTb.
-  apply/forallP => v.
-  apply/implyP => vnotinD.
-  move/implyP: (H1 (D :|: [set v]))->.
-  reflexivity.
-  (* it is enough to prove that D \proper D cup {v} *)
-  rewrite properUl //.
-  by rewrite sub1set.
+  - rewrite /maximal.
+    move=> /andP [pD /forallP H1].
+    rewrite pD andTb.
+    apply/forallP => v.
+    apply/implyP => vnotinD.
+    move/implyP: (H1 (D :|: [set v]))-> => [ // | ].
+    (* it is enough to prove that D \proper D cup {v} *)
+    by rewrite properUl // sub1set vnotinD.
   (* second case: <- *)
-  move=> /andP [pD /forallP H2].
-  apply/maximalP.
-  split=> //.
-  move=> F /properP [DsubF].
-  elim=> v vinF.
-  move=> vnotinD.
-  apply/negP.
-  move/implyP: (H2 v).
-  move=> /(_ vnotinD).
-  apply: contra.
-  (* in order to apply the hereditary property, we first prove that
-     D cup {v} is contained in F. *)
-  have DcupvsubF: D :|: [set v] \subset F.
-  apply/subsetP => x.
-  rewrite in_setU.
-  case/orP => [ |xisv].
-  exact: (subsetP DsubF).
-  rewrite in_set1 in xisv.
-  by move/eqP: xisv ->.
-  move/hereditaryP: p_hereditary.
-  by move=> /(_ F (D :|: [set v]) DcupvsubF).
+  - move=> /andP [pD /forallP H2].
+    apply/maximalP ; split=> //.
+    move=> F /properP [DsubF].
+    elim=> v vinF.
+    move=> vnotinD.
+    apply/negP.
+    move/implyP: (H2 v) => /(_ vnotinD).
+    apply: contra.
+    (* in order to apply the hereditary property, we first prove that
+       D cup {v} is contained in F. *)
+    have DcupvsubF: D :|: [set v] \subset F.
+    { apply/subsetP => x.
+      rewrite in_setU.
+      case/orP => [ |xisv].
+      + exact: (subsetP DsubF).
+      + rewrite in_set1 in xisv.
+        by move/eqP: xisv ->. }
+    move/hereditaryP: p_hereditary.
+    by move=> /(_ F (D :|: [set v]) DcupvsubF).
 Qed.
 
 Theorem minimal_altdef : superhereditary ->
@@ -479,34 +475,33 @@ Proof.
   move=> p_superhereditary.
   rewrite /minimal /iff ; split.
   (* first case: -> *)
-  move=> /andP [pD /forallP H1].
-  rewrite pD andTb.
-  apply/forallP => v.
-  apply/implyP => vinD.
-  move/implyP: (H1 (D :\: [set v]))->.
-  reflexivity.
-  (* it is enough to prove that D - {v} \proper D *)
-  exact: properD1.
+  - move=> /andP [pD /forallP H1].
+    rewrite pD andTb.
+    apply/forallP => v.
+    apply/implyP => vinD.
+    move/implyP: (H1 (D :\: [set v]))-> => [ // | ].
+    (* it is enough to prove that D - {v} \proper D *)
+    exact: properD1.
   (* second case: <- *)
-  move=> /andP [pD /forallP H2].
-  rewrite pD andTb.
-  apply/forallP => F.
-  apply/implyP => /properP [FsubD].
-  elim=> v vinD.
-  move/implyP: (H2 v) => H3 vnotinF.
-  move: (H3 vinD).
-  apply: contra.
-  (* in order to apply the superhereditary property, we first prove that
-     F is contained in D - {v}. *)
-  have FsubDminusv: F \subset D :\: [set v].
-  apply/subsetP => x xinF.
-  rewrite in_setD (subsetP FsubD x xinF) andbT.
-  move: vnotinF.
-  apply: contra => xisv.
-  rewrite in_set1 in xisv.
-  by move/eqP: xisv <-.
-  move/superhereditaryP: p_superhereditary.
-  by move=> /(_ F (D :\: [set v]) FsubDminusv).
+  - move=> /andP [pD /forallP H2].
+    rewrite pD andTb.
+    apply/forallP => F.
+    apply/implyP => /properP [FsubD].
+    elim=> v vinD.
+    move/implyP: (H2 v) => H3 vnotinF.
+    move: (H3 vinD).
+    apply: contra.
+    (* in order to apply the superhereditary property, we first prove that
+       F is contained in D - {v}. *)
+    have FsubDminusv: F \subset D :\: [set v].
+    { apply/subsetP => x xinF.
+      rewrite in_setD (subsetP FsubD x xinF) andbT.
+      move: vnotinF.
+      apply: contra => xisv.
+      rewrite in_set1 in xisv.
+      by move/eqP: xisv <-. }
+    move/superhereditaryP: p_superhereditary.
+    by move=> /(_ F (D :\: [set v]) FsubDminusv).
 Qed.
 
 End Independence_system_definitions.
@@ -564,18 +559,17 @@ Lemma proper_sets_weight : forall A B : {set G}, A \proper B -> weight_set A < w
 Proof.
   move=> A B /properP [AsubB].
   elim=> x xinB xnotinA.
-  (* we prove that indeed A \subset B - {x} *)
   have AinBminusx: A \subset B :\: [set x].
-  apply/subsetP => v vinA.
-  move: (subsetP AsubB v vinA) => vinB.
-  apply/setD1P.
-  split=> [ | //].
-  move: xnotinA.
-  apply: contra => visx.
-  by move/eqP: visx <-.
+  { apply/subsetP => v vinA.
+    move: (subsetP AsubB v vinA) => vinB.
+    apply/setD1P.
+    split=> [ | //].
+    move: xnotinA.
+    apply: contra => visx.
+    by move/eqP: visx <-. }
   move: (subsets_weight AinBminusx) => wAleqwBminusx.
-  suff wBminusxleqwB: weight_set (B :\: [set x]) < weight_set B.
-  exact: leq_ltn_trans wAleqwBminusx wBminusxleqwB.
+  suff wBminusxleqwB: weight_set (B :\: [set x]) < weight_set B by
+    exact: leq_ltn_trans wAleqwBminusx wBminusxleqwB.
   (* it is enough to prove weight_set (B - {x}) < weight_set B *)
   rewrite /weight_set.
   rewrite [in X in _ < X](eq_bigl (fun v => v \in ((B :\: [set x]) :|: [set x]))) ; last first.
@@ -742,29 +736,29 @@ Proof.
   rewrite /stable /stable_alt /iff ; split.
   apply: contraLR.
   (* first case: -> *)
-  move/set0Pn.
-  elim=> u.
-  rewrite in_setI => [/andP[uinNS uinS] ].
-  move/bigcupP: uinNS.
-  elim=> v vinS.
-  rewrite -sg_opneigh => adjuv.
-  rewrite negb_forall.
-  apply/existsP.
-  exists u.
-  rewrite negb_forall.
-  apply/existsP.
-  exists v.
-  rewrite negb_imply uinS andTb.
-  by rewrite negb_imply vinS andTb adjuv.
+  - move/set0Pn.
+    elim=> u.
+    rewrite in_setI => [/andP[uinNS uinS] ].
+    move/bigcupP: uinNS.
+    elim=> v vinS.
+    rewrite -sg_opneigh => adjuv.
+    rewrite negb_forall.
+    apply/existsP.
+    exists u.
+    rewrite negb_forall.
+    apply/existsP.
+    exists v.
+    rewrite negb_imply uinS andTb.
+    by rewrite negb_imply vinS andTb adjuv.
   (* second case: <- *)
-  rewrite eqEsubset => /andP [NScapSsub0 _].
-  apply/stableP.
-  move=> u v uinS vinS adjuv.
-  have vinNScapS: v \in NS(S) :&: S.
-  move: (dominated_belongs_to_open_neigh_set uinS adjuv) => vinNS.
-  by rewrite in_setI vinNS vinS.
-  move: (subsetP NScapSsub0 v vinNScapS).
-  by rewrite in_set0.
+  - rewrite eqEsubset => /andP [NScapSsub0 _].
+    apply/stableP.
+    move=> u v uinS vinS adjuv.
+    have vinNScapS: v \in NS(S) :&: S.
+    { move: (dominated_belongs_to_open_neigh_set uinS adjuv) => vinNS.
+      by rewrite in_setI vinNS vinS. }
+    move: (subsetP NScapSsub0 v vinNScapS).
+    by rewrite in_set0.
 Qed.
 
 End Stable_Set.
@@ -905,33 +899,31 @@ Theorem private_belongs_to_private_set : forall v w : G, (private v w) <-> (w \i
 Proof.
   rewrite /private_set /iff ; split.
   (* first case: -> *)
-  move/privateP => [vdomw H1].
-  rewrite in_setD /closed_neigh_set.
-  apply/andP.
-  split ; last first.
-  by rewrite -clsg_clneigh cl_sg_sym.
-  apply/bigcupP.
-  elim=> x xinDminusv winNx.
-  move: xinDminusv.
-  rewrite in_setD in_set1 => /andP [xnotv xinD].
-  move: winNx.
-  rewrite -clsg_clneigh cl_sg_sym => xdomw.
-  move: (H1 x xinD xdomw).
-  move/eqP: xnotv.
-  contradiction.
+  - move/privateP => [vdomw H1].
+    rewrite in_setD /closed_neigh_set.
+    apply/andP.
+    split ; [ | by rewrite -clsg_clneigh cl_sg_sym ].
+    apply/bigcupP.
+    elim=> x xinDminusv winNx.
+    move: xinDminusv.
+    rewrite in_setD in_set1 => /andP [xnotv xinD].
+    move: winNx.
+    rewrite -clsg_clneigh cl_sg_sym => xdomw.
+    move: (H1 x xinD xdomw).
+    move/eqP: xnotv.
+    contradiction.
   (* second case: <- *)
-  rewrite in_setD /closed_neigh_set.
-  move=> /andP [wnotincup winNv].
-  apply/privateP ; split => //.
-  by rewrite cl_sg_sym clsg_clneigh.
-  move=> u uinD udomw.
-  apply/eqP.
-  move: wnotincup.
-  apply: contraR => unotv.
-  apply/bigcupP.
-  exists u.
-  by rewrite /= in_setD uinD andbT in_set1.
-  by rewrite -clsg_clneigh cl_sg_sym.
+  - rewrite in_setD /closed_neigh_set.
+    move=> /andP [wnotincup winNv].
+    apply/privateP ; split ; [ by rewrite cl_sg_sym clsg_clneigh | ].
+    move=> u uinD udomw.
+    apply/eqP.
+    move: wnotincup.
+    apply: contraR => unotv.
+    apply/bigcupP.
+    exists u.
+    + by rewrite /= in_setD uinD andbT in_set1.
+    + by rewrite -clsg_clneigh cl_sg_sym.
 Qed.
 
 Lemma private_set_not_empty : {in D, forall v, (private_set v != set0) <-> (exists w : G, private v w)}.
@@ -961,12 +953,12 @@ Proof.
   suff: N[v] = NS[D :&: [set v]] by move->.
   move: (set_intersection_singleton vinD)->.
   apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
-  apply: neigh_in_closed_neigh.
-  by rewrite in_set1.
-  apply/subsetP => x.
-  move/bigcupP.
-  elim=> z ; rewrite in_set1.
-  by move/eqP->.
+  - apply: neigh_in_closed_neigh.
+    by rewrite in_set1.
+  - apply/subsetP => x.
+    move/bigcupP.
+    elim=> z ; rewrite in_set1.
+    by move/eqP->.
 Qed.
 
 Lemma private_set'_equals_empty : forall v : G, v \notinD -> (private_set' v == set0).
@@ -1032,77 +1024,75 @@ Proof.
   rewrite maximal_altdef ; last exact: st_hereditary.
   rewrite /iff ; split ; last first.
   (* second case: <- *)
-  move=> [ stableD /dominatingP dominatingD].
-  rewrite stableD andTb.
-  apply/forallP => v.
-  apply/implyP => vnotinD.
-  rewrite /stable.
-  rewrite negb_forall.
-  apply/existsP.
-  exists v.
-  rewrite negb_forall.
-  apply/existsP.
-  move: (dominatingD v vnotinD).
-  elim=> w [winD adjwv].
-  exists w.
-  rewrite negb_imply.
-  apply/andP ; split.
-  by rewrite set1Ur.
-  rewrite negb_imply.
-  rewrite negbK sg_sym adjwv andbT.
-  by rewrite set1Ul.
+  - move=> [ stableD /dominatingP dominatingD].
+    rewrite stableD andTb.
+    apply/forallP => v.
+    apply/implyP => vnotinD.
+    rewrite /stable.
+    rewrite negb_forall.
+    apply/existsP.
+    exists v.
+    rewrite negb_forall.
+    apply/existsP.
+    move: (dominatingD v vnotinD).
+    elim=> w [winD adjwv].
+    exists w.
+    rewrite negb_imply.
+    apply/andP ; split.
+    + by rewrite set1Ur.
+    + rewrite negb_imply.
+      rewrite negbK sg_sym adjwv andbT.
+      by rewrite set1Ul.
   (* first case: -> *)
-  move/andP=> [stableD /forallP H1].
-  split=> //.
-  rewrite /dominating.
-  apply/forallP.
-  move=> x.
-  apply/implyP.
-  move=> xnotinD.
-  apply/existsP.
-  move/implyP: (H1 x).
-  move=> /(_ xnotinD).
-  rewrite /stable negb_forall.
-  move/existsP.
-  elim=> w.
-  rewrite negb_forall.
-  move/existsP.
-  elim=> z.
-  rewrite negb_imply negb_imply negbK.
-  move=> /andP [winDcupx /andP [zinDcupx adjwz]].
-  case: (boolP (z == x)).
-
-  (* case z = x *)
-  move/eqP=> zisx.
-  move: adjwz.
-  rewrite zisx => adjwx.
-  exists w.
-  rewrite adjwx andbT.
-  move: winDcupx.
-  rewrite in_setU in_set1.
-  move: (sg_edgeNeq adjwx) ->.
-  by rewrite orbF.
-
-  (* case z != x *)
-  move=> zisnotx.
-  have zinD: z \in D.
-  move: zinDcupx.
-  rewrite in_setU in_set1.
-  move/negbTE: zisnotx ->.
-  by rewrite orbF.
-  exists z.
-  rewrite zinD andTb.
-  move: winDcupx.
-  rewrite in_setU in_set1.
-  case/orP ; last first.
-  (* case w == x *)
-  move/eqP=> wisx.
-  by rewrite sg_sym -wisx.
-  (* case w \in D *)
-  move=> winD.
-  move/stableP: stableD.
-  move=> /(_ w z winD zinD).
-  contradiction.
+  - move/andP=> [stableD /forallP H1].
+    split=> //.
+    rewrite /dominating.
+    apply/forallP.
+    move=> x.
+    apply/implyP.
+    move=> xnotinD.
+    apply/existsP.
+    move/implyP: (H1 x).
+    move=> /(_ xnotinD).
+    rewrite /stable negb_forall.
+    move/existsP.
+    elim=> w.
+    rewrite negb_forall.
+    move/existsP.
+    elim=> z.
+    rewrite negb_imply negb_imply negbK.
+    move=> /andP [winDcupx /andP [zinDcupx adjwz]].
+    case: (boolP (z == x)).
+    (* case z = x *)
+    + move/eqP=> zisx.
+      move: adjwz.
+      rewrite zisx => adjwx.
+      exists w.
+      rewrite adjwx andbT.
+      move: winDcupx.
+      rewrite in_setU in_set1.
+      move: (sg_edgeNeq adjwx) ->.
+      by rewrite orbF.
+    (* case z != x *)
+    + move=> zisnotx.
+      have zinD: z \in D.
+      { move: zinDcupx.
+        rewrite in_setU in_set1.
+        move/negbTE: zisnotx ->.
+        by rewrite orbF. }
+      exists z.
+      rewrite zinD andTb.
+      move: winDcupx.
+      rewrite in_setU in_set1.
+      case/orP ; last first.
+      (* case w == x *)
+      * move/eqP=> wisx.
+        by rewrite sg_sym -wisx.
+      (* case w \in D *)
+      * move=> winD.
+        move/stableP: stableD.
+        move=> /(_ w z winD zinD).
+        contradiction.
 Qed.
 
 (* A maximal stable set is minimal dominating
@@ -1121,8 +1111,7 @@ Proof.
   apply/existsP.
   exists x.
   rewrite negb_imply.
-  apply/andP ; split.
-  by rewrite in_setD1 eq_refl andFb.
+  apply/andP ; split ; [ by rewrite in_setD1 eq_refl andFb | ].
   rewrite negb_exists.
   apply/forallP=> y.
   rewrite negb_and.
@@ -1142,68 +1131,63 @@ Proof.
   rewrite minimal_altdef ; last apply dom_superhereditary.
   rewrite /iff ; split ; last first.
   (* second case: <- *)
-  move=> [dominatingD /irredundantP irredundantD].
-  rewrite dominatingD andTb.
-  apply/forallP=> v.
-  apply/implyP=> vinD.
-  rewrite /dominating negb_forall.
-  apply/existsP.
-  move: (irredundantD v vinD).
-  rewrite (private_set_not_empty vinD).
-  elim=> w /privateP [vdomw H3].
-  exists w.
-  rewrite negb_imply; apply/andP ; split.
-  rewrite in_setD1 negb_and negbK orbC -implybE.
-  apply/implyP=> winD.
-  by move: (H3 w winD (cl_sg_refl w))->.
-  rewrite negb_exists.
-  apply/forallP=> y.
-  rewrite negb_and.
-  rewrite orbC -implybE.
-  apply/implyP=> adjyw.
-  rewrite in_setD1 negb_and orbC -implybE negbK.
-  apply/implyP=> yinD.
-  have ydomw: y -*- w by rewrite /cl_sedge adjyw orbT.
-  move: (H3 y yinD ydomw).
-  by move->.
+  - move=> [dominatingD /irredundantP irredundantD].
+    rewrite dominatingD andTb.
+    apply/forallP=> v.
+    apply/implyP=> vinD.
+    rewrite /dominating negb_forall.
+    apply/existsP.
+    move: (irredundantD v vinD).
+    rewrite (private_set_not_empty vinD).
+    elim=> w /privateP [vdomw H3].
+    exists w.
+    rewrite negb_imply; apply/andP ; split.
+    + rewrite in_setD1 negb_and negbK orbC -implybE.
+      apply/implyP=> winD.
+      by move: (H3 w winD (cl_sg_refl w))->.
+    + rewrite negb_exists.
+      apply/forallP=> y.
+      rewrite negb_and.
+      rewrite orbC -implybE.
+      apply/implyP=> adjyw.
+      rewrite in_setD1 negb_and orbC -implybE negbK.
+      apply/implyP=> yinD.
+      have ydomw: y -*- w by rewrite /cl_sedge adjyw orbT.
+      move: (H3 y yinD ydomw).
+      by move->.
   (* first case: -> *)
-  move/andP=> [dominatingD /forallP H1] ; split=> //.
-  rewrite /irredundant.
-  apply/forallP=> v.
-  apply/implyP=> vinD.
-  move/implyP: (H1 v) => /(_ vinD).
-  rewrite /dominating negb_forall.
-  move/existsP.
-  elim=> w.
-  rewrite negb_imply negb_exists => /andP [wnotinDcupv /forallP H2].
-  rewrite (private_set_not_empty vinD).
-  exists w.
-
-  (* We need this result to show that if there is a private vertice of v, should be w *)
-  have wprivatev: {in D, forall u, u -*- w -> u = v}.
-  move=> u uinD udomw.
-  apply/eqP. 
-  move: (H2 u).
-  rewrite negb_and.
-  case/orP.
-  by rewrite in_setD1 uinD negb_and negbK orbF.
-  move=> noadjuw.
-  have uisw : u == w by move: udomw noadjuw ; rewrite /cl_sedge orbC ; apply: aorbNa.
-  move: wnotinDcupv.
-  by rewrite -(eqP uisw) in_setD1 uinD andbT negbK.
-
-  apply/privateP.
-  split ; [ | exact: wprivatev].
-  move: wnotinDcupv.
-  rewrite in_setD1 negb_and.
-  case/orP.
-  by rewrite negbK (eq_sym w v) /cl_sedge=> ->.
-  move=> wnotinD ; move/dominatingP: dominatingD.
-  move=> /(_ w wnotinD).
-  elim=> b [binD adjbw].
-  have bdomw: b -*- w by rewrite /cl_sedge adjbw orbT.
-  move: (wprivatev b binD bdomw) => beqv.
-  by rewrite -beqv.
+  - move/andP=> [dominatingD /forallP H1] ; split=> //.
+    rewrite /irredundant.
+    apply/forallP=> v.
+    apply/implyP=> vinD.
+    move/implyP: (H1 v) => /(_ vinD).
+    rewrite /dominating negb_forall.
+    move/existsP.
+    elim=> w.
+    rewrite negb_imply negb_exists => /andP [wnotinDcupv /forallP H2].
+    rewrite (private_set_not_empty vinD).
+    exists w.
+    (* We need this result to show that if there is a private vertice of v, should be w *)
+    have wprivatev: {in D, forall u, u -*- w -> u = v}.
+    { move=> u uinD udomw.
+      apply/eqP. 
+      move: (H2 u).
+      rewrite negb_and.
+      case/orP ; [ by rewrite in_setD1 uinD negb_and negbK orbF | ].
+      move=> noadjuw.
+      have uisw : u == w by move: udomw noadjuw ; rewrite /cl_sedge orbC ; apply: aorbNa.
+      move: wnotinDcupv.
+      by rewrite -(eqP uisw) in_setD1 uinD andbT negbK. }
+    apply/privateP.
+    split ; [ | exact: wprivatev].
+    move: wnotinDcupv.
+    rewrite in_setD1 negb_and.
+    case/orP ; [ by rewrite negbK (eq_sym w v) /cl_sedge=> -> | ].
+    move=> wnotinD ; move/dominatingP: dominatingD.
+    move=> /(_ w wnotinD).
+    elim=> b [binD adjbw].
+    have bdomw: b -*- w by rewrite /cl_sedge adjbw orbT.
+    by move: (wprivatev b binD bdomw) <-.
 Qed.
 
 (* A minimal dominating set is maximal irredundant
@@ -1226,25 +1210,24 @@ Proof.
   rewrite (private_set_not_empty vinDcupv).
   elim=> x.
   rewrite /private ; move/andP => [vdomx].
-
   case: (boolP (x \in D)) => [xinD | xnotinD].
   (* case when x is in D (x dominates itself) *)
-  have xinDcupv: x \in D :|: [set v] by rewrite in_setU xinD orTb.
-  move/forallP=> /(_ x).
-  move/implyP=> /(_ xinDcupv).
-  rewrite cl_sg_refl implyTb.
-  move/eqP=> xeqv ; rewrite -xeqv in vnotinD.
-  by move/negP in vnotinD.
+  - have xinDcupv: x \in D :|: [set v] by rewrite in_setU xinD orTb.
+    move/forallP=> /(_ x).
+    move/implyP=> /(_ xinDcupv).
+    rewrite cl_sg_refl implyTb.
+    move/eqP=> xeqv ; rewrite -xeqv in vnotinD.
+    by move/negP in vnotinD.
   (* case when x is not in D (some u in D dominates x) *)
-  move: dominatingD.
-  move/dominatingP=> /(_ x xnotinD).
-  elim=> u [uinD adjux].
-  have uinDcupv: u \in D :|: [set v] by rewrite in_setU uinD orTb.
-  move/forallP=> /(_ u).
-  move/implyP=> /(_ uinDcupv).
-  rewrite /cl_sedge adjux orbT implyTb.
-  move/eqP=> ueqv ; rewrite -ueqv in vnotinD.
-  by move/negP in vnotinD.
+  - move: dominatingD.
+    move/dominatingP=> /(_ x xnotinD).
+    elim=> u [uinD adjux].
+    have uinDcupv: u \in D :|: [set v] by rewrite in_setU uinD orTb.
+    move/forallP=> /(_ u).
+    move/implyP=> /(_ uinDcupv).
+    rewrite /cl_sedge adjux orbT implyTb.
+    move/eqP=> ueqv ; rewrite -ueqv in vnotinD.
+    by move/negP in vnotinD.
 Qed.
 
 End Relations_between_stable_dominating_irredundant_sets.
