@@ -1000,6 +1000,11 @@ Proof. by firstorder. Qed.
 (** * Preliminaries (used in Domination Theory) *)
 Section Preliminaries1.
 
+Lemma properC (T : finType) (A B : {set T}) : A \proper B = (~: B \proper ~: A).
+Proof. 
+rewrite !properEneq setCS [~: _ == _]inj_eq 1?eq_sym //; exact/inv_inj/setCK.
+Qed.
+
 Lemma aorbNa: forall a b : bool, (a || b) -> ~~ a -> b.
 Proof. move=> a b. by case: a ; case: b. Qed.
 

@@ -250,108 +250,28 @@ Variable G : sgraph.
 
 (**********************************************************************************)
 (** * Maximal and minimal sets *)
-Section MaxMin_sets.
 
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable D : {set G}.
+(* TODO: maximalP no longer refers to the the (now removed)
+[maximal]. So it should be named [maxset_?somethingP] *)
 
-Definition maximal : bool := p D && [forall F : {set G}, (D \proper F) ==> ~~ p F].
-
-Definition minimal : bool := p D && [forall F : {set G}, (F \proper D) ==> ~~ p F].
-
-Proposition maximalP : reflect (p D /\ (forall F : {set G}, D \proper F -> ~ p F)) maximal.
+Proposition maximalP (p : pred {set G}) (D : {set G}) :
+  reflect (p D /\ (forall F : {set G}, D \proper F -> ~~ p F)) (maxset p D).
 Proof.
-  rewrite /maximal.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [pD /forallP H1].
-  split=> //.
-  move=> F.
-  move: (H1 F).
-  move=> /implyP H2 DproperF.
-  move: (H2 DproperF).
-  by apply/negP.
-  (* second case: -> *)
-  move=> [pD H3].
-  split=> //.
-  apply/forallP => F.
-  apply/implyP => DproperF.
-  move: (H3 F DproperF).
-  by move/negP.
+  apply: (iffP maxsetP) => -[pD maxD]; split => // E.
+  - rewrite properEneq => /andP [DnE DsubE].
+    apply: contra_neqN DnE => pE; exact/esym/maxD.
+  - move => pE SsubE; apply: contraTeq pE => EnD; apply: maxD.
+    by rewrite properEneq eq_sym EnD.
 Qed.
+Arguments maximalP {p D}.
 
-Proposition minimalP : reflect (p D /\ (forall F : {set G}, F \proper D -> ~ p F)) minimal.
+Proposition minimalP (p : pred {set G}) (D : {set G}) :
+  reflect (p D /\ (forall F : {set G}, F \proper D -> ~~ p F)) (minset p D).
 Proof.
-  rewrite /minimal.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [pD /forallP H1].
-  split=> //.
-  move=> F.
-  move: (H1 F).
-  move=> /implyP H2 FproperD.
-  move: (H2 FproperD).
-  by apply/negP.
-  (* second case: -> *)
-  move=> [pD H3].
-  split=> //.
-  apply/forallP => F.
-  apply/implyP => FproperD.
-  move: (H3 F FproperD).
-  by move/negP.
+  rewrite minmaxset; apply (iffP maximalP); rewrite /= setCK => -[pD H]; split => // E.
+  all: by rewrite properC ?setCK => /H; rewrite ?setCK.
 Qed.
-
-Lemma maximal_eq_maxset : maximal <-> (maxset p D).
-Proof.
-  rewrite /iff ; split.
-  (* first case: -> *)
-  move/maximalP=> [pD H1].
-  apply/maxsetP ; split => //.
-  move=> F pF DsubF.
-  symmetry ; apply/eqP.
-  rewrite eqEproper DsubF andTb.
-  move: pF.
-  apply: contraL.
-  move=> DproperF.
-  apply/negP.
-  exact: (H1 F DproperF).
-  (* second case: <- *)
-  move/maxsetP=> [pD H2].
-  rewrite /maximal.
-  apply/andP ; split => //.
-  apply/forallP => F.
-  rewrite implybN /proper negb_and -implybE negbK.
-  apply/implyP => pF.
-  apply/implyP => DsubF.
-  by move: (H2 F pF DsubF)->.
-Qed.
-
-Lemma minimal_eq_minset : minimal <-> (minset p D).
-Proof.
-  rewrite /minimal /iff ; split.
-  (* first case: -> *)
-  move/minimalP=> [pD H1].
-  apply/minsetP ; split => //.
-  move=> F pF FsubD.
-  apply/eqP.
-  rewrite eqEproper FsubD andTb.
-  move: pF.
-  apply: contraL.
-  move=> FproperD.
-  apply/negP.
-  exact: (H1 F FproperD).
-  (* second case: <- *)
-  move=> /minsetP [pD H2].
-  rewrite /minimal.
-  apply/andP ; split => //.
-  apply/forallP => F.
-  rewrite implybN /proper negb_and -implybE negbK.
-  apply/implyP => pF.
-  apply/implyP => FsubD.
-  by move: (H2 F pF FsubD)->.
-Qed.
-
-End MaxMin_sets.
+Arguments minimalP {p D}.
 
 
 (**********************************************************************************)
@@ -365,11 +285,11 @@ Definition ex_maximal : {set G} := s2val (maxset_exists pF).
 
 Definition ex_minimal : {set G} := s2val (minset_exists pF).
 
-Lemma maximal_exists : maximal p ex_maximal.
-Proof. rewrite maximal_eq_maxset ; exact: s2valP (maxset_exists pF). Qed.
+Lemma maximal_exists : maxset p ex_maximal.
+Proof. exact: s2valP (maxset_exists pF). Qed.
 
-Lemma minimal_exists : minimal p ex_minimal.
-Proof. rewrite minimal_eq_minset. exact: s2valP (minset_exists pF). Qed.
+Lemma minimal_exists : minset p ex_minimal.
+Proof. exact: s2valP (minset_exists pF). Qed.
 
 End MaxMin_sets_existence.
 
@@ -434,65 +354,38 @@ Qed.
 Variable D : {set G}.
 
 Theorem maximal_altdef : hereditary ->
-          (maximal p D <-> (p D && [forall v : G, (v \notin D) ==> ~~ p (D :|: [set v])])).
-Proof.
-  move=> p_hereditary.
-  rewrite /iff ; split.
-  (* first case: -> *)
-  - rewrite /maximal.
-    move=> /andP [pD /forallP H1].
-    rewrite pD andTb.
-    apply/forallP => v.
-    apply/implyP => vnotinD.
-    move/implyP: (H1 (D :|: [set v]))-> => [ // | ].
-    (* it is enough to prove that D \proper D cup {v} *)
-    by rewrite properUl // sub1set vnotinD.
-  (* second case: <- *)
-  - move=> /andP [pD /forallP H2].
-    apply/maximalP ; split=> //.
-    move=> F /properP [DsubF].
-    elim=> v vinF.
-    move=> vnotinD.
-    apply/negP.
-    move/implyP: (H2 v) => /(_ vnotinD).
-    apply: contra.
-    (* in order to apply the hereditary property, we first prove that
-       D cup {v} is contained in F. *)
-    have DcupvsubF: D :|: [set v] \subset F.
-    { apply/subsetP => x.
-      rewrite in_setU.
-      case/orP => [ |xisv].
-      + exact: (subsetP DsubF).
-      + rewrite in_set1 in xisv.
-        by move/eqP: xisv ->. }
-    move/hereditaryP: p_hereditary.
-    by move=> /(_ F (D :|: [set v]) DcupvsubF).
+   reflect (p D /\ forall v : G, v \notin D -> ~~ p (v |: D)) (maxset p D).
+Proof. 
+  move/hereditaryP => p_hereditary; apply: (iffP maximalP).
+  - case => pD maxD; split => // v vD. apply: maxD.
+    by rewrite setUC properUl // sub1set. 
+  - case => pD max1D; split => // A /properP [subA [v vA /max1D vD]].
+    apply: contraNN vD; apply: p_hereditary; by rewrite subUset sub1set vA.
 Qed.
 
+(* TODO: turn into a reflection lemmas as above *)
 Theorem minimal_altdef : superhereditary ->
-          (minimal p D <-> (p D && [forall v : G, (v \in D) ==> ~~ p (D :\: [set v])])).
+   (minset p D <-> (p D && [forall v : G, (v \in D) ==> ~~ p (D :\: [set v])])).
 Proof.
   move=> p_superhereditary.
-  rewrite /minimal /iff ; split.
+  split.
   (* first case: -> *)
-  - move=> /andP [pD /forallP H1].
+  - case/minimalP => pD H1.
     rewrite pD andTb.
     apply/forallP => v.
     apply/implyP => vinD.
-    move/implyP: (H1 (D :\: [set v]))-> => [ // | ].
-    (* it is enough to prove that D - {v} \proper D *)
+    apply: H1.
     exact: properD1.
   (* second case: <- *)
   - move=> /andP [pD /forallP H2].
-    rewrite pD andTb.
-    apply/forallP => F.
-    apply/implyP => /properP [FsubD].
+    apply/minimalP; split => // F.
+    move/properP => [FsubD].
     elim=> v vinD.
     move/implyP: (H2 v) => H3 vnotinF.
     move: (H3 vinD).
     apply: contra.
-    (* in order to apply the superhereditary property, we first prove that
-       F is contained in D - {v}. *)
+    (* in order to apply the superhereditary property, we first prove that *)
+(*        F is contained in D - {v}. *)
     have FsubDminusv: F \subset D :\: [set v].
     { apply/subsetP => x xinF.
       rewrite in_setD (subsetP FsubD x xinF) andbT.
@@ -623,24 +516,24 @@ Proof.
   exact: (H2 F).
 Qed.
 
-Lemma maximum_is_maximal : maximum -> maximal p D.
+Lemma maximum_is_maximal : maximum -> maxset p D.
 Proof.
   move/maximumP=> [pD H1].
   apply/maximalP.
   split=> //.
-  move=> F DproperF pF.
+  move=> F DproperF; apply/negP => pF.
   move: (H1 F pF).
   move: (proper_sets_weight DproperF).
   rewrite ltnNge => /negP.
   contradiction.
 Qed.
 
-Lemma minimum_is_minimal : minimum -> minimal p D.
+Lemma minimum_is_minimal : minimum -> minset p D.
 Proof.
   move/minimumP=> [pD H1].
   apply/minimalP.
   split=> //.
-  move=> F FproperD pF.
+  move=> F FproperD; apply/negP => pF.
   move: (H1 F pF).
   move: (proper_sets_weight FproperD).
   rewrite ltnNge => /negP.
@@ -1019,15 +912,13 @@ Variable D : {set G}.
 
 (* A stable set D is maximal iff D is stable and dominating
  * See Prop. 3.5 of Fundamentals of Domination *)
-Theorem maximal_st_iff_st_dom : maximal stable D <-> (stable D /\ dominating D).
+Theorem maximal_st_iff_st_dom : maxset stable D <-> (stable D /\ dominating D).
 Proof.
-  rewrite maximal_altdef ; last exact: st_hereditary.
+  rewrite -(rwP (maximal_altdef _ st_hereditary)).
   rewrite /iff ; split ; last first.
   (* second case: <- *)
   - move=> [ stableD /dominatingP dominatingD].
-    rewrite stableD andTb.
-    apply/forallP => v.
-    apply/implyP => vnotinD.
+    split => // v vnotinD.
     rewrite /stable.
     rewrite negb_forall.
     apply/existsP.
@@ -1037,22 +928,14 @@ Proof.
     move: (dominatingD v vnotinD).
     elim=> w [winD adjwv].
     exists w.
+    rewrite negb_imply !inE eqxx /=.
     rewrite negb_imply.
-    apply/andP ; split.
-    + by rewrite set1Ur.
-    + rewrite negb_imply.
-      rewrite negbK sg_sym adjwv andbT.
-      by rewrite set1Ul.
+    rewrite negbK sg_sym adjwv andbT.
+    by rewrite winD orbT.
   (* first case: -> *)
-  - move/andP=> [stableD /forallP H1].
-    split=> //.
-    rewrite /dominating.
-    apply/forallP.
-    move=> x.
-    apply/implyP.
-    move=> xnotinD.
-    apply/existsP.
-    move/implyP: (H1 x).
+  - move => [stableD H1].
+    split=> //. apply/dominatingP => x xnotinD.
+    move: (H1 x).
     move=> /(_ xnotinD).
     rewrite /stable negb_forall.
     move/existsP.
@@ -1068,36 +951,34 @@ Proof.
       move: adjwz.
       rewrite zisx => adjwx.
       exists w.
-      rewrite adjwx andbT.
+      rewrite adjwx; split => //. 
       move: winDcupx.
       rewrite in_setU in_set1.
-      move: (sg_edgeNeq adjwx) ->.
-      by rewrite orbF.
+      by move: (sg_edgeNeq adjwx) ->.
     (* case z != x *)
     + move=> zisnotx.
       have zinD: z \in D.
       { move: zinDcupx.
         rewrite in_setU in_set1.
-        move/negbTE: zisnotx ->.
-        by rewrite orbF. }
+        by move/negbTE: zisnotx ->. }
       exists z.
-      rewrite zinD andTb.
+      rewrite zinD; split => //.
       move: winDcupx.
       rewrite in_setU in_set1.
       case/orP ; last first.
-      (* case w == x *)
-      * move/eqP=> wisx.
-        by rewrite sg_sym -wisx.
       (* case w \in D *)
       * move=> winD.
         move/stableP: stableD.
         move=> /(_ w z winD zinD).
         contradiction.
+      (* case w == x *)
+      * move/eqP=> wisx.
+        by rewrite sg_sym -wisx.
 Qed.
 
 (* A maximal stable set is minimal dominating
  * See Prop. 3.6 of Fundamentals of Domination *)
-Theorem maximal_st_is_minimal_dom : maximal stable D -> minimal dominating D.
+Theorem maximal_st_is_minimal_dom : maxset stable D -> minset dominating D.
 Proof.
   rewrite maximal_st_iff_st_dom.
   move=> [stableD dominatingD].
@@ -1126,7 +1007,7 @@ Qed.
 
 (* A dominating set D is minimal iff D is dominating and irredundant
  * See Prop. 3.8 of Fundamentals of Domination *)
-Theorem minimal_dom_iff_dom_irr : minimal dominating D <-> (dominating D /\ irredundant D).
+Theorem minimal_dom_iff_dom_irr : minset dominating D <-> (dominating D /\ irredundant D).
 Proof.
   rewrite minimal_altdef ; last apply dom_superhereditary.
   rewrite /iff ; split ; last first.
@@ -1192,20 +1073,18 @@ Qed.
 
 (* A minimal dominating set is maximal irredundant
  * See Prop. 3.9 of Fundamentals of Domination *)
-Theorem minimal_dom_is_maximal_irr : minimal dominating D -> maximal irredundant D.
+Theorem minimal_dom_is_maximal_irr : minset dominating D -> maxset irredundant D.
 Proof.
   rewrite minimal_dom_iff_dom_irr.
-  rewrite maximal_altdef ; last apply irr_hereditary.
+  rewrite -(rwP (maximal_altdef _ irr_hereditary)).
   move=> [dominatingD irredundantD].
-  apply/andP ; split=>//.
-  apply/forallP=> v.
-  apply/implyP=> vnotinD.
+  split=>// v vnotinD.
   rewrite /irredundant.
   rewrite negb_forall.
   apply/existsP.
   exists v.
   have vinDcupv : v \in D :|: [set v] by rewrite in_setU set11 orbT.
-  rewrite negb_imply vinDcupv andTb.
+  rewrite setUC negb_imply vinDcupv andTb.
   apply/negP.
   rewrite (private_set_not_empty vinDcupv).
   elim=> x.
@@ -1238,11 +1117,11 @@ Section Existence_of_stable_dominating_irredundant_sets.
 
 (* Definitions of "maximal stable", "minimal dominating" and "maximal irredundant" sets *)
 
-Definition max_st := maximal stable.
+Definition max_st := maxset stable.
 
-Definition min_dom := minimal dominating.
+Definition min_dom := minset dominating.
 
-Definition max_irr := maximal irredundant.
+Definition max_irr := maxset irredundant.
 
 (* Inhabitants that are "maximal stable", "minimal dominating" and "maximal irredundant"
  * Recall that ex_minimal and ex_maximal requires a proof of an inhabitant of "stable",
@@ -1479,10 +1358,10 @@ Proof.
   exact: (H2 F pF).
 Qed.
 
-Proposition maximum_card_is_maximal : maximum_card -> maximal p D.
+Proposition maximum_card_is_maximal : maximum_card -> maxset p D.
 Proof. rewrite maximum1 ; exact: maximum_is_maximal. Qed.
 
-Proposition minimum_card_is_minimal : minimum_card -> minimal p D.
+Proposition minimum_card_is_minimal : minimum_card -> minset p D.
 Proof. rewrite minimum1 ; exact: minimum_is_minimal. Qed.
 
 End Unweighted_Sets.
