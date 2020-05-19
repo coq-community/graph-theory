@@ -1005,6 +1005,10 @@ Proof.
 rewrite !properEneq setCS [~: _ == _]inj_eq 1?eq_sym //; exact/inv_inj/setCK.
 Qed.
 
+Lemma in11_in2 (T1 T2 : predArgType) (P : T1 -> T2 -> Prop) (A1 : {pred T1}) (A2 : {pred T2}) : 
+  {in A1, forall x, {in A2, forall y,  P x y}} <-> {in A1 & A2, forall x y, P x y}.
+Proof. by firstorder. Qed.
+
 Lemma aorbNa: forall a b : bool, (a || b) -> ~~ a -> b.
 Proof. move=> a b. by case: a ; case: b. Qed.
 
@@ -1071,7 +1075,7 @@ Proof.
 Qed.
 
 End Preliminaries1.
-
+Arguments in11_in2 [T1 T2 P] A1 A2.
 
 (**********************************************************************************)
 Section Preliminaries2.

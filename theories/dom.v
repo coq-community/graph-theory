@@ -556,7 +556,7 @@ Section Stable_Set.
 
 Variable S : {set G}.
 
-Definition stable : bool := [forall u : G, forall v : G, (u \in S) ==> (v \in S) ==> ~~ (u -- v)].
+Definition stable : bool := [forall u in S, forall v in S, ~~ (u -- v)].
 
 Definition stable_alt : bool := NS(S) :&: S == set0.
 
@@ -569,49 +569,22 @@ The rationale is that boolean negations on boolean atoms are quite well
 behaved (e.g., rewriting the boolean makes the negation simplify). *)
 
 Proposition stableP : reflect {in S&, forall u v, ~ u -- v} stable.
-Proof.
-  rewrite /stable.
-  apply: (iffP forallP).
-  move=> H1 u v uinS vinS.
-  move/forallP: (H1 u) => H2.
-  apply/negP.
-  by rewrite (implyP ((implyP (H2 v)) uinS) vinS).
-  move=> H2 u.
-  apply/forallP => v.
-  apply/implyP => uinS.
-  apply/implyP => vinS.
-  apply/negP.
-  exact: H2.
+Proof. apply: equivP (in11_in2 S S). do 2 (apply: forall_inPP => ?). exact: negP. Qed.
+
+Proposition stablePn : reflect (exists x y, [/\ x \in S, y \in S & x -- y]) (~~ stable).
+Proof. 
+  set E := exists _, _.
+  have EE : (exists2 x, x \in S & exists2 y, y \in S & x -- y) <-> E by firstorder.
+  rewrite /stable !negb_forall_in; apply: equivP EE; apply: exists_inPP => x.
+  rewrite negb_forall_in; apply: exists_inPP => y. exact: negPn.
 Qed.
 
-Theorem stable_eq_stable_alt : stable <-> stable_alt.
-Proof.
-  rewrite /stable /stable_alt /iff ; split.
-  apply: contraLR.
-  (* first case: -> *)
-  - move/set0Pn.
-    elim=> u.
-    rewrite in_setI => [/andP[uinNS uinS] ].
-    move/bigcupP: uinNS.
-    elim=> v vinS.
-    rewrite -sg_opneigh => adjuv.
-    rewrite negb_forall.
-    apply/existsP.
-    exists u.
-    rewrite negb_forall.
-    apply/existsP.
-    exists v.
-    rewrite negb_imply uinS andTb.
-    by rewrite negb_imply vinS andTb adjuv.
-  (* second case: <- *)
-  - rewrite eqEsubset => /andP [NScapSsub0 _].
-    apply/stableP.
-    move=> u v uinS vinS adjuv.
-    have vinNScapS: v \in NS(S) :&: S.
-    { move: (dominated_belongs_to_open_neigh_set uinS adjuv) => vinNS.
-      by rewrite in_setI vinNS vinS. }
-    move: (subsetP NScapSsub0 v vinNScapS).
-    by rewrite in_set0.
+Proposition stable_eq_stable_alt : stable = stable_alt. 
+Proof. 
+rewrite /stable_alt setI_eq0; apply/stableP/disjointP => stS.
+- move => x /bigcupP [y yS yx] xS. rewrite inE in yx. exact: stS yx.
+- move => x y xS yS xy. apply: stS yS. 
+  apply/bigcupP; exists x => //. by rewrite inE.
 Qed.
 
 End Stable_Set.
@@ -879,32 +852,15 @@ Proof.
   (* second case: <- *)
   - move=> [ stableD /dominatingP dominatingD].
     split => // v vnotinD.
-    rewrite /stable.
-    rewrite negb_forall.
-    apply/existsP.
-    exists v.
-    rewrite negb_forall.
-    apply/existsP.
-    move: (dominatingD v vnotinD).
-    elim=> w [winD adjwv].
-    exists w.
-    rewrite negb_imply !inE eqxx /=.
-    rewrite negb_imply.
-    rewrite negbK sg_sym adjwv andbT.
-    by rewrite winD orbT.
+    have [w [winD adjwv]] := dominatingD _ vnotinD.
+    apply/stablePn; exists v; exists w.
+    by rewrite !inE eqxx winD sgP adjwv orbT.
   (* first case: -> *)
   - move => [stableD H1].
     split=> //. apply/dominatingP => x xnotinD.
     move: (H1 x).
-    move=> /(_ xnotinD).
-    rewrite /stable negb_forall.
-    move/existsP.
-    elim=> w.
-    rewrite negb_forall.
-    move/existsP.
-    elim=> z.
-    rewrite negb_imply negb_imply negbK.
-    move=> /andP [winDcupx /andP [zinDcupx adjwz]].
+    move=> /(_ xnotinD). 
+    move/stablePn => [w] [z] [winDcupx zinDcupx adjwz].
     case: (boolP (z == x)).
     (* case z = x *)
     + move/eqP=> zisx.
