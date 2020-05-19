@@ -306,17 +306,14 @@ Arguments minimal_exists : clear implicits.
 (**********************************************************************************)
 (** * Independence systems, hereditary and superhereditary properties *)
 Section Independence_system_definitions.
+Implicit Types (p : pred {set G}) (F D : {set G}).
 
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
+Definition hereditary p : bool := [forall D : {set G}, forall (F : {set G} | F \subset D), p D ==> p F].
 
-Definition hereditary : bool :=
-          [forall D : {set G}, forall F : {set G}, (F \subset D) ==> p D ==> p F].
+Definition superhereditary p : bool := hereditary [pred D | p (~: D)].
 
-Definition superhereditary : bool :=
-          [forall D : {set G}, forall F : {set G}, (D \subset F) ==> p D ==> p F].
-
-Proposition hereditaryP : reflect
-          (forall D F : {set G}, (F \subset D) -> p D -> p F) hereditary.
+Proposition hereditaryP p : 
+  reflect (forall D F : {set G}, (F \subset D) -> p D -> p F) (hereditary p).
 Proof.
   rewrite /hereditary.
   apply: (iffP forallP).
@@ -333,27 +330,15 @@ Proof.
   exact: (H2 D F FsubD).
 Qed.
 
-Proposition superhereditaryP : reflect
-          (forall D F : {set G}, (D \subset F) -> p D -> p F) superhereditary.
+Proposition superhereditaryP (p : pred {set G}) : 
+  reflect (forall D F : {set G}, (D \subset F) -> p D -> p F) (superhereditary p).
 Proof.
-  rewrite /superhereditary.
-  apply: (iffP forallP).
-  (* first case: -> *)
-  move=> H1 D F DsubF pD.
-  move: (H1 D).
-  move/forallP=> /(_ F).
-  by rewrite DsubF pD !implyTb.
-  (* second case: -> *)
-  move=> H2 D.
-  apply/forallP => F.
-  apply/implyP => DsubF.
-  apply/implyP.
-  exact: (H2 D F DsubF).
+apply: (iffP (hereditaryP _)) => /= sh_p D F.
+all: by rewrite -setCS => /sh_p; rewrite ?setCK; auto.
 Qed.
 
-Variable D : {set G}.
-
-Theorem maximal_altdef : hereditary ->
+(* TODO: these should be named [?somethingP] *)
+Theorem maximal_altdef p D : hereditary p ->
    reflect (p D /\ forall v : G, v \notin D -> ~~ p (v |: D)) (maxset p D).
 Proof. 
   move/hereditaryP => p_hereditary; apply: (iffP maximalP).
@@ -363,41 +348,16 @@ Proof.
     apply: contraNN vD; apply: p_hereditary; by rewrite subUset sub1set vA.
 Qed.
 
-(* TODO: turn into a reflection lemmas as above *)
-Theorem minimal_altdef : superhereditary ->
-   (minset p D <-> (p D && [forall v : G, (v \in D) ==> ~~ p (D :\: [set v])])).
+Theorem minimal_altdef p D : superhereditary p ->
+   reflect (p D /\ forall v : G, v \in D -> ~~ p (D :\ v)) (minset p D).
 Proof.
-  move=> p_superhereditary.
-  split.
-  (* first case: -> *)
-  - case/minimalP => pD H1.
-    rewrite pD andTb.
-    apply/forallP => v.
-    apply/implyP => vinD.
-    apply: H1.
-    exact: properD1.
-  (* second case: <- *)
-  - move=> /andP [pD /forallP H2].
-    apply/minimalP; split => // F.
-    move/properP => [FsubD].
-    elim=> v vinD.
-    move/implyP: (H2 v) => H3 vnotinF.
-    move: (H3 vinD).
-    apply: contra.
-    (* in order to apply the superhereditary property, we first prove that *)
-(*        F is contained in D - {v}. *)
-    have FsubDminusv: F \subset D :\: [set v].
-    { apply/subsetP => x xinF.
-      rewrite in_setD (subsetP FsubD x xinF) andbT.
-      move: vnotinF.
-      apply: contra => xisv.
-      rewrite in_set1 in xisv.
-      by move/eqP: xisv <-. }
-    move/superhereditaryP: p_superhereditary.
-    by move=> /(_ F (D :\: [set v]) FsubDminusv).
+  rewrite minmaxset => sh_p; apply: (iffP (maximal_altdef _ _)) => //=.
+  all: rewrite ?setCK => -[pD H]; split => // v; move: (H v).
+  all: by rewrite !inE ?setCU ?setCK ?negbK setDE setIC.
 Qed.
 
 End Independence_system_definitions.
+
 
 
 (**********************************************************************************)
@@ -982,11 +942,8 @@ Theorem maximal_st_is_minimal_dom : maxset stable D -> minset dominating D.
 Proof.
   rewrite maximal_st_iff_st_dom.
   move=> [stableD dominatingD].
-  rewrite minimal_altdef ; last apply dom_superhereditary.
-  apply/andP ; split=>//.
-  apply/forallP.
-  move=> x.
-  apply/implyP=> xinD.
+  rewrite -(rwP (minimal_altdef _ dom_superhereditary)).
+  split=>// x xinD.
   rewrite /dominating.
   rewrite negb_forall.
   apply/existsP.
@@ -1009,13 +966,11 @@ Qed.
  * See Prop. 3.8 of Fundamentals of Domination *)
 Theorem minimal_dom_iff_dom_irr : minset dominating D <-> (dominating D /\ irredundant D).
 Proof.
-  rewrite minimal_altdef ; last apply dom_superhereditary.
+  rewrite -(rwP (minimal_altdef _ dom_superhereditary)).
   rewrite /iff ; split ; last first.
   (* second case: <- *)
   - move=> [dominatingD /irredundantP irredundantD].
-    rewrite dominatingD andTb.
-    apply/forallP=> v.
-    apply/implyP=> vinD.
+    split => // v vinD.
     rewrite /dominating negb_forall.
     apply/existsP.
     move: (irredundantD v vinD).
@@ -1037,11 +992,11 @@ Proof.
       move: (H3 y yinD ydomw).
       by move->.
   (* first case: -> *)
-  - move/andP=> [dominatingD /forallP H1] ; split=> //.
+  - move => [dominatingD H1] ; split=> //.
     rewrite /irredundant.
     apply/forallP=> v.
     apply/implyP=> vinD.
-    move/implyP: (H1 v) => /(_ vinD).
+    move: (H1 v) => /(_ vinD).
     rewrite /dominating negb_forall.
     move/existsP.
     elim=> w.
