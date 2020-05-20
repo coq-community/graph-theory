@@ -38,13 +38,13 @@ Notation "N[ G ; x ]" := (@closed_neigh G x) (at level 0, G at level 99, x at le
 Notation "N( x )" := (open_neigh x) (at level 0, x at level 99, only parsing).
 Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99, only parsing).
 Notation "x -*- y" := (cl_sedge x y) (at level 30).
-Notation "V( G )" := (setT : {set G}) (at level 0, G at level 99).
 Notation "E( G )" := (edges G) (at level 0, G at level 99).
 Notation "NS( G ; D )" := (@open_neigh_set G D) (at level 0, G at level 99, D at level 99).
 Notation "NS( D )" := (open_neigh_set D) (at level 0, D at level 99).
 Notation "NS[ G ; D ]" := (@closed_neigh_set G D) (at level 0, G at level 99, D at level 99).
 Notation "NS[ D ]" := (closed_neigh_set D) (at level 0, D at level 99).
 
+(** TODO: replaced [V(G)] with [set: G], but the "VG" remains in lemma names *)
 
 (**********************************************************************************)
 Section Basic_Facts_Neighborhoods.
@@ -166,16 +166,15 @@ Variable G : sgraph.
 
 Definition deg (v : G) := #|N(v)|.
 
-Lemma max_deg_ltn_n_minus_one (v : G) : deg v <= #|V(G)| - 1.
+Lemma max_deg_ltn_n_minus_one (v : G) : deg v <= #|G| - 1.
 Proof.
-  rewrite cardsT.
   suff: deg v < #|G| by move=> H ; rewrite (pred_Sn (deg v)) -subn1 (leq_sub2r 1 H).
   have H1: #|N[v]| <= #|G| by rewrite max_card.
   rewrite /deg.
   exact: leq_trans (proper_card (opneigh_proper_clneigh v)) H1.
 Qed.
 
-Hypothesis G_not_empty : V(G) != set0.
+Hypothesis G_not_empty : [set: G] != set0.
 
 Let some_vertex_with_degree (n : nat) := [exists v, deg v == n].
 
@@ -189,7 +188,7 @@ Proof.
   by exists w.
 Qed.
 
-Local Lemma some_degree_ltn_n_minus_one (n : nat) : some_vertex_with_degree n -> n <= #|V(G)| - 1.
+Local Lemma some_degree_ltn_n_minus_one (n : nat) : some_vertex_with_degree n -> n <= #|G| - 1.
 Proof.
   move/existsP.
   elim=> w.
@@ -226,7 +225,7 @@ Proof.
   exact: (n_is_maximum (deg v) H1).
 Qed.
 
-Lemma maximum_deg_ltn_n_minus_one : maximum_deg <= #|V(G)| - 1.
+Lemma maximum_deg_ltn_n_minus_one : maximum_deg <= #|G| - 1.
 Proof.
   (* we first obtain the vertex "w" such that deg w = meximum_deg *)
   move: (ex_maxnP some_degree_exists some_degree_ltn_n_minus_one).
@@ -586,7 +585,7 @@ Variable D : {set G}.
 
 Definition dominating : bool := [forall v : G, (v \notin D) ==> [exists u : G, (u \in D) && (u -- v)]].
 
-Definition dominating_alt : bool := V(G) == NS[D].
+Definition dominating_alt : bool := [set: G] == NS[D].
 
 Proposition dominatingP : reflect
           (forall v : G, v \notin D -> exists u : G, u \in D /\ u -- v) dominating.
@@ -636,7 +635,7 @@ Qed.
 End Dominating_Set.
 
 (* V(G) is dominating *)
-Lemma dom_VG : dominating V(G).
+Lemma dom_VG : dominating [set :G].
 Proof.
   rewrite dominating_eq_dominating_alt.
   rewrite /dominating_alt eqEsubset subsetT andbT.
@@ -649,7 +648,7 @@ Proof.
   apply/superhereditaryP.
   move=> D F DsubF /dominatingP Ddom.
   apply/dominatingP => v vnotinF.
-  have vinVminusF: v \in V(G) :\: F by rewrite in_setD in_setT andbT.
+  have vinVminusF: v \in [set: G] :\: F by rewrite in_setD in_setT andbT.
   (* if D is contained in F, then some v in V(G)-F also belongs to V(G)-D *)
   move: (subsetP (setDS setT DsubF)).
   move=> /(_ v vinVminusF).
@@ -1010,7 +1009,7 @@ Definition max_irr := maxset irredundant.
 
 Definition inhb_max_st := ex_maximal stable set0 st_empty.
 
-Definition inhb_min_dom := ex_minimal dominating V(G) dom_VG.
+Definition inhb_min_dom := ex_minimal dominating [set: G] dom_VG.
 
 Definition inhb_max_irr := ex_maximal irredundant set0 irr_empty.
 
@@ -1036,7 +1035,7 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 
 Let minimum_maximal_irr : {set G} := minimum_set weight max_irr inhb_max_irr.
 
-Let minimum_dom : {set G} := minimum_set weight dominating V(G).
+Let minimum_dom : {set G} := minimum_set weight dominating [set: G].
 
 Let minimum_maximal_st : {set G} := minimum_set weight max_st inhb_max_st.
 
@@ -1069,7 +1068,7 @@ Proof.
   move/minimumP => [_ set_is_min].
   (* we provide an F that is minimal dominating *)
   set F := minimum_dom.
-  move: (minimum_set_welldefined weight dominating V(G) dom_VG) => Fminimum_dom.
+  move: (minimum_set_welldefined weight dominating [set: G] dom_VG) => Fminimum_dom.
   rewrite -/minimum_dom -/F in Fminimum_dom.
   move: (minimum_is_minimal positive_weights Fminimum_dom) => Fminimal_dom.
   (* and, therefore, F is maximal irredundant *)
@@ -1080,7 +1079,7 @@ Qed.
 Theorem gamma_w_leq_ii_w : gamma_w <= ii_w.
 Proof.
   (* we generate "set_is_min" which says that any dominating set F has weight >= gamma_w(G) *)
-  move: (minimum_set_welldefined weight dominating V(G) dom_VG).
+  move: (minimum_set_welldefined weight dominating [set: G] dom_VG).
   move/minimumP => [_ set_is_min].
   (* we provide a maximal stable F which is also dominating *)
   set F := minimum_maximal_st.
@@ -1304,7 +1303,7 @@ Section Classic_domination_parameters.
 
 Let minimum_maximal_irr : {set G} := minimum_set_card max_irr inhb_max_irr.
 
-Let minimum_dom : {set G} := minimum_set_card dominating V(G).
+Let minimum_dom : {set G} := minimum_set_card dominating [set: G].
 
 Let minimum_max_st : {set G} := minimum_set_card max_st inhb_max_st.
 
@@ -1340,7 +1339,7 @@ Qed.
 Lemma gamma_is_gamma1 : gamma = gamma_w ones.
 Proof. 
   rewrite /gamma /gamma_w /minimum_dom.
-  rewrite (min_card_weight_1 dominating V(G) dom_VG).
+  rewrite (min_card_weight_1 dominating [set: G] dom_VG).
   exact: card_weight_1.
 Qed.
 
