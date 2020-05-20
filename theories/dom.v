@@ -369,14 +369,14 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 Variable p : pred {set G}.     (* p : {set G} -> bool *)
 Variable D : {set G}.
 
-Definition weight_set (S : {set G}) := \sum_(v in G | v \in S) weight v.
+Definition weight_set (S : {set G}) := \sum_(v in S) weight v.
 
 Lemma weight_set_natural : forall A : {set G}, weight_set A >= 0.
 Proof. move=> A ; exact: leq0n. Qed.
 
-Lemma empty_set_zero_weight : D = set0 <-> weight_set D = 0.
+Lemma empty_set_zero_weight A : (A == set0) = (weight_set A == 0).
 Proof.
-  rewrite /iff ; split.
+  apply/eqP/eqP.
   (* first case: -> *)
   move=> Dempty.
   rewrite /weight_set.
@@ -387,51 +387,25 @@ Proof.
   apply/eqP.
   move: weightzero.
   apply: contraLR => /set0Pn.
-  elim=> x xinD.
-  rewrite /weight_set.
-  rewrite (eq_bigl (fun v => v \in ((D :\: [set x]) :|: [set x]))) ; last first.
-  move=> i ; by rewrite [in X in X = _](set_minus_union1 xinD).
-  rewrite lt0n_neq0 //.
-  (* now, we need to prove that the summation over (D - {x}) cup {x} is positive *)
-  rewrite sum_disjoint_union ; last by rewrite set_minus_disjoint.
-  rewrite big_set1 addnC ltn_addr => [// | ].
-  exact: positive_weights x.
+  elim=> x xinD. 
+  apply: lt0n_neq0. rewrite /weight_set (bigD1 x) //=.
+  exact/ltn_addr/positive_weights.
 Qed.
 
 Lemma subsets_weight : forall A B : {set G}, A \subset B -> weight_set A <= weight_set B.
-Proof.
-  move=> A B AsubB.
-  rewrite /weight_set.
-  rewrite [in X in _ <= X](eq_bigl (fun v => v \in ((B :\: A) :|: A))) ; last first.
-  move=> i ; by rewrite [in X in X = _](set_minus_union AsubB).
-  rewrite (sum_disjoint_union weight (set_minus_disjoint B A)).
-  exact: leq_addl.
+Proof. 
+  move=> A B AsubB. 
+  by rewrite [X in _ <= X](big_setID A) /= (setIidPr AsubB) leq_addr.
 Qed.
 
 Lemma proper_sets_weight : forall A B : {set G}, A \proper B -> weight_set A < weight_set B.
 Proof.
-  move=> A B /properP [AsubB].
+  move => A B /properP [AsubB].
   elim=> x xinB xnotinA.
-  have AinBminusx: A \subset B :\: [set x].
-  { apply/subsetP => v vinA.
-    move: (subsetP AsubB v vinA) => vinB.
-    apply/setD1P.
-    split=> [ | //].
-    move: xnotinA.
-    apply: contra => visx.
-    by move/eqP: visx <-. }
-  move: (subsets_weight AinBminusx) => wAleqwBminusx.
-  suff wBminusxleqwB: weight_set (B :\: [set x]) < weight_set B by
-    exact: leq_ltn_trans wAleqwBminusx wBminusxleqwB.
-  (* it is enough to prove weight_set (B - {x}) < weight_set B *)
-  rewrite /weight_set.
-  rewrite [in X in _ < X](eq_bigl (fun v => v \in ((B :\: [set x]) :|: [set x]))) ; last first.
-  move=> i ; by rewrite [in X in X = _](set_minus_union1 xinB).
-  rewrite sum_disjoint_union ; last exact: set_minus_disjoint.
-  rewrite big_set1.
-  rewrite -[in X in X < _](addn0 (\sum_(v in G | v \in (B :\: [set x])) weight v)).
-  rewrite ltn_add2l.
-  exact: positive_weights x.
+  rewrite {2}/weight_set (big_setID A) /= (setIidPr AsubB).
+  rewrite -[X in X <= _]addn0 addSn -addnS leq_add2l lt0n.
+  rewrite -/(weight_set _) -empty_set_zero_weight. 
+  by apply/set0Pn; exists x; apply/setDP.
 Qed.
 
 Definition maximum : bool := p D && [forall F : {set G}, p F ==> (weight_set F <= weight_set D)].
@@ -642,12 +616,9 @@ Proof.
   move/forallP=> H1.
   rewrite eqEsubset subsetT andbT.
   (* it is enough to prove V(G) \subset N[D] *)
-  apply/subsetP => x.
-  move: (set_minus_union (subsetT D)) ->.
-  rewrite in_setU.
-  case/orP ; [ | apply/subsetP ; exact: D_in_closed_neigh_set].
-  (* case when x \notin D *)
-  rewrite in_setD => /andP [xnotinD _].
+  apply/subsetP => x _. 
+  case: (boolP (x \in D)); first exact/subsetP/D_in_closed_neigh_set.
+  move => xnotinD.
   move/implyP: (H1 x) => H2.
   move/existsP: (H2 xnotinD).
   elim=> u /andP [uinD adjux].
@@ -777,7 +748,7 @@ Proof.
   move=> v vinD.
   rewrite /private_set /private_set'.
   suff: N[v] = NS[D :&: [set v]] by move->.
-  move: (set_intersection_singleton vinD)->.
+  rewrite (setIidPr _) ?sub1set //.
   apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
   - apply: neigh_in_closed_neigh.
     by rewrite in_set1.
@@ -791,10 +762,8 @@ Lemma private_set'_equals_empty : forall v : G, v \notinD -> (private_set' v == 
 Proof.
   move=> v vnotinD.
   rewrite /private_set'.
-  move: (set_intersection_empty vnotinD)->.
-  move: empty_closed_neigh->.
-  apply/eqP.
-  exact: set0D.
+  rewrite disjoint_setI0 1?disjoint_sym ?disjoints1 //.
+  by rewrite empty_closed_neigh set0D.
 Qed.
 
 Definition irredundant : bool := [forall v : G, (v \in D) ==> (private_set v != set0)].

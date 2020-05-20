@@ -1019,15 +1019,7 @@ Variable T : finType.
 Variables u v : T.
 Variables A B : {set T}.
 
-(* The presmise shoudl maybe be [disjoint A & B] *)
-Lemma sum_disjoint_union (f : T -> nat) : A :&: B = set0 ->
-          \sum_(i in A :|: B) f i = \sum_(i in A) f i + \sum_(i in T | i \in B) f i.
-Proof.
-move => AB0.
-under [LHS]eq_bigl => i do rewrite in_setU -[_ || _]/(i \in [predU A & B]).
-by rewrite bigU //= -setI_eq0 AB0.
-Qed.
-
+(* only used below *)
 Lemma set_minus_union : B \subset A -> A = (A :\: B) :|: B.
 Proof.
   move=> BinA.
@@ -1042,36 +1034,6 @@ Proof.
   rewrite in_setU in_setD orb_andl orNb andTb => /orP.
   elim=> //.
   by apply (subsetP BinA).
-Qed.
-
-Lemma set_minus_disjoint : (A :\: B) :&: B = set0.
-Proof. by rewrite setIDAC -setIDA setDv setI0. Qed.
-
-Lemma set_pair_disjoint : (u != v) -> [set u] :&: [set v] = set0.
-Proof.
-  move=> uneqv.
-  apply/setP => x.
-  apply/setIP.
-  rewrite in_set0 !in_set1.
-  move=> [/eqP xisu /eqP xisv].
-  move: xisu xisv uneqv ->.
-  by move/eqP->.
-Qed.
-
-Lemma set_intersection_singleton : v \in A -> A :&: [set v] = [set v].
-Proof. move=> vinA ; apply: setIidPr ; by rewrite sub1set. Qed.
-
-Lemma set_intersection_empty : v \notin A -> A :&: [set v] = set0.
-Proof.
-  move=> vnotinA.
-  apply/eqP.
-  rewrite -subset0.
-  apply/subsetP => x.
-  move/setIP.
-  rewrite in_set1 => [[xinA /eqP xisv]].
-  move: xinA.
-  rewrite xisv.
-  by apply: contraLR.
 Qed.
 
 End Preliminaries1.
