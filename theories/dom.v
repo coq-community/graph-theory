@@ -1033,6 +1033,68 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 
 (* Sets of minimum/maximum weight *)
 
+Let W := weight_set weight.
+Let properW := proper_sets_weight positive_weights.
+
+Lemma maxweight_maxset (P : pred {set G}) (A : {set G}) : 
+  P A -> (forall B, P B -> W B <= W A) -> maxset P A.
+Proof.
+move => PA maxA. apply/maximalP; split => // B /properW; rewrite ltnNge.
+exact/contraNN/maxA.
+Qed.
+
+Lemma arg_maxset (P : pred {set G}) (A : {set G}) : P A -> maxset P (arg_max A P W).
+Proof. by move => PA; apply/maxweight_maxset; case: arg_maxP. Qed.
+
+Lemma minweight_minset (P : pred {set G}) (A : {set G}) : 
+  P A -> (forall B, P B -> W A <= W B) -> minset P A.
+Proof.
+move => PA minA; apply/minimalP; split => // B /properW; rewrite ltnNge.
+exact/contraNN/minA.
+Qed.
+
+Lemma arg_minset (P : pred {set G}) (A : {set G}) : P A -> minset P (arg_min A P W).
+Proof. by move => PA; apply/minweight_minset; case: arg_minP. Qed.
+
+(** The "natural" definition for "maximizing" parameters would be something like:
+[Definition alpha_w' : nat := \max_(A : {set G} | stable A) weight_set weight A].
+However, there is no [\min_(_ | _) _], because minn does not have a neutral element. 
+So this would cause an unpleasant asymmetry. *)
+
+(* TOTHINK: what about replacing [minimum/maximum_set] and all the
+[inhb_*] and [maximum/minimum] lemmas with the follwoing for every parameter: *)
+(*
+
+Definition alpha_w : nat := W (arg_max set0 stable W).
+
+Fact alpha_max A : stable A -> W A <= alpha_w.
+Proof. by move: A; rewrite /alpha_w; case: (arg_maxP _ st_empty). Qed.
+
+Fact alpha_witness : exists2 A, stable A & W A = alpha_w.
+Proof. by rewrite /alpha_w; case: (arg_maxP _ st_empty) => A; exists A. Qed.
+
+(* may not bee needed, one can use [pose A := arg_max ..] and
+[arg_minset] instead of [alpha_witness] in proofs *)
+Proposition witness_maxset A : stable A -> W A = alpha_w -> maxset stable A.
+Proof. 
+move => stA alphaA; apply: maxweight_maxset => // B.
+rewrite alphaA; exact: alpha_max.
+Qed.
+
+(* [arg_min variant] *)
+Definition gamma_w : nat := W (arg_min setT dominating W).
+
+(* longer variant with only one use of [arg_*P] *)
+Proposition gamma_def: 
+  (forall A, dominating A -> gamma_w <= W A) /\ (exists2 A, dominating A & W A = gamma_w).
+Proof. 
+rewrite /gamma_w; case: (arg_minP _ dom_VG) => A A1 A2; split => //; by exists A.
+Qed.
+Definition gamma_min := proj1 gamma_def.
+Definition gamma_witness := proj2 gamma_def.
+
+*)
+
 Let minimum_maximal_irr : {set G} := minimum_set weight max_irr inhb_max_irr.
 
 Let minimum_dom : {set G} := minimum_set weight dominating [set: G].
