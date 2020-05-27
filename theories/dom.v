@@ -773,7 +773,7 @@ Proof.
   rewrite /iff ; split ; last first.
   - move=> [ stableD /dominatingP dominatingD].
     split => // v vnotinD.
-    have [w [winD adjwv]] := dominatingD _ vnotinD.
+    have [w winD adjwv] := dominatingD _ vnotinD.
     apply/stablePn; exists v; exists w.
     by rewrite !inE eqxx winD sgP adjwv orbT.
   - move => [stableD H1].
@@ -813,22 +813,12 @@ Proof.
   rewrite maximal_st_iff_st_dom.
   move=> [stableD dominatingD].
   rewrite -(rwP (minimal_indsysP _ dom_superhereditary)).
-  split=>// x xinD.
-  rewrite /dominating.
-  rewrite negb_forall.
-  apply/existsP.
-  exists x.
-  rewrite negb_imply.
-  apply/andP ; split ; first by rewrite in_setD1 eq_refl andFb.
-  rewrite negb_exists.
-  apply/forallP=> y.
-  rewrite negb_and.
-  rewrite -implybE.
-  apply/implyP.
-  rewrite in_setD1 => /andP [_ yinD].
-  rewrite sg_sym.
-  move/stableP: stableD.
-  by move=> /(_ x y xinD yinD).
+  split=> // x xinD.
+  apply/dominatingPn.
+  exists x => y.
+  rewrite in_setD1 => /andP [yneqx yinD].
+  rewrite /cl_sedge negb_or yneqx andTb.
+  move/stableP: stableD ; by move=> /(_ y x yinD xinD).
 Qed.
 
 (* A dominating set D is minimal iff D is dominating and irredundant
@@ -839,57 +829,50 @@ Proof.
   rewrite /iff ; split ; last first.
   - move=> [dominatingD /irredundantP irredundantD].
     split => // v vinD.
-    rewrite /dominating negb_forall.
-    apply/existsP.
+    apply/dominatingPn.
     move: (irredundantD v vinD).
     rewrite (private_set_not_empty vinD).
-    elim=> w /privateP [vdomw H3].
-    exists w.
-    rewrite negb_imply; apply/andP ; split.
-    + rewrite in_setD1 negb_and negbK orbC -implybE.
-      apply/implyP=> winD.
-      by move: (H3 w winD (cl_sg_refl w))->.
-    + rewrite negb_exists.
-      apply/forallP=> y.
-      rewrite negb_and.
-      rewrite orbC -implybE.
-      apply/implyP=> adjyw.
-      rewrite in_setD1 negb_and orbC -implybE negbK.
-      apply/implyP=> yinD.
-      have ydomw: y -*- w by rewrite /cl_sedge adjyw orbT.
-      move: (H3 y yinD ydomw).
-      by move->.
-  - move => [dominatingD H1] ; split=> //.
-    rewrite /irredundant.
-    apply/forall_inP=> v vinD.
-    move: (H1 v) => /(_ vinD).
-    rewrite /dominating negb_forall.
-    move/existsP.
     elim=> w.
-    rewrite negb_imply negb_exists => /andP [wnotinDcupv /forallP H2].
+    rewrite /private => /andP [vdomw /forall_inP H1].
+    exists w => u.
+    rewrite in_setD1 => /andP [uneqv uinD].
+    move: (H1 u uinD).
+    move/implyP/(@contra (u -*- w) (u == v)).
+    by move=> /(_ uneqv).
+  - move => [dominatingD H2] ; split=> //.
+    apply/irredundantP => v vinD.
+    move: (H2 v) => /(_ vinD).
+    move/dominatingPn.
+    elim=> w H3.
     rewrite (private_set_not_empty vinD).
     exists w.
-    (* We need this result to show that if there is a private vertice of v, should be w *)
-    have wprivatev: {in D, forall u, u -*- w -> u = v}.
-    { move=> u uinD udomw.
-      apply/eqP. 
-      move: (H2 u).
-      rewrite negb_and.
-      case/orP ; first by rewrite in_setD1 uinD negb_and negbK orbF.
-      move=> noadjuw.
-      have uisw : u == w by move: udomw noadjuw ; rewrite /cl_sedge orbC ; apply: aorbNa.
-      move: wnotinDcupv.
-      by rewrite -(eqP uisw) in_setD1 uinD andbT negbK. }
-    apply/privateP.
-    split ; last exact: wprivatev.
-    move: wnotinDcupv.
-    rewrite in_setD1 negb_and.
-    case/orP ; first by rewrite negbK (eq_sym w v) /cl_sedge=> ->.
-    move=> wnotinD ; move/dominatingP: dominatingD.
-    move=> /(_ w wnotinD).
-    elim=> b binD adjbw.
-    have bdomw: b -*- w by rewrite /cl_sedge adjbw orbT.
-    by move: (wprivatev b binD bdomw) <-.
+    apply/privateP ; split ; last first.
+    + move=> u uinD udomw.
+      apply/eqP.
+      move: udomw.
+      apply/contraLR => uneqv.
+      have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
+      by rewrite (H3 u uinDminusv).
+    + case: (boolP (w == v)) ; first by move/eqP-> ; rewrite cl_sg_refl.
+      move=> wneqv.
+      case: (boolP (w \in D)).
+      * move=> winD.
+        move: (H3 w).
+        rewrite in_setD1 wneqv andTb.
+        move=> /(_ winD) /negP.
+        move: (cl_sg_refl w).
+        contradiction.
+      * move=> wnotinD.
+        move/dominatingP: dominatingD.
+        move=> /(_ w wnotinD).
+        elim=> u.
+        case: (boolP (u == v)) ; first by move/eqP-> => _ adjvw ; rewrite /cl_sedge adjvw orbT.
+        move=> uneqv uinD.
+        have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
+        move: (H3 u uinDminusv).
+        rewrite /cl_sedge negb_or => /andP [_].
+        move/negP.
+        contradiction.
 Qed.
 
 (* A minimal dominating set is maximal irredundant
