@@ -305,6 +305,7 @@ Arguments minimal_exists : clear implicits.
 (**********************************************************************************)
 (** * Independence systems, hereditary and superhereditary properties *)
 Section Independence_system_definitions.
+
 Implicit Types (p : pred {set G}) (F D : {set G}).
 
 Definition hereditary p : bool := [forall D : {set G}, forall (F : {set G} | F \subset D), p D ==> p F].
@@ -314,31 +315,24 @@ Definition superhereditary p : bool := hereditary [pred D | p (~: D)].
 Proposition hereditaryP p : 
   reflect (forall D F : {set G}, (F \subset D) -> p D -> p F) (hereditary p).
 Proof.
-  rewrite /hereditary.
-  apply: (iffP forallP).
-  (* first case: -> *)
-  move=> H1 D F FsubD pD.
-  move: (H1 D).
-  move/forallP=> /(_ F).
-  by rewrite FsubD pD !implyTb.
-  (* second case: -> *)
-  move=> H2 D.
-  apply/forallP => F.
-  apply/implyP => FsubD.
-  apply/implyP.
-  exact: (H2 D F FsubD).
+  rewrite /hereditary ; apply: (iffP forallP).
+  - move=> H1 D F FsubD pD. move: (H1 D).
+    move/forallP=> /(_ F).
+    by rewrite FsubD pD !implyTb.
+  - move=> H2 D.
+    apply/forall_inP => F FsubD. apply/implyP.
+    exact: H2.
 Qed.
 
 Proposition superhereditaryP (p : pred {set G}) : 
   reflect (forall D F : {set G}, (D \subset F) -> p D -> p F) (superhereditary p).
 Proof.
-apply: (iffP (hereditaryP _)) => /= sh_p D F.
-all: by rewrite -setCS => /sh_p; rewrite ?setCK; auto.
+  apply: (iffP (hereditaryP _)) => /= sh_p D F.
+  all: by rewrite -setCS => /sh_p; rewrite ?setCK; auto.
 Qed.
 
-(* TODO: these should be named [?somethingP] *)
-Theorem maximal_altdef p D : hereditary p ->
-   reflect (p D /\ forall v : G, v \notin D -> ~~ p (v |: D)) (maxset p D).
+Theorem maximal_indsysP p D : hereditary p ->
+  reflect (p D /\ forall v : G, v \notin D -> ~~ p (v |: D)) (maxset p D).
 Proof. 
   move/hereditaryP => p_hereditary; apply: (iffP maximalP).
   - case => pD maxD; split => // v vD. apply: maxD.
@@ -347,16 +341,15 @@ Proof.
     apply: contraNN vD; apply: p_hereditary; by rewrite subUset sub1set vA.
 Qed.
 
-Theorem minimal_altdef p D : superhereditary p ->
-   reflect (p D /\ forall v : G, v \in D -> ~~ p (D :\ v)) (minset p D).
+Theorem minimal_indsysP p D : superhereditary p ->
+  reflect (p D /\ forall v : G, v \in D -> ~~ p (D :\ v)) (minset p D).
 Proof.
-  rewrite minmaxset => sh_p; apply: (iffP (maximal_altdef _ _)) => //=.
+  rewrite minmaxset => sh_p; apply: (iffP (maximal_indsysP _ _)) => //=.
   all: rewrite ?setCK => -[pD H]; split => // v; move: (H v).
   all: by rewrite !inE ?setCU ?setCK ?negbK setDE setIC.
 Qed.
 
 End Independence_system_definitions.
-
 
 
 (**********************************************************************************)
@@ -376,19 +369,13 @@ Proof. move=> A ; exact: leq0n. Qed.
 Lemma empty_set_zero_weight A : (A == set0) = (weight_set A == 0).
 Proof.
   apply/eqP/eqP.
-  (* first case: -> *)
-  move=> Dempty.
-  rewrite /weight_set.
-  move: Dempty ->.
-  exact: big_set0.
-  (* second case: <- *)
-  move=> /eqP weightzero.
-  apply/eqP.
-  move: weightzero.
-  apply: contraLR => /set0Pn.
-  elim=> x xinD. 
-  apply: lt0n_neq0. rewrite /weight_set (bigD1 x) //=.
-  exact/ltn_addr/positive_weights.
+  - move=> Dempty ; rewrite /weight_set.
+    move: Dempty ->. exact: big_set0.
+  - move=> /eqP weightzero.
+    apply/eqP ; move: weightzero.
+    apply: contraLR => /set0Pn. elim=> x xinD.
+    apply: lt0n_neq0 ; rewrite /weight_set (bigD1 x) //=.
+    exact/ltn_addr/positive_weights.
 Qed.
 
 Lemma subsets_weight : forall A B : {set G}, A \subset B -> weight_set A <= weight_set B.
@@ -414,46 +401,29 @@ Definition minimum : bool := p D && [forall F : {set G}, p F ==> (weight_set D <
 Proposition maximumP : reflect
           (p D /\ (forall F : {set G}, p F -> weight_set F <= weight_set D)) maximum.
 Proof.
-  rewrite /maximum.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [pD /forallP H1].
-  split=> //.
-  move=> F pF.
-  move: (H1 F).
-  by move/implyP=> /(_ pF).
-  (* second case: <- *)
-  move=> [pD H2].
-  split=> //.
-  apply/forallP=> F.
-  apply/implyP.
-  exact: (H2 F).
+  rewrite /maximum ; apply: (iffP andP).
+  - move=> [pD /forallP H1] ; split=> //.
+    move=> F pF. move: (H1 F). by move/implyP=> /(_ pF).
+  - move=> [pD H2] ; split=> //.
+    apply/forall_inP=> F.
+    exact: H2.
 Qed.
 
 Proposition minimumP : reflect
           (p D /\ (forall F : {set G}, p F -> weight_set D <= weight_set F)) minimum.
 Proof.
-  rewrite /minimum.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [pD /forallP H1].
-  split=> //.
-  move=> F pF.
-  move: (H1 F).
-  by move/implyP=> /(_ pF).
-  (* second case: <- *)
-  move=> [pD H2].
-  split=> //.
-  apply/forallP=> F.
-  apply/implyP.
-  exact: (H2 F).
+  rewrite /minimum ; apply: (iffP andP).
+  - move=> [pD /forallP H1] ; split=> //.
+    move=> F pF. move: (H1 F). by move/implyP=> /(_ pF).
+  - move=> [pD H2] ; split=> //.
+    apply/forall_inP=> F.
+    exact: H2.
 Qed.
 
 Lemma maximum_is_maximal : maximum -> maxset p D.
 Proof.
   move/maximumP=> [pD H1].
-  apply/maximalP.
-  split=> //.
+  apply/maximalP ; split=> //.
   move=> F DproperF; apply/negP => pF.
   move: (H1 F pF).
   move: (proper_sets_weight DproperF).
@@ -464,8 +434,7 @@ Qed.
 Lemma minimum_is_minimal : minimum -> minset p D.
 Proof.
   move/minimumP=> [pD H1].
-  apply/minimalP.
-  split=> //.
+  apply/minimalP ; split=> //.
   move=> F FproperD; apply/negP => pF.
   move: (H1 F pF).
   move: (proper_sets_weight FproperD).
@@ -533,16 +502,12 @@ Definition stable : bool := [forall u in S, forall v in S, ~~ (u -- v)].
 
 Definition stable_alt : bool := NS(S) :&: S == set0.
 
-(* TO DO: @chdoc suggests to replace by:
+(* TO DO: @chdoc suggests to add:
+Proposition stableF : stable -> {in S&, forall u v, u -- v = false}.
+*)
 
 Proposition stableP : reflect {in S&, forall u v, ~~ u -- v} stable.
-Proposition stableF : stable -> {in S&, forall u v, u -- v = false}.
-
-The rationale is that boolean negations on boolean atoms are quite well
-behaved (e.g., rewriting the boolean makes the negation simplify). *)
-
-Proposition stableP : reflect {in S&, forall u v, ~ u -- v} stable.
-Proof. apply: equivP (in11_in2 S S). do 2 (apply: forall_inPP => ?). exact: negP. Qed.
+Proof. apply: equivP (in11_in2 S S). do 2 (apply: forall_inPP => ?). exact: idP. Qed.
 
 Proposition stablePn : reflect (exists x y, [/\ x \in S, y \in S & x -- y]) (~~ stable).
 Proof. 
@@ -554,10 +519,11 @@ Qed.
 
 Proposition stable_eq_stable_alt : stable = stable_alt. 
 Proof. 
-rewrite /stable_alt setI_eq0; apply/stableP/disjointP => stS.
-- move => x /bigcupP [y yS yx] xS. rewrite inE in yx. exact: stS yx.
-- move => x y xS yS xy. apply: stS yS. 
-  apply/bigcupP; exists x => //. by rewrite inE.
+  rewrite /stable_alt setI_eq0; apply/stableP/disjointP => stS.
+  - move => x /bigcupP [y yS adjyx] xS. 
+    move: adjyx. rewrite -sg_opneigh. apply/negP. by apply: stS.
+  - move => x y xS yS. apply/negP => adjxy.
+    exact: (stS y (dominated_belongs_to_open_neigh_set xS adjxy) yS).
 Qed.
 
 End Stable_Set.
@@ -574,7 +540,7 @@ Proof.
   apply/stableP => u v uinF vinF.
   move: (subsetP FsubD u uinF) => uinD.
   move: (subsetP FsubD v vinF) => vinD.
-  exact: Dstable u v uinD vinD.
+  exact: Dstable.
 Qed.
 
 
@@ -588,48 +554,43 @@ Definition dominating : bool := [forall v : G, (v \notin D) ==> [exists u : G, (
 Definition dominating_alt : bool := [set: G] == NS[D].
 
 Proposition dominatingP : reflect
-          (forall v : G, v \notin D -> exists u : G, u \in D /\ u -- v) dominating.
+  (forall v : G, v \notin D -> exists u : G, u \in D /\ u -- v) dominating.
 Proof.
-  rewrite /dominating.
-  apply: (iffP forallP).
-  (* first case: -> *)
-  move=> H1 v vnotinD.
-  move/implyP: (H1 v) => H2.
-  move/existsP: (H2 vnotinD).
-  elim=> x /andP [xinD adjxv].
-  by exists x.
-  (* second case: <- *)
-  move=> H3 x.
-  apply/implyP=> xnotinD.
-  move: (H3 x xnotinD).
-  elim=> u [uinD adjux].
-  apply/existsP.
-  exists u.
-  by apply/andP.
+  rewrite /dominating ; apply: (iffP forallP).
+  - move=> H1 v vnotinD.
+    move/implyP: (H1 v) => H2.
+    move/existsP: (H2 vnotinD).
+    elim=> x /andP [xinD adjxv].
+    by exists x.
+  - move=> H3 x.
+    apply/implyP=> xnotinD.
+    move: (H3 x xnotinD).
+    elim=> u [uinD adjux].
+    apply/existsP.
+    exists u.
+    by apply/andP.
 Qed.
 
 Theorem dominating_eq_dominating_alt : dominating <-> dominating_alt.
 Proof.
   rewrite /dominating /dominating_alt /iff ; split.
-  (* first case: -> *)
-  move/forallP=> H1.
-  rewrite eqEsubset subsetT andbT.
-  (* it is enough to prove V(G) \subset N[D] *)
-  apply/subsetP => x _. 
-  case: (boolP (x \in D)); first exact/subsetP/D_in_closed_neigh_set.
-  move => xnotinD.
-  move/implyP: (H1 x) => H2.
-  move/existsP: (H2 xnotinD).
-  elim=> u /andP [uinD adjux].
-  exact: dominated_belongs_to_closed_neigh_set uinD adjux.
-  (* second case: <- *)
-  move=> VisND.
-  apply/dominatingP => v vnotinD.
-  move/eqP: VisND (in_setT v) -> => /bigcupP.
-  elim=> [x xinD vinNx].
-  rewrite /closed_neigh in_setU /open_neigh !inE in vinNx.
-  case/predU1P : vinNx => [visx|adjxv]; last by exists x.
-  by subst; contrab.
+  - move/forallP=> H1.
+    rewrite eqEsubset subsetT andbT.
+    (* it is enough to prove V(G) \subset N[D] *)
+    apply/subsetP => x _. 
+    case: (boolP (x \in D)); first exact/subsetP/D_in_closed_neigh_set.
+    move => xnotinD.
+    move/implyP: (H1 x) => H2.
+    move/existsP: (H2 xnotinD).
+    elim=> u /andP [uinD adjux].
+    exact: dominated_belongs_to_closed_neigh_set uinD adjux.
+  - move=> VisND.
+    apply/dominatingP => v vnotinD.
+    move/eqP: VisND (in_setT v) -> => /bigcupP.
+    elim=> [x xinD vinNx].
+    rewrite /closed_neigh in_setU /open_neigh !inE in vinNx.
+    case/predU1P : vinNx => [visx|adjxv]; last by exists x.
+    by subst; contrab.
 Qed.
 
 End Dominating_Set.
@@ -637,8 +598,7 @@ End Dominating_Set.
 (* V(G) is dominating *)
 Lemma dom_VG : dominating [set :G].
 Proof.
-  rewrite dominating_eq_dominating_alt.
-  rewrite /dominating_alt eqEsubset subsetT andbT.
+  rewrite dominating_eq_dominating_alt /dominating_alt eqEsubset subsetT andbT.
   exact: D_in_closed_neigh_set.
 Qed.
 
@@ -654,9 +614,7 @@ Proof.
   move=> /(_ v vinVminusF).
   rewrite in_setD in_setT andbT => vinVminusD.
   elim: (Ddom v vinVminusD) => w [winD adjwv].
-  exists w.
-  split=> [ | //].
-  exact: (subsetP DsubF) w winD.
+  exists w. split=> [ | //]. exact: (subsetP DsubF) w winD.
 Qed.
 
 
@@ -671,34 +629,24 @@ Definition private_set (v : G) := N[v] :\: NS[D :\: [set v]].
 Definition private (v w : G) : bool := v -*- w && [forall u : G, (u \in D) ==> (u -*- w) ==> (u == v)].
 
 Proposition privateP : forall v w : G, reflect 
-          (v -*- w /\ {in D, forall u, u -*- w -> u = v}) (private v w).
+  (v -*- w /\ {in D, forall u, u -*- w -> u = v}) (private v w).
 Proof.
-  move=> v w.
-  rewrite /private.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [vdomw /forallP H1] ; split=> //.
-  move=> u uinD udomw.
-  move: (H1 u).
-  rewrite uinD implyTb udomw implyTb.
-  by move/eqP->.
-  (* second case: <- *)
-  move=> [vdomw H2] ; split=> //.
-  apply/forallP => u.
-  apply/implyP=> uinD.
-  apply/implyP=> udomw.
-  move: (H2 u uinD udomw).
-  by move->.
+  move=> v w. rewrite /private ; apply: (iffP andP).
+  - move=> [vdomw /forallP H1] ; split=> //.
+    move=> u uinD udomw. move: (H1 u).
+    rewrite uinD implyTb udomw implyTb. by move/eqP->.
+  - move=> [vdomw H2] ; split=> //.
+    apply/forall_inP => u uinD. apply/implyP=> udomw.
+    move: (H2 u uinD udomw). by move->.
 Qed.
 
 Theorem private_belongs_to_private_set : forall v w : G, (private v w) <-> (w \in private_set v).
 Proof.
   rewrite /private_set /iff ; split.
-  (* first case: -> *)
   - move/privateP => [vdomw H1].
     rewrite in_setD /closed_neigh_set.
     apply/andP.
-    split ; [ | by rewrite -clsg_clneigh cl_sg_sym ].
+    split ; last by rewrite -clsg_clneigh cl_sg_sym.
     apply/bigcupP.
     elim=> x xinDminusv winNx.
     move: xinDminusv.
@@ -708,7 +656,6 @@ Proof.
     move: (H1 x xinD xdomw).
     move/eqP: xnotv.
     contradiction.
-  (* second case: <- *)
   - rewrite in_setD /closed_neigh_set.
     move=> /andP [wnotincup winNv].
     apply/privateP ; split ; [ by rewrite cl_sg_sym clsg_clneigh | ].
@@ -722,20 +669,15 @@ Proof.
     + by rewrite -clsg_clneigh cl_sg_sym.
 Qed.
 
-Lemma private_set_not_empty : {in D, forall v, (private_set v != set0) <-> (exists w : G, private v w)}.
+Lemma private_set_not_empty :
+  {in D, forall v, (private_set v != set0) <-> (exists w : G, private v w)}.
 Proof.
   move=> v.
-  rewrite /private_set /iff  ; split.
-  (* first case: -> *)
-  move/set0Pn.
-  elim=> w H2.
-  exists w.
-  by rewrite private_belongs_to_private_set.
-  (* second case: <- *)
-  elim=> w.
-  rewrite private_belongs_to_private_set => H1.
-  apply/set0Pn.
-  by exists w.
+  rewrite /private_set /iff ; split.
+  - move/set0Pn. elim=> w H2.
+    exists w. by rewrite private_belongs_to_private_set.
+  - elim=> w. rewrite private_belongs_to_private_set => H1.
+    apply/set0Pn. by exists w.
 Qed.
 
 (* This alternative definition of private_set contemplates cases where v \notin D.
@@ -749,19 +691,14 @@ Proof.
   suff: N[v] = NS[D :&: [set v]] by move->.
   rewrite (setIidPr _) ?sub1set //.
   apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
-  - apply: neigh_in_closed_neigh.
-    by rewrite in_set1.
-  - apply/subsetP => x.
-    move/bigcupP.
-    elim=> z ; rewrite in_set1.
-    by move/eqP->.
+  - apply: neigh_in_closed_neigh. by rewrite in_set1.
+  - apply/subsetP => x. move/bigcupP. elim=> z ; rewrite in_set1. by move/eqP->.
 Qed.
 
 Lemma private_set'_equals_empty : forall v : G, v \notinD -> (private_set' v == set0).
 Proof.
   move=> v vnotinD.
-  rewrite /private_set'.
-  rewrite disjoint_setI0 1?disjoint_sym ?disjoints1 //.
+  rewrite /private_set' disjoint_setI0 1?disjoint_sym ?disjoints1 //.
   by rewrite empty_closed_neigh set0D.
 Qed.
 
@@ -771,13 +708,8 @@ Proposition irredundantP: reflect {in D, forall v, (private_set v != set0)} irre
 Proof.
   rewrite /irredundant.
   apply: (iffP forallP).
-  (* first case: -> *)
-  move=> H1 v vinD.
-  by move/implyP: (H1 v) => /(_ vinD).
-  (* second case: <- *)
-  move=> H2 v.
-  apply/implyP=> vinD.
-  by move: (H2 v vinD).
+  - move=> H1 v vinD. by move/implyP: (H1 v) => /(_ vinD).
+  - move=> H2 v. apply/implyP=> vinD. by move: (H2 v vinD).
 Qed.
 
 End Irredundant_Set.
@@ -795,12 +727,9 @@ Proof.
   move: (subsetP FsubD v vinF) => vinD.
   move: (Dirr v vinD).
   rewrite (private_set_not_empty vinD) (private_set_not_empty vinF).
-  elim=> x /privateP [vdomx H1].
-  exists x.
-  apply/privateP.
-  split=> //.
-  move=> u uinF udomx.
-  move: (subsetP FsubD u uinF) => uinD.
+  elim=> x /privateP [vdomx H1]. exists x.
+  apply/privateP ; split=> //.
+  move=> u uinF udomx. move: (subsetP FsubD u uinF) => uinD.
   exact: (H1 u uinD udomx).
 Qed.
 
@@ -815,15 +744,13 @@ Variable D : {set G}.
  * See Prop. 3.5 of Fundamentals of Domination *)
 Theorem maximal_st_iff_st_dom : maxset stable D <-> (stable D /\ dominating D).
 Proof.
-  rewrite -(rwP (maximal_altdef _ st_hereditary)).
+  rewrite -(rwP (maximal_indsysP _ st_hereditary)).
   rewrite /iff ; split ; last first.
-  (* second case: <- *)
   - move=> [ stableD /dominatingP dominatingD].
     split => // v vnotinD.
     have [w [winD adjwv]] := dominatingD _ vnotinD.
     apply/stablePn; exists v; exists w.
     by rewrite !inE eqxx winD sgP adjwv orbT.
-  (* first case: -> *)
   - move => [stableD H1].
     split=> //. apply/dominatingP => x xnotinD.
     move: (H1 x).
@@ -849,15 +776,10 @@ Proof.
       rewrite zinD; split => //.
       move: winDcupx.
       rewrite in_setU in_set1.
-      case/orP ; last first.
-      (* case w \in D *)
-      * move=> winD.
-        move/stableP: stableD.
-        move=> /(_ w z winD zinD).
-        contradiction.
-      (* case w == x *)
-      * move/eqP=> wisx.
-        by rewrite sg_sym -wisx.
+      case/predU1P ; first by move<- ; rewrite sg_sym adjwz.
+      move=> winD. move/stableP: stableD.
+      move=> /(_ w z winD zinD).
+      apply: contraR. by rewrite adjwz.
 Qed.
 
 (* A maximal stable set is minimal dominating
@@ -866,7 +788,7 @@ Theorem maximal_st_is_minimal_dom : maxset stable D -> minset dominating D.
 Proof.
   rewrite maximal_st_iff_st_dom.
   move=> [stableD dominatingD].
-  rewrite -(rwP (minimal_altdef _ dom_superhereditary)).
+  rewrite -(rwP (minimal_indsysP _ dom_superhereditary)).
   split=>// x xinD.
   rewrite /dominating.
   rewrite negb_forall.
@@ -881,7 +803,6 @@ Proof.
   apply/implyP.
   rewrite in_setD1 => /andP [_ yinD].
   rewrite sg_sym.
-  apply/negP.
   move/stableP: stableD.
   by move=> /(_ x y xinD yinD).
 Qed.
@@ -890,9 +811,8 @@ Qed.
  * See Prop. 3.8 of Fundamentals of Domination *)
 Theorem minimal_dom_iff_dom_irr : minset dominating D <-> (dominating D /\ irredundant D).
 Proof.
-  rewrite -(rwP (minimal_altdef _ dom_superhereditary)).
+  rewrite -(rwP (minimal_indsysP _ dom_superhereditary)).
   rewrite /iff ; split ; last first.
-  (* second case: <- *)
   - move=> [dominatingD /irredundantP irredundantD].
     split => // v vinD.
     rewrite /dominating negb_forall.
@@ -915,11 +835,9 @@ Proof.
       have ydomw: y -*- w by rewrite /cl_sedge adjyw orbT.
       move: (H3 y yinD ydomw).
       by move->.
-  (* first case: -> *)
   - move => [dominatingD H1] ; split=> //.
     rewrite /irredundant.
-    apply/forallP=> v.
-    apply/implyP=> vinD.
+    apply/forall_inP=> v vinD.
     move: (H1 v) => /(_ vinD).
     rewrite /dominating negb_forall.
     move/existsP.
@@ -939,7 +857,7 @@ Proof.
       move: wnotinDcupv.
       by rewrite -(eqP uisw) in_setD1 uinD andbT negbK. }
     apply/privateP.
-    split ; [ | exact: wprivatev].
+    split ; last exact: wprivatev.
     move: wnotinDcupv.
     rewrite in_setD1 negb_and.
     case/orP ; [ by rewrite negbK (eq_sym w v) /cl_sedge=> -> | ].
@@ -955,7 +873,7 @@ Qed.
 Theorem minimal_dom_is_maximal_irr : minset dominating D -> maxset irredundant D.
 Proof.
   rewrite minimal_dom_iff_dom_irr.
-  rewrite -(rwP (maximal_altdef _ irr_hereditary)).
+  rewrite -(rwP (maximal_indsysP _ irr_hereditary)).
   move=> [dominatingD irredundantD].
   split=>// v vnotinD.
   rewrite /irredundant.
@@ -1036,25 +954,25 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 Let W := weight_set weight.
 Let properW := proper_sets_weight positive_weights.
 
-Lemma maxweight_maxset (P : pred {set G}) (A : {set G}) : 
-  P A -> (forall B, P B -> W B <= W A) -> maxset P A.
+Lemma maxweight_maxset (p : pred {set G}) (A : {set G}) : 
+  p A -> (forall B, p B -> W B <= W A) -> maxset p A.
 Proof.
-move => PA maxA. apply/maximalP; split => // B /properW; rewrite ltnNge.
-exact/contraNN/maxA.
+  move => pA maxA. apply/maximalP; split => // B /properW; rewrite ltnNge.
+  exact/contraNN/maxA.
 Qed.
 
-Lemma arg_maxset (P : pred {set G}) (A : {set G}) : P A -> maxset P (arg_max A P W).
+Lemma arg_maxset (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W).
 Proof. by move => PA; apply/maxweight_maxset; case: arg_maxP. Qed.
 
-Lemma minweight_minset (P : pred {set G}) (A : {set G}) : 
-  P A -> (forall B, P B -> W A <= W B) -> minset P A.
+Lemma minweight_minset (p : pred {set G}) (A : {set G}) : 
+  p A -> (forall B, p B -> W A <= W B) -> minset p A.
 Proof.
-move => PA minA; apply/minimalP; split => // B /properW; rewrite ltnNge.
-exact/contraNN/minA.
+  move => pA minA; apply/minimalP; split => // B /properW; rewrite ltnNge.
+  exact/contraNN/minA.
 Qed.
 
-Lemma arg_minset (P : pred {set G}) (A : {set G}) : P A -> minset P (arg_min A P W).
-Proof. by move => PA; apply/minweight_minset; case: arg_minP. Qed.
+Lemma arg_minset (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W).
+Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
 
 (** The "natural" definition for "maximizing" parameters would be something like:
 [Definition alpha_w' : nat := \max_(A : {set G} | stable A) weight_set weight A].
@@ -1224,38 +1142,22 @@ Definition minimum_card : bool := p D && [forall F : {set G}, p F ==> (#|D| <= #
 
 Proposition maximum_cardP : reflect (p D /\ (forall F : {set G}, p F -> #|F| <= #|D|)) maximum_card.
 Proof.
-  rewrite /maximum_card.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [pD /forallP H1].
-  split=> //.
-  move=> F pF.
-  move: (H1 F).
-  by rewrite pF implyTb.
-  (* second case: <- *)
-  move=> [pD H2].
-  split=> //.
-  apply/forallP => F.
-  apply/implyP => pF.
-  exact: (H2 F pF).
+  rewrite /maximum_card ; apply: (iffP andP).
+  - move=> [pD /forallP H1] ; split=> //.
+    move=> F pF. move: (H1 F). by rewrite pF implyTb.
+  - move=> [pD H2] ; split=> //.
+    apply/forall_inP => F pF.
+    exact: H2.
 Qed.
 
 Proposition minimum_cardP : reflect (p D /\ (forall F : {set G}, p F -> #|D| <= #|F|)) minimum_card.
 Proof.
-  rewrite /minimum_card.
-  apply: (iffP andP).
-  (* first case: -> *)
-  move=> [pD /forallP H1].
-  split=> //.
-  move=> F pF.
-  move: (H1 F).
-  by rewrite pF implyTb.
-  (* second case: <- *)
-  move=> [pD H2].
-  split=> //.
-  apply/forallP => F.
-  apply/implyP => pF.
-  exact: (H2 F pF).
+  rewrite /minimum_card ; apply: (iffP andP).
+  - move=> [pD /forallP H1] ; split=> //.
+    move=> F pF. move: (H1 F). by rewrite pF implyTb.
+  - move=> [pD H2] ; split=> //.
+    apply/forall_inP => F pF.
+    exact: H2.
 Qed.
 
 Lemma card_weight_1 : forall S : {set G}, #|S| = weight_set ones S.
@@ -1264,39 +1166,23 @@ Proof. move=> S ; by rewrite /weight_set /ones sum1_card. Qed.
 Lemma maximum1 : maximum_card <-> maximum ones p D.
 Proof.
   rewrite /iff ; split.
-  (* first case: -> *)
-  move/maximum_cardP => [pD H1].
-  apply/maximumP.
-  split => //.
-  move=> F pF.
-  rewrite -!card_weight_1.
-  exact: (H1 F pF).
-  (* second case: <- *)
-  move/maximumP=> [pD H2].
-  apply/maximum_cardP.
-  split => //.
-  move=> F pF.
-  rewrite !card_weight_1.
-  exact: (H2 F pF).
+  - move/maximum_cardP => [pD H1].
+    apply/maximumP ; split => //.
+    move=> F pF. rewrite -!card_weight_1. exact: (H1 F pF).
+  - move/maximumP=> [pD H2].
+    apply/maximum_cardP ; split => //.
+    move=> F pF. rewrite !card_weight_1. exact: (H2 F pF).
 Qed.
 
 Lemma minimum1 : minimum_card <-> minimum ones p D.
 Proof.
   rewrite /iff ; split.
-  (* first case: -> *)
-  move/minimum_cardP => [pD H1].
-  apply/minimumP.
-  split => //.
-  move=> F pF.
-  rewrite -!card_weight_1.
-  exact: (H1 F pF).
-  (* second case: <- *)
-  move/minimumP=> [pD H2].
-  apply/minimum_cardP.
-  split => //.
-  move=> F pF.
-  rewrite !card_weight_1.
-  exact: (H2 F pF).
+  - move/minimum_cardP => [pD H1].
+    apply/minimumP ; split => //.
+    move=> F pF. rewrite -!card_weight_1. exact: (H1 F pF).
+  - move/minimumP=> [pD H2].
+    apply/minimum_cardP ; split => //.
+    move=> F pF. rewrite !card_weight_1. exact: (H2 F pF).
 Qed.
 
 Proposition maximum_card_is_maximal : maximum_card -> maxset p D.
@@ -1323,28 +1209,22 @@ Lemma max_card_weight_1 : #|maximum_set_card| = #|maximum_set ones p F|.
 Proof.
   rewrite /maximum_set_card.
   case: (arg_maxP (fun D : {set G} => #|D|) pF).
-  move=> D1 pD1 H1.
-  rewrite /maximum_set.
+  move=> D1 pD1 H1. rewrite /maximum_set.
   case: (arg_maxP (fun D => weight_set ones D) pF).
   move=> D2 pD2 H2.
-  apply/eqP ; rewrite eqn_leq ; apply/andP ; split.
-  move: (H2 D1 pD1).
-  by rewrite -!card_weight_1.
-  exact: (H1 D2 pD2).
+  apply/eqP ; rewrite eqn_leq ; apply/andP ; split ; last exact: (H1 D2 pD2).
+  move: (H2 D1 pD1). by rewrite -!card_weight_1.
 Qed.
 
 Lemma min_card_weight_1 : #|minimum_set_card| = #|minimum_set ones p F|.
 Proof.
   rewrite /minimum_set_card.
   case: (arg_minP (fun D : {set G} => #|D|) pF).
-  move=> D1 pD1 H1.
-  rewrite /minimum_set.
+  move=> D1 pD1 H1. rewrite /minimum_set.
   case: (arg_minP (fun D => weight_set ones D) pF).
   move=> D2 pD2 H2.
-  apply/eqP ; rewrite eqn_leq ; apply/andP ; split.
-  exact: (H1 D2 pD2).
-  move: (H2 D1 pD1).
-  by rewrite -!card_weight_1.
+  apply/eqP ; rewrite eqn_leq ; apply/andP ; split ; first exact: (H1 D2 pD2).
+  move: (H2 D1 pD1). by rewrite -!card_weight_1.
 Qed.
 
 End Argument_unweighted_sets.
