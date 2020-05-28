@@ -3,7 +3,7 @@
 [![Travis][travis-shield]][travis-link]
 [![Contributing][contributing-shield]][contributing-link]
 [![Code of Conduct][conduct-shield]][conduct-link]
-[![Gitter][gitter-shield]][gitter-link]
+[![Zulip][zulip-shield]][zulip-link]
 [![DOI][doi-shield]][doi-link]
 
 [travis-shield]: https://travis-ci.com/coq-community/graph-theory.svg?branch=master
@@ -15,8 +15,8 @@
 [conduct-shield]: https://img.shields.io/badge/%E2%9D%A4-code%20of%20conduct-%23f15a24.svg
 [conduct-link]: https://github.com/coq-community/manifesto/blob/master/CODE_OF_CONDUCT.md
 
-[gitter-shield]: https://img.shields.io/badge/chat-on%20gitter-%23c1272d.svg
-[gitter-link]: https://gitter.im/coq-community/Lobby
+[zulip-shield]: https://img.shields.io/badge/chat-on%20zulip-%23c1272d.svg
+[zulip-link]: https://coq.zulipchat.com/#narrow/stream/237663-coq-community-devs.20.26.20users
 
 
 [doi-shield]: https://zenodo.org/badge/DOI/10.1007/s10817-020-09543-2.svg
@@ -41,7 +41,8 @@ isomorphism).
 - License: [CeCILL-B](LICENSE)
 - Compatible Coq versions: 8.10 or later (use releases for other Coq versions)
 - Additional dependencies:
-  - [MathComp](https://math-comp.github.io) 1.9.0 or later (`ssreflect` suffices)
+  - MathComp's SSReflect library, version 1.9 or later
+  - MathComp's finmap library
 - Coq namespace: `GraphTheory`
 - Related publication(s):
   - [Graph Theory in Coq - Minors, Treewidth, and Isomorphisms](https://hal.archives-ouvertes.fr/hal-02316859) doi:[10.1007/s10817-020-09543-2](https://doi.org/10.1007/s10817-020-09543-2)
@@ -63,7 +64,7 @@ To instead build and install manually, do:
 ``` shell
 git clone https://github.com/coq-community/graph-theory.git
 cd graph-theory
-make   # or make -j <number-of-cores-on-your-machine>
+make   # or make -j <number-of-cores-on-your-machine> 
 make install
 ```
 
