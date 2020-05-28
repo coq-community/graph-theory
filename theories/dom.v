@@ -69,11 +69,13 @@ opns : open_neigh_set
 clns : closed_neigh_set
 in_? : canonical [(x \in ?) = _ ] lemma (could be part of inE)
 mem_? : other lemmas about (x \in ?)
-*)
+
+some suggestions below *)
 
 Variable G : sgraph.
 Implicit Types (u v : G).
 
+(* why the symmetry? *)
 Lemma sg_opneigh u v : (u -- v) = (u \in N(v)).
 Proof. by rewrite /open_neigh in_set sg_sym. Qed.
 
@@ -124,7 +126,7 @@ Proof.
   apply/bigcupP; exists x => //. exact: v_in_clneigh.
 Qed.
 
-(* mem_opns? *)
+(* mem_opns *)
 Proposition dominated_belongs_to_open_neigh_set u v : u \in D1 -> u -- v -> v \in NS(D1).
 Proof.
   move=> uinD1 adjuv.
@@ -133,7 +135,7 @@ Proof.
   by rewrite -sg_opneigh sg_sym.
 Qed.
 
-(* sub_opns_clns *)
+(* opns_sub_clns? *)
 Proposition open_neigh_set_subset_closed_neigh_set : NS(D1) \subset NS[D1].
 Proof.
   apply/subsetP => u.
@@ -172,6 +174,8 @@ End Basic_Facts_Neighborhoods.
 (**********************************************************************************)
 Section Degree_of_vertices.
 
+(* TOTHINK: This is currently unused, delete or move elsewhere? *)
+
 Variable G : sgraph.
 
 Definition deg (v : G) := #|N(v)|.
@@ -184,6 +188,7 @@ Proof.
   exact: leq_trans (proper_card (opneigh_proper_clneigh v)) H1.
 Qed.
 
+(* TOTHINK: [x : G] is probably a better assumtion *)
 Hypothesis G_not_empty : [set: G] != set0.
 
 Let some_vertex_with_degree (n : nat) := [exists v, deg v == n].
