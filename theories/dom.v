@@ -33,21 +33,43 @@ Definition closed_neigh_set : {set G} := \bigcup_(w in D) N[w].
 
 End Neighborhoods_definitions.
 
-Notation "N( G ; x )" := (@open_neigh G x) (at level 0, G at level 99, x at level 99).
-Notation "N[ G ; x ]" := (@closed_neigh G x) (at level 0, G at level 99, x at level 99).
-Notation "N( x )" := (open_neigh x) (at level 0, x at level 99, only parsing).
-Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99, only parsing).
 Notation "x -*- y" := (cl_sedge x y) (at level 30).
-Notation "E( G )" := (edges G) (at level 0, G at level 99).
-Notation "NS( G ; D )" := (@open_neigh_set G D) (at level 0, G at level 99, D at level 99).
-Notation "NS( D )" := (open_neigh_set D) (at level 0, D at level 99).
-Notation "NS[ G ; D ]" := (@closed_neigh_set G D) (at level 0, G at level 99, D at level 99).
-Notation "NS[ D ]" := (closed_neigh_set D) (at level 0, D at level 99).
+Notation "E( G )" := (edges G) (at level 0, G at level 99, format "E( G )").
+
+Notation "N( x )" := (@open_neigh _ x) 
+   (at level 0, x at level 99, format "N( x )").
+Notation "N[ x ]" := (@closed_neigh _ x) 
+   (at level 0, x at level 99, format "N[ x ]").
+Notation "N( G ; x )" := (@open_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N( G ; x )", only parsing).
+Notation "N[ G ; x ]" := (@closed_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]", only parsing).
+   
+Notation "NS( G ; D )" := (@open_neigh_set G D) 
+   (at level 0, G at level 99, D at level 99, format "NS( G ; D )", only parsing).
+Notation "NS( D )" := (open_neigh_set D) 
+   (at level 0, D at level 99, format "NS( D )").
+Notation "NS[ G ; D ]" := (@closed_neigh_set G D) 
+   (at level 0, G at level 99, D at level 99, format "NS[ G ; D ]", only parsing).
+Notation "NS[ D ]" := (closed_neigh_set D) 
+   (at level 0, D at level 99, format "NS[ D ]").
 
 (** TODO: replaced [V(G)] with [set: G], but the "VG" remains in lemma names *)
 
 (**********************************************************************************)
 Section Basic_Facts_Neighborhoods.
+
+(* TOTHINK: naming conventions that make these lemmas acutally useful
+(i.e., names shorter than inlining their proofs)
+
+Conventions: 
+opn : open_neigh
+cln : closed_neigh
+opns : open_neigh_set
+clns : closed_neigh_set
+in_? : canonical [(x \in ?) = _ ] lemma (could be part of inE)
+mem_? : other lemmas about (x \in ?)
+*)
 
 Variable G : sgraph.
 Implicit Types (u v : G).
@@ -58,7 +80,7 @@ Proof. by rewrite /open_neigh in_set sg_sym. Qed.
 Lemma v_notin_opneigh v : v \notin N(v).
 Proof. by rewrite -sg_opneigh sg_irrefl. Qed.
 
-Lemma clsg_clneigh u v : (u -*- v) = (u \in N[v]).
+Lemma clsg_clneigh u v : (u -*- v) = (u \in N[v]). 
 Proof. by rewrite /closed_neigh in_set in_set1 -sg_opneigh. Qed.
 
 Lemma cl_sg_sym : symmetric (@cl_sedge G). (* cl_sedge u v = cl_sedge v u *)
@@ -82,42 +104,27 @@ Proof.
   by case/doubleton_eq_iff => -[-> ->] //; rewrite sgP.
 Qed.
 
-Proposition empty_open_neigh : NS(set0 : {set G}) = set0.
+Proposition empty_open_neigh : NS(G;set0) = set0. 
 Proof. by rewrite /open_neigh_set big_set0. Qed.
 
-Proposition empty_closed_neigh : NS[set0 : {set G}] = set0.
+Proposition empty_closed_neigh : NS[G;set0] = set0.
 Proof. by rewrite /closed_neigh_set big_set0. Qed.
 
 Variables D1 D2 : {set G}.
 
 Proposition neigh_in_open_neigh : {in D1, forall v, N(v) \subset NS(D1)}.
-Proof.
-  move=> v vinD1.
-  apply/subsetP => x xinD1.
-  rewrite /open_neigh_set.
-  apply/bigcupP.
-  by exists v.
-Qed.
+Proof. move=> v vinD1; exact: bigcup_sup. Qed.
 
 Proposition neigh_in_closed_neigh : {in D1, forall v, N[v] \subset NS[D1]}.
-Proof.
-  move=> v vinD1.
-  apply/subsetP => x xinD1.
-  rewrite /closed_neigh_set.
-  apply/bigcupP.
-  by exists v.
-Qed.
+Proof. move=> v vinD1; exact: bigcup_sup. Qed.
 
 Proposition D_in_closed_neigh_set : D1 \subset NS[D1].
 Proof.
-  apply/subsetP => x xinD1.
-  rewrite /closed_neigh_set.
-  apply/bigcupP.
-  exists x.
-  by rewrite xinD1.
-  exact: v_in_clneigh.
+  apply/subsetP => x xinD1. 
+  apply/bigcupP; exists x => //. exact: v_in_clneigh.
 Qed.
 
+(* mem_opns? *)
 Proposition dominated_belongs_to_open_neigh_set u v : u \in D1 -> u -- v -> v \in NS(D1).
 Proof.
   move=> uinD1 adjuv.
@@ -126,6 +133,7 @@ Proof.
   by rewrite -sg_opneigh sg_sym.
 Qed.
 
+(* sub_opns_clns *)
 Proposition open_neigh_set_subset_closed_neigh_set : NS(D1) \subset NS[D1].
 Proof.
   apply/subsetP => u.
@@ -137,6 +145,7 @@ Proof.
   by rewrite /closed_neigh in_setU uinNv orbT.
 Qed.
 
+(* mem_clns *)
 Proposition dominated_belongs_to_closed_neigh_set u v : u \in D1 -> u -- v -> v \in NS[D1].
 Proof.
   move=> uinD1 adjuv.
@@ -144,6 +153,7 @@ Proof.
   exact: dominated_belongs_to_open_neigh_set adjuv.
 Qed.
 
+(* subset_opns *)
 Proposition closed_neigh_set_subset : D1 \subset D2 -> NS[D1] \subset NS[D2].
 Proof.
   move=> D1subD2.
