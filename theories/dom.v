@@ -1033,6 +1033,22 @@ Qed.
 Definition gamma_min := proj1 gamma_def.
 Definition gamma_witness := proj2 gamma_def.
 
+Definition ir_w : nat := W (arg_min inhb_max_irr max_irr W).
+
+Fact ir_min D : max_irr D -> ir_w <= W D.
+Proof. 
+rewrite /ir_w.
+by case: (arg_minP _ inhb_max_irr_is_maximal_irredundant) => A _; apply.
+Qed.
+
+Theorem ir_w_leq_gamma_w : ir_w <= gamma_w.
+Proof.
+  rewrite /gamma_w.
+  have [D domD minWD] := arg_minP _ dom_VG.
+  have min_domD := minweight_minset domD minWD.
+  have max_irrD := minimal_dom_is_maximal_irr min_domD.
+  exact: ir_min.
+Qed.
 *)
 
 Let minimum_maximal_irr : {set G} := minimum_set weight max_irr inhb_max_irr.
