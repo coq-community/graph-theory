@@ -54,7 +54,6 @@ Notation "NS[ G ; D ]" := (@closed_neigh_set G D)
 Notation "NS[ D ]" := (closed_neigh_set D) 
    (at level 0, D at level 99, format "NS[ D ]").
 
-(** TODO: replaced [V(G)] with [set: G], but the "VG" remains in lemma names *)
 
 (**********************************************************************************)
 Section Basic_Facts_Neighborhoods.
@@ -450,52 +449,6 @@ Qed.
 End Weighted_Sets.
 
 
-(**********************************************************************************)
-Section Argument_weighted_sets.
-
-Variable weight : G -> nat.
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable F : {set G}.          (* some set satisfying p *)
-Hypothesis pF : p F.           (* the proof that F satisfies p *)
-
-Definition maximum_set : {set G} := [arg max_(D > F | p D) weight_set weight D].
-
-Definition minimum_set : {set G} := [arg min_(D < F | p D) weight_set weight D].
-
-Lemma maximum_set_p : p maximum_set.
-Proof. rewrite /maximum_set ; by case: (arg_maxP (fun D => weight_set weight D) pF). Qed.
-
-Lemma minimum_set_p : p minimum_set.
-Proof. rewrite /minimum_set ; by case: (arg_minP (fun D => weight_set weight D) pF). Qed.
-
-Lemma maximum_set_welldefined : maximum weight p maximum_set.
-Proof.
-  rewrite /maximum_set.
-  case: (arg_maxP (fun D => weight_set weight D) pF).
-  move=> D pD H1.
-  apply/maximumP.
-  by split.
-Qed.
-
-Lemma minimum_set_welldefined : minimum weight p minimum_set.
-Proof.
-  rewrite /minimum_set.
-  case: (arg_minP (fun D => weight_set weight D) pF).
-  move=> D pD H1.
-  apply/minimumP.
-  by split.
-Qed.
-
-End Argument_weighted_sets.
-
-(* "argument" policy:
-   maximum_set and minimum_set requires the following arguments:
-     the weight vector, the property and a set (should satisfies the property)
-   in order to apply maximum_set_welldefined and minimum_set_welldefined, it is required:
-     the weight vector, the property, a set satisfying the property and a proof of that *)
-Arguments maximum_set_welldefined : clear implicits.
-Arguments minimum_set_welldefined : clear implicits.
-
 
 (**********************************************************************************)
 (** * Definitions of stable, dominating and irredundant sets *)
@@ -534,7 +487,7 @@ Qed.
 End Stable_Set.
 
 (* the empty set is stable *)
-Lemma st_empty : stable set0.
+Lemma st0 : stable set0.
 Proof. apply/stableP ; by move=> u v ; rewrite in_set0. Qed.
 
 (* if D is stable, any subset of D is also stable *)
@@ -614,7 +567,7 @@ Qed.
 End Dominating_Set.
 
 (* V(G) is dominating *)
-Lemma dom_VG : dominating [set :G].
+Lemma domT : dominating [set :G].
 Proof.
   rewrite dominating_eq_dominating_alt /dominating_alt eqEsubset subsetT andbT.
   exact: set_sub_clns.
@@ -744,7 +697,7 @@ Qed.
 End Irredundant_Set.
 
 (* the empty set is irredundant *)
-Lemma irr_empty : irredundant set0.
+Lemma irr0 : irredundant set0.
 Proof. apply/irredundantP => v ; by rewrite in_set0. Qed.
 
 (* if D is irredundant, any subset of D is also irredundant *)
@@ -936,11 +889,11 @@ Definition max_irr := maxset irredundant.
  * "dominating" and "irredudant" to be able to generate the maximal/minimal set.
  * In the call to ex_minimal and ex_maximal, the type of set is implicit. *)
 
-Definition inhb_max_st := ex_maximal stable set0 st_empty.
+Definition inhb_max_st := ex_maximal stable set0 st0.
 
-Definition inhb_min_dom := ex_minimal dominating [set: G] dom_VG.
+Definition inhb_min_dom := ex_minimal dominating [set: G] domT.
 
-Definition inhb_max_irr := ex_maximal irredundant set0 irr_empty.
+Definition inhb_max_irr := ex_maximal irredundant set0 irr0.
 
 Lemma inhb_max_st_is_maximal_stable : max_st inhb_max_st.
 Proof. exact: maximal_exists. Qed.
@@ -992,153 +945,140 @@ So this would cause an unpleasant asymmetry. *)
 
 (* TOTHINK: what about replacing [minimum/maximum_set] and all the
 [inhb_*] and [maximum/minimum] lemmas with the follwoing for every parameter: *)
-(*
 
-Definition alpha_w : nat := W (arg_max set0 stable W).
-
-Fact alpha_max A : stable A -> W A <= alpha_w.
-Proof. by move: A; rewrite /alpha_w; case: (arg_maxP _ st_empty). Qed.
-
-Fact alpha_witness : exists2 A, stable A & W A = alpha_w.
-Proof. by rewrite /alpha_w; case: (arg_maxP _ st_empty) => A; exists A. Qed.
-
-(* may not bee needed, one can use [pose A := arg_max ..] and
-[arg_minset] instead of [alpha_witness] in proofs *)
-Proposition witness_maxset A : stable A -> W A = alpha_w -> maxset stable A.
-Proof. 
-move => stA alphaA; apply: maxweight_maxset => // B.
-rewrite alphaA; exact: alpha_max.
-Qed.
-
-(* [arg_min variant] *)
-Definition gamma_w : nat := W (arg_min setT dominating W).
-
-(* longer variant with only one use of [arg_*P] *)
-Proposition gamma_def: 
-  (forall A, dominating A -> gamma_w <= W A) /\ (exists2 A, dominating A & W A = gamma_w).
-Proof. 
-rewrite /gamma_w; case: (arg_minP _ dom_VG) => A A1 A2; split => //; by exists A.
-Qed.
-Definition gamma_min := proj1 gamma_def.
-Definition gamma_witness := proj2 gamma_def.
 
 Definition ir_w : nat := W (arg_min inhb_max_irr max_irr W).
 
 Fact ir_min D : max_irr D -> ir_w <= W D.
-Proof. 
-rewrite /ir_w.
-by case: (arg_minP _ inhb_max_irr_is_maximal_irredundant) => A _; apply.
+Proof.
+  rewrite /ir_w.
+  by case: (arg_minP W inhb_max_irr_is_maximal_irredundant) => A _ ; apply.
 Qed.
 
-Theorem ir_w_leq_gamma_w : ir_w <= gamma_w.
+Fact ir_witness : exists2 D, max_irr D & W D = ir_w.
+Proof.
+  rewrite /ir_w.
+  case: (arg_minP W inhb_max_irr_is_maximal_irredundant) => D.
+  by exists D.
+Qed.
+
+Definition gamma_w : nat := W (arg_min setT dominating W).
+
+Fact gamma_min D : dominating D -> gamma_w <= W D.
+Proof. rewrite /gamma_w. case: (arg_minP W domT) => A _ ; apply. Qed.
+
+Fact gamma_witness : exists2 D, dominating D & W D = gamma_w.
 Proof.
   rewrite /gamma_w.
-  have [D domD minWD] := arg_minP _ dom_VG.
-  have min_domD := minweight_minset domD minWD.
-  have max_irrD := minimal_dom_is_maximal_irr min_domD.
-  exact: ir_min.
+  case: (arg_minP W domT) => D.
+  by exists D.
 Qed.
-*)
 
-Let minimum_maximal_irr : {set G} := minimum_set weight max_irr inhb_max_irr.
+(* longer variant with only one use of [arg_*P]
+Proposition gamma_def: 
+  (forall A, dominating A -> gamma_w <= W A) /\ (exists2 A, dominating A & W A = gamma_w).
+Proof. 
+rewrite /gamma_w; case: (arg_minP _ domT) => A A1 A2; split => //; by exists A.
+Qed.
+Definition gamma_min := proj1 gamma_def.
+Definition gamma_witness := proj2 gamma_def. *)
 
-Let minimum_dom : {set G} := minimum_set weight dominating [set: G].
+Definition ii_w : nat := W (arg_min inhb_max_st max_st W).
 
-Let minimum_maximal_st : {set G} := minimum_set weight max_st inhb_max_st.
+Fact ii_min S : max_st S -> ii_w <= W S.
+Proof.
+  rewrite /ii_w.
+  by case: (arg_minP W inhb_max_st_is_maximal_stable) => A _ ; apply.
+Qed.
 
-Let maximum_st : {set G} := maximum_set weight stable set0.
+Fact ii_witness : exists2 S, max_st S & W S = ii_w.
+Proof.
+  rewrite /ii_w.
+  case: (arg_minP W inhb_max_st_is_maximal_stable) => S.
+  by exists S.
+Qed.
 
-Let maximum_minimal_dom : {set G} := maximum_set weight min_dom inhb_min_dom.
+Definition alpha_w : nat := W (arg_max set0 stable W).
 
-Let maximum_irr : {set G} := maximum_set weight irredundant set0.
+Fact alpha_max S : stable S -> W S <= alpha_w.
+Proof. by move: S; rewrite /alpha_w; case: (arg_maxP W st0). Qed.
 
-(* Definitions of parameters: basically, they measure the weight of the previous sets *)
+Fact alpha_witness : exists2 S, stable S & W S = alpha_w.
+Proof. by rewrite /alpha_w; case: (arg_maxP W st0) => A; exists A. Qed.
 
-Definition ir_w : nat := weight_set weight minimum_maximal_irr.
+(* may not be needed, one can use [pose A := arg_max ..] and
+   [arg_minset] instead of [alpha_witness] in proofs
+Proposition witness_maxset S : stable S -> W S = alpha_w -> maxset stable S.
+Proof. 
+  move => stS alphaS; apply: maxweight_maxset => // A.
+  rewrite alphaS; exact: alpha_max.
+Qed.  *)
 
-Definition gamma_w : nat := weight_set weight minimum_dom.
+Definition Gamma_w : nat := W (arg_max inhb_min_dom min_dom W).
 
-Definition ii_w : nat := weight_set weight minimum_maximal_st.
+Fact Gamma_max D : min_dom D -> W D <= Gamma_w.
+Proof. 
+  move: D ; rewrite /Gamma_w.
+  by case: (arg_maxP W inhb_min_dom_is_minimal_dominating).
+Qed.
 
-Definition alpha_w : nat := weight_set weight maximum_st.
+Fact Gamma_witness : exists2 D, min_dom D & W D = Gamma_w.
+Proof.
+  rewrite /Gamma_w.
+  case: (arg_maxP W inhb_min_dom_is_minimal_dominating) => D.
+  by exists D.
+Qed.
 
-Definition Gamma_w : nat := weight_set weight maximum_minimal_dom.
+Definition IR_w : nat := W (arg_max set0 irredundant W).
 
-Definition IR_w : nat := weight_set weight maximum_irr.
+Fact IR_max D : irredundant D -> W D <= IR_w.
+Proof. by move: D; rewrite /IR_w; case: (arg_maxP W irr0). Qed.
+
+Fact IR_witness : exists2 D, irredundant D & W D = IR_w.
+Proof. by rewrite /IR_w; case: (arg_maxP W irr0) => D; exists D. Qed.
 
 (* Weighted version of the Cockayne-Hedetniemi domination chain. *)
 
 Theorem ir_w_leq_gamma_w : ir_w <= gamma_w.
 Proof.
-  (* we generate "set_is_min" which says that any maximal irredundant F has weight >= ir(G) *)
-  move: (minimum_set_welldefined weight max_irr inhb_max_irr inhb_max_irr_is_maximal_irredundant).
-  move/minimumP => [_ set_is_min].
-  (* we provide an F that is minimal dominating *)
-  set F := minimum_dom.
-  move: (minimum_set_welldefined weight dominating [set: G] dom_VG) => Fminimum_dom.
-  rewrite -/minimum_dom -/F in Fminimum_dom.
-  move: (minimum_is_minimal positive_weights Fminimum_dom) => Fminimal_dom.
-  (* and, therefore, F is maximal irredundant *)
-  move: (minimal_dom_is_maximal_irr Fminimal_dom) => Fmaximal_irr.
-  by move: (set_is_min F Fmaximal_irr).
+  rewrite /gamma_w.
+  have [D domD minWD] := arg_minP W domT.
+  set min_domD := minweight_minset domD minWD.
+  set max_irrD := minimal_dom_is_maximal_irr min_domD.
+  exact: ir_min.
 Qed.
 
 Theorem gamma_w_leq_ii_w : gamma_w <= ii_w.
 Proof.
-  (* we generate "set_is_min" which says that any dominating set F has weight >= gamma_w(G) *)
-  move: (minimum_set_welldefined weight dominating [set: G] dom_VG).
-  move/minimumP => [_ set_is_min].
-  (* we provide a maximal stable F which is also dominating *)
-  set F := minimum_maximal_st.
-  move: (minimum_set_p weight inhb_max_st_is_maximal_stable) => Fminimum_max_st.
-  rewrite -/minimum_maximal_st -/F /max_st in Fminimum_max_st.
-  have: stable F /\ dominating F by rewrite -(maximal_st_iff_st_dom F).
-  move=> [_ Fdom].
-  by move: (set_is_min F Fdom).
+  rewrite /ii_w.
+  have [S max_stS _] := arg_minP W inhb_max_st_is_maximal_stable.
+  set domS := minsetp (maximal_st_is_minimal_dom max_stS).
+  exact: gamma_min.
 Qed.
 
 Theorem ii_w_leq_alpha_w : ii_w <= alpha_w.
 Proof.
-  (* we generate "set_is_max" which says that any stable set F has weight <= alpha_w(G) *)
-  move: (maximum_set_welldefined weight stable set0 st_empty).
-  move/maximumP => [_ set_is_max].
-  (* we provide a maximal stable F *)
-  set F := minimum_maximal_st.
-  move: (minimum_set_p weight inhb_max_st_is_maximal_stable).
-  rewrite -/minimum_maximal_st -/F /max_st.
-  (* in particular, it only matters if F is stable *)
-  move/maximalP=> [Fst _].
-  by move: (set_is_max F Fst).
+  rewrite /alpha_w.
+  have [S stS maxWS] := arg_maxP W st0.
+  set max_stS := maxweight_maxset stS maxWS.
+  exact: ii_min.
 Qed.
 
 Theorem alpha_w_leq_Gamma_w : alpha_w <= Gamma_w.
 Proof.
-  (* we generate "set_is_max" which says that any minimal dom. set F has weight <= Gamma_w(G) *)
-  move: (maximum_set_welldefined weight min_dom inhb_min_dom inhb_min_dom_is_minimal_dominating).
-  move/maximumP => [_ set_is_max].
-  (* we provide an F that F maximal stable ... *)
-  set F := maximum_st.
-  move: (maximum_set_welldefined weight stable set0 st_empty) => Fmaximum_st.
-  rewrite -/maximum_st -/F in Fmaximum_st.
-  move: (maximum_is_maximal positive_weights Fmaximum_st) => Fmaximal_st.
-  (* and, therefore, F is minimal dominating *)
-  move: (maximal_st_is_minimal_dom Fmaximal_st) => Fminimal_dom.
-  by move: (set_is_max F Fminimal_dom).
+  rewrite /alpha_w.
+  have [S stS maxWS] := arg_maxP W st0.
+  set max_stS := maxweight_maxset stS maxWS.
+  set min_domS := maximal_st_is_minimal_dom max_stS.
+  exact: Gamma_max.
 Qed.
 
 Theorem Gamma_w_leq_IR_w : Gamma_w <= IR_w.
 Proof.
-  (* we generate "set_is_max" which says that any irredundant F has weight <= IR_w(G) *)
-  move: (maximum_set_welldefined weight irredundant set0 irr_empty).
-  move/maximumP => [_ set_is_max].
-  (* we provide an F that is maximal irredundant *)
-  set F := maximum_minimal_dom.
-  move: (maximum_set_p weight inhb_min_dom_is_minimal_dominating).
-  rewrite -/maximum_minimal_dom -/F /min_dom => Fminimal_dom.
-  move: (minimal_dom_is_maximal_irr Fminimal_dom).
-  (* in particular, it only matters if F is irredundant *)
-  move/maximalP=> [Firr _].
-  by move: (set_is_max F Firr).
+  rewrite /Gamma_w.
+  have [D min_domD _] := arg_maxP W inhb_min_dom_is_minimal_dominating.
+  set irrD := maxsetp (minimal_dom_is_maximal_irr min_domD).
+  exact: IR_max.
 Qed.
 
 End Weighted_domination_parameters.
@@ -1152,6 +1092,10 @@ Arguments ii_w : clear implicits.
 Arguments alpha_w : clear implicits.
 Arguments Gamma_w : clear implicits.
 Arguments IR_w : clear implicits.
+
+
+
+(* TO DO: Do the same thing for unweighted parameters!! *)
 
 
 (**********************************************************************************)
@@ -1220,6 +1164,51 @@ Proof. rewrite minimum1 ; exact: minimum_is_minimal. Qed.
 
 End Unweighted_Sets.
 
+(**********************************************************************************)
+Section Argument_weighted_sets.
+
+Variable weight : G -> nat.
+Variable p : pred {set G}.     (* p : {set G} -> bool *)
+Variable F : {set G}.          (* some set satisfying p *)
+Hypothesis pF : p F.           (* the proof that F satisfies p *)
+
+Definition maximum_set : {set G} := [arg max_(D > F | p D) weight_set weight D].
+
+Definition minimum_set : {set G} := [arg min_(D < F | p D) weight_set weight D].
+
+Lemma maximum_set_p : p maximum_set.
+Proof. rewrite /maximum_set ; by case: (arg_maxP (fun D => weight_set weight D) pF). Qed.
+
+Lemma minimum_set_p : p minimum_set.
+Proof. rewrite /minimum_set ; by case: (arg_minP (fun D => weight_set weight D) pF). Qed.
+
+Lemma maximum_set_welldefined : maximum weight p maximum_set.
+Proof.
+  rewrite /maximum_set.
+  case: (arg_maxP (fun D => weight_set weight D) pF).
+  move=> D pD H1.
+  apply/maximumP.
+  by split.
+Qed.
+
+Lemma minimum_set_welldefined : minimum weight p minimum_set.
+Proof.
+  rewrite /minimum_set.
+  case: (arg_minP (fun D => weight_set weight D) pF).
+  move=> D pD H1.
+  apply/minimumP.
+  by split.
+Qed.
+
+End Argument_weighted_sets.
+
+(* "argument" policy:
+   maximum_set and minimum_set requires the following arguments:
+     the weight vector, the property and a set (should satisfies the property)
+   in order to apply maximum_set_welldefined and minimum_set_welldefined, it is required:
+     the weight vector, the property, a set satisfying the property and a proof of that *)
+Arguments maximum_set_welldefined : clear implicits.
+Arguments minimum_set_welldefined : clear implicits.
 
 (**********************************************************************************)
 Section Argument_unweighted_sets.
@@ -1308,7 +1297,7 @@ Qed.
 Lemma gamma_is_gamma1 : gamma = gamma_w ones.
 Proof. 
   rewrite /gamma /gamma_w /minimum_dom.
-  rewrite (min_card_weight_1 dominating [set: G] dom_VG).
+  rewrite (min_card_weight_1 dominating [set: G] domT).
   exact: card_weight_1.
 Qed.
 
@@ -1322,7 +1311,7 @@ Qed.
 Lemma alpha_is_alpha1 : alpha = alpha_w ones.
 Proof. 
   rewrite /alpha /alpha_w /maximum_st.
-  rewrite (max_card_weight_1 stable set0 st_empty).
+  rewrite (max_card_weight_1 stable set0 st0).
   exact: card_weight_1.
 Qed.
 
@@ -1336,7 +1325,7 @@ Qed.
 Lemma IR_is_IR1 : IR = IR_w ones.
 Proof.
   rewrite /IR /IR_w /maximum_irr.
-  rewrite (max_card_weight_1 irredundant set0 irr_empty).
+  rewrite (max_card_weight_1 irredundant set0 irr0).
   exact: card_weight_1.
 Qed.
 
