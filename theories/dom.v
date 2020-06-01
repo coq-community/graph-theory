@@ -75,15 +75,14 @@ some suggestions below *)
 Variable G : sgraph.
 Implicit Types (u v : G).
 
-(* why the symmetry? *)
-Lemma sg_opneigh u v : (u -- v) = (u \in N(v)).
-Proof. by rewrite /open_neigh in_set sg_sym. Qed.
+Lemma in_opn u v : u \in N(v) = (v -- u).
+Proof. by rewrite /open_neigh in_set. Qed.
 
 Lemma v_notin_opneigh v : v \notin N(v).
-Proof. by rewrite -sg_opneigh sg_irrefl. Qed.
+Proof. by rewrite in_opn sg_irrefl. Qed.
 
-Lemma clsg_clneigh u v : (u -*- v) = (u \in N[v]). 
-Proof. by rewrite /closed_neigh in_set in_set1 -sg_opneigh. Qed.
+Lemma in_cln u v : u \in N[v] = (v -*- u). 
+Proof. by rewrite /closed_neigh in_setU1 eq_sym in_opn. Qed.
 
 Lemma cl_sg_sym : symmetric (@cl_sedge G). (* cl_sedge u v = cl_sedge v u *)
 Proof. rewrite /symmetric /cl_sedge /closed_neigh => x y ; by rewrite sg_sym eq_sym. Qed.
@@ -92,51 +91,44 @@ Lemma cl_sg_refl : reflexive (@cl_sedge G). (* cl_sedge u u = true *)
 Proof. by move => x; rewrite /cl_sedge eqxx. Qed.
 
 Lemma v_in_clneigh v : v \in N[v].
-Proof. by rewrite -clsg_clneigh cl_sg_refl. Qed.
+Proof. by rewrite in_cln cl_sg_refl. Qed.
 
-Lemma opneigh_proper_clneigh v : N(v) \proper N[v].
+Lemma opn_proper_cln v : N(v) \proper N[v].
 Proof. 
   apply/properP; rewrite subsetUr; split => //.
   by exists v; rewrite !inE ?eqxx sgP.
 Qed.
 
-Proposition sg_in_edge_set u v : [set u; v] \in E(G) = (u -- v).
+Proposition in_edges u v : [set u; v] \in E(G) = (u -- v).
 Proof. 
   apply/edgesP/idP => [[x] [y] []|]; last by exists u; exists v.
   by case/doubleton_eq_iff => -[-> ->] //; rewrite sgP.
 Qed.
 
-Proposition empty_open_neigh : NS(G;set0) = set0. 
+Proposition opns0 : NS(G;set0) = set0. 
 Proof. by rewrite /open_neigh_set big_set0. Qed.
 
-Proposition empty_closed_neigh : NS[G;set0] = set0.
+Proposition clns0 : NS[G;set0] = set0.
 Proof. by rewrite /closed_neigh_set big_set0. Qed.
 
 Variables D1 D2 : {set G}.
 
-Proposition neigh_in_open_neigh : {in D1, forall v, N(v) \subset NS(D1)}.
+Proposition opn_sub_opns : {in D1, forall v, N(v) \subset NS(D1)}.
 Proof. move=> v vinD1; exact: bigcup_sup. Qed.
 
-Proposition neigh_in_closed_neigh : {in D1, forall v, N[v] \subset NS[D1]}.
+Proposition cln_sub_clns : {in D1, forall v, N[v] \subset NS[D1]}.
 Proof. move=> v vinD1; exact: bigcup_sup. Qed.
 
-Proposition D_in_closed_neigh_set : D1 \subset NS[D1].
+Proposition set_sub_clns : D1 \subset NS[D1].
 Proof.
   apply/subsetP => x xinD1. 
   apply/bigcupP; exists x => //. exact: v_in_clneigh.
 Qed.
 
-(* mem_opns *)
-Proposition dominated_belongs_to_open_neigh_set u v : u \in D1 -> u -- v -> v \in NS(D1).
-Proof.
-  move=> uinD1 adjuv.
-  apply/bigcupP.
-  exists u => //.
-  by rewrite -sg_opneigh sg_sym.
-Qed.
+Proposition mem_opns u v : u \in D1 -> u -- v -> v \in NS(D1).
+Proof. move=> uinD1 adjuv. apply/bigcupP ; exists u => // ; by rewrite in_opn. Qed.
 
-(* opns_sub_clns? *)
-Proposition open_neigh_set_subset_closed_neigh_set : NS(D1) \subset NS[D1].
+Proposition opns_sub_clns : NS(D1) \subset NS[D1].
 Proof.
   apply/subsetP => u.
   rewrite /open_neigh_set /closed_neigh_set.
@@ -147,16 +139,14 @@ Proof.
   by rewrite /closed_neigh in_setU uinNv orbT.
 Qed.
 
-(* mem_clns *)
-Proposition dominated_belongs_to_closed_neigh_set u v : u \in D1 -> u -- v -> v \in NS[D1].
+Proposition mem_clns u v : u \in D1 -> u -- v -> v \in NS[D1].
 Proof.
   move=> uinD1 adjuv.
-  apply: (subsetP open_neigh_set_subset_closed_neigh_set v).
-  exact: dominated_belongs_to_open_neigh_set adjuv.
+  apply: (subsetP opns_sub_clns v).
+  exact: mem_opns adjuv.
 Qed.
 
-(* subset_opns *)
-Proposition closed_neigh_set_subset : D1 \subset D2 -> NS[D1] \subset NS[D2].
+Proposition subset_clns : D1 \subset D2 -> NS[D1] \subset NS[D2].
 Proof.
   move=> D1subD2.
   rewrite /closed_neigh_set.
@@ -185,7 +175,7 @@ Proof.
   suff: deg v < #|G| by move=> H ; rewrite (pred_Sn (deg v)) -subn1 (leq_sub2r 1 H).
   have H1: #|N[v]| <= #|G| by rewrite max_card.
   rewrite /deg.
-  exact: leq_trans (proper_card (opneigh_proper_clneigh v)) H1.
+  exact: leq_trans (proper_card (opn_proper_cln v)) H1.
 Qed.
 
 (* TOTHINK: [x : G] is probably a better assumtion *)
@@ -536,9 +526,9 @@ Proposition stable_eq_stable_alt : stable = stable_alt.
 Proof. 
   rewrite /stable_alt setI_eq0; apply/stableP/disjointP => stS.
   - move => x /bigcupP [y yS adjyx] xS. 
-    move: adjyx. rewrite -sg_opneigh. apply/negP. by apply: stS.
+    move: adjyx. rewrite in_opn. apply/negP. by apply: stS.
   - move => x y xS yS. apply/negP => adjxy.
-    exact: (stS y (dominated_belongs_to_open_neigh_set xS adjxy) yS).
+    exact: (stS y (mem_opns xS adjxy) yS).
 Qed.
 
 End Stable_Set.
@@ -606,12 +596,12 @@ Proof.
     rewrite eqEsubset subsetT andbT.
     (* it is enough to prove V(G) \subset N[D] *)
     apply/subsetP => x _. 
-    case: (boolP (x \in D)); first exact/subsetP/D_in_closed_neigh_set.
+    case: (boolP (x \in D)); first exact/subsetP/set_sub_clns.
     move => xnotinD.
     move/implyP: (H1 x) => H2.
     move/existsP: (H2 xnotinD).
     elim=> u /andP [uinD adjux].
-    exact: dominated_belongs_to_closed_neigh_set uinD adjux.
+    exact: mem_clns uinD adjux.
   - move=> VisND.
     apply/dominatingP => v vnotinD.
     move/eqP: VisND (in_setT v) -> => /bigcupP.
@@ -627,7 +617,7 @@ End Dominating_Set.
 Lemma dom_VG : dominating [set :G].
 Proof.
   rewrite dominating_eq_dominating_alt /dominating_alt eqEsubset subsetT andbT.
-  exact: D_in_closed_neigh_set.
+  exact: set_sub_clns.
 Qed.
 
 (* if D is dominating, any supraset of D is also dominating *)
@@ -674,27 +664,26 @@ Proof.
   - move/privateP => [vdomw H1].
     rewrite in_setD /closed_neigh_set.
     apply/andP.
-    split ; last by rewrite -clsg_clneigh cl_sg_sym.
+    split ; last by rewrite in_cln.
     apply/bigcupP.
     elim=> x xinDminusv winNx.
     move: xinDminusv.
     rewrite in_setD in_set1 => /andP [xnotv xinD].
     move: winNx.
-    rewrite -clsg_clneigh cl_sg_sym => xdomw.
+    rewrite in_cln => xdomw.
     move: (H1 x xinD xdomw).
     move/eqP: xnotv.
     contradiction.
   - rewrite in_setD /closed_neigh_set.
     move=> /andP [wnotincup winNv].
-    apply/privateP ; split ; first by rewrite cl_sg_sym clsg_clneigh.
+    apply/privateP ; split ; first by rewrite -in_cln.
     move=> u uinD udomw.
     apply/eqP.
     move: wnotincup.
     apply: contraR => unotv.
     apply/bigcupP.
-    exists u.
-    + by rewrite /= in_setD uinD andbT in_set1.
-    + by rewrite -clsg_clneigh cl_sg_sym.
+    exists u ; last by rewrite in_cln.
+    by rewrite /= in_setD uinD andbT in_set1.
 Qed.
 
 Lemma private_set_not_empty :
@@ -719,7 +708,7 @@ Proof.
   suff: N[v] = NS[D :&: [set v]] by move->.
   rewrite (setIidPr _) ?sub1set //.
   apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
-  - apply: neigh_in_closed_neigh. by rewrite in_set1.
+  - apply: cln_sub_clns. by rewrite in_set1.
   - apply/subsetP => x. move/bigcupP. elim=> z ; rewrite in_set1. by move/eqP->.
 Qed.
 
@@ -727,7 +716,7 @@ Lemma private_set'_equals_empty : forall v : G, v \notinD -> (private_set' v == 
 Proof.
   move=> v vnotinD.
   rewrite /private_set' disjoint_setI0 1?disjoint_sym ?disjoints1 //.
-  by rewrite empty_closed_neigh set0D.
+  by rewrite clns0 set0D.
 Qed.
 
 Definition irredundant : bool := [forall v : G, (v \in D) ==> (private_set v != set0)].
