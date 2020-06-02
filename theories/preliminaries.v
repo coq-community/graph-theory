@@ -13,8 +13,8 @@ Unset Printing Implicit Defensive.
 
 (** *** Tactics *)
 
-Axiom admitted_case : False.
-Ltac admit := case admitted_case.
+(*Axiom admitted_case : False.
+Ltac admit := case admitted_case.*)
 
 Ltac reflect_eq := 
   repeat match goal with [H : is_true (_ == _) |- _] => move/eqP : H => H end.
@@ -998,70 +998,25 @@ Proof. by firstorder. Qed.
 
 (*********************************************************************************)
 (** * Preliminaries (used in Domination Theory) *)
-Section Preliminaries1.
+Section Preliminaries_dom.
 
 Lemma properC (T : finType) (A B : {set T}) : A \proper B = (~: B \proper ~: A).
-Proof. 
-rewrite !properEneq setCS [~: _ == _]inj_eq 1?eq_sym //; exact/inv_inj/setCK.
-Qed.
+Proof. rewrite !properEneq setCS [~: _ == _]inj_eq 1?eq_sym //; exact/inv_inj/setCK. Qed.
 
 Lemma in11_in2 (T1 T2 : predArgType) (P : T1 -> T2 -> Prop) (A1 : {pred T1}) (A2 : {pred T2}) : 
   {in A1, forall x, {in A2, forall y,  P x y}} <-> {in A1 & A2, forall x y, P x y}.
 Proof. by firstorder. Qed.
 
-Lemma aorbNa: forall a b : bool, (a || b) -> ~~ a -> b.
-Proof. move=> a b. by case: a ; case: b. Qed.
-
-Lemma aorbNb: forall a b : bool, (a || b) -> ~~ b -> a.
-Proof. move=> a b. by case: a ; case: b. Qed.
-
-Variable T : finType.
-Variables u v : T.
-Variables A B : {set T}.
-
-(* only used below *)
-Lemma set_minus_union : B \subset A -> A = (A :\: B) :|: B.
-Proof.
-  move=> BinA.
-  apply/eqP.
-  rewrite eqEsubset.
-  apply/andP ; split.
-  (* first case: x \in A implies x \in (A - B cup B) *)
-  apply/subsetP => x xinA.
-  by rewrite in_setU in_setD orb_andl xinA orNb andTb orTb.
-  (* second case: x \in (A - B cup B) -> x \in A *)
-  apply/subsetP => x.
-  rewrite in_setU in_setD orb_andl orNb andTb => /orP.
-  elim=> //.
-  by apply (subsetP BinA).
-Qed.
-
-End Preliminaries1.
-Arguments in11_in2 [T1 T2 P] A1 A2.
-
-(**********************************************************************************)
-Section Preliminaries2.
-
 Variable T : finType.
 
-Lemma set_minus_union1 : forall (u : T) (A : {set T}), u \in A -> A = (A :\: [set u]) :|: [set u].
+Lemma set21_subset (u v : T) (A : {set T}) : [set u; v] \subset A -> u \in A.
+Proof. move=> uvsubA ; apply: (subsetP uvsubA u) ; exact: set21. Qed.
+
+Lemma set22_subset (u v : T) (A : {set T}) : [set u; v] \subset A -> v \in A.
+Proof. rewrite setUC ; exact: set21_subset. Qed.
+
+Lemma doubleton_eq_left (u v w : T) : [set u; v] = [set u; w] <-> v = w.
 Proof.
-  move=> u A uinA.
-  apply: set_minus_union.
-  apply/subsetP => i.
-  rewrite in_set1 => ieqx.
-  by move/eqP: ieqx ->.
-Qed.
-
-Lemma set21_subset : forall (u v : T) (A : {set T}), [set u; v] \subset A -> u \in A.
-Proof. move=> u v A uvsubA ; apply: (subsetP uvsubA u) ; exact: set21. Qed.
-
-Lemma set22_subset : forall (u v : T) (A : {set T}), [set u; v] \subset A -> v \in A.
-Proof. move=> u v A ; rewrite setUC ; exact: set21_subset. Qed.
-
-Lemma doubleton_eq_left : forall u v w : T, [set u; v] = [set u; w] <-> v = w.
-Proof.
-  move=> u v w.
   rewrite /iff ; split ; last by move->.
   (* we prove the hard case: {u, v} = {u, w} -> v = w *)
   move=> uvisuw.
@@ -1077,32 +1032,31 @@ Qed.
 Lemma doubleton_eq_right (u v w : T) : [set u; w] = [set v; w] <-> u = v.
 Proof. rewrite ![[set _;w]]setUC; exact: doubleton_eq_left. Qed.
 
-Lemma doubleton_eq_iff : forall u v w x: T, [set u; v] = [set w; x] <->
-          ((u = w /\ v = x) \/ (u = x /\ v = w)).
+Lemma doubleton_eq_iff (u v w x : T) : [set u; v] = [set w; x] <->
+  ((u = w /\ v = x) \/ (u = x /\ v = w)).
 Proof.
-move=> u v w x. 
   rewrite /iff ; split ; last first.
-  (* first case : <- *)
-  case => [ [uisw visx] | [uisx visw] ]. 
-  by rewrite uisw visx.
-  by rewrite uisx visw setUC.
-  (* second case : -> *)
-  move=> uviswx.
-  move: (set21 u v) => uinwx.
-  rewrite uviswx in_set2 in uinwx.
-  case/orP: uinwx => [/eqP uisw|/eqP uisx].
-  left ; split => //.
-  move: (doubleton_eq_left w v x) => [dbl_eq_left _].
-  apply: dbl_eq_left.
-  by rewrite -[in X in X = _] uisw.
-  right ; split => //.
-  move: (doubleton_eq_right v w x) => [dbl_eq_right _].
-  apply: dbl_eq_right.
-  rewrite -[in X in X = _] uisx -uviswx.
-  exact: setUC.
+  - case => [ [uisw visx] | [uisx visw] ]. 
+    by rewrite uisw visx.
+    by rewrite uisx visw setUC.
+  - move=> uviswx.
+    have uinwx := (set21 u v).
+    rewrite uviswx in_set2 in uinwx.
+    case/orP: uinwx => [/eqP uisw|/eqP uisx].
+    + left ; split => //.
+      have [dbl_eq_left _] := (doubleton_eq_left w v x).
+      apply: dbl_eq_left.
+      by rewrite -[in X in X = _] uisw.
+    + right ; split => //.
+      have [dbl_eq_right _] := (doubleton_eq_right v w x).
+      apply: dbl_eq_right.
+      rewrite -[in X in X = _] uisx -uviswx.
+      exact: setUC.
 Qed.
 
-Lemma pair_neq_card2 : forall u v : T, (u != v) <-> #|[set u; v]| = 2.
-Proof. by move => u v; rewrite cards2; case: (altP (u =P v)). Qed.
+Lemma pair_neq_card2 (u v : T) : (u != v) <-> #|[set u; v]| = 2.
+Proof. by rewrite cards2; case: (altP (u =P v)). Qed.
 
-End Preliminaries2.
+End Preliminaries_dom.
+
+Arguments in11_in2 [T1 T2 P] A1 A2.
