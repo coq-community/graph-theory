@@ -70,6 +70,7 @@ in_? : canonical [(x \in ?) = _ ] lemma (could be part of inE)
 mem_? : other lemmas about (x \in ?)
 prv : private
 prvs : private_set
+wset : weighted sets
 
 some suggestions below *)
 
@@ -100,36 +101,36 @@ Proof.
   by exists v; rewrite !inE ?eqxx sgP.
 Qed.
 
-Proposition in_edges u v : [set u; v] \in E(G) = (u -- v).
+Lemma in_edges u v : [set u; v] \in E(G) = (u -- v).
 Proof. 
   apply/edgesP/idP => [[x] [y] []|]; last by exists u; exists v.
   by case/doubleton_eq_iff => -[-> ->] //; rewrite sgP.
 Qed.
 
-Proposition opns0 : NS(G;set0) = set0. 
+Lemma opns0 : NS(G;set0) = set0. 
 Proof. by rewrite /open_neigh_set big_set0. Qed.
 
-Proposition clns0 : NS[G;set0] = set0.
+Lemma clns0 : NS[G;set0] = set0.
 Proof. by rewrite /closed_neigh_set big_set0. Qed.
 
 Variables D1 D2 : {set G}.
 
-Proposition opn_sub_opns : {in D1, forall v, N(v) \subset NS(D1)}.
+Lemma opn_sub_opns : {in D1, forall v, N(v) \subset NS(D1)}.
 Proof. move=> v vinD1; exact: bigcup_sup. Qed.
 
-Proposition cln_sub_clns : {in D1, forall v, N[v] \subset NS[D1]}.
+Lemma cln_sub_clns : {in D1, forall v, N[v] \subset NS[D1]}.
 Proof. move=> v vinD1; exact: bigcup_sup. Qed.
 
-Proposition set_sub_clns : D1 \subset NS[D1].
+Lemma set_sub_clns : D1 \subset NS[D1].
 Proof.
   apply/subsetP => x xinD1. 
   apply/bigcupP; exists x => //. exact: v_in_clneigh.
 Qed.
 
-Proposition mem_opns u v : u \in D1 -> u -- v -> v \in NS(D1).
+Lemma mem_opns u v : u \in D1 -> u -- v -> v \in NS(D1).
 Proof. move=> uinD1 adjuv. apply/bigcupP ; exists u => // ; by rewrite in_opn. Qed.
 
-Proposition opns_sub_clns : NS(D1) \subset NS[D1].
+Lemma opns_sub_clns : NS(D1) \subset NS[D1].
 Proof.
   apply/subsetP => u.
   rewrite /open_neigh_set /closed_neigh_set.
@@ -140,14 +141,14 @@ Proof.
   by rewrite /closed_neigh in_setU uinNv orbT.
 Qed.
 
-Proposition mem_clns u v : u \in D1 -> u -- v -> v \in NS[D1].
+Lemma mem_clns u v : u \in D1 -> u -- v -> v \in NS[D1].
 Proof.
   move=> uinD1 adjuv.
   apply: (subsetP opns_sub_clns v).
   exact: mem_opns adjuv.
 Qed.
 
-Proposition subset_clns : D1 \subset D2 -> NS[D1] \subset NS[D2].
+Lemma subset_clns : D1 \subset D2 -> NS[D1] \subset NS[D2].
 Proof.
   move=> D1subD2.
   rewrite /closed_neigh_set.
@@ -287,10 +288,10 @@ Definition ex_maximal : {set G} := s2val (maxset_exists pF).
 
 Definition ex_minimal : {set G} := s2val (minset_exists pF).
 
-Lemma maximal_exists : maxset p ex_maximal.
+Fact maximal_exists : maxset p ex_maximal.
 Proof. exact: s2valP (maxset_exists pF). Qed.
 
-Lemma minimal_exists : minset p ex_minimal.
+Fact minimal_exists : minset p ex_minimal.
 Proof. exact: s2valP (minset_exists pF). Qed.
 
 End MaxMin_sets_existence.
@@ -325,7 +326,7 @@ Proof.
   all: by rewrite -setCS => /sh_p; rewrite ?setCK; auto.
 Qed.
 
-Theorem maximal_indsysP p D : hereditary p ->
+Proposition maximal_indsysP p D : hereditary p ->
   reflect (p D /\ forall v : G, v \notin D -> ~~ p (v |: D)) (maxset p D).
 Proof. 
   move/hereditaryP => p_hereditary; apply: (iffP maxsetP').
@@ -335,7 +336,7 @@ Proof.
     apply: contraNN vD; apply: p_hereditary; by rewrite subUset sub1set vA.
 Qed.
 
-Theorem minimal_indsysP p D : superhereditary p ->
+Proposition minimal_indsysP p D : superhereditary p ->
   reflect (p D /\ forall v : G, v \in D -> ~~ p (D :\ v)) (minset p D).
 Proof.
   rewrite minmaxset => sh_p; apply: (iffP (maximal_indsysP _ _)) => //=.
@@ -355,7 +356,7 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 
 Definition weight_set (S : {set G}) := \sum_(v in S) weight v.
 
-Lemma empty_set_zero_weight A : (A == set0) = (weight_set A == 0).
+Lemma wset0 A : (A == set0) = (weight_set A == 0).
 Proof.
   apply/eqP/eqP.
   - move=> Dempty ; rewrite /weight_set.
@@ -367,16 +368,16 @@ Proof.
     exact/ltn_addr/positive_weights.
 Qed.
 
-Lemma subsets_weight (A B : {set G}) : A \subset B -> weight_set A <= weight_set B.
+Lemma leqwset (A B : {set G}) : A \subset B -> weight_set A <= weight_set B.
 Proof. move=> AsubB ; by rewrite [X in _ <= X](big_setID A) /= (setIidPr AsubB) leq_addr. Qed.
 
-Lemma proper_sets_weight (A B : {set G}) :  A \proper B -> weight_set A < weight_set B.
+Lemma ltnwset (A B : {set G}) :  A \proper B -> weight_set A < weight_set B.
 Proof.
   move => /properP [AsubB].
   elim=> x xinB xnotinA.
   rewrite {2}/weight_set (big_setID A) /= (setIidPr AsubB).
   rewrite -[X in X <= _]addn0 addSn -addnS leq_add2l lt0n.
-  rewrite -/(weight_set _) -empty_set_zero_weight. 
+  rewrite -/(weight_set _) -wset0. 
   by apply/set0Pn; exists x; apply/setDP.
 Qed.
 
@@ -408,7 +409,7 @@ Proof.
   rewrite negb_forall_in; apply: exists_inPP => y. exact: negPn.
 Qed.
 
-Proposition stable_eq_stable_alt : stable = stable_alt. 
+Theorem stable_eq_stable_alt : stable = stable_alt. 
 Proof. 
   rewrite /stable_alt setI_eq0; apply/stableP/disjointP => stS.
   - move => x /bigcupP [y yS adjyx] xS. 
@@ -846,8 +847,11 @@ Hypothesis positive_weights : forall v : G, weight v > 0.
 (* Sets of minimum/maximum weight *)
 
 Let W := weight_set weight.
-Let properW := proper_sets_weight positive_weights.
+Let properW := ltnwset positive_weights.
 
+(* The following lemmas state that if a set is maximum (i.e. has a maximum weight),
+ * then it is maximal, and if a set is minimum, then it is minimal. Note: in maxweight_maxset,
+ * "A" is the maximum set, but in arg_maxset, "A" is an inhabitant of the property. *)
 Lemma maxweight_maxset (p : pred {set G}) (A : {set G}) : 
   p A -> (forall B, p B -> W B <= W A) -> maxset p A.
 Proof.
@@ -856,7 +860,7 @@ Proof.
 Qed.
 
 Lemma arg_maxset (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W).
-Proof. by move => PA; apply/maxweight_maxset; case: arg_maxP. Qed.
+Proof. by move => pA; apply/maxweight_maxset; case: arg_maxP. Qed.
 
 Lemma minweight_minset (p : pred {set G}) (A : {set G}) : 
   p A -> (forall B, p B -> W A <= W B) -> minset p A.
@@ -868,10 +872,7 @@ Qed.
 Lemma arg_minset (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W).
 Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
 
-(** The "natural" definition for "maximizing" parameters would be something like:
-[Definition alpha_w' : nat := \max_(A : {set G} | stable A) weight_set weight A].
-However, there is no [\min_(_ | _) _], because minn does not have a neutral element. 
-So this would cause an unpleasant asymmetry. *)
+(* Definition of weighted parameters. *)
 
 Definition ir_w : nat := W (arg_min inhb_max_irr max_irr W).
 
@@ -1048,316 +1049,113 @@ Arguments Gamma_w : clear implicits.
 Arguments IR_w : clear implicits.
 
 
-(* TO DO: Do the same thing for unweighted parameters!! *)
-
-
-Section maximum_and_minimum.
-
-Variable weight : G -> nat.
-Hypothesis positive_weights : forall v : G, weight v > 0.
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable D : {set G}.
-
-Let W := weight_set weight.
-
-Definition maximum : bool := p D && [forall F : {set G}, p F ==> (W F <= W D)].
-
-Definition minimum : bool := p D && [forall F : {set G}, p F ==> (W D <= W F)].
-
-Proposition maximumP : reflect
-          (p D /\ (forall F : {set G}, p F -> W F <= W D)) maximum.
-Proof.
-  rewrite /maximum ; apply: (iffP andP).
-  - move=> [pD /forallP H1] ; split=> //.
-    move=> F pF. move: (H1 F). by move/implyP=> /(_ pF).
-  - move=> [pD H2] ; split=> //.
-    apply/forall_inP=> F.
-    exact: H2.
-Qed.
-
-Proposition minimumP : reflect
-          (p D /\ (forall F : {set G}, p F -> W D <= W F)) minimum.
-Proof.
-  rewrite /minimum ; apply: (iffP andP).
-  - move=> [pD /forallP H1] ; split=> //.
-    move=> F pF. move: (H1 F). by move/implyP=> /(_ pF).
-  - move=> [pD H2] ; split=> //.
-    apply/forall_inP=> F.
-    exact: H2.
-Qed.
-
-Lemma maximum_is_maximal : maximum -> maxset p D.
-Proof.
-  move/maximumP=> [pD H1].
-  apply/maxsetP' ; split=> //.
-  move=> F DproperF; apply/negP => pF.
-  move: (H1 F pF).
-  move: (proper_sets_weight positive_weights DproperF).
-  rewrite ltnNge => /negP.
-  contradiction.
-Qed.
-
-Lemma minimum_is_minimal : minimum -> minset p D.
-Proof.
-  move/minimumP=> [pD H1].
-  apply/minsetP' ; split=> //.
-  move=> F FproperD; apply/negP => pF.
-  move: (H1 F pF).
-  move: (proper_sets_weight positive_weights FproperD).
-  rewrite ltnNge => /negP.
-  contradiction.
-Qed.
-
-End maximum_and_minimum.
-
-
 (**********************************************************************************)
-(** * Unweighted sets and parameters *)
-Section Unweighted_Sets.
-
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable D : {set G}.
+(** * Classic (unweighted) parameters (use cardinality instead of weight) *)
+Section Classic_domination_parameters.
 
 Definition ones : (G -> nat) := (fun _ => 1).
 
-Definition maximum_card : bool := p D && [forall F : {set G}, p F ==> (#|F| <= #|D|)].
+Let W1 : ({set G} -> nat) := (fun A => #|A|).
 
-Definition minimum_card : bool := p D && [forall F : {set G}, p F ==> (#|D| <= #|F|)].
+Lemma cardwset1 (A : {set G}) : #|A| = weight_set ones A.
+Proof. by rewrite /weight_set sum1dep_card cardsE. Qed.
 
-Proposition maximum_cardP : reflect (p D /\ (forall F : {set G}, p F -> #|F| <= #|D|)) maximum_card.
+Lemma maxcardwset1 (p : pred {set G}) (A : {set G}) :
+  p A -> #|arg_max A p W1| = #|arg_max A p (weight_set ones)|.
 Proof.
-  rewrite /maximum_card ; apply: (iffP andP).
-  - move=> [pD /forallP H1] ; split=> //.
-    move=> F pF. move: (H1 F). by rewrite pF implyTb.
-  - move=> [pD H2] ; split=> //.
-    apply/forall_inP => F pF.
-    exact: H2.
+  move => pA.
+  case: arg_maxP => // B pB maxB.
+  case: arg_maxP => // C pC maxC.
+  have geqBC := maxB C pC.
+  have geqCB := maxC B pB.
+  rewrite /W1 /= in geqBC.
+  rewrite -!cardwset1 /= in geqCB.
+  by apply/eqP ; rewrite eqn_leq geqBC geqCB.
 Qed.
 
-Proposition minimum_cardP : reflect (p D /\ (forall F : {set G}, p F -> #|D| <= #|F|)) minimum_card.
+Lemma mincardwset1 (p : pred {set G}) (A : {set G}) :
+  p A -> #|arg_min A p W1| = #|arg_min A p (weight_set ones)|.
 Proof.
-  rewrite /minimum_card ; apply: (iffP andP).
-  - move=> [pD /forallP H1] ; split=> //.
-    move=> F pF. move: (H1 F). by rewrite pF implyTb.
-  - move=> [pD H2] ; split=> //.
-    apply/forall_inP => F pF.
-    exact: H2.
+  move => pA.
+  case: arg_minP => // B pB minB.
+  case: arg_minP => // C pC minC.
+  have leqBC := minB C pC.
+  have leqCB := minC B pB.
+  rewrite /W1 /= in leqBC.
+  rewrite -!cardwset1 /= in leqCB.
+  by apply/eqP ; rewrite eqn_leq leqBC leqCB.
 Qed.
 
-Lemma card_weight_1 : forall S : {set G}, #|S| = weight_set ones S.
-Proof. move=> S ; by rewrite /weight_set /ones sum1_card. Qed.
-
-Lemma maximum1 : maximum_card <-> maximum ones p D.
+(* The following lemmas state that if a set is maximum (i.e. has maximum cardinality), then
+ * it is maximal, and if a set is minimum, then it is minimal. *)
+Lemma maxcards_maxset (p : pred {set G}) (A : {set G}):
+  p A -> (forall B, p B -> #|B| <= #|A|) -> maxset p A.
 Proof.
-  rewrite /iff ; split.
-  - move/maximum_cardP => [pD H1].
-    apply/maximumP ; split => //.
-    move=> F pF. rewrite -!card_weight_1. exact: (H1 F pF).
-  - move/maximumP=> [pD H2].
-    apply/maximum_cardP ; split => //.
-    move=> F pF. rewrite !card_weight_1. exact: (H2 F pF).
+  move => pA maxA. apply/maxsetP'; split => // B /proper_card; rewrite ltnNge.
+  exact/contraNN/maxA.
 Qed.
 
-Lemma minimum1 : minimum_card <-> minimum ones p D.
+Lemma arg_maxcards (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W1).
+Proof. by move => pA ; apply/maxcards_maxset ; case: arg_maxP. Qed.
+
+Lemma mincards_minset (p : pred {set G}) (A : {set G}):
+  p A -> (forall B, p B -> #|A| <= #|B|) -> minset p A.
 Proof.
-  rewrite /iff ; split.
-  - move/minimum_cardP => [pD H1].
-    apply/minimumP ; split => //.
-    move=> F pF. rewrite -!card_weight_1. exact: (H1 F pF).
-  - move/minimumP=> [pD H2].
-    apply/minimum_cardP ; split => //.
-    move=> F pF. rewrite !card_weight_1. exact: (H2 F pF).
+  move => pA minA. apply/minsetP'; split => // B /proper_card; rewrite ltnNge.
+  exact/contraNN/minA.
 Qed.
 
-Proposition maximum_card_is_maximal : maximum_card -> maxset p D.
-Proof. rewrite maximum1 ; exact: maximum_is_maximal. Qed.
+Lemma arg_mincards (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W1).
+Proof. by move => pA ; apply/mincards_minset ; case: arg_minP. Qed.
 
-Proposition minimum_card_is_minimal : minimum_card -> minset p D.
-Proof. rewrite minimum1 ; exact: minimum_is_minimal. Qed.
+(* Definition of unweighted parameters and its conversion to weighted ones. *)
 
-End Unweighted_Sets.
+Definition ir : nat := #|arg_min inhb_max_irr max_irr W1|.
 
-(**********************************************************************************)
-Section Argument_weighted_sets.
+Fact eq_ir_ir1 : ir = ir_w ones.
+Proof. by rewrite /ir /ir_w -cardwset1 (mincardwset1 inhb_max_irr_is_maximal_irredundant). Qed.
 
-Variable weight : G -> nat.
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable F : {set G}.          (* some set satisfying p *)
-Hypothesis pF : p F.           (* the proof that F satisfies p *)
+Definition gamma : nat := #|arg_min setT dominating W1|.
 
-Definition maximum_set : {set G} := [arg max_(D > F | p D) weight_set weight D].
+Fact eq_gamma_gamma1 : gamma = gamma_w ones.
+Proof. by rewrite /gamma /gamma_w -cardwset1 (mincardwset1 domT). Qed.
 
-Definition minimum_set : {set G} := [arg min_(D < F | p D) weight_set weight D].
+Definition ii : nat := #|arg_min inhb_max_st max_st W1|.
 
-Lemma maximum_set_p : p maximum_set.
-Proof. rewrite /maximum_set ; by case: (arg_maxP (fun D => weight_set weight D) pF). Qed.
+Fact eq_ii_ii1 : ii = ii_w ones.
+Proof. by rewrite /ii /ii_w -cardwset1 (mincardwset1 inhb_max_st_is_maximal_stable). Qed.
 
-Lemma minimum_set_p : p minimum_set.
-Proof. rewrite /minimum_set ; by case: (arg_minP (fun D => weight_set weight D) pF). Qed.
+Definition alpha : nat := #|arg_max set0 stable W1|.
 
-Lemma maximum_set_welldefined : maximum weight p maximum_set.
-Proof.
-  rewrite /maximum_set.
-  case: (arg_maxP (fun D => weight_set weight D) pF).
-  move=> D pD H1.
-  apply/maximumP.
-  by split.
-Qed.
+Fact eq_alpha_alpha1 : alpha = alpha_w ones.
+Proof. by rewrite /alpha /alpha_w -cardwset1 (maxcardwset1 stable0). Qed.
 
-Lemma minimum_set_welldefined : minimum weight p minimum_set.
-Proof.
-  rewrite /minimum_set.
-  case: (arg_minP (fun D => weight_set weight D) pF).
-  move=> D pD H1.
-  apply/minimumP.
-  by split.
-Qed.
+Definition Gamma : nat := #|arg_max inhb_min_dom min_dom W1|.
 
-End Argument_weighted_sets.
+Fact eq_Gamma_Gamma1 : Gamma = Gamma_w ones.
+Proof. by rewrite /Gamma /Gamma_w -cardwset1 (maxcardwset1 inhb_min_dom_is_minimal_dominating). Qed.
 
-(* "argument" policy:
-   maximum_set and minimum_set requires the following arguments:
-     the weight vector, the property and a set (should satisfies the property)
-   in order to apply maximum_set_welldefined and minimum_set_welldefined, it is required:
-     the weight vector, the property, a set satisfying the property and a proof of that *)
-Arguments maximum_set_welldefined : clear implicits.
-Arguments minimum_set_welldefined : clear implicits.
+Definition IR : nat := #|arg_max set0 irredundant W1|.
 
-(**********************************************************************************)
-Section Argument_unweighted_sets.
-
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable F : {set G}.          (* some set satisfying p *)
-Hypothesis pF : p F.           (* the proof that F satisfies p *)
-
-Definition maximum_set_card : {set G} := [arg max_(D > F | p D) #|D|].
-
-Definition minimum_set_card : {set G} := [arg min_(D < F | p D) #|D|].
-
-Lemma max_card_weight_1 : #|maximum_set_card| = #|maximum_set ones p F|.
-Proof.
-  rewrite /maximum_set_card.
-  case: (arg_maxP (fun D : {set G} => #|D|) pF).
-  move=> D1 pD1 H1. rewrite /maximum_set.
-  case: (arg_maxP (fun D => weight_set ones D) pF).
-  move=> D2 pD2 H2.
-  apply/eqP ; rewrite eqn_leq ; apply/andP ; split ; last exact: (H1 D2 pD2).
-  move: (H2 D1 pD1). by rewrite -!card_weight_1.
-Qed.
-
-Lemma min_card_weight_1 : #|minimum_set_card| = #|minimum_set ones p F|.
-Proof.
-  rewrite /minimum_set_card.
-  case: (arg_minP (fun D : {set G} => #|D|) pF).
-  move=> D1 pD1 H1. rewrite /minimum_set.
-  case: (arg_minP (fun D => weight_set ones D) pF).
-  move=> D2 pD2 H2.
-  apply/eqP ; rewrite eqn_leq ; apply/andP ; split ; first exact: (H1 D2 pD2).
-  move: (H2 D1 pD1). by rewrite -!card_weight_1.
-Qed.
-
-End Argument_unweighted_sets.
-
-(* "argument" policy:
-   maximum_set_card and minimum_set_card requires the following arguments:
-     the property and a set (should satisfies the property) 
-   max_card_weight1 and min_card_weight1 requires:
-     the property, a set satisfying the property and a proof of that *)
-Arguments max_card_weight_1 : clear implicits.
-Arguments min_card_weight_1 : clear implicits.
-
-
-(**********************************************************************************)
-Section Classic_domination_parameters.
-
-(* Sets of minimum/maximum cardinal *)
-
-Let minimum_maximal_irr : {set G} := minimum_set_card max_irr inhb_max_irr.
-
-Let minimum_dom : {set G} := minimum_set_card dominating [set: G].
-
-Let minimum_max_st : {set G} := minimum_set_card max_st inhb_max_st.
-
-Let maximum_st : {set G} := maximum_set_card stable set0.
-
-Let maximum_minimal_dom : {set G} := maximum_set_card min_dom inhb_min_dom.
-
-Let maximum_irr : {set G} := maximum_set_card irredundant set0.
-
-(* Definitions of classic parameters *)
-
-Definition ir : nat := #|minimum_maximal_irr|.
-
-Definition gamma : nat := #|minimum_dom|.
-
-Definition ii : nat := #|minimum_max_st|.
-
-Definition alpha : nat := #|maximum_st|.
-
-Definition Gamma : nat := #|maximum_minimal_dom|.
-
-Definition IR : nat := #|maximum_irr|.
-
-(* Conversion between classic and weighted parameters *)
-
-Lemma ir_is_ir1 : ir = ir_w ones.
-Proof.
-  rewrite /ir /ir_w /minimum_maximal_irr.
-  rewrite (min_card_weight_1 max_irr inhb_max_irr inhb_max_irr_is_maximal_irredundant).
-  exact: card_weight_1.
-Qed.
-
-Lemma gamma_is_gamma1 : gamma = gamma_w ones.
-Proof. 
-  rewrite /gamma /gamma_w /minimum_dom.
-  rewrite (min_card_weight_1 dominating [set: G] domT).
-  exact: card_weight_1.
-Qed.
-
-Lemma ii_is_ii1 : ii = ii_w ones.
-Proof.
-  rewrite /ii /ii_w /minimum_max_st.
-  rewrite (min_card_weight_1 max_st inhb_max_st inhb_max_st_is_maximal_stable).
-  exact: card_weight_1.
-Qed.
-
-Lemma alpha_is_alpha1 : alpha = alpha_w ones.
-Proof. 
-  rewrite /alpha /alpha_w /maximum_st.
-  rewrite (max_card_weight_1 stable set0 stable0).
-  exact: card_weight_1.
-Qed.
-
-Lemma Gamma_is_Gamma1 : Gamma = Gamma_w ones.
-Proof.
-  rewrite /Gamma /Gamma_w /maximum_minimal_dom.
-  rewrite (max_card_weight_1 min_dom inhb_min_dom inhb_min_dom_is_minimal_dominating).
-  exact: card_weight_1.
-Qed.
-
-Lemma IR_is_IR1 : IR = IR_w ones.
-Proof.
-  rewrite /IR /IR_w /maximum_irr.
-  rewrite (max_card_weight_1 irredundant set0 irr0).
-  exact: card_weight_1.
-Qed.
+Fact eq_IR_IR1 : IR = IR_w ones.
+Proof. by rewrite /IR /IR_w -cardwset1 (maxcardwset1 irr0). Qed.
 
 (* Classic Cockayne-Hedetniemi domination chain. *)
 
 Corollary ir_leq_gamma : ir <= gamma.
-Proof. by rewrite ir_is_ir1 gamma_is_gamma1 ir_w_leq_gamma_w. Qed.
+Proof. by rewrite eq_ir_ir1 eq_gamma_gamma1 ir_w_leq_gamma_w. Qed.
 
 Corollary gamma_leq_ii : gamma <= ii.
-Proof. by rewrite gamma_is_gamma1 ii_is_ii1 gamma_w_leq_ii_w. Qed.
+Proof. by rewrite eq_gamma_gamma1 eq_ii_ii1 gamma_w_leq_ii_w. Qed.
 
 Corollary ii_leq_alpha : ii <= alpha.
-Proof. by rewrite ii_is_ii1 alpha_is_alpha1 ii_w_leq_alpha_w. Qed.
+Proof. by rewrite eq_ii_ii1 eq_alpha_alpha1 ii_w_leq_alpha_w. Qed.
 
 Corollary alpha_leq_Gamma : alpha <= Gamma.
-Proof. by rewrite alpha_is_alpha1 Gamma_is_Gamma1 alpha_w_leq_Gamma_w. Qed.
+Proof. by rewrite eq_alpha_alpha1 eq_Gamma_Gamma1 alpha_w_leq_Gamma_w. Qed.
 
 Corollary Gamma_leq_IR : Gamma <= IR.
-Proof. by rewrite Gamma_is_Gamma1 IR_is_IR1 Gamma_w_leq_IR_w. Qed.
+Proof. by rewrite eq_Gamma_Gamma1 eq_IR_IR1 Gamma_w_leq_IR_w. Qed.
 
 End Classic_domination_parameters.
 
