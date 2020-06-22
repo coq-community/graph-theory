@@ -62,7 +62,7 @@ tested_coq_opam_versions:
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{>= "1.10" & < "1.12~") | (= "dev")}'
+    version: '{(>= "1.10" & < "1.12~") | (= "dev")}'
   description: MathComp's SSReflect library, version 1.10 or later
 - opam:
     name: coq-mathcomp-finmap
