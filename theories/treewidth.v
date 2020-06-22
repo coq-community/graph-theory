@@ -104,8 +104,8 @@ Lemma rename_decomp (T : forest) (G H : sgraph) D (dec_D : sdecomp T G D) (h : G
 Proof.
   move => hom_h sur_h sur_e comp_h. 
   split. 
-  - move => x. pose x0 := cr sur_h x. case: (sbag_cover dec_D x0) => t Ht.
-    exists t. apply/imsetP. exists x0; by rewrite ?crK. 
+  - move => x. pose x0 := iinv (sur_h x). case: (sbag_cover dec_D x0) => t Ht.
+    exists t. apply/imsetP. by exists x0; rewrite // f_iinv.
   - move => x y xy. case: (sur_e _ _ xy) => x0 [y0] [hx0 hy0 e0].
     case: (sbag_edge dec_D e0) => t /andP [t1 t2]. 
     exists t. apply/andP;split;apply/imsetP;by [exists x0|exists y0].
@@ -127,7 +127,7 @@ Qed.
 
 Lemma rename_width (T : forest) (G : sgraph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
   width (rename D h) <= width D.
-Proof. rewrite max_mono // => t. exact: leq_imset_card. Qed.
+Proof. apply: bigmax_leq_pointwise => t _. exact: leq_imset_card. Qed.
 
 (** ** Disjoint Union *)
 
@@ -194,14 +194,14 @@ Section JoinT.
       { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
       move => [x|x] [t1|t1] [t2|t2] /= ; rewrite ?inl_inr ?inr_inl // => A B. 
       + pose e := restrict [pred t | x \in D1 t] sedge.
-        apply: (connect_img (e:= e) (f := inl)).
+        apply: (homo_connect (e:= e) (f := inl)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
           by rewrite !mem_imset.
         * apply: sbag_conn => //. 
           move: A. by case/imsetP => ? ? [->].
           move: B. by case/imsetP => ? ? [->].
       + pose e := restrict [pred t | x \in D2 t] sedge.
-        apply: (connect_img (e:= e) (f := inr)).
+        apply: (homo_connect (e:= e) (f := inr)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
           by rewrite !mem_imset.
         * apply: sbag_conn => //. 
@@ -291,7 +291,7 @@ Section AddEdge.
     apply: unique_forestT => x y p q Ip Iq. 
     have D : t0 != t1 by apply: contraNneq discT => ->.
     case: (boolP (@connect T sedge x y)) => [|NC].
-    - case/uPathP => r Ir. apply/eqP. rewrite -nodes_eqE. 
+    - case/connect_irredP => r Ir. apply/eqP. rewrite -nodes_eqE. 
       wlog suff {q Iq} S : p Ip / nodes p = nodes r.
       { by rewrite (S p) ?(S q). }
       suff S : (t0 \notin p) || (t1 \notin p).
@@ -429,10 +429,10 @@ Section Link.
                 (Some a) None.
       { move => H1 H2. move/(subsetP HA) : (H2) => /bigcupP [t Ht1 Ht2].
         apply: (connect_trans (y := Some t)).
-        - move: (sbag_conn decD H1 Ht2). exact: connect_img.
+        - move: (sbag_conn decD H1 Ht2). exact: homo_connect.
         - apply: connect1 => /=; by rewrite !in_simpl H2 Ht1. }
       move => x [a|] [b|] /= H1 H2; last exact: connect0. 
-      + move: (sbag_conn decD H1 H2). exact: connect_img. 
+      + move: (sbag_conn decD H1 H2). exact: homo_connect. 
       + exact: X.
       + rewrite (@srestrict_sym link). exact: X. 
   Qed.
@@ -465,7 +465,7 @@ Section DecompTheory.
   Lemma decomp_clique (S : {set G}): 
     0 < #|S| -> clique S -> exists t : T, S \subset B t.
   Proof. 
-    move: S. apply: (nat_size_ind (f := fun S : {set G} => #|S|)) => S IH inh_S clique_S.
+    elim/card_ind : S => S IH inh_S clique_S.
     case: (leqP #|S| 1) => [card_S | card_S {inh_S}]. 
     - have/cards1P [x ->] : #|S| == 1 by rewrite eqn_leq card_S.
       case: (sbag_cover decD x) => t A. exists t. by rewrite sub1set. 
@@ -496,9 +496,9 @@ Section DecompTheory.
         { case: (IH S0 _ _) => [|||t Ht]; last by exists t.
           - by rewrite [#|S|](cardsD1 v) Hv.
           - apply/card_gt0P. exists v0. by rewrite !inE eq_sym X.
-          - apply: sub_in11W clique_S. apply/subsetP. by rewrite subD1set. }
+          - apply: sub_in2W clique_S; apply/subsetP; by rewrite subD1set. }
         have A : v0 \in B t. { apply (subsetP Ht). by rewrite !inE eq_sym X. }
-        have/uPathRP [|p Ip _] := (sbag_conn decD v0 c t Hc2 A).
+        have/connect_irredRP [|p Ip _] := (sbag_conn decD v0 c t Hc2 A).
         { apply: contraTneq inC => ->. by rewrite !inE Ht. }
         move: (c) p Ip (inC). apply: irred_ind; first by rewrite !inE Ht.
         move => x z p xz Ip xp IHp xC.
@@ -511,7 +511,7 @@ Section DecompTheory.
       have t0P c' (p : Path t0 c') : irred p -> c' \in C -> c0 \in p.
       { move => Ip inC'.
         case: (altP (c0 =P c')) => [-> |?]. by rewrite path_end.
-        have/uPathRP [//|q Iq /subsetP subC] := con_C _ _ Hc0 inC'.
+        have/connect_irredRP [//|q Iq /subsetP subC] := con_C _ _ Hc0 inC'.
         suff -> : p = pcat (edgep tc0) q by rewrite mem_pcat path_end.
         apply: forest_is_forest; (repeat split) => //.
         rewrite irred_edgeL Iq andbT.
@@ -522,7 +522,7 @@ Section DecompTheory.
       have Hu: u \in B t0. { rewrite inE in Ht0. exact: (subsetP Ht0). }
       have [cu [Hcu1 Hcu2]] : exists t, u \in B t /\ v \in B t. 
       { apply: (pairs u v) => //. move: u_in_S0. rewrite inE. by case: (_ \notin _). }
-      case/uPathRP:(sbag_conn decD u t0 cu Hu Hcu1) => [|q irr_p /subsetP has_u]. 
+      case/connect_irredRP:(sbag_conn decD u t0 cu Hu Hcu1) => [|q irr_p /subsetP has_u]. 
       { apply: contraTneq Hcu2 => <-.  exact: HT0. }
       suff Hq : c0 \in q. { move/has_u : Hq. by rewrite inE. }
       apply: t0P irr_p _. rewrite !inE /= HT0' //=. 
@@ -584,7 +584,7 @@ Proof.
     case/Wrap: (rename_decomp dec12' h). case/(_ _ _ _ _)/Wrap.
     + by move => [u|u] [v|v].
     + move => v. 
-      case/setUP : (sepV.1 v) => Hv; by [exists (inl (Sub v Hv))|exists (inr (Sub v Hv))].
+      case/setUP : (sepV.1 v) => Hv; apply/codomP; by [exists (inl (Sub v Hv))|exists (inr (Sub v Hv))].
     + move => x y xy.
       suff: x \in V1 /\ y \in V1 \/ x \in V2 /\ y \in V2.
       { case => [[Hx Hy]|[Hx Hy]].
@@ -637,7 +637,7 @@ Lemma forest_vseparator (G : sgraph) :
 Proof.
   move => forest_G card_G. 
   have {card_G} [x [y [xDy xy]]] := forest3 forest_G card_G.
-  have [/uPathP [p Ip]|nCxy]:= (boolP (connect sedge x y)).
+  have [/connect_irredP [p Ip]|nCxy]:= (boolP (connect sedge x y)).
   move/forestT_unique in forest_G.
   - have/set0Pn [z z_p] : interior p != set0.
     { apply: contraNneq xy => Ip0. by case: (interior0E xDy Ip Ip0). }

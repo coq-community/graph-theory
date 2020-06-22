@@ -2,7 +2,7 @@ Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Import structures pttdom mgraph mgraph2 rewriting open_confluence.
+Require Import setoid_bigop structures pttdom mgraph mgraph2 rewriting open_confluence.
 
 Require Import finmap_plus.
 Open Scope fset_scope.
@@ -952,7 +952,7 @@ Proof with eauto with typeclass_instances vset.
     + apply: oiso2_trans. apply: open_add_edge. 
       apply: oiso2_add_edge. apply open_add_vertex. 
       2: instantiate (1 := fresh (eset (open G))). 5: instantiate (1 := u). 
-      all: idtac... reflexivity.
+      all: idtac... 
     + rewrite !open_add_vertexE. 
       set z := fresh _. set e := fresh _.
       apply: (@ostep_v1 _ _ (inj_v x) z e u). 

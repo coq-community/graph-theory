@@ -1,4 +1,6 @@
 *.vo
+*.vos
+*.vok
 *.swp
 *.v.d
 *.glob
@@ -13,3 +15,7 @@
 *.log
 *.out
 *.toc
+Makefile.coq
+Makefile.coq.conf
+.Makefile.coq.d
+.lia.cache

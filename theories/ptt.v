@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries structures pttdom.
+Require Import edone preliminaries setoid_bigop structures pttdom.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -145,4 +145,5 @@ Section terms.
  (* Canonical tm_ptt.  *)
 
 End terms.
+Declare Scope ptt_ops.
 Bind Scope ptt_ops with term.

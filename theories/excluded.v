@@ -29,12 +29,12 @@ Lemma connectedI_clique (G : sgraph) (A B S : {set G}) :
 Proof.
   move => conA clS H x y /setIP [X1 X2] /setIP [Y1 Y2].
   case: (altP (x =P y)) => [->|xDy]; first exact: connect0.
-  case/uPathRP : (conA _ _ X1 Y1) => // p Ip subA. 
+  case/connect_irredRP : (conA _ _ X1 Y1) => // p Ip subA. 
   case: (boolP (p \subset B)) => subB.
-  - apply connectRI with p => z zp. by clean_mem;set_tac.
+  - apply connectRI with p => z zp. by set_tac.
   - case/subsetPn : subB => z Z1 Z2. 
     gen have C,Cx : x y p Ip subA X1 X2 Y1 Y2 Z1 Z2 {xDy} / 
-        exists2 s, s \in S :&: A :&: B & connect (restrict (mem (A :&: B)) sedge) x s.
+        exists2 s, s \in S :&: A :&: B & connect (restrict (A :&: B) sedge) x s.
     { case: (split_at_first (A := [predC B]) Z2 Z1) => u' [p1] [p2] [P1 P2 P3].
       subst p. case/irred_catE : Ip => Ip1 Ip2 Ip.
       case/splitR : (p1); first by apply: contraNneq P2 => <-.
@@ -83,7 +83,7 @@ Proof.
   have phiP i y : y \in phi i -> y \notin V1 -> phi i :&: S != set0.
   { case/set0Pn : (cutV1 i) => x /setIP [xpi xV1 ypi yV1].
     case: (boolP (x \in V2)) => xV2; first by apply/set0Pn; exists x; rewrite !inE.
-    case/uPathRP : (P2 i x y xpi ypi); first by apply: contraNneq yV1 => <-.
+    case/connect_irredRP : (P2 i x y xpi ypi); first by apply: contraNneq yV1 => <-.
     move => p Ip subP. 
     have [_ _ /(_ p)] := separation_separates sepV xV2 yV1.
     case => z /(subsetP subP) => ? ?. apply/set0Pn; exists z. by rewrite /S inD. }
@@ -251,7 +251,7 @@ Proof.
   move => HM. case (boolP (3 < #|G|)) => sizeG; last by rewrite leqNgt; left. 
   right. case: (boolP ([exists (S : {set G} | #|S| <= 2), vseparatorb S])).
   - case/exists_inP => /= S sizeS sepS. 
-    case (@ex_smallest _ (@vseparatorb G) (fun a => #|a|) S sepS) => U /vseparatorP sepU HU.
+    case: (arg_minP (fun a : {set G} => #|a|) sepS) => U /vseparatorP sepU HU.
     exists U. repeat split => //. 
     + move => V /vseparatorP. exact: HU.
     + move: (HU S sepS) => ?. exact: leq_trans sizeS.
@@ -324,7 +324,7 @@ Qed.
 (** TODO: simplify below ... *)
 
 Definition component_in G (A : {set G}) s :=
-    [set z in A | connect (restrict (mem A) sedge) s z].
+    [set z in A | connect (restrict A sedge) s z].
 
 Lemma add_edge_split_connected (G :sgraph) (s1 s2 : G) (A : {set G}):
     connected (A : {set add_edge s1 s2}) -> s1 \in A -> s2 \in A ->
@@ -332,7 +332,7 @@ Lemma add_edge_split_connected (G :sgraph) (s1 s2 : G) (A : {set G}):
 Proof. 
   move => conA s1A s2A x xA. case: (altP (s1 =P x)) => [->|s1Nx].
   { left. by rewrite inE connect0. }
-  case/PathRP: (conA s1 x s1A xA) => // p subA. 
+  case/connect_irredRP: (conA s1 x s1A xA) => // p _ subA. 
   case: (@split_at_last (@add_edge G s1 s2) (mem [set s1; s2]) s1 x p s1); 
     try by rewrite ?inE ?eqxx.
   move => z [p1 [p2 [catp zS Hlast]]].
@@ -358,7 +358,7 @@ Proof.
   move => conA s1A s2A nconA. apply /disjointP => z.
   rewrite !inE => /andP [_ ps1z] /andP [_ ps2z].
   apply nconA. move => a b ai bi.
-  have cons1s2: @connect G (@restrict G (mem A) sedge) s1 s2.
+  have cons1s2: @connect G (restrict A (@sedge G)) s1 s2.
   { rewrite srestrict_sym in ps2z. apply connect_trans with z => //. }
   case: (add_edge_split_connected conA s1A s2A bi); rewrite inE => /andP [_ bC];
     [apply connect_trans with s1 |apply connect_trans with s2] => //; rewrite srestrict_sym.
@@ -607,7 +607,7 @@ Qed.
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
-  move: G. apply: (nat_size_ind (f := fun G => #|G|)) => G Hind K4free. 
+  elim/card_ind : G => G Hind K4free. 
   (* Either G is small, or it has a smallest vseparator of size at most two *)
   case (no_K4_smallest_vseparator K4free) =>[|[S [ssepS Ssmall2]]].
   { exact: decomp_small. }
@@ -644,4 +644,3 @@ Theorem excluded_minor_TW2 (G : sgraph) :
   K4_free G <-> 
   exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof. split => [|[T][B][]]. exact: TW2_of_K4F. exact: TW2_K4_free. Qed.
-

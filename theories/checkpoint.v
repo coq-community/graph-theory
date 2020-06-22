@@ -83,7 +83,7 @@ Section CheckPoints.
    exists (p1 : Path z x) (p2 : Path z y), t \notin p1 \/ t \notin p2.
   Proof using G_conn. 
     move => tNz cp_z.
-    case/uPathP : (G_conn x y) => p irr_p.
+    case/connect_irredP : (G_conn x y) => p irr_p.
     move/cpP/(_ p) : cp_z. case/(isplitP irr_p) => p1 p2 A B C.
     exists (prev p1). exists p2. rewrite mem_prev. apply/orP. 
     case E : (t \in p1) => //=. 
@@ -111,7 +111,7 @@ Section CheckPoints.
   Lemma cp_tightenR (x y z u : G) : z \in cp x y -> x \in cp u y -> x \in cp u z.
   Proof using G_conn.
     move=> z_cpxy x_cpuy. apply/cpP => pi.
-    case/uPathP: (G_conn z y) => pi_o irred_o.
+    case/connect_irredP: (G_conn z y) => pi_o irred_o.
     move/cpP/(_ (pcat pi pi_o)): x_cpuy.
     rewrite mem_pcatT => /orP[//|x_tail]; exfalso.
     case: (altP (z =P y)). (* TODO: worth a lemma *)
@@ -150,7 +150,7 @@ Section CheckPoints.
   Proof using.
     move=> V_conn. rewrite subUset !sub1set. case/andP=> Hx Hy.
     case: (altP (x =P y)) => [<-|xNy]; first by rewrite cpxx sub1set.
-    have /(PathRP xNy)[p /subsetP pV] := V_conn x y Hx Hy.
+    have[p _ /subsetP pV] := connect_irredRP xNy (V_conn x y Hx Hy).
     by apply/subsetP=> u /cpP/(_ p)/pV.
   Qed.
 
@@ -446,7 +446,7 @@ Section CheckPoints.
   Qed.
 
   Lemma sinterval_connectL (x y z : G) : z \in sinterval x y ->
-    exists2 u, x -- u & connect (restrict (mem (sinterval x y)) sedge) z u.
+    exists2 u, x -- u & connect (restrict (sinterval x y) sedge) z u.
   Proof using.
     case: (altP (z =P x)) => [->|zNx]; first by rewrite sinterval_bounds.
     case/sintervalP2=> -[p']. case: (splitR p' zNx) => [u] [p] [ux] {p'}->.
@@ -469,7 +469,7 @@ Section CheckPoints.
     case=> u xu /connect_restrict_case[z_u|].
     - rewrite z_u. apply: connectRI (edgep xu) _ => v.
       rewrite mem_edgep. case/orP=> /eqP->; by [exact: setU11 | rewrite -z_u].
-    - case=> zNu _ Hu /(PathRP zNu)[p /subsetP p_sub].
+    - case=> zNu _ Hu /(connect_irredRP zNu)[p _ /subsetP p_sub].
       apply: connectRI (pcat (edgep xu) (prev p)) _ => v.
       rewrite mem_pcat mem_edgep mem_prev in_setU1 -orbA.
       case/or3P=> [->|/eqP->|/p_sub->] //. by rewrite Hu.
@@ -535,7 +535,7 @@ Section CheckPoints.
     case/orP=> [/(sinterval_connectedL (setU11 _ _))|/eqP{z}->].
     { apply: connect_mono => {z}. apply: restrict_mono => z /=.
       by rewrite /interval set2C -setUA (in_setU1 z y) => ->. }
-    case/uPathP: (G_conn x y) => p Ip. apply: connectRI (p) _ => z z_p.
+    case/connect_irredP: (G_conn x y) => p Ip. apply: connectRI (p) _ => z z_p.
     rewrite inE -implyNb in_set2 negb_or inE. apply/implyP.
     wlog suff Hyp : x y p Ip z_p / z != x -> x \notin cp z y.
     { have Ip' : irred (prev p) by rewrite irred_rev.
@@ -607,9 +607,9 @@ Section CheckPoints.
     apply: (iffP andP) => [[cp_x A]|[cp_x [q Hq]]]; split => //.
     - case: (boolP (p == x)) => [/eqP ?|px]. 
       + subst p. exists (idp x) => y _ . by rewrite mem_idp => /eqP.
-      + case/(uPathRP px) : A => q irr_q /subsetP sub_q. 
+      + case/(connect_irredRP px) : A => q irr_q /subsetP sub_q. 
         exists q => y CPy /sub_q. by rewrite !inE CPy => /eqP.
-    - apply: (connectRI (p := q)) => y y_in_q.
+    - apply: (connectRI q) => y y_in_q.
       rewrite inE. apply/implyP => A. by rewrite [y]Hq.
   Qed.
   
@@ -628,7 +628,7 @@ Section CheckPoints.
     move => Ux. apply/bagP/eq_set1P.
     - move => A. split.
       + apply/ncpP; split => //.
-        case/uPathP : (G_conn p x) => q irr_q. 
+        case/connect_irredP : (G_conn p x) => q irr_q. 
         case: (boolP [exists y in CP U, y \in [predD1 q & x]]).
         * case/exists_inP => y /= B. rewrite inE eq_sym => /= /andP [C D]. 
           case:notF. apply: contraTT (A _ B) => _. apply/cpPn.
@@ -650,7 +650,7 @@ Section CheckPoints.
   Lemma ncp0 (U : {set G}) x p : 
     x \in CP U -> ncp U p == set0 = false.
   Proof using G_conn. 
-    case/uPathP : (G_conn p x) => q irr_q Ux.  
+    case/connect_irredP : (G_conn p x) => q irr_q Ux.  
     case: (split_at_first Ux (path_end q)) => y [q1] [q2] [def_q CPy Hy].
     suff: y \in ncp U p. { apply: contraTF => /eqP->. by rewrite inE. }
     apply/ncpP. split => //. by exists q1. 
@@ -706,12 +706,12 @@ Section CheckPoints.
   Lemma connected_bag x (U : {set G}) : x \in CP U -> connected (bag U x).
   Proof using G_conn.
     move => cp_x.
-    suff S z : z \in bag U x -> connect (restrict (mem (bag U x)) sedge) x z.
+    suff S z : z \in bag U x -> connect (restrict (bag U x) sedge) x z.
     { move => u v Hu Hv. apply: connect_trans (S _ Hv). 
       rewrite srestrict_sym. exact: S. }
-    move => Hz. case/uPathP : (G_conn z x) => p irr_p. 
+    move => Hz. case/connect_irredP : (G_conn z x) => p irr_p. 
     suff/subsetP sP : p \subset bag U x.
-    { rewrite srestrict_sym. exact: (connectRI (p := p)). }
+    { rewrite srestrict_sym. exact: (connectRI p). }
     apply/negPn/negP. move/subsetPn => [z' in_p N]. 
     case/(isplitP irr_p): _ / in_p => [p1 p2 _ _ D].
     suff ?: x \in p1 by rewrite -(D x) ?bag_id ?path_end // in N.
@@ -875,11 +875,11 @@ Section CheckpointOrder.
   Implicit Types x y : G.
 
   Lemma the_uPath_proof : exists p : Path i o, irred p.
-  Proof. case/uPathP: conn_io => p Ip. by exists p. Qed.
+  Proof. case/connect_irredP: conn_io => p Ip. by exists p. Qed.
                                                                 
   Definition the_uPath := xchoose (the_uPath_proof).
 
-  Lemma the_uPathP : irred (the_uPath).
+  Lemma the_connect_irredP : irred (the_uPath).
   Proof. exact: xchooseP. Qed.
 
   Definition cpo x y := let p := the_uPath in idx p x <= idx p y.
@@ -908,9 +908,9 @@ Section CheckpointOrder.
     wlog suff Hyp : p Ip / x <[p] y -> forall q : Path i o, irred q -> ~ y <[q] x.
     { apply/idP/idP; rewrite leq_eqVlt; case/orP=> [/eqP|x_lt_y].
       + by move=> /(idx_inj (cp_x the_uPath))->.
-      + by rewrite leqNgt; apply/negP; apply: Hyp the_uPathP _ _ _.
+      + by rewrite leqNgt; apply/negP; apply: Hyp the_connect_irredP _ _ _.
       + by move=> /(idx_inj (cp_x p))->.
-      + by rewrite leqNgt; apply/negP; apply: Hyp x_lt_y _ the_uPathP.
+      + by rewrite leqNgt; apply/negP; apply: Hyp x_lt_y _ the_connect_irredP.
     }
     case/(three_way_split Ip (cp_x p) (cp_y p)) => [p1][_][p3][_ xNp3 yNp1].
     move=> q Iq.
@@ -925,7 +925,7 @@ Section CheckpointOrder.
   Lemma cpo_max x : x \in cp i o -> cpo x o.
   Proof using.
     move=> /cpP/(_ the_uPath) x_path.
-    rewrite /cpo idx_end; [ exact: idx_mem | exact: the_uPathP ].
+    rewrite /cpo idx_end; [ exact: idx_mem | exact: the_connect_irredP ].
   Qed.
 
   Lemma cpo_cp x y : x \in cp i o -> y \in cp i o -> cpo x y ->
@@ -938,9 +938,9 @@ Section CheckpointOrder.
     { rewrite cpxx inE eq_sym.
       apply/eqP/andP; last by case; exact: cpo_antisym.
       by move=><-; split; last rewrite /cpo. }
-    case: (three_way_split the_uPathP x_path y_path x_lt_y)
+    case: (three_way_split the_connect_irredP x_path y_path x_lt_y)
       => [p1] [p2] [p3] [eq_path xNp3 yNp1].
-    move: the_uPathP. rewrite eq_path. 
+    move: the_connect_irredP. rewrite eq_path. 
     case/irred_catE => Ip1 /irred_catE [Ip2 Ip3 D23] D123.
     move=> z; apply/idP/andP.
     + move=> z_cpxy. have z_cpio := cp_widen x_cpio y_cpio z_cpxy.
@@ -951,7 +951,7 @@ Section CheckpointOrder.
       - rewrite eq_path idx_catR ?idx_catL ?path_end ?idx_end ?idx_mem //.
         apply: contraNN zNx => ?. by rewrite [z]D123 // mem_pcat z_p2.
       - rewrite eq_path leq_eqVlt. apply/orP; right.
-        rewrite -idxR -?eq_path ?the_uPathP //. apply: in_tail zNx _.
+        rewrite -idxR -?eq_path ?the_connect_irredP //. apply: in_tail zNx _.
         by rewrite mem_pcat z_p2.
     + case=> z_cpio /andP[x_le_z z_le_y]. apply/cpP => p.
       have /cpP/(_ (pcat p1 (pcat p p3))) := z_cpio.

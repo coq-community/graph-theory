@@ -2,7 +2,7 @@ Require Import Setoid Morphisms.
 
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient bij preliminaries digraph sgraph treewidth minor checkpoint.
-Require Import structures mgraph mgraph2.
+Require Import setoid_bigop structures mgraph mgraph2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -265,7 +265,7 @@ Proof.
 Qed.
 
 Lemma remove_edges_restrict (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
-  E \subset edge_set V -> connect (restrict (mem (~: V)) (@sk_rel _ G)) x y ->
+  E \subset edge_set V -> connect (restrict (~: V) (@sk_rel _ G)) x y ->
   connect (@sk_rel _ (remove_edges E)) x y.
 Proof.
   move=> E_subV. apply: connect_mono x y => x y /=. rewrite !inE -andbA.
@@ -549,7 +549,7 @@ Qed.
 Lemma has_edge (G : graph) (x y : G) : 
   connected [set: skeleton G] -> x != y -> 0 < #|edge G|.
 Proof.
-  move/connectedTE/(_ x y). case/uPathP => p _ xy. 
+  move/connectedTE/(_ x y). case/connect_irredP => p _ xy. 
   case: (splitL p xy) => x' [/= xx'] _. apply/card_gt0P.
   case/andP: xx' => _. case/existsP=> e _. by exists e.
 Qed.

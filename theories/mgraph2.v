@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Import structures pttdom mgraph ptt.
+Require Import setoid_bigop structures pttdom mgraph ptt.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -404,7 +404,7 @@ Proof.
   - by []. 
   - split. 
     + by move=> [e|[]] b.
-    + move=>x/=. rewrite (big_sum x tt) big_pred1_eq. 
+    + move=>x/=. rewrite big_sumType big_pred1_eq. 
     case: (altP (x =P output)) => [?|xDo]; subst.
     * by rewrite (big_pred1 tt) => [|[]]; rewrite 1?monC /= ?eqxx.
     * rewrite big_pred0 ?monU // => [[]]. by rewrite eq_sym (negbTE xDo).
@@ -684,8 +684,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
   - by case. 
   - split.
     + move=>d. by repeat case. 
-    + repeat case=>//=. rewrite eqxx /= (big_sum (inl tt) tt) (big_sum tt tt). 
-      by rewrite !(big_pred1 tt) ?monA //.
+    + repeat case=>//=. by rewrite eqxx /= !big_sumType !big_unitType monA.
     + by repeat case.
 Qed.
 
@@ -722,7 +721,7 @@ Qed.
 
 End s. 
 
-(* Declare Scope graph2_scope. compat:coq-8.9*)
+Declare Scope graph2_scope.
 Bind Scope graph2_scope with graph2.
 Delimit Scope graph2_scope with G2.
 

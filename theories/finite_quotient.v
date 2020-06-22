@@ -66,9 +66,8 @@ CoInductive pi_spec (T : finType) (e : equiv_rel T) (x : T) : T -> Type :=
 Lemma piP (T: finType) (e: equiv_rel T) (x: T): pi_spec e x (repr (pi e x)).
 Proof. constructor. by rewrite reprK. Qed.
 
-Lemma pi_surj (T : finType) (e : equiv_rel T) : surjective (pi e).
-Proof. move => y. exists (repr y). by rewrite reprK. Qed.
-
+Lemma pi_surj (T : finType) (e : equiv_rel T) : forall x, x \in codom (pi e).
+Proof. move => y. by rewrite -[y]reprK codom_f. Qed.
 
 (** Lifting a function between finite types to a function between quotients *)
 

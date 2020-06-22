@@ -69,7 +69,7 @@ Lemma measure_node (G : graph2) V E (con : @consistent _ G V E) v x y :
   v \notin V -> measure (@point (subgraph_for con) x y) < measure G.
 Proof.
   move => /connectedTE conn_G Hv. 
-  case/uPathP : (conn_G v (val x)) => p _. 
+  case/connect_irredP : (conn_G v (val x)) => p _. 
   have vx: v != val x. { apply: contraNN Hv => /eqP->. exact: valP. }
   case: (splitL p vx) => u [vu] _ {p vx}. move: vu.
   rewrite /=/sk_rel. case/andP=> _ /existsP[e He].
@@ -663,7 +663,7 @@ Proof.
       exists (pblock P x). split; first exact: pblock_mem.
       + rewrite inE in Hx. apply: contraNneq Hx => <-. by rewrite mem_pblock.
       + by rewrite !in_setU mem_pblock x_cover. }
-  have : connect (restrict (mem (input |: (output |: D))) (@sedge G)) input x.
+  have : connect (restrict (input |: (output |: D)) (@sedge G)) input x.
   { apply: connected_component_set => //. exact: setU11. }
   apply connect_mono. apply: restrict_mono => z /=. rewrite !in_setU1.
   case/or3P=> [/eqP->//|/eqP->//|Hz].

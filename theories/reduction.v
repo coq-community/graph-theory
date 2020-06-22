@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Import structures pttdom mgraph mgraph2 rewriting.
+Require Import setoid_bigop structures pttdom mgraph mgraph2 rewriting.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -66,7 +66,7 @@ Proof.
   - by repeat case. 
   - split. 
     + by repeat case.
-    + move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+    + move => y. rewrite !big_sumType !big_unitType.
       by case: y ; [case; case | case]; rewrite /= ?monUl ?monU.
     + by repeat case.
 Qed.
@@ -103,7 +103,7 @@ Proof.
   - by repeat case. 
   - split.
     + by repeat case.
-    + move => y. rewrite (big_sum (inl tt) (inl tt)) !(big_sum tt tt) !big_unit.
+    + move => y. rewrite !big_sumType !big_unitType.
       by case: y => [[]|[]] /=; rewrite ?monU ?monUl.
     + by repeat case.
 Qed.
@@ -394,7 +394,7 @@ Notation steps := (@steps (tm_pttdom A)).
 (* TODO: get rid of this hack... *)
 Canonical Structure tm_labels :=
   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
-          (MonoidLaws (@tst_dot_eqv (tm_pttdom A)) 
+          (mkComMonoidLaws (@tst_dot_eqv (tm_pttdom A)) 
                       (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A))) 
           (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
           (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).

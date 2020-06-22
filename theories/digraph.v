@@ -513,7 +513,8 @@ Qed.
 
 End Fixed.
 
-Lemma uPathP x y : reflect (exists p : Path x y, irred p) (connect di_edge x y).
+Lemma connect_irredP x y : 
+  reflect (exists p : Path x y, irred p) (connect di_edge x y).
 Proof.
   apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]].
   + exists (Sub p P).  by rewrite /irred nodesE.
@@ -623,8 +624,44 @@ Proof.
   case/orP => /eqP ?; subst => //. by rewrite path_begin in xp'.
 Qed.
 
-End DiGraphTheory.
+(** *** Between nodes (reflection lemmas) *)
 
+(** NOTE: need to require either x != y or x \in A since packaged
+paths are never empty *)
+Lemma connect_irredRP {A : pred D} x y : x != y ->
+  reflect (exists2 p: Path x y, irred p & p \subset A) 
+          (connect (restrict A edge_rel) x y).
+Proof.
+  move => Hxy. apply: (iffP connect_restrictP) => //.
+  - case => p [pth_p lst_p uniq_p sub_A]. 
+    have pvalP : pathp x y p by rewrite /pathp pth_p lst_p.
+    exists (Build_Path pvalP); first by rewrite irredE nodesE.
+    apply/subsetP => z. rewrite mem_path nodesE. exact: sub_A.
+  - case => p Ip /subsetP subA; exists (val p). 
+    by case/andP : (valP p) => ? /eqP ?; rewrite -nodesE -irredE.
+Qed.
+
+(* This is only useful if the [x = y] case does not require [x \in A] *)
+Lemma connect_restrict_case x y (A : pred D) : 
+  connect (restrict A edge_rel) x y -> 
+  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A edge_rel) x y].
+Proof.
+  case: (altP (x =P y)) => [|? conn]; first by left. 
+  case/connect_irredRP : (conn) => // p _ /subsetP subA. 
+  right; split => //; by rewrite subA ?path_end ?path_begin.
+Qed.
+
+Lemma connectRI (A : pred D) x y (p : Path x y) :
+  {subset p <= A} -> connect (restrict A edge_rel) x y.
+Proof. 
+  case: (boolP (x == y)) => [/eqP ?|]; first by subst y; rewrite connect0. 
+  move => xy subA. apply/connect_irredRP => //. case: (uncycle p) => p' p1 p2.
+  exists p' => //. apply/subsetP => z /p1. exact: subA.
+Qed.
+
+End DiGraphTheory.
+Arguments connect_irredRP {D A x y}.
+Arguments connectRI {D A x y} p.
 Arguments irred_is_edge [D x y] p.
 
 Section DiPathTheory.
@@ -653,7 +690,6 @@ Section Finite.
   Canonical UPath_finType := Eval hnf in FinType UPath UPath_finMixin.
 
   Definition UPathW (up : UPath) : Path x y := let (p, Up) := up in Sub p (upathW Up).
-  Coercion UPathW : UPath >-> Path.
 End Finite.
 
 (** ** Packaged Irredundant Paths
@@ -709,7 +745,7 @@ graphs. This makes [Path x y] or [x -- y] insufficent for understanding the
 proofs. In these contexts one can open the implicit scope to display implicit
 types for the most frequently used constructions *)
 
-(* Declare Scope implicit_scope. compat:coq-8.9*)
+Declare Scope implicit_scope.
 Notation "x -- y :> G" := (@edge_rel G x y) (at level 30, y at next level) : implicit_scope.
 Notation "'PATH' G x y" := (@Path G x y) (at level 4) : implicit_scope.
 Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.

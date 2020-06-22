@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries structures.
+Require Import edone preliminaries setoid_bigop structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -28,7 +28,7 @@ Arguments par: simpl never.
 Arguments cnv: simpl never.
 Arguments dom: simpl never.
 
-(* Declare Scope pttdom_ops. compat:coq-8.9*)
+Declare Scope pttdom_ops.
 Bind Scope pttdom_ops with setoid_of_ops.
 Delimit Scope pttdom_ops with ptt.
 Open Scope pttdom_ops.
@@ -174,7 +174,7 @@ Section derived.
  
  Canonical Structure pttdom_labels: labels :=
    Labels
-     (MonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
+     (mkComMonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
      eqv'_sym eqv01 eqv11.
  
  (* Lemmas to turn pttdom expressions into (projections of) tests *)

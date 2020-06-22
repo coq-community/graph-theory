@@ -1,7 +1,7 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries bij.
-Require Import structures mgraph pttdom mgraph2 rewriting reduction open_confluence transfer.
+Require Import setoid_bigop structures mgraph pttdom mgraph2 rewriting reduction open_confluence transfer.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -92,7 +92,7 @@ Proof.
       revert H. case #|G|; discriminate.
     * revert Li Lo. 
       suff E: input=output :>G by congruence.
-      apply (card_le1 (D:=predT))=>//. 
+      apply/(card_le1_eqP (A := predT)) => //.
       apply iso_v, card_bij in L. rewrite !card_sum !card_unit addnC in L.
         by injection L=>->.
     * have E: forall y, L (inr tt) <> L (inl y) by intros y H; generalize (bij_injective (f:=L) H). 

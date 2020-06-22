@@ -96,13 +96,13 @@ Proof.
     elim: p z1 y1 y1_g z1_f => /= [|y1' p IHp] z1 y1 y1_g z1_f. 
     + move => _ ?; subst. 
       apply: connect_restrict_mono; [exact: bigcup_sup y1_g|exact: f2].
-    + rewrite !in_simpl -andbA => /and3P [/andP [H1 H2] H3 H4 H5].
+    + rewrite -andbA => /and3P [/andP [H1 H2] H3 H4 H5].
       case/neighborP: (f4 _ _ H3) => a [b] [a_fy1 b_fy1' ab].
       apply: connect_trans (IHp _ _ H2 b_fy1' H4 H5).
       apply: (@connect_trans _ _ a).
       * apply: connect_restrict_mono. apply: bigcup_sup y1_g. exact: f2.
       * apply: connect1 => /=. 
-        by rewrite !in_simpl ab andbT (mem_bigcup y1) ?(mem_bigcup y1'). 
+        by rewrite ab andbT (mem_bigcup y1) ?(mem_bigcup y1'). 
   - move/g3 => Dx. apply/disjointP => z. 
     case/bigcupP => y1 y1_g z_fy1; case/bigcupP => y2 y2_g z_fy2.
     suff: y1 != y2 by move/f3/disjointP/(_ z); apply.
@@ -239,13 +239,13 @@ Proof.
         -- move => {p IH H4 H5 y0 Y1 Y2 X2}. rewrite !inE in H1 H2.
            exact: conn_pre1 X1 T1.
         -- apply: IH H4 H5 => //. by rewrite inE in H2.
-  - apply: max_mono => t. exact: pimset_card.
+  - apply: bigmax_leq_pointwise => t _. exact: pimset_card.
 Qed.
 
 Lemma minor_of_clique (G : sgraph) (S : {set G}) n :
   n <= #|S| -> clique S -> minor G 'K_n.
 Proof.
-  case/card_gtnP => s [uniq_s /eqP size_s sub_s clique_S].
+  case/card_geqP => s [uniq_s /eqP size_s sub_s clique_S].
   pose t := Tuple size_s.
   pose phi (i : 'K_n) := [set tnth t i].
   suff H: minor_rmap phi by apply (minor_of_map (minor_map_rmap H)).

@@ -1,4 +1,3 @@
--arg -w -arg -undeclared-scope #until we drop coq-8.9 and can use Declare Scope
 -arg -w -arg -notation-overridden
 -arg -w -arg -redundant-canonical-projection
 -arg -w -arg -projection-no-head-constant
@@ -9,6 +8,7 @@
 theories/edone.v
 theories/bounded.v
 theories/preliminaries.v
+theories/setoid_bigop.v
 theories/finmap_plus.v
 theories/set_tac.v
 theories/bij.v

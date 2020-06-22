@@ -2,7 +2,7 @@ Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij equiv.
-Require Import structures pttdom rewriting.
+Require Import setoid_bigop structures pttdom rewriting.
 
 Require Import finmap_plus.
 Open Scope fset_scope.
@@ -70,7 +70,7 @@ Class is_graph (G : pre_graph) :=
 
 End OpenGraphs.
 
-(* Declare Scope open_scope. compat:coq-8.9*)
+Declare Scope open_scope.
 Bind Scope open_scope with pre_graph.
 Delimit Scope open_scope with O.
 

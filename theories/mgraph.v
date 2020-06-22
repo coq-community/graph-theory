@@ -1,7 +1,7 @@
 Require Import Morphisms RelationClasses.
 Require CMorphisms CRelationClasses. (* To be used explicitly *)
 From mathcomp Require Import all_ssreflect.
-Require Import edone finite_quotient preliminaries bij equiv digraph structures.
+Require Import edone finite_quotient preliminaries bij equiv digraph setoid_bigop structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -469,13 +469,11 @@ Section merge.
     split; intros=>/=. 
     - rewrite endpoint_iso. symmetry. apply h_mergeE. 
     - rewrite quot_sameE. symmetry.
-     (* TOCLEAN *)
-      apply: (eqv_big_bij (f := h)). exact: bij_perm_enum.
-      + move=>x. rewrite eqmodE eqv_clot_map. 2: apply bij_injective.
-        apply /idP/idP. move=>/eqP E. rewrite -E. apply piK'.
-        intro. apply /eqP. rewrite -(reprK v). by apply /eqquotP.
+      apply: (eqv_big_bij (f := h)); first exact: bij_perm_enum.
+      + move=>x. rewrite eqmodE eqv_clot_map; last exact: bij_injective.
+        apply/eqP/idP => [<-|/eqquotP ->]; by [exact: piK'|rewrite reprK].
       + move=> x _. by rewrite vlabel_iso.
-    - apply elabel_iso.        
+    - apply elabel_iso.
   Qed.
   Definition merge_iso: merge_seq F l ≃ merge_seq G (map_pairs h l) := Iso merge_hom.
   Lemma merge_isoE (x: F): merge_iso (\pi x) = \pi h x.
@@ -489,10 +487,8 @@ Section merge_same'.
  Lemma merge_same'_hom: is_ihom (quot_same H: merge _ h -> merge _ k) bij_id xpred0.
  Proof.
    split; intros=>//; try (rewrite /=; apply/eqquotP; rewrite -H; apply: piK').
-   (* TOCLEAN *)
-   apply (eqv_big_bij (f := id))=>//.
-   apply (bij_perm_enum bij_id).
-   intro. by rewrite -(reprK v) quot_sameE 2!eqmodE H.
+   apply (eqv_big_bij (f := bij_id)) => //; first exact: bij_perm_enum.
+   move => x. by rewrite -(reprK v) quot_sameE 2!eqmodE H.
  Qed.
  Definition merge_same': merge F h ≃ merge F k := Iso merge_same'_hom.
  Lemma merge_same'E (x: F): merge_same' (\pi x) = \pi x.
@@ -838,7 +834,7 @@ End s.
 Notation source := (endpoint false).
 Notation target := (endpoint true).
 
-(* Declare Scope graph_scope. compat:coq-8.9*)
+Declare Scope graph_scope.
 Bind Scope graph_scope with graph.
 Delimit Scope graph_scope with G.
 
