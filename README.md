@@ -39,9 +39,9 @@ isomorphism).
   - Christian Doczkal ([**@chdoc**](https://github.com/chdoc))
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [CeCILL-B](LICENSE)
-- Compatible Coq versions: 8.10 or later (use releases for other Coq versions)
+- Compatible Coq versions: 8.10 or later
 - Additional dependencies:
-  - MathComp's SSReflect library, version 1.9 or later
+  - MathComp's SSReflect library, version 1.10 or later
   - MathComp's finmap library
 - Coq namespace: `GraphTheory`
 - Related publication(s):
