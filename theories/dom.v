@@ -132,32 +132,20 @@ Proof. move=> uinD1 adjuv. apply/bigcupP ; exists u => // ; by rewrite in_opn. Q
 
 Lemma opns_sub_clns : NS(D1) \subset NS[D1].
 Proof.
-  apply/subsetP => u.
-  rewrite /open_neigh_set /closed_neigh_set.
-  move/bigcupP.
-  elim=> v vinD1 uinNv.
-  apply/bigcupP.
-  exists v => [// | ].
-  by rewrite /closed_neigh in_setU uinNv orbT.
+  apply/subsetP => u /bigcupP [v vinD1 uinNv].
+  apply/bigcupP; exists v => //; by rewrite /closed_neigh in_setU uinNv orbT.
 Qed.
 
 Lemma mem_clns u v : u \in D1 -> u -- v -> v \in NS[D1].
-Proof.
-  move=> uinD1 adjuv.
-  apply: (subsetP opns_sub_clns v).
+Proof. 
+  move=> uinD1 adjuv; apply: (subsetP opns_sub_clns).
   exact: mem_opns adjuv.
 Qed.
 
-Lemma subset_clns : D1 \subset D2 -> NS[D1] \subset NS[D2].
-Proof.
-  move=> D1subD2.
-  rewrite /closed_neigh_set.
-  apply/subsetP => x /bigcupP.
-  elim=> i iinD1 xinNi.
-  apply/bigcupP.
-  exists i.
-  exact: subsetP D1subD2 i iinD1.
-  exact: xinNi.
+Lemma subset_clns : D1 \subset D2 -> NS[D1] \subset NS[D2]. 
+Proof. 
+  move => D1subD2. 
+  by rewrite -(setID D2 D1) (setIidPr _) // /closed_neigh_set bigcup_setU subsetUl.
 Qed.
 
 End Basic_Facts_Neighborhoods.
@@ -219,20 +207,16 @@ Section Independence_system_definitions.
 
 Implicit Types (p : pred {set G}) (F D : {set G}).
 
-Definition hereditary p : bool := [forall D : {set G}, forall (F : {set G} | F \subset D), p D ==> p F].
+Definition hereditary p : bool := [forall (D : {set G} | p D), forall (F : {set G} | F \subset D), p F].
 
 Definition superhereditary p : bool := hereditary [pred D | p (~: D)].
 
 Proposition hereditaryP p : 
   reflect (forall D F : {set G}, (F \subset D) -> p D -> p F) (hereditary p).
 Proof.
-  rewrite /hereditary ; apply: (iffP forallP).
-  - move=> H1 D F FsubD pD. move: (H1 D).
-    move/forallP=> /(_ F).
-    by rewrite FsubD pD !implyTb.
-  - move=> H2 D.
-    apply/forall_inP => F FsubD. apply/implyP.
-    exact: H2.
+  apply: (iffP forall_inP) => [H1 D F FsubD pD|H2 D pD].
+  - exact: (forall_inP (H1 _ pD)).
+  - apply/forall_inP => F FsubD; exact: H2 pD.
 Qed.
 
 Proposition superhereditaryP (p : pred {set G}) : 
@@ -358,21 +342,20 @@ Section Dominating_Set.
 
 Variable D : {set G}.
 
-Definition dominating : bool := [forall v : G, (v \notin D) ==> [exists u : G, (u \in D) && (u -- v)]].
+Definition dominating : bool := [forall (v | v \notin D), exists u in D, u -- v].
 
 Definition dominating_alt : bool := [set: G] == NS[D].
 
 Proposition dominatingP : reflect
   (forall v : G, v \notin D -> exists2 u : G, u \in D & u -- v) dominating.
+Proof. apply: forall_inPP => v; exact: exists_inP. Qed.
+
+(* TOTHINK: this looks like the natural "Pn" lemma *)
+Lemma dominatingPn' : 
+  reflect (exists2 v : G, v \notin D & {in D, forall u, ~~ u -- v}) (~~ dominating).
 Proof.
-  rewrite /dominating ; apply: (iffP forallP).
-  - move=> H1 v vnotinD.
-    move/implyP: (H1 v) => H2.
-    move/existsP: (H2 vnotinD). elim=> x /andP [xinD adjxv]. by exists x.
-  - move=> H3 x.
-    apply/implyP=> xnotinD.
-    move: (H3 x xnotinD).
-    elim=> u uinD adjux. apply/existsP. exists u. by apply/andP.
+  rewrite /dominating negb_forall_in; apply: exists_inPP => x.
+  exact: exists_inPn.
 Qed.
 
 Proposition dominatingPn : reflect
@@ -427,18 +410,11 @@ Qed.
 (* if D is dominating, any supraset of D is also dominating *)
 Lemma dom_superhereditary : superhereditary dominating.
 Proof.
-  apply/superhereditaryP.
-  move=> D F DsubF /dominatingP Ddom.
-  apply/dominatingP => v vnotinF.
-  have vinVminusF: v \in [set: G] :\: F by rewrite in_setD in_setT andbT.
-  (* if D is contained in F, then some v in V(G)-F also belongs to V(G)-D *)
-  move: (subsetP (setDS setT DsubF)).
-  move=> /(_ v vinVminusF).
-  rewrite in_setD in_setT andbT => vinVminusD.
-  elim: (Ddom v vinVminusD) => w winD adjwv.
-  exists w ; last by rewrite adjwv. exact: (subsetP DsubF) w winD.
+  apply/superhereditaryP => D F /subsetP DsubF /dominatingP Ddom.
+  apply/dominatingP => v vnotinF. 
+  have/Ddom [w winD wv]: v \notin D by apply: contraNN vnotinF; exact: DsubF.
+  exists w => //; exact: DsubF.
 Qed.
-
 
 (**********************************************************************************)
 Section Irredundant_Set.
