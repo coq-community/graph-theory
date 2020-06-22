@@ -70,7 +70,7 @@ Class is_graph (G : pre_graph) :=
 
 End OpenGraphs.
 
-(* Declare Scope open_scope. compat:coq-8.9*)
+Declare Scope open_scope.
 Bind Scope open_scope with pre_graph.
 Delimit Scope open_scope with O.
 

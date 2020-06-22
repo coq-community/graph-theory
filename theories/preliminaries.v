@@ -373,13 +373,13 @@ Lemma above_largest (T : finType) P (U V : {set T}) :
   largest P U -> #|V| > #|U| -> ~ P V.
 Proof. move => [_ large_U]. rewrite ltnNge; exact/contraNnot/large_U. Qed.
 
-(** in mathcomp-1.11, this will be subsumed by leqP *)
+(** compat:mathcomp-1.10 / in mathcomp-1.11, this will be subsumed by leqP *)
 Inductive maxn_cases n m : nat -> Type := 
 | MaxnR of n <= m : maxn_cases n m m
 | MaxnL of m < n : maxn_cases n m n.
 
 Lemma maxnP n m : maxn_cases n m (maxn n m).
-Proof. 
+Proof.
 (* compat:mathcomp-1.10.0 *)
 by case: (leqP n m) => H; rewrite ?(maxn_idPr H) ?(maxn_idPl (ltnW H)); constructor.
 Qed.

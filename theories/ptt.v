@@ -145,4 +145,5 @@ Section terms.
  (* Canonical tm_ptt.  *)
 
 End terms.
+Declare Scope ptt_ops.
 Bind Scope ptt_ops with term.

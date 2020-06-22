@@ -28,7 +28,7 @@ Arguments par: simpl never.
 Arguments cnv: simpl never.
 Arguments dom: simpl never.
 
-(* Declare Scope pttdom_ops. compat:coq-8.9*)
+Declare Scope pttdom_ops.
 Bind Scope pttdom_ops with setoid_of_ops.
 Delimit Scope pttdom_ops with ptt.
 Open Scope pttdom_ops.

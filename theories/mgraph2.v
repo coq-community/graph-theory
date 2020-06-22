@@ -721,7 +721,7 @@ Qed.
 
 End s. 
 
-(* Declare Scope graph2_scope. compat:coq-8.9*)
+Declare Scope graph2_scope.
 Bind Scope graph2_scope with graph2.
 Delimit Scope graph2_scope with G2.
 

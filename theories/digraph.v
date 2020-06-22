@@ -745,7 +745,7 @@ graphs. This makes [Path x y] or [x -- y] insufficent for understanding the
 proofs. In these contexts one can open the implicit scope to display implicit
 types for the most frequently used constructions *)
 
-(* Declare Scope implicit_scope. compat:coq-8.9*)
+Declare Scope implicit_scope.
 Notation "x -- y :> G" := (@edge_rel G x y) (at level 30, y at next level) : implicit_scope.
 Notation "'PATH' G x y" := (@Path G x y) (at level 4) : implicit_scope.
 Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.
