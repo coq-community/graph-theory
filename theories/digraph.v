@@ -637,7 +637,7 @@ Proof.
     have pvalP : pathp x y p by rewrite /pathp pth_p lst_p.
     exists (Build_Path pvalP); first by rewrite irredE nodesE.
     apply/subsetP => z. rewrite mem_path nodesE. exact: sub_A.
-  - case => p [Ip /subsetP subA]; exists (val p). 
+  - case => p Ip /subsetP subA; exists (val p). 
     by case/andP : (valP p) => ? /eqP ?; rewrite -nodesE -irredE.
 Qed.
 
@@ -690,7 +690,6 @@ Section Finite.
   Canonical UPath_finType := Eval hnf in FinType UPath UPath_finMixin.
 
   Definition UPathW (up : UPath) : Path x y := let (p, Up) := up in Sub p (upathW Up).
-  Coercion UPathW : UPath >-> Path.
 End Finite.
 
 (** ** Packaged Irredundant Paths
