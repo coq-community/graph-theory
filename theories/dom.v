@@ -887,7 +887,7 @@ Qed.
 
 (* Weighted version of the Cockayne-Hedetniemi domination chain. *)
 
-Theorem ir_w_leq_gamma_w : ir_w <= gamma_w.
+Proposition ir_w_leq_gamma_w : ir_w <= gamma_w.
 Proof.
   rewrite /gamma_w.
   have [D domD minWD] := arg_minP W domT.
@@ -896,7 +896,7 @@ Proof.
   exact: ir_min.
 Qed.
 
-Theorem gamma_w_leq_ii_w : gamma_w <= ii_w.
+Proposition gamma_w_leq_ii_w : gamma_w <= ii_w.
 Proof.
   rewrite /ii_w.
   have [S max_stS _] := arg_minP W inhb_max_st_is_maximal_stable.
@@ -904,7 +904,7 @@ Proof.
   exact: gamma_min.
 Qed.
 
-Theorem ii_w_leq_alpha_w : ii_w <= alpha_w.
+Proposition ii_w_leq_alpha_w : ii_w <= alpha_w.
 Proof.
   rewrite /alpha_w.
   have [S stS maxWS] := arg_maxP W stable0.
@@ -912,7 +912,7 @@ Proof.
   exact: ii_min.
 Qed.
 
-Theorem alpha_w_leq_Gamma_w : alpha_w <= Gamma_w.
+Proposition alpha_w_leq_Gamma_w : alpha_w <= Gamma_w.
 Proof.
   rewrite /alpha_w.
   have [S stS maxWS] := arg_maxP W stable0.
@@ -921,13 +921,29 @@ Proof.
   exact: Gamma_max.
 Qed.
 
-Theorem Gamma_w_leq_IR_w : Gamma_w <= IR_w.
+Proposition Gamma_w_leq_IR_w : Gamma_w <= IR_w.
 Proof.
   rewrite /Gamma_w.
   have [D min_domD _] := arg_maxP W inhb_min_dom_is_minimal_dominating.
   have irrD := maxsetp (minimal_dom_is_maximal_irr min_domD).
   exact: IR_max.
 Qed.
+
+Theorem Cockayne_Hedetniemi_chain_w: 
+  sorted leq [:: ir_w; gamma_w; ii_w; alpha_w; Gamma_w; IR_w].
+Proof. 
+rewrite /sorted /= ir_w_leq_gamma_w gamma_w_leq_ii_w ii_w_leq_alpha_w.
+by rewrite alpha_w_leq_Gamma_w Gamma_w_leq_IR_w.
+Qed.
+
+(* Usage: [apply: (Cockayne_Hedetniemi_w i j)] with i,j concrete
+indices into the above list [i < j] *)
+Notation Cockayne_Hedetniemi_w i j := 
+  (@sorted_leq_nth _ Cockayne_Hedetniemi_chain_w i j erefl erefl erefl).
+
+(** Example *)
+Let gamma_w_leq_Gamma_w: gamma_w <= Gamma_w. 
+Proof. exact: (Cockayne_Hedetniemi_w 1 4). Qed.
 
 End Weighted_domination_parameters.
 
@@ -982,9 +998,9 @@ Qed.
 (* The following lemmas state that if a set is maximum (i.e. has maximum cardinality), then
  * it is maximal, and if a set is minimum, then it is minimal. *)
 Lemma maxcards_maxset (p : pred {set G}) (A : {set G}):
-  p A -> (forall B, p B -> #|B| <= #|A|) -> maxset p A.
+  largest p A -> maxset p A.
 Proof.
-  move => pA maxA. apply/maxsetP'; split => // B /proper_card; rewrite ltnNge.
+  move => [pA maxA]. apply/maxsetP'; split => // B /proper_card; rewrite ltnNge.
   exact/contraNN/maxA.
 Qed.
 
@@ -992,9 +1008,9 @@ Lemma arg_maxcards (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A
 Proof. by move => pA ; apply/maxcards_maxset ; case: arg_maxP. Qed.
 
 Lemma mincards_minset (p : pred {set G}) (A : {set G}):
-  p A -> (forall B, p B -> #|A| <= #|B|) -> minset p A.
+  smallest p A -> minset p A.
 Proof.
-  move => pA minA. apply/minsetP'; split => // B /proper_card; rewrite ltnNge.
+  move => [pA minA]. apply/minsetP'; split => // B /proper_card; rewrite ltnNge.
   exact/contraNN/minA.
 Qed.
 
@@ -1049,6 +1065,16 @@ Proof. by rewrite eq_alpha_alpha1 eq_Gamma_Gamma1 alpha_w_leq_Gamma_w. Qed.
 
 Corollary Gamma_leq_IR : Gamma <= IR.
 Proof. by rewrite eq_Gamma_Gamma1 eq_IR_IR1 Gamma_w_leq_IR_w. Qed.
+
+Corollary Cockayne_Hedetniemi_chain: 
+  sorted leq [:: ir; gamma; ii; alpha; Gamma; IR].
+Proof. 
+rewrite /sorted /= ir_leq_gamma gamma_leq_ii ii_leq_alpha.
+by rewrite alpha_leq_Gamma Gamma_leq_IR.
+Qed.
+
+Notation Cockayne_Hedetniemi i j := 
+  (@sorted_leq_nth _ Cockayne_Hedetniemi_chain i j erefl erefl erefl).
 
 End Classic_domination_parameters.
 

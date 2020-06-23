@@ -913,6 +913,13 @@ Qed.
 Lemma pair_neq_card2 (u v : T) : (u != v) <-> #|[set u; v]| = 2.
 Proof. by rewrite cards2; case: (altP (u =P v)). Qed.
 
+Lemma sorted_leq_nth s (srt_s : sorted leq s) : 
+  forall i j, i < j -> i < size s -> j < size s -> nth 0 s i <= nth 0 s j.
+Proof. 
+move => i j /ltnW i_j i_s j_s. apply: sorted_le_nth => //. exact: leq_trans.
+Qed.
+Arguments sorted_leq_nth : clear implicits. 
+
 End Preliminaries_dom.
 
 Arguments in11_in2 [T1 T2 P] A1 A2.
