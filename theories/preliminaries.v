@@ -865,6 +865,24 @@ Proof. by firstorder. Qed.
 
 Variable T : finType.
 
+Proposition maxset_properP (p : pred {set T}) (D : {set T}) :
+  reflect (p D /\ (forall F : {set T}, D \proper F -> ~~ p F)) (maxset p D).
+Proof.
+  apply: (iffP maxsetP) => -[pD maxD]; split => // E.
+  - rewrite properEneq => /andP [DnE DsubE].
+    apply: contra_neqN DnE => pE; exact/esym/maxD.
+  - move => pE SsubE; apply: contraTeq pE => EnD; apply: maxD.
+    by rewrite properEneq eq_sym EnD.
+Qed.
+
+Proposition minset_properP (p : pred {set T}) (D : {set T}) :
+  reflect (p D /\ (forall F : {set T}, F \proper D -> ~~ p F)) (minset p D).
+Proof.
+  rewrite minmaxset; apply (iffP (maxset_properP _ _)).
+  all: rewrite /= setCK => -[pD H]; split => // E.
+  all: by rewrite properC ?setCK => /H; rewrite ?setCK.
+Qed.
+
 Lemma set21_subset (u v : T) (A : {set T}) : [set u; v] \subset A -> u \in A.
 Proof. move=> uvsubA ; apply: (subsetP uvsubA u) ; exact: set21. Qed.
 
@@ -923,3 +941,5 @@ Arguments sorted_leq_nth : clear implicits.
 End Preliminaries_dom.
 
 Arguments in11_in2 [T1 T2 P] A1 A2.
+Arguments maxset_properP {T p D}.
+Arguments minset_properP {T p D}.

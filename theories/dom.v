@@ -150,86 +150,36 @@ Qed.
 
 End Basic_Facts_Neighborhoods.
 
-
 (**********************************************************************************)
-(** * Domination Theory *)
-Section Domination_Theory.
+(** * Hereditary and superhereditary properties *)
+Section Hereditary.
+Variable (T : finType).
 
-Variable G : sgraph.
+Implicit Types (p : pred {set T}) (F D : {set T}).
 
-
-(**********************************************************************************)
-(** * Maximal and minimal sets *)
-
-Proposition maxsetP' (p : pred {set G}) (D : {set G}) :
-  reflect (p D /\ (forall F : {set G}, D \proper F -> ~~ p F)) (maxset p D).
-Proof.
-  apply: (iffP maxsetP) => -[pD maxD]; split => // E.
-  - rewrite properEneq => /andP [DnE DsubE].
-    apply: contra_neqN DnE => pE; exact/esym/maxD.
-  - move => pE SsubE; apply: contraTeq pE => EnD; apply: maxD.
-    by rewrite properEneq eq_sym EnD.
-Qed.
-Arguments maxsetP' {p D}.
-
-Proposition minsetP' (p : pred {set G}) (D : {set G}) :
-  reflect (p D /\ (forall F : {set G}, F \proper D -> ~~ p F)) (minset p D).
-Proof.
-  rewrite minmaxset; apply (iffP maxsetP'); rewrite /= setCK => -[pD H]; split => // E.
-  all: by rewrite properC ?setCK => /H; rewrite ?setCK.
-Qed.
-Arguments minsetP' {p D}.
-
-
-(**********************************************************************************)
-Section MaxMin_sets_existence.
-
-Variable p : pred {set G}.     (* p : {set G} -> bool *)
-Variable F : {set G}.          (* some set satisfying p *)
-Hypothesis pF : p F.           (* the proof that F satisfies p *)
-
-Definition ex_maximal : {set G} := s2val (maxset_exists pF).
-
-Definition ex_minimal : {set G} := s2val (minset_exists pF).
-
-Fact maximal_exists : maxset p ex_maximal.
-Proof. exact: s2valP (maxset_exists pF). Qed.
-
-Fact minimal_exists : minset p ex_minimal.
-Proof. exact: s2valP (minset_exists pF). Qed.
-
-End MaxMin_sets_existence.
-
-
-(**********************************************************************************)
-(** * Independence systems, hereditary and superhereditary properties *)
-Section Independence_system_definitions.
-
-Implicit Types (p : pred {set G}) (F D : {set G}).
-
-Definition hereditary p : bool := [forall (D : {set G} | p D), forall (F : {set G} | F \subset D), p F].
+Definition hereditary p : bool := [forall (D : {set T} | p D), forall (F : {set T} | F \subset D), p F].
 
 Definition superhereditary p : bool := hereditary [pred D | p (~: D)].
 
 Proposition hereditaryP p : 
-  reflect (forall D F : {set G}, (F \subset D) -> p D -> p F) (hereditary p).
+  reflect (forall D F : {set T}, (F \subset D) -> p D -> p F) (hereditary p).
 Proof.
   apply: (iffP forall_inP) => [H1 D F FsubD pD|H2 D pD].
   - exact: (forall_inP (H1 _ pD)).
   - apply/forall_inP => F FsubD; exact: H2 pD.
 Qed.
 
-Proposition superhereditaryP (p : pred {set G}) : 
-  reflect (forall D F : {set G}, (D \subset F) -> p D -> p F) (superhereditary p).
+Proposition superhereditaryP (p : pred {set T}) : 
+  reflect (forall D F : {set T}, (D \subset F) -> p D -> p F) (superhereditary p).
 Proof.
   apply: (iffP (hereditaryP _)) => /= sh_p D F.
   all: by rewrite -setCS => /sh_p; rewrite ?setCK; auto.
 Qed.
 
 Proposition maximal_indsysP p D : hereditary p ->
-  reflect (p D /\ forall v : G, v \notin D -> ~~ p (v |: D)) (maxset p D).
+  reflect (p D /\ forall v : T, v \notin D -> ~~ p (v |: D)) (maxset p D).
 Proof. 
-  move/hereditaryP => p_hereditary; apply: (iffP maxsetP').
+  move/hereditaryP => p_hereditary; apply: (iffP maxset_properP).
   - case => pD maxD; split => // v vD. apply: maxD.
     by rewrite setUC properUl // sub1set. 
   - case => pD max1D; split => // A /properP [subA [v vA /max1D vD]].
@@ -237,15 +187,21 @@ Proof.
 Qed.
 
 Proposition minimal_indsysP p D : superhereditary p ->
-  reflect (p D /\ forall v : G, v \in D -> ~~ p (D :\ v)) (minset p D).
+  reflect (p D /\ forall v : T, v \in D -> ~~ p (D :\ v)) (minset p D).
 Proof.
   rewrite minmaxset => sh_p; apply: (iffP (maximal_indsysP _ _)) => //=.
   all: rewrite ?setCK => -[pD H]; split => // v; move: (H v).
   all: by rewrite !inE ?setCU ?setCK ?negbK setDE setIC.
 Qed.
 
-End Independence_system_definitions.
+End Hereditary.
 
+
+(**********************************************************************************)
+(** * Domination Theory *)
+Section Domination_Theory.
+
+Variable G : sgraph.
 
 (**********************************************************************************)
 (** * Basic definitions about positive weighted sets and parameters *)
@@ -281,6 +237,28 @@ Proof.
   rewrite -/(weight_set _) -wset0. 
   by apply/set0Pn; exists x; apply/setDP.
 Qed.
+
+(* Sets of minimum/maximum weight *)
+
+Lemma maxweight_maxset (p : pred {set G}) (A : {set G}) : 
+  p A -> (forall B, p B -> W B <= W A) -> maxset p A.
+Proof.
+  move => pA maxA. apply/maxset_properP; split => // B /ltnwset; rewrite ltnNge.
+  exact/contraNN/maxA.
+Qed.
+
+Lemma arg_maxset (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W).
+Proof. by move => pA; apply/maxweight_maxset; case: arg_maxP. Qed.
+
+Lemma minweight_minset (p : pred {set G}) (A : {set G}) : 
+  p A -> (forall B, p B -> W A <= W B) -> minset p A.
+Proof.
+  move => pA minA; apply/minset_properP; split => // B /ltnwset; rewrite ltnNge.
+  exact/contraNN/minA.
+Qed.
+
+Lemma arg_minset (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W).
+Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
 
 End Weighted_Sets.
 
@@ -713,20 +691,20 @@ Definition max_irr := maxset irredundant.
  * Recall that ex_minimal and ex_maximal requires a proof of an inhabitant of "stable",
  * "dominating" and "irredudant" to be able to generate the maximal/minimal set. *)
 
-Definition inhb_max_st := ex_maximal stable0.
+Definition inhb_max_st := s2val (maxset_exists stable0).
 
-Definition inhb_min_dom := ex_minimal domT.
+Definition inhb_min_dom := s2val (minset_exists domT).
 
-Definition inhb_max_irr := ex_maximal irr0.
+Definition inhb_max_irr := s2val (maxset_exists irr0).
 
 Lemma inhb_max_st_is_maximal_stable : max_st inhb_max_st.
-Proof. exact: maximal_exists. Qed.
+Proof. exact: (s2valP (maxset_exists stable0)). Qed.
 
 Lemma inhb_min_dom_is_minimal_dominating : min_dom inhb_min_dom.
-Proof. exact: minimal_exists. Qed.
+Proof. exact: (s2valP (minset_exists domT)). Qed.
 
 Lemma inhb_max_irr_is_maximal_irredundant : max_irr inhb_max_irr.
-Proof. exact: maximal_exists. Qed.
+Proof. exact: (s2valP (maxset_exists irr0)). Qed.
 
 End Existence_of_stable_dominating_irredundant_sets.
 
@@ -737,33 +715,7 @@ Section Weighted_domination_parameters.
 Variable weight : G -> nat.
 Hypothesis positive_weights : forall v : G, weight v > 0.
 
-(* Sets of minimum/maximum weight *)
-
 Let W := weight_set weight.
-Let properW := ltnwset positive_weights.
-
-(* The following lemmas state that if a set is maximum (i.e. has a maximum weight),
- * then it is maximal, and if a set is minimum, then it is minimal. Note: in maxweight_maxset,
- * "A" is the maximum set, but in arg_maxset, "A" is an inhabitant of the property. *)
-Lemma maxweight_maxset (p : pred {set G}) (A : {set G}) : 
-  p A -> (forall B, p B -> W B <= W A) -> maxset p A.
-Proof.
-  move => pA maxA. apply/maxsetP'; split => // B /properW; rewrite ltnNge.
-  exact/contraNN/maxA.
-Qed.
-
-Lemma arg_maxset (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W).
-Proof. by move => pA; apply/maxweight_maxset; case: arg_maxP. Qed.
-
-Lemma minweight_minset (p : pred {set G}) (A : {set G}) : 
-  p A -> (forall B, p B -> W A <= W B) -> minset p A.
-Proof.
-  move => pA minA; apply/minsetP'; split => // B /properW; rewrite ltnNge.
-  exact/contraNN/minA.
-Qed.
-
-Lemma arg_minset (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W).
-Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
 
 (* Definition of weighted parameters. *)
 
@@ -785,7 +737,7 @@ Qed.
 Fact ir_minset D : max_irr D -> W D = ir_w -> minset max_irr D.
 Proof.
   move => max_irrD irD; apply: minweight_minset => // A.
-  rewrite irD; exact: ir_min.
+  rewrite -/W irD; exact: ir_min.
 Qed.
 
 Definition gamma_w : nat := W (arg_min setT dominating W).
@@ -803,17 +755,8 @@ Qed.
 Fact gamma_minset D : dominating D -> W D = gamma_w -> minset dominating D.
 Proof.
   move => domD gammaD; apply: minweight_minset => // A.
-  rewrite gammaD; exact: gamma_min.
+  rewrite -/W gammaD; exact: gamma_min.
 Qed.
-
-(* longer variant with only one use of [arg_*P]
-Proposition gamma_def: 
-  (forall A, dominating A -> gamma_w <= W A) /\ (exists2 A, dominating A & W A = gamma_w).
-Proof. 
-rewrite /gamma_w; case: (arg_minP _ domT) => A A1 A2; split => //; by exists A.
-Qed.
-Definition gamma_min := proj1 gamma_def.
-Definition gamma_witness := proj2 gamma_def. *)
 
 Definition ii_w : nat := W (arg_min inhb_max_st max_st W).
 
@@ -833,7 +776,7 @@ Qed.
 Fact ii_minset D : max_st D -> W D = ii_w -> minset max_st D.
 Proof.
   move => max_stD iiD; apply: minweight_minset => // A.
-  rewrite iiD; exact: ii_min.
+  rewrite -/W iiD; exact: ii_min.
 Qed.
 
 Definition alpha_w : nat := W (arg_max set0 stable W).
@@ -847,7 +790,7 @@ Proof. by rewrite /alpha_w; case: (arg_maxP W stable0) => A; exists A. Qed.
 Fact alpha_maxset S : stable S -> W S = alpha_w -> maxset stable S.
 Proof.
   move => stS alphaS; apply: maxweight_maxset => // A.
-  rewrite alphaS; exact: alpha_max.
+  rewrite -/W alphaS; exact: alpha_max.
 Qed.
 
 Definition Gamma_w : nat := W (arg_max inhb_min_dom min_dom W).
@@ -868,7 +811,7 @@ Qed.
 Fact Gamma_maxset D : min_dom D -> W D = Gamma_w -> maxset min_dom D.
 Proof.
   move => min_domD GammaD; apply: maxweight_maxset => // A.
-  rewrite GammaD; exact: Gamma_max.
+  rewrite -/W GammaD; exact: Gamma_max.
 Qed.
 
 Definition IR_w : nat := W (arg_max set0 irredundant W).
@@ -882,7 +825,7 @@ Proof. by rewrite /IR_w; case: (arg_maxP W irr0) => D; exists D. Qed.
 Fact IR_maxset D : irredundant D -> W D = IR_w -> maxset irredundant D.
 Proof.
   move => irrD IRD; apply: maxweight_maxset => // A.
-  rewrite IRD; exact: IR_max.
+  rewrite -/W IRD; exact: IR_max.
 Qed.
 
 (* Weighted version of the Cockayne-Hedetniemi domination chain. *)
@@ -891,7 +834,7 @@ Proposition ir_w_leq_gamma_w : ir_w <= gamma_w.
 Proof.
   rewrite /gamma_w.
   have [D domD minWD] := arg_minP W domT.
-  have min_domD := minweight_minset domD minWD.
+  have min_domD := minweight_minset positive_weights domD minWD.
   have max_irrD := minimal_dom_is_maximal_irr min_domD.
   exact: ir_min.
 Qed.
@@ -908,7 +851,7 @@ Proposition ii_w_leq_alpha_w : ii_w <= alpha_w.
 Proof.
   rewrite /alpha_w.
   have [S stS maxWS] := arg_maxP W stable0.
-  have max_stS := maxweight_maxset stS maxWS.
+  have max_stS := maxweight_maxset positive_weights stS maxWS.
   exact: ii_min.
 Qed.
 
@@ -916,7 +859,7 @@ Proposition alpha_w_leq_Gamma_w : alpha_w <= Gamma_w.
 Proof.
   rewrite /alpha_w.
   have [S stS maxWS] := arg_maxP W stable0.
-  have max_stS := maxweight_maxset stS maxWS.
+  have max_stS := maxweight_maxset positive_weights stS maxWS.
   have min_domS := maximal_st_is_minimal_dom max_stS.
   exact: Gamma_max.
 Qed.
@@ -1000,7 +943,7 @@ Qed.
 Lemma maxcards_maxset (p : pred {set G}) (A : {set G}):
   largest p A -> maxset p A.
 Proof.
-  move => [pA maxA]. apply/maxsetP'; split => // B /proper_card; rewrite ltnNge.
+  move => [pA maxA]. apply/maxset_properP; split => // B /proper_card; rewrite ltnNge.
   exact/contraNN/maxA.
 Qed.
 
@@ -1010,7 +953,7 @@ Proof. by move => pA ; apply/maxcards_maxset ; case: arg_maxP. Qed.
 Lemma mincards_minset (p : pred {set G}) (A : {set G}):
   smallest p A -> minset p A.
 Proof.
-  move => [pA minA]. apply/minsetP'; split => // B /proper_card; rewrite ltnNge.
+  move => [pA minA]. apply/minset_properP; split => // B /proper_card; rewrite ltnNge.
   exact/contraNN/minA.
 Qed.
 
