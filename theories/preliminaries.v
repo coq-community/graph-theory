@@ -863,6 +863,21 @@ Lemma in11_in2 (T1 T2 : predArgType) (P : T1 -> T2 -> Prop) (A1 : {pred T1}) (A2
   {in A1, forall x, {in A2, forall y,  P x y}} <-> {in A1 & A2, forall x y, P x y}.
 Proof. by firstorder. Qed.
 
+Lemma eq_extremum (T : eqType) (I : finType) r x0 (p1 p2 : pred I) (F1 F2 : I -> T) : 
+  p1 =1 p2 -> F1 =1 F2 -> extremum r x0 p1 F1 = extremum r x0 p2 F2.
+Proof.
+move=> eq_p eq_F; rewrite /extremum; apply/f_equal/eq_pick => x.
+by rewrite !inE eq_p; under eq_forallb => i do rewrite !eq_p !eq_F.
+Qed.
+
+Lemma eq_arg_min (I : finType) (x : I) (p1 p2 : pred I) (w1 w2 : I -> nat) :
+  p1 =1 p2 -> w1 =1 w2 -> arg_min x p1 w1 = arg_min x p2 w2.
+Proof. exact: eq_extremum. Qed.
+
+Lemma eq_arg_max (I : finType) (x : I) (p1 p2 : pred I) (w1 w2 : I -> nat) :
+  p1 =1 p2 -> w1 =1 w2 -> arg_max x p1 w1 = arg_max x p2 w2.
+Proof. exact: eq_extremum. Qed.
+
 Variable T : finType.
 
 Proposition maxset_properP (p : pred {set T}) (D : {set T}) :
@@ -881,6 +896,22 @@ Proof.
   rewrite minmaxset; apply (iffP (maxset_properP _ _)).
   all: rewrite /= setCK => -[pD H]; split => // E.
   all: by rewrite properC ?setCK => /H; rewrite ?setCK.
+Qed.
+
+(* not used *)
+Lemma largest_maxset (p : pred {set T}) (A : {set T}) :
+  largest p A -> maxset p A.
+Proof.
+  move => [pA maxA]. apply/maxset_properP; split => // B /proper_card; rewrite ltnNge.
+  exact/contraNN/maxA.
+Qed.
+
+(* not used *)
+Lemma smallest_minset (p : pred {set T}) (A : {set T}) : 
+  smallest p A -> minset p A.
+Proof.
+  move => [pA minA]. apply/minset_properP; split => // B /proper_card; rewrite ltnNge.
+  exact/contraNN/minA.
 Qed.
 
 Lemma doubleton_eq_left (u v w : T) : [set u; v] = [set u; w] <-> v = w.

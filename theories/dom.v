@@ -196,22 +196,19 @@ Qed.
 
 End Hereditary.
 
+(** * Weighted Sets *)
 
-(**********************************************************************************)
-(** * Domination Theory *)
-Section Domination_Theory.
-
-Variable G : sgraph.
-
-(**********************************************************************************)
-(** * Basic definitions about positive weighted sets and parameters *)
 Section Weighted_Sets.
+Variables (T : finType) (weight : T -> nat).
+Implicit Types (A B S : {set T}) (p : pred {set T}).
 
-Variable weight : G -> nat.
-Hypothesis positive_weights : forall v : G, weight v > 0.
-
-Definition weight_set (S : {set G}) := \sum_(v in S) weight v.
+Definition weight_set (S : {set T}) := \sum_(v in S) weight v.
 Let W := weight_set.
+
+Lemma leqwset A B : A \subset B -> W A <= W B.
+Proof. move=> AsubB ; by rewrite [X in _ <= X](big_setID A) /= (setIidPr AsubB) leq_addr. Qed.
+
+Hypothesis positive_weights : forall v : T, weight v > 0.
 
 Lemma wset0 A : (A == set0) = (W A == 0).
 Proof.
@@ -225,10 +222,7 @@ Proof.
     exact/ltn_addr/positive_weights.
 Qed.
 
-Lemma leqwset (A B : {set G}) : A \subset B -> W A <= W B.
-Proof. move=> AsubB ; by rewrite [X in _ <= X](big_setID A) /= (setIidPr AsubB) leq_addr. Qed.
-
-Lemma ltnwset (A B : {set G}) :  A \proper B -> W A < W B.
+Lemma ltnwset A B :  A \proper B -> W A < W B.
 Proof.
   move => /properP [AsubB].
   elim=> x xinB xnotinA.
@@ -240,28 +234,32 @@ Qed.
 
 (* Sets of minimum/maximum weight *)
 
-Lemma maxweight_maxset (p : pred {set G}) (A : {set G}) : 
-  p A -> (forall B, p B -> W B <= W A) -> maxset p A.
+Lemma maxweight_maxset p A : p A -> (forall B, p B -> W B <= W A) -> maxset p A.
 Proof.
   move => pA maxA. apply/maxset_properP; split => // B /ltnwset; rewrite ltnNge.
   exact/contraNN/maxA.
 Qed.
 
-Lemma arg_maxset (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W).
-Proof. by move => pA; apply/maxweight_maxset; case: arg_maxP. Qed.
-
-Lemma minweight_minset (p : pred {set G}) (A : {set G}) : 
-  p A -> (forall B, p B -> W A <= W B) -> minset p A.
+Lemma minweight_minset p A : p A -> (forall B, p B -> W A <= W B) -> minset p A.
 Proof.
   move => pA minA; apply/minset_properP; split => // B /ltnwset; rewrite ltnNge.
   exact/contraNN/minA.
 Qed.
 
-Lemma arg_minset (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W).
+Lemma arg_maxset p A : p A -> maxset p (arg_max A p W).
+Proof. by move => pA; apply/maxweight_maxset; case: arg_maxP. Qed.
+
+Lemma arg_minset p A : p A -> minset p (arg_min A p W).
 Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
 
 End Weighted_Sets.
 
+
+(**********************************************************************************)
+(** * Domination Theory *)
+Section Domination_Theory.
+
+Variable G : sgraph.
 
 (**********************************************************************************)
 (** * Definitions of stable, dominating and irredundant sets *)
@@ -900,7 +898,6 @@ Arguments alpha_w : clear implicits.
 Arguments Gamma_w : clear implicits.
 Arguments IR_w : clear implicits.
 
-
 (**********************************************************************************)
 (** * Classic (unweighted) parameters (use cardinality instead of weight) *)
 Section Classic_domination_parameters.
@@ -912,85 +909,41 @@ Let W1 : ({set G} -> nat) := (fun A => #|A|).
 Lemma cardwset1 (A : {set G}) : #|A| = weight_set ones A.
 Proof. by rewrite /weight_set sum1dep_card cardsE. Qed.
 
-Lemma maxcardwset1 (p : pred {set G}) (A : {set G}) :
-  p A -> #|arg_max A p W1| = #|arg_max A p (weight_set ones)|.
-Proof.
-  move => pA.
-  case: arg_maxP => // B pB maxB.
-  case: arg_maxP => // C pC maxC.
-  have geqBC := maxB C pC.
-  have geqCB := maxC B pB.
-  rewrite /W1 /= in geqBC.
-  rewrite -!cardwset1 /= in geqCB.
-  by apply/eqP ; rewrite eqn_leq geqBC geqCB.
-Qed.
-
-Lemma mincardwset1 (p : pred {set G}) (A : {set G}) :
-  p A -> #|arg_min A p W1| = #|arg_min A p (weight_set ones)|.
-Proof.
-  move => pA.
-  case: arg_minP => // B pB minB.
-  case: arg_minP => // C pC minC.
-  have leqBC := minB C pC.
-  have leqCB := minC B pB.
-  rewrite /W1 /= in leqBC.
-  rewrite -!cardwset1 /= in leqCB.
-  by apply/eqP ; rewrite eqn_leq leqBC leqCB.
-Qed.
-
-(* The following lemmas state that if a set is maximum (i.e. has maximum cardinality), then
- * it is maximal, and if a set is minimum, then it is minimal. *)
-Lemma maxcards_maxset (p : pred {set G}) (A : {set G}):
-  largest p A -> maxset p A.
-Proof.
-  move => [pA maxA]. apply/maxset_properP; split => // B /proper_card; rewrite ltnNge.
-  exact/contraNN/maxA.
-Qed.
-
-Lemma arg_maxcards (p : pred {set G}) (A : {set G}) : p A -> maxset p (arg_max A p W1).
-Proof. by move => pA ; apply/maxcards_maxset ; case: arg_maxP. Qed.
-
-Lemma mincards_minset (p : pred {set G}) (A : {set G}):
-  smallest p A -> minset p A.
-Proof.
-  move => [pA minA]. apply/minset_properP; split => // B /proper_card; rewrite ltnNge.
-  exact/contraNN/minA.
-Qed.
-
-Lemma arg_mincards (p : pred {set G}) (A : {set G}) : p A -> minset p (arg_min A p W1).
-Proof. by move => pA ; apply/mincards_minset ; case: arg_minP. Qed.
+Local Notation eq_arg_min := (eq_arg_min _ (frefl _) cardwset1).
+Local Notation eq_arg_max := (eq_arg_max _ (frefl _) cardwset1).
 
 (* Definition of unweighted parameters and its conversion to weighted ones. *)
+
 
 Definition ir : nat := #|arg_min inhb_max_irr max_irr W1|.
 
 Fact eq_ir_ir1 : ir = ir_w ones.
-Proof. by rewrite /ir /ir_w -cardwset1 (mincardwset1 inhb_max_irr_is_maximal_irredundant). Qed.
+Proof. by rewrite /ir /ir_w -cardwset1 eq_arg_min. Qed.
 
 Definition gamma : nat := #|arg_min setT dominating W1|.
 
 Fact eq_gamma_gamma1 : gamma = gamma_w ones.
-Proof. by rewrite /gamma /gamma_w -cardwset1 (mincardwset1 domT). Qed.
+Proof. by rewrite /gamma /gamma_w -cardwset1 eq_arg_min. Qed.
 
 Definition ii : nat := #|arg_min inhb_max_st max_st W1|.
 
 Fact eq_ii_ii1 : ii = ii_w ones.
-Proof. by rewrite /ii /ii_w -cardwset1 (mincardwset1 inhb_max_st_is_maximal_stable). Qed.
+Proof. by rewrite /ii /ii_w -cardwset1 eq_arg_min. Qed.
 
 Definition alpha : nat := #|arg_max set0 stable W1|.
 
 Fact eq_alpha_alpha1 : alpha = alpha_w ones.
-Proof. by rewrite /alpha /alpha_w -cardwset1 (maxcardwset1 stable0). Qed.
+Proof. by rewrite /alpha /alpha_w -cardwset1 eq_arg_max. Qed.
 
 Definition Gamma : nat := #|arg_max inhb_min_dom min_dom W1|.
 
 Fact eq_Gamma_Gamma1 : Gamma = Gamma_w ones.
-Proof. by rewrite /Gamma /Gamma_w -cardwset1 (maxcardwset1 inhb_min_dom_is_minimal_dominating). Qed.
+Proof. by rewrite /Gamma /Gamma_w -cardwset1 eq_arg_max. Qed.
 
 Definition IR : nat := #|arg_max set0 irredundant W1|.
 
 Fact eq_IR_IR1 : IR = IR_w ones.
-Proof. by rewrite /IR /IR_w -cardwset1 (maxcardwset1 irr0). Qed.
+Proof. by rewrite /IR /IR_w -cardwset1 eq_arg_max. Qed.
 
 (* Classic Cockayne-Hedetniemi domination chain. *)
 
