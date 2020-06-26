@@ -267,39 +267,38 @@ Section Stable_Set.
 
 Variable S : {set G}.
 
-Definition stable : bool := [forall u in S, forall v in S, ~~ (u -- v)].
+Definition stable : bool := [disjoint NS(S) & S].
 
-Definition stable_alt : bool := NS(S) :&: S == set0.
-
-(* TO DO: @chdoc suggests to add:
-Proposition stableF : stable -> {in S&, forall u v, u -- v = false}.
-*)
-
-Proposition stableP : reflect {in S&, forall u v, ~~ u -- v} stable.
+Local Lemma stableP_alt :
+  reflect {in S&, forall u v, ~~ u -- v} [forall u in S, forall v in S, ~~ (u -- v)].
 Proof. apply: equivP (in11_in2 S S). do 2 (apply: forall_inPP => ?). exact: idP. Qed.
 
-Proposition stablePn : reflect (exists x y, [/\ x \in S, y \in S & x -- y]) (~~ stable).
-Proof. 
-  set E := exists _, _.
-  have EE : (exists2 x, x \in S & exists2 y, y \in S & x -- y) <-> E by firstorder.
-  rewrite /stable !negb_forall_in; apply: equivP EE; apply: exists_inPP => x.
-  rewrite negb_forall_in; apply: exists_inPP => y. exact: negPn.
-Qed.
-
-Theorem stable_eq_stable_alt : stable = stable_alt. 
-Proof. 
-  rewrite /stable_alt setI_eq0; apply/stableP/disjointP => stS.
+Local Lemma eq_stable_alt : stable = [forall u in S, forall v in S, ~~ (u -- v)].
+Proof.
+  symmetry ; rewrite /stable ; apply/stableP_alt/disjointP => stS.
   - move => x /bigcupP [y yS adjyx] xS. 
     move: adjyx. rewrite in_opn. apply/negP. by apply: stS.
   - move => x y xS yS. apply/negP => adjxy.
     exact: (stS y (mem_opns xS adjxy) yS).
 Qed.
 
+Proposition stableP : reflect {in S&, forall u v, ~~ u -- v} stable.
+Proof. rewrite eq_stable_alt ; exact: stableP_alt. Qed.
+
+Proposition stablePn : reflect (exists x y, [/\ x \in S, y \in S & x -- y]) (~~ stable).
+Proof.
+  rewrite eq_stable_alt.
+  set E := exists _, _.
+  have EE : (exists2 x, x \in S & exists2 y, y \in S & x -- y) <-> E by firstorder.
+  rewrite !negb_forall_in; apply: equivP EE; apply: exists_inPP => x.
+  rewrite negb_forall_in; apply: exists_inPP => y. exact: negPn.
+Qed.
+
 End Stable_Set.
 
 (* the empty set is stable *)
 Lemma stable0 : stable set0.
-Proof. apply/stableP ; by move=> u v ; rewrite in_set0. Qed.
+Proof. by apply/stableP=> ? ? ; rewrite in_set0. Qed.
 
 (* if D is stable, any subset of D is also stable *)
 Lemma st_hereditary : hereditary stable.
@@ -318,69 +317,46 @@ Section Dominating_Set.
 
 Variable D : {set G}.
 
-Definition dominating : bool := [forall (v | v \notin D), exists u in D, u -- v].
+Definition dominating : bool := [forall v, v \in NS[D]].
 
-Definition dominating_alt : bool := [set: G] == NS[D].
+Local Lemma dominatingP_alt : reflect
+  (forall v : G, v \notin D -> exists2 u : G, u \in D & u -- v)
+  [forall (v | v \notin D), exists u in D, u -- v].
+Proof. apply: forall_inPP => v; exact: exists_inP. Qed.
+
+Local Lemma eq_dominating_alt : dominating = [forall (v | v \notin D), exists u in D, u -- v].
+Proof.
+  symmetry ; rewrite /dominating ; apply/dominatingP_alt.
+  case: (boolP [forall v, v \in NS[D]]).
+  - move/forallP=> H1 v vnotinD.
+    move: (H1 v).
+    move/bigcupP => [u uinD].
+    rewrite in_cln /cl_sedge.
+    have uneqv : (u == v) = false by apply: negbTE ; move: uinD ; apply: contraL ; move/eqP->.
+    by rewrite uneqv orFb ; exists u => //.
+  - move/forallP ; apply: contra_not => H3 v.
+    case: (boolP (v \in D)) ; first exact/subsetP/set_sub_clns.
+    move=> /(H3 v) => [[u]] ; exact: mem_clns.
+Qed.
 
 Proposition dominatingP : reflect
   (forall v : G, v \notin D -> exists2 u : G, u \in D & u -- v) dominating.
-Proof. apply: forall_inPP => v; exact: exists_inP. Qed.
+Proof. rewrite eq_dominating_alt ; apply/dominatingP_alt. Qed.
 
-(* TOTHINK: this looks like the natural "Pn" lemma *)
-Lemma dominatingPn' : 
+Lemma dominatingPn : 
   reflect (exists2 v : G, v \notin D & {in D, forall u, ~~ u -- v}) (~~ dominating).
 Proof.
-  rewrite /dominating negb_forall_in; apply: exists_inPP => x.
+  rewrite eq_dominating_alt negb_forall_in; apply: exists_inPP => x.
   exact: exists_inPn.
-Qed.
-
-Proposition dominatingPn : reflect
-  (exists v : G, {in D, forall u, ~~ (u -*- v)}) (~~ dominating).
-Proof.
-  rewrite /dominating ; apply (iffP existsP).
-  - elim=> x H1. exists x. move: H1.
-    case: (boolP (x \in D)) ; first by rewrite negb_imply andFb.
-    move=> xnotinD ; rewrite negb_imply andTb negb_exists.
-    move/forallP => H2 y yinD. 
-    move: (H2 y). rewrite yinD andTb /cl_sedge.
-    apply: contra ; case/predU1P => [ | //].
-    move=> yeqx. rewrite yeqx in yinD. by move/negP: xnotinD ; contradiction.
-  - elim=> v H3. exists v. rewrite negb_imply negb_exists ; apply/andP ; split.
-    + move: (H3 v). rewrite cl_sg_refl. by move/(@contraL (v \in D) true) ->.
-    + apply/forallP=> u.
-      case: (boolP (u \in D)) ; last by rewrite andFb.
-      move=> /(H3 u). by rewrite andTb /cl_sedge negb_or => /andP [_].
-Qed.
-
-Theorem dominating_eq_dominating_alt : dominating <-> dominating_alt.
-Proof.
-  rewrite /dominating /dominating_alt /iff ; split.
-  - move/forallP=> H1.
-    rewrite eqEsubset subsetT andbT.
-    (* it is enough to prove V(G) \subset N[D] *)
-    apply/subsetP => x _. 
-    case: (boolP (x \in D)); first exact/subsetP/set_sub_clns.
-    move => xnotinD.
-    move/implyP: (H1 x) => H2.
-    move/existsP: (H2 xnotinD).
-    elim=> u /andP [uinD adjux].
-    exact: mem_clns uinD adjux.
-  - move=> VisND.
-    apply/dominatingP => v vnotinD.
-    move/eqP: VisND (in_setT v) -> => /bigcupP.
-    elim=> [x xinD vinNx].
-    rewrite /closed_neigh in_setU /open_neigh !inE in vinNx.
-    case/predU1P : vinNx => [visx|adjxv]; last by exists x.
-    by subst; contrab.
 Qed.
 
 End Dominating_Set.
 
 (* V(G) is dominating *)
-Lemma domT : dominating [set :G].
+Lemma domT : dominating [set: G].
 Proof.
-  rewrite dominating_eq_dominating_alt /dominating_alt eqEsubset subsetT andbT.
-  exact: set_sub_clns.
+  move/subsetP: (set_sub_clns [set: G]) => H1.
+  apply/forallP=> v ; exact: (H1 v (in_setT v)).
 Qed.
 
 (* if D is dominating, any supraset of D is also dominating *)
@@ -572,10 +548,8 @@ Proof.
   move=> [stableD dominatingD].
   rewrite -(rwP (minimal_indsysP _ dom_superhereditary)).
   split=> // x xinD.
-  apply/dominatingPn.
-  exists x => y.
-  rewrite in_setD1 => /andP [yneqx yinD].
-  rewrite /cl_sedge negb_or yneqx andTb.
+  apply/dominatingPn ; exists x ; first by rewrite in_setD1 eqxx andFb.
+  move=> y ; rewrite in_setD1 => /andP [_ yinD].
   move/stableP: stableD ; by move=> /(_ y x yinD xinD).
 Qed.
 
@@ -589,19 +563,21 @@ Proof.
     split => // v vinD.
     apply/dominatingPn.
     move: (irredundantD v vinD).
-    rewrite (prvs0n vinD).
-    elim=> w.
+    rewrite (prvs0n vinD) => [[w]].
     rewrite /private => /andP [vdomw /forall_inP H1].
-    exists w => u.
-    rewrite in_setD1 => /andP [uneqv uinD].
-    move: (H1 u uinD).
-    move/implyP/(@contra (u -*- w) (u == v)).
-    by move=> /(_ uneqv).
+    exists w.
+    + rewrite in_setD1 negb_and negbK.
+      case: (boolP (w \in D)) ; last by rewrite orbT.
+      { by rewrite orbF ; move=> /(H1 w) ; rewrite cl_sg_refl. }
+    + move=> u.
+      rewrite in_setD1 => /andP [uneqv uinD].
+      move: (H1 u uinD).
+      move/implyP/(@contra (u -*- w) (u == v)) => /(_ uneqv).
+      by apply: contra ; rewrite /cl_sedge ; move-> ; rewrite orbT.
   - move => [dominatingD H2] ; split=> //.
     apply/irredundantP => v vinD.
     move: (H2 v) => /(_ vinD).
-    move/dominatingPn.
-    elim=> w H3.
+    move/dominatingPn => [w wnotinDminusv H3].
     rewrite (prvs0n vinD).
     exists w.
     apply/privateP ; split ; last first.
@@ -610,27 +586,19 @@ Proof.
       move: udomw.
       apply/contraLR => uneqv.
       have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
-      by rewrite (H3 u uinDminusv).
-    + case: (boolP (w == v)) ; first by move/eqP-> ; rewrite cl_sg_refl.
-      move=> wneqv.
-      case: (boolP (w \in D)).
-      * move=> winD.
-        move: (H3 w).
-        rewrite in_setD1 wneqv andTb.
-        move=> /(_ winD) /negP.
-        move: (cl_sg_refl w).
-        contradiction.
-      * move=> wnotinD.
-        move/dominatingP: dominatingD.
-        move=> /(_ w wnotinD).
-        elim=> u.
-        case: (boolP (u == v)) ; first by move/eqP-> => _ adjvw ; rewrite /cl_sedge adjvw orbT.
-        move=> uneqv uinD.
-        have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
-        move: (H3 u uinDminusv).
-        rewrite /cl_sedge negb_or => /andP [_].
-        move/negP.
-        contradiction.
+      rewrite /cl_sedge negb_or (H3 u uinDminusv) andbT.
+      apply/negP=> ueqw ; move/negP: wnotinDminusv ; rewrite -(eqP ueqw).
+      contradiction.
+    + rewrite /cl_sedge ; case: (boolP (v == w)) ; first by move/eqP->.
+      rewrite orFb eq_sym => wneqv.
+      move: wnotinDminusv ; rewrite in_setD1 wneqv andTb => wnotinD.
+      move/dominatingP: dominatingD.
+      move=> /(_ w wnotinD) => [[u uinD]].
+      case: (boolP (u == v)) ; first by move/eqP->.
+      move=> uneqv.
+      have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
+      move: (H3 u uinDminusv) ; move/negP.
+      contradiction.
 Qed.
 
 (* A minimal dominating set is maximal irredundant
