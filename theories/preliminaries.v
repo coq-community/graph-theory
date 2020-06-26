@@ -883,24 +883,13 @@ Proof.
   all: by rewrite properC ?setCK => /H; rewrite ?setCK.
 Qed.
 
-Lemma set21_subset (u v : T) (A : {set T}) : [set u; v] \subset A -> u \in A.
-Proof. move=> uvsubA ; apply: (subsetP uvsubA u) ; exact: set21. Qed.
-
-Lemma set22_subset (u v : T) (A : {set T}) : [set u; v] \subset A -> v \in A.
-Proof. rewrite setUC ; exact: set21_subset. Qed.
-
 Lemma doubleton_eq_left (u v w : T) : [set u; v] = [set u; w] <-> v = w.
 Proof.
   rewrite /iff ; split ; last by move->.
-  (* we prove the hard case: {u, v} = {u, w} -> v = w *)
-  move=> uvisuw.
-  apply/eqP.
-  move: (set22 u v) => H1.
-  rewrite uvisuw in_set2 in H1.
-  case/orP: H1 => [visu | // ].
-  rewrite -!(eqP visu) setUid in uvisuw.
-  move: (set22 v w) => H2.
-  by rewrite eq_sym -in_set1 uvisuw.
+  apply: contra_eq => vDw; apply/eqP/setP.
+  case: (eqVneq v u) => [?|vDu]; subst.
+  - by move/(_ w); rewrite !inE eqxx [_ == u]eq_sym (negbTE vDw).
+  - by move/(_ v); rewrite !inE eqxx (negbTE vDw) (negbTE vDu).
 Qed.
 
 Lemma doubleton_eq_right (u v w : T) : [set u; w] = [set v; w] <-> u = v.
@@ -909,27 +898,15 @@ Proof. rewrite ![[set _;w]]setUC; exact: doubleton_eq_left. Qed.
 Lemma doubleton_eq_iff (u v w x : T) : [set u; v] = [set w; x] <->
   ((u = w /\ v = x) \/ (u = x /\ v = w)).
 Proof.
-  rewrite /iff ; split ; last first.
-  - case => [ [uisw visx] | [uisx visw] ]. 
-    by rewrite uisw visx.
-    by rewrite uisx visw setUC.
-  - move=> uviswx.
-    have uinwx := (set21 u v).
-    rewrite uviswx in_set2 in uinwx.
-    case/orP: uinwx => [/eqP uisw|/eqP uisx].
-    + left ; split => //.
-      have [dbl_eq_left _] := (doubleton_eq_left w v x).
-      apply: dbl_eq_left.
-      by rewrite -[in X in X = _] uisw.
-    + right ; split => //.
-      have [dbl_eq_right _] := (doubleton_eq_right v w x).
-      apply: dbl_eq_right.
-      rewrite -[in X in X = _] uisx -uviswx.
-      exact: setUC.
+  split ; last by case => -[-> ->] //; rewrite setUC.
+  move=> E; case: (eqVneq u w) => [?|uDw]; subst.
+    left; split => //. by move/doubleton_eq_left : E.
+  have ? : u = x; subst.
+  { move/setP/(_ u) : E. rewrite !inE !eqxx (negbTE uDw) /=.
+    by move/esym/eqP. }
+  right; split => //. rewrite [RHS]setUC in E.
+  by move/doubleton_eq_left : E.
 Qed.
-
-Lemma pair_neq_card2 (u v : T) : (u != v) <-> #|[set u; v]| = 2.
-Proof. by rewrite cards2; case: (altP (u =P v)). Qed.
 
 Lemma sorted_leq_nth s (srt_s : sorted leq s) : 
   forall i j, i < j -> i < size s -> j < size s -> nth 0 s i <= nth 0 s j.

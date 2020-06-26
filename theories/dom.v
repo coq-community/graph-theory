@@ -115,11 +115,11 @@ Proof. by rewrite /closed_neigh_set big_set0. Qed.
 
 Variables D1 D2 : {set G}.
 
-Lemma opn_sub_opns : {in D1, forall v, N(v) \subset NS(D1)}.
-Proof. move=> v vinD1; exact: bigcup_sup. Qed.
+Lemma opn_sub_opns v : v \in D1 -> N(v) \subset NS(D1).
+Proof. move=> vinD1; exact: bigcup_sup. Qed.
 
-Lemma cln_sub_clns : {in D1, forall v, N[v] \subset NS[D1]}.
-Proof. move=> v vinD1; exact: bigcup_sup. Qed.
+Lemma cln_sub_clns v : v \in D1 -> N[v] \subset NS[D1].
+Proof. move=> vinD1; exact: bigcup_sup. Qed.
 
 Lemma set_sub_clns : D1 \subset NS[D1].
 Proof.
