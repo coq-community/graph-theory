@@ -277,8 +277,8 @@ Section RemoveEdge.
     apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
     - apply/subsetP=> z.
       rewrite in_setU in_set1 !in_set !in_edges => adjuz.
-      rewrite adjuz andbT -implybE ; apply/implyP ; move/eqP.
-      rewrite doubleton_eq_iff ; case ; [by elim ; move-> ; move-> | by elim=> _ ; move-> ].
+      rewrite adjuz andbT -implybE setUC ; apply/implyP ; move/eqP.
+      rewrite doubleton_eq_right. by move->.
     - apply/subsetP=> z.
       rewrite in_setU in_set1 !in_set.
       move/orP ; case ; first by move/andP ; elim.
@@ -314,98 +314,73 @@ Section RemoveEdge.
 End RemoveEdge.
 
 
-Theorem edges_sum_degrees : forall G : sgraph, 2 * #|E(G)| = \sum_(w in G) deg G w.
+(* TO DO: Write "\sum_(w in G) deg G w" instead of "\sum_(w in [set: G]) deg G w".
+   The problem here is that, if I convert the first to the second with:
+
+     rewrite (@eq_bigl _ _ _ _ _ [pred w in G] [pred w in [set: G]]) //=.
+
+   the rewrite generates an obligation proof:
+
+     [pred w in G] =1 [pred w in [set: G]]
+
+   that I don't know how to handle. HELP! *)
+
+Theorem edges_sum_degrees : forall G : sgraph, 2 * #|E(G)| = \sum_(w in [set: G]) deg G w.
 Proof.
   (* first, we shape the statement *)
-  suff: forall (n : nat) (G : sgraph), #|E(G)| = n -> 2 * n = \sum_(w in G) deg G w.
+  suff: forall (n : nat) (G : sgraph), #|E(G)| = n -> 2 * n = \sum_(w in [set: G]) deg G w.
   { by move=> H1 G ; move: (H1 #|E(G)| G erefl)->. }
   move=> n ; elim/nat_ind: n => [G | m IH].
   (* base case *)
   - move/eqP ; rewrite cards_eq0 muln0 ; move/eqP => edgeless.
-    have H1 : (forall i, i \in G -> deg G i = 0).
+    have H1 : (forall i, i \in [set: G] -> deg G i = 0).
     { by move=> i _ ; apply: (deg_edgeless edgeless). }
     rewrite (@eq_bigr _ _ _ _ _ _ [eta deg G] (fun x => 0) H1).
     by apply/eqP ; rewrite eq_sym sum_nat_eq0 eqxx ; apply/forall_inP => _ _.
   (* inductive case *)
+  - move=> G Emplus1.
+    rewrite mulnC mulSn mulnC.
+    (* we first obtain an edge {u,v} from G *)
+    move: (ltn0Sn m).
+    rewrite -Emplus1 card_gt0.
+    move/set0Pn => [e einEG].
+    move/edgesP: (einEG) => [u [v [eisuv adjuv]]].
+    (* we now split the summation, and do the same for the inductive hypothesis *)
+    rewrite (big_setID [set u; v]) (setIidPr (subsetT [set u; v])) /=.
+
+    set G' := @remove_edge G u v.
+    have IH' : #|E(G')| = m ->
+         2 * m = \sum_(i in [set (u : G'); (v : G')]) deg G' i
+               + \sum_(i in [set: G'] :\: [set (u : G'); (v : G')]) deg G' i.
+    { move=> EG'm.
+      rewrite -[in X in _ = X + _](setIidPr (subsetT [set (u : G'); (v : G')])).
+      by rewrite -(big_setID [set u; v]) (IH G' EG'm). }
+
+    have uvinEG : [set [set u; v]] \subset E(G).
+    { by rewrite sub1set -eisuv einEG. }
+
+    have EG'm : #|E(G')| = m.
+    { by rewrite remove_edge_set cardsD Emplus1 (setIidPr uvinEG) cards1 subn1 /=. }
+
+    (* now, we apply the inductive hypothesis *)
+    rewrite (IH' EG'm).
+
+    have H3: \sum_(i in [set: G'] :\: [set u; v]) deg G' i
+           = \sum_(i in [set: svertex G] :\: [set u; v]) deg G i.
+    { admit. }  (* HELP AGAIN! *)
+
+    rewrite H3 addnA ; apply/eqP ; rewrite eqn_add2r ; apply/eqP.
+
+    have usubuv : [set u] \subset [set u; v] by rewrite sub1set set21.
+    have uvdifv : [set u; v] :\: [set u] = [set v].
+    { by rewrite setU1K // in_set1 (sg_edgeNeq adjuv). }
+
+    rewrite (big_setID [set u]) (setIidPr usubuv) big_set1 /=.
+    rewrite [in X in _ = X](big_setID [set u]) (setIidPr usubuv) big_set1 /=.
+    rewrite !uvdifv !big_set1.
+    rewrite (@deg_remove_edgeu G u v adjuv) -/G'.
+    rewrite (@deg_remove_edgev G u v adjuv) -/G'.
+    by rewrite [in X in _ = X]addSn [in X in _ = X]addnS !addSnnS add0n.
 Admitted.
 
-
-
-
-
-
-
-
-
-
-
-(**********************************************************************************)
-(*Section Classic_fact.
-
-Lemma classic_fact_aux : forall (G : sgraph) (e : {set G}), e \in E(G) -> V(G) = (V(G) :\: e) :|: e.
-Proof. move=> G e einE ; apply: set_minus_union ; exact: subsetT. Qed.
-
-Theorem classic_fact : forall G : sgraph, 2 * #|E(G)| = \sum_(w in V(G)) deg G w.
-Proof.
-  (* first, we shape the statement *)
-  suff: forall (n : nat) (G : sgraph), #|E(G)| = n -> 2 * n = \sum_(w in G | w \in V(G)) deg G w.
-  move=> newstat G ; by move: (newstat #|E(G)| G erefl)->.
-  move=> n ; elim/nat_ind: n => [G | m IH].
-  (* base case *)
-  move=> /eqP Eempty.
-  rewrite cards_eq0 -/isolate_graph in Eempty.
-  apply/eqP.
-  rewrite muln0 eq_sym sum_nat_eq0.
-  apply/forall_inP => i iinV.
-  apply/eqP.
-  by rewrite deg_isolate_graph // /isolate_graph (eqP Eempty).
-  (* inductive case: first, we obtain an edge e = {u,v} *)
-  move=> G Emplus1.
-  rewrite mulnC mulSn mulnC addnC.
-  have existsedge: exists e : {set G}, e \in E(G).
-  apply/set0Pn.
-  by rewrite -card_gt0 Emplus1 ltn0Sn.
-  elim: existsedge => [e einE].
-  move: (pair_card2_exists (edges_size_two einE)) => [u [v [uneqv eisuv]]].
-  (* now, we create some useful elements *)
-  set Gruv := G_minus_uv u v.
-  have uvinE: [set u; v] \in E(G) by rewrite -eisuv einE.
-  have uvsubE: [set [set u; v]] \subset E(G) by rewrite sub1set uvinE.
-  have H1: #|E(G) :\: [set [set u; v]]| = m
-    by rewrite cardsD -(subset_inter uvsubE) cards1 Emplus1 subSS subn0.
-  (* here, we manipulate the inductive hypothesis *)
-  have IHG: 2 * m = \sum_(w in Gruv | w \in V(Gruv) :\: e) deg Gruv w + deg Gruv u + deg Gruv v.
-  rewrite (IH Gruv) ; last by rewrite edge_set_minus_uv H1.
-  rewrite (eq_bigl (fun w => w \in (V(Gruv) :\: e) :|: e)) ; last first.
-  move=> w ; apply/eqP ; by rewrite -(classic_fact_aux einE).
-  rewrite sum_disjoint_union ; last exact: set_minus_disjoint.
-  rewrite [in X in _ + X = _] eisuv.
-  rewrite [in X in _ + X = _] sum_disjoint_union ; last exact: set_pair_disjoint.
-  rewrite !sum_singleton addnA.
-  apply/eqP ; by rewrite !eqn_add2r.
-  (* next, we manipulate the original inductive case *)
-  rewrite (eq_bigl (fun w => w \in (V(G) :\: e) :|: e)) ; last first.
-  move=> w ; by rewrite -(classic_fact_aux einE).
-  rewrite sum_disjoint_union ; last exact: set_minus_disjoint.
-  rewrite [in X in _ = _ + X] eisuv.
-  rewrite [in X in _ = _ + X] sum_disjoint_union ; last exact: set_pair_disjoint.
-  rewrite !sum_singleton addnA.
-  (* finally, we apply the inductive hypothesis *)
-  rewrite IHG.
-  move: uvinE ; rewrite -sg_in_edge_set => adjuv.
-  rewrite (deg_minus_uv1 adjuv) (deg_minus_uv2 adjuv) -/Gruv.
-  rewrite !addnA.
-  rewrite -[in X in _ = X + _] addnA.
-  rewrite [in X in _ = _ + X + _] addnC.
-  rewrite addnA.
-  rewrite -[in X in _ = X] addnA.
-  apply/eqP ; rewrite eqn_add2r ; apply/eqP.
-  rewrite [in X in _ = X] (eq_bigr (fun w => deg Gruv w)) //.
-  move=> w.
-  rewrite in_setD => /andP [wnotine _].
-  rewrite eisuv in wnotine.
-  exact: deg_minus_uv0.
-Qed.
-
-End Classic_fact. *)
 
