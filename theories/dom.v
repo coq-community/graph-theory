@@ -107,6 +107,13 @@ Proof.
   by case/doubleton_eq_iff => -[-> ->] //; rewrite sgP.
 Qed.
 
+Lemma opn_edges (u : G) : N(u) = [set v | [set u; v] \in E(G)].
+Proof.
+  apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
+  - by apply/subsetP=> w ; rewrite in_opn in_set in_edges.
+  - by apply/subsetP=> w ; rewrite in_opn in_set in_edges.
+Qed.
+
 Lemma opns0 : NS(G;set0) = set0. 
 Proof. by rewrite /open_neigh_set big_set0. Qed.
 
@@ -956,138 +963,3 @@ Arguments ii : clear implicits.
 Arguments alpha : clear implicits.
 Arguments Gamma : clear implicits.
 Arguments IR : clear implicits.
-
-
-(**********************************************************************************)
-Section Weighted_degree.
-
-(* TOTHINK: This is currently unused, delete or move elsewhere? *)
-
-Variable G : sgraph.
-Variable weight : G -> nat.
-Hypothesis positive_weights : forall v : G, weight v > 0.
-
-Let W := weight_set weight.
-
-Definition deg_w (v : G) := W N(v).
-
-Lemma ltn_deg_w_subwsetT1 (v : G) : deg_w v <= W setT - 1.
-Proof.
-  suff: deg_w v < W setT by move=> H ; rewrite (pred_Sn (deg_w v)) -subn1 (leq_sub2r 1 H).
-  rewrite /deg_w ; apply: (ltnwset positive_weights).
-  rewrite properT ; apply/negP => /eqP H1.
-  move: (in_setT v) ; rewrite -H1 ; move/negP: (v_notin_opneigh v) ; contradiction.
-Qed.
-
-(* Minimum and maximum weighted degree of a graph. *)
-
-(* x is a vertex of G (i.e. G is a non-empty graph) *)
-Hypothesis x : G.
-
-Let some_vertex_with_neighborhood (S : {set G}) := [exists v, S == N(v)].
-
-Local Fact Nx_is_neighborhood_x : some_vertex_with_neighborhood N(x).
-Proof. by rewrite /some_vertex_with_neighborhood ; apply/existsP ; exists x. Qed.
-
-Definition delta_w := W (arg_min N(x) some_vertex_with_neighborhood W).
-
-Fact delta_min (v : G) : delta_w <= deg_w v.
-Proof.
-  rewrite /delta_w ; case: (arg_minP W Nx_is_neighborhood_x) => A _ ; apply.
-  by rewrite /some_vertex_with_neighborhood ; apply/existsP ; exists v.
-Qed.
-
-Fact delta_witness : exists v, deg_w v = delta_w.
-Proof.
-  rewrite /delta_w ; case: (arg_minP W Nx_is_neighborhood_x) => S exS _.
-  move/existsP: exS => [u] /eqP SeqNu ; exists u ; by rewrite /deg_w SeqNu.
-Qed.
-
-Definition Delta_w := W (arg_max N(x) some_vertex_with_neighborhood W).
-
-Fact Delta_max (v : G) : deg_w v <= Delta_w.
-Proof.
-  rewrite /Delta_w ; case: (arg_maxP W Nx_is_neighborhood_x) => A _ ; apply.
-  by rewrite /some_vertex_with_neighborhood ; apply/existsP ; exists v.
-Qed.
-
-Fact Delta_witness : exists v, deg_w v = Delta_w.
-Proof.
-  rewrite /Delta_w ; case: (arg_maxP W Nx_is_neighborhood_x) => S exS _.
-  move/existsP: exS => [u] /eqP SeqNu ; exists u ; by rewrite /deg_w SeqNu.
-Qed.
-
-End Weighted_degree.
-
-Section Degree_of_vertices.
-
-Variable G : sgraph.
-
-Definition deg (v : G) := #|N(v)|.
-
-Fact eq_deg_deg1 (v : G) : deg v = deg_w (@ones G) v.
-Proof. by rewrite /deg /deg_w -cardwset1. Qed.
-
-Lemma ltn_deg_subn1 (v : G) : deg v <= #|G| - 1.
-Proof. by rewrite eq_deg_deg1 -cardsT (cardwset1 setT) ; exact: ltn_deg_w_subwsetT1. Qed.
-
-(* Minimum and maximum weighted degree of a graph. *)
-
-(* x is a vertex of G (i.e. G is a non-empty graph) *)
-Hypothesis x : G.
-
-Let some_vertex_with_degree (n : nat) := [exists v, deg v == n].
-
-Local Fact degx_has_deg_x : exists (n : nat), some_vertex_with_degree n.
-Proof. by rewrite /some_vertex_with_degree ; exists (deg x) ; apply/existsP ; exists x. Qed.
-
-Local Fact ltn_someu_degu_subn1 (n : nat) : some_vertex_with_degree n -> n <= #|G| - 1.
-Proof.
-  rewrite /some_vertex_with_degree ; move/existsP => [u].
-  move/eqP<- ; exact: ltn_deg_subn1.
-Qed.
-
-Definition delta := ex_minn degx_has_deg_x.
-
-Lemma eq_delta_delta1 : delta = delta_w (@ones G) x.
-Proof.
-  rewrite /delta.
-  have [n some_n n_min] := ex_minnP.
-  apply/eqP ; rewrite eqn_leq ; apply/andP ; split.
-  - apply: n_min ; rewrite /some_vertex_with_degree.
-    apply/existsP ; elim: (delta_witness (@ones G) x) => u.
-    move<- ; exists u ; apply/eqP.
-    exact: eq_deg_deg1.
-  - move: some_n.
-    rewrite /some_vertex_with_degree.
-    move/existsP => [u] /eqP <-.
-    rewrite eq_deg_deg1.
-    exact: delta_min.
-Qed.
-
-Definition Delta := ex_maxn degx_has_deg_x ltn_someu_degu_subn1.
-
-Lemma eq_Delta_Delta1 : Delta = Delta_w (@ones G) x.
-Proof.
-  rewrite /Delta.
-  have [n some_n n_max] := ex_maxnP.
-  apply/eqP ; rewrite eqn_leq ; apply/andP ; split.
-  - move: some_n.
-    rewrite /some_vertex_with_degree.
-    move/existsP => [u] /eqP <-.
-    rewrite eq_deg_deg1.
-    exact: Delta_max.
-  - apply: n_max ; rewrite /some_vertex_with_degree.
-    apply/existsP ; elim: (Delta_witness (@ones G) x) => u.
-    move<- ; exists u ; apply/eqP.
-    exact: eq_deg_deg1.
-Qed.
-
-End Degree_of_vertices.
-
-Arguments deg_w : clear implicits.
-Arguments delta_w : clear implicits.
-Arguments Delta_w : clear implicits.
-Arguments deg : clear implicits.
-Arguments delta : clear implicits.
-Arguments Delta : clear implicits.

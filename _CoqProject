@@ -45,5 +45,6 @@ theories/extraction_def.v
 theories/extraction_iso.v
 theories/extraction_top.v
 
-## Domination Theory
+## Domination Theory and other stuff
 theories/dom.v
+theories/more.v
