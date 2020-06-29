@@ -379,64 +379,23 @@ Qed.
 Section Irredundant_Set.
 
 Variable D : {set G}.
+Implicit Types x y v w : G.
 
-Definition private_set (v : G) := N[v] :\: NS[D :\: [set v]].
+Definition private_set (v : G) := N[v] :\: NS[D :\ v].
 
-(* private v w = w is a private vertex of v (assuming v \in D) *)
-Definition private (v w : G) : bool := v -*- w && [forall u : G, (u \in D) ==> (u -*- w) ==> (u == v)].
-
-Proposition privateP : forall v w : G, reflect 
-  (v -*- w /\ {in D, forall u, u -*- w -> u = v}) (private v w).
-Proof.
-  move=> v w. rewrite /private ; apply: (iffP andP).
-  - move=> [vdomw /forallP H1] ; split=> //.
-    move=> u uinD udomw. move: (H1 u).
-    rewrite uinD implyTb udomw implyTb. by move/eqP->.
-  - move=> [vdomw H2] ; split=> //.
-    apply/forall_inP => u uinD. apply/implyP=> udomw.
-    move: (H2 u uinD udomw). by move->.
-Qed.
-
-Theorem mem_prv_prvs (v w : G) : (private v w) <-> (w \in private_set v).
-Proof.
-  rewrite /private_set /iff ; split.
-  - move/privateP => [vdomw H1].
-    rewrite in_setD /closed_neigh_set.
-    apply/andP.
-    split ; last by rewrite in_cln.
-    apply/bigcupP.
-    elim=> x xinDminusv winNx.
-    move: xinDminusv.
-    rewrite in_setD in_set1 => /andP [xnotv xinD].
-    move: winNx.
-    rewrite in_cln => xdomw.
-    move: (H1 x xinD xdomw).
-    move/eqP: xnotv.
-    contradiction.
-  - rewrite in_setD /closed_neigh_set.
-    move=> /andP [wnotincup winNv].
-    apply/privateP ; split ; first by rewrite -in_cln.
-    move=> u uinD udomw.
-    apply/eqP.
-    move: wnotincup.
-    apply: contraR => unotv.
-    apply/bigcupP.
-    exists u ; last by rewrite in_cln.
-    by rewrite /= in_setD uinD andbT in_set1.
-Qed.
-
-Lemma prvs0n : {in D, forall v, (private_set v != set0) <-> (exists w : G, private v w)}.
-Proof.
-  move=> v.
-  rewrite /private_set /iff ; split.
-  - move/set0Pn. elim=> w H2.
-    exists w. by rewrite mem_prv_prvs.
-  - elim=> w. rewrite mem_prv_prvs => H1.
-    apply/set0Pn. by exists w.
+Lemma privateP v w : 
+  reflect (v -*- w /\ {in D, forall u, u -*- w -> u = v}) (w \in private_set v).
+Proof. 
+  apply: (iffP setDP); rewrite !in_cln => -[v_dom_w H]; split => //.
+  - move => u inD u_dom_w; apply: contraNeq H => uDv.
+    apply/bigcupP; exists u; by [exact/setD1P|rewrite in_cln].
+  - apply/negP => /bigcupP [u /setD1P [uDv /H]]. rewrite in_cln => X {}/X.
+    exact/eqP.
 Qed.
 
 (* This alternative definition of private_set contemplates cases where v \notin D.
  * If v belongs to D, it returns the set of private vertices; otherwise, it returns an empty set. *)
+
 Definition private_set' (v : G) := NS[D :&: [set v]] :\: NS[D :\: [set v]].
 
 Lemma eq_prvs_prvs' (v : G) : v \in D -> private_set' v == private_set v.
@@ -492,8 +451,7 @@ Proof.
   apply/irredundantP => v vinF.
   move: (subsetP FsubD v vinF) => vinD.
   move: (Dirr v vinD).
-  rewrite (prvs0n vinD) (prvs0n vinF).
-  elim=> x /privateP [vdomx H1]. exists x.
+  case/set0Pn => x /privateP [vdomx H1]. apply/set0Pn; exists x.
   apply/privateP ; split=> //.
   move=> u uinF udomx. move: (subsetP FsubD u uinF) => uinD.
   exact: (H1 u uinD udomx).
@@ -569,24 +527,21 @@ Proof.
   - move=> [dominatingD /irredundantP irredundantD].
     split => // v vinD.
     apply/dominatingPn.
-    move: (irredundantD v vinD).
-    rewrite (prvs0n vinD) => [[w]].
-    rewrite /private => /andP [vdomw /forall_inP H1].
+    move: (irredundantD v vinD) => /set0Pn [w /privateP [vdomw H1]].
     exists w.
-    + rewrite in_setD1 negb_and negbK.
-      case: (boolP (w \in D)) ; last by rewrite orbT.
-      { by rewrite orbF ; move=> /(H1 w) ; rewrite cl_sg_refl. }
+    + rewrite in_setD1 negb_and negbK. 
+      case: (boolP (w \in D)) ; last by rewrite orbT. 
+      { by rewrite orbF ; move=> /(H1 w) ; rewrite cl_sg_refl=> ->. (* Weird *)}
     + move=> u.
       rewrite in_setD1 => /andP [uneqv uinD].
       move: (H1 u uinD).
-      move/implyP/(@contra (u -*- w) (u == v)) => /(_ uneqv).
+      move/contra_neqN/(_ uneqv). (* Weird *)
       by apply: contra ; rewrite /cl_sedge ; move-> ; rewrite orbT.
   - move => [dominatingD H2] ; split=> //.
     apply/irredundantP => v vinD.
     move: (H2 v) => /(_ vinD).
     move/dominatingPn => [w wnotinDminusv H3].
-    rewrite (prvs0n vinD).
-    exists w.
+    apply/set0Pn; exists w.
     apply/privateP ; split ; last first.
     + move=> u uinD udomw.
       apply/eqP.
@@ -623,26 +578,21 @@ Proof.
   have vinDcupv : v \in D :|: [set v] by rewrite in_setU set11 orbT.
   rewrite setUC negb_imply vinDcupv andTb.
   apply/negP.
-  rewrite (prvs0n vinDcupv).
-  elim=> x.
-  rewrite /private ; move/andP => [vdomx].
+  case/set0Pn=> x /privateP [vdomx].
   case: (boolP (x \in D)) => [xinD | xnotinD].
   (* case when x is in D (x dominates itself) *)
   - have xinDcupv: x \in D :|: [set v] by rewrite in_setU xinD orTb.
-    move/forallP=> /(_ x).
-    move/implyP=> /(_ xinDcupv).
-    rewrite cl_sg_refl implyTb.
-    move/eqP=> xeqv ; rewrite -xeqv in vnotinD.
+    move => /(_ x xinDcupv).
+    rewrite cl_sg_refl => /(_ isT) => xeqv.
+    rewrite -xeqv in vnotinD.
     by move/negP in vnotinD.
   (* case when x is not in D (some u in D dominates x) *)
   - move: dominatingD.
     move/dominatingP=> /(_ x xnotinD).
     elim=> u uinD adjux.
     have uinDcupv: u \in D :|: [set v] by rewrite in_setU uinD orTb.
-    move/forallP=> /(_ u).
-    move/implyP=> /(_ uinDcupv).
-    rewrite /cl_sedge adjux orbT implyTb.
-    move/eqP=> ueqv ; rewrite -ueqv in vnotinD.
+    move => /(_ u uinDcupv).
+    rewrite /cl_sedge adjux orbT => /(_ isT) ueqv ; rewrite -ueqv in vnotinD.
     by move/negP in vnotinD.
 Qed.
 
