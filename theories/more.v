@@ -314,29 +314,16 @@ Section RemoveEdge.
 End RemoveEdge.
 
 
-(* TO DO: Write "\sum_(w in G) deg G w" instead of "\sum_(w in [set: G]) deg G w".
-   The problem here is that, if I convert the first to the second with:
-
-     rewrite (@eq_bigl _ _ _ _ _ [pred w in G] [pred w in [set: G]]) //=.
-
-   the rewrite generates an obligation proof:
-
-     [pred w in G] =1 [pred w in [set: G]]
-
-   that I don't know how to handle. HELP! *)
-
-Theorem edges_sum_degrees : forall G : sgraph, 2 * #|E(G)| = \sum_(w in [set: G]) deg G w.
+Theorem edges_sum_degrees : forall G : sgraph, 2 * #|E(G)| = \sum_(w in G) deg G w.
 Proof.
   (* first, we shape the statement *)
   suff: forall (n : nat) (G : sgraph), #|E(G)| = n -> 2 * n = \sum_(w in [set: G]) deg G w.
-  { by move=> H1 G ; move: (H1 #|E(G)| G erefl)->. }
+  { by move=> H1 G ; move: (H1 #|E(G)| G erefl)-> ; under eq_bigl => ? do rewrite in_setT. }
   move=> n ; elim/nat_ind: n => [G | m IH].
   (* base case *)
-  - move/eqP ; rewrite cards_eq0 muln0 ; move/eqP => edgeless.
-    have H1 : (forall i, i \in [set: G] -> deg G i = 0).
-    { by move=> i _ ; apply: (deg_edgeless edgeless). }
-    rewrite (@eq_bigr _ _ _ _ _ _ [eta deg G] (fun x => 0) H1).
-    by apply/eqP ; rewrite eq_sym sum_nat_eq0 eqxx ; apply/forall_inP => _ _.
+  - move=> /cards0_eq edgeless.
+  under eq_bigr => w do rewrite deg_edgeless //.
+  by rewrite sum_nat_const !muln0.
   (* inductive case *)
   - move=> G Emplus1.
     rewrite mulnC mulSn mulnC.
@@ -363,13 +350,16 @@ Proof.
     { by rewrite remove_edge_set cardsD Emplus1 (setIidPr uvinEG) cards1 subn1 /=. }
 
     (* now, we apply the inductive hypothesis *)
-    rewrite (IH' EG'm).
+    rewrite (IH' EG'm) addnA.
 
-    have H3: \sum_(i in [set: G'] :\: [set u; v]) deg G' i
-           = \sum_(i in [set: svertex G] :\: [set u; v]) deg G i.
-    { admit. }  (* HELP AGAIN! *)
+    under [in X in _ + _ = _ + X]eq_bigr => w.
+      rewrite setTD in_setC => wnequv.
+      rewrite (deg_remove_edgew wnequv) -/G'.
+    over.
+    have H3 : [set: G'] :\: [set u; v] = [set: svertex G] :\: [set u; v] by auto.
+    under [in X in _ + _ + X = _ + _]eq_bigl => w do rewrite H3.
 
-    rewrite H3 addnA ; apply/eqP ; rewrite eqn_add2r ; apply/eqP.
+    apply/eqP ; rewrite eqn_add2r ; apply/eqP.
 
     have usubuv : [set u] \subset [set u; v] by rewrite sub1set set21.
     have uvdifv : [set u; v] :\: [set u] = [set v].
@@ -381,6 +371,6 @@ Proof.
     rewrite (@deg_remove_edgeu G u v adjuv) -/G'.
     rewrite (@deg_remove_edgev G u v adjuv) -/G'.
     by rewrite [in X in _ = X]addSn [in X in _ = X]addnS !addSnnS add0n.
-Admitted.
+Qed.
 
 
