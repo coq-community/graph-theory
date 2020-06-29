@@ -393,28 +393,6 @@ Proof.
     exact/eqP.
 Qed.
 
-(* This alternative definition of private_set contemplates cases where v \notin D.
- * If v belongs to D, it returns the set of private vertices; otherwise, it returns an empty set. *)
-
-Definition private_set' (v : G) := NS[D :&: [set v]] :\: NS[D :\: [set v]].
-
-Lemma eq_prvs_prvs' (v : G) : v \in D -> private_set' v == private_set v.
-Proof.
-  move=> vinD ; rewrite /private_set /private_set'.
-  suff: N[v] = NS[D :&: [set v]] by move->.
-  rewrite (setIidPr _) ?sub1set //.
-  apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
-  - apply: cln_sub_clns. by rewrite in_set1.
-  - apply/subsetP => x. move/bigcupP. elim=> z ; rewrite in_set1. by move/eqP->.
-Qed.
-
-Lemma eq0prvs' (v : G) : v \notinD -> (private_set' v == set0).
-Proof.
-  move=> vnotinD.
-  rewrite /private_set' disjoint_setI0 1?disjoint_sym ?disjoints1 //.
-  by rewrite clns0 set0D.
-Qed.
-
 Definition irredundant : bool := [forall v : G, (v \in D) ==> (private_set v != set0)].
 
 Proposition irredundantP: reflect {in D, forall v, (private_set v != set0)} irredundant.
@@ -424,17 +402,11 @@ Proof.
   - move=> H2 v. apply/implyP=> vinD. by move: (H2 v vinD).
 Qed.
 
-Proposition irredundantPn : reflect (exists2 v, v \in D & private_set' v == set0) (~~ irredundant).
+Proposition irredundantPn : reflect (exists2 v, v \in D & private_set v == set0) (~~ irredundant).
 Proof.
-  rewrite /irredundant ; apply: (iffP existsP) ; last first.
-  - elim=> x xinD. rewrite (eqP (eq_prvs_prvs' xinD)) => H1.
-    by exists x ; rewrite xinD H1.
-  - elim=> x H2.
-    suff privx_empty: private_set' x == set0.
-    { by exists x ; move: H2 ; rewrite negb_imply negbK => /andP [xinD ?]. }
-    case: (boolP (x \in D)) ; last exact: eq0prvs'.
-    move=> xinD ; move: H2.
-    by rewrite xinD implyTb negbK (eqP (eq_prvs_prvs' xinD)).
+  rewrite /irredundant ; apply: (iffP forall_inPn) ; last first.
+  - case => x xinD H1. by exists x ; rewrite ?xinD ?H1.
+  - case => x xinD H2; rewrite negbK in H2. by exists x.
 Qed.
 
 End Irredundant_Set.
