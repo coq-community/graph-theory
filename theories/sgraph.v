@@ -1398,3 +1398,52 @@ Proof.
     case: (interior0E xDy Ip E) => xy _. split => //; by rewrite inE eqxx.
   - apply: neighborUr. apply: path_neighborL => //; by set_tac. 
 Qed.
+
+(** ** Edge Sets *)
+
+Definition sg_edge_set (G : sgraph) := [set [set x;y] | x in G, y in G & x -- y].
+Notation "E( G )" := (sg_edge_set G) (at level 0, G at level 99, format "E( G )").
+
+Lemma edgesP (G : sgraph) (e : {set G}) : 
+  reflect (exists x y, e = [set x;y] /\ x -- y) (e \in E(G)).
+Proof.
+  apply: (iffP imset2P) => [[x y]|[x] [y] [E xy]].
+  - rewrite !inE /= => _ xy ->. by exists x; exists y.
+  - exists x y => //. by rewrite inE.
+Qed.
+
+Lemma in_edges (G : sgraph) (u v : G) : [set u; v] \in E(G) = (u -- v).
+Proof. 
+  apply/edgesP/idP => [[x] [y] []|]; last by exists u; exists v.
+  by case/doubleton_eq_iff => -[-> ->] //; rewrite sgP.
+Qed.
+
+(** ** Neighborhood lemmas for simple graphs *)
+
+Section Neighborhood_theory.
+Variable G : sgraph.
+Implicit Types (u v : G).
+
+Lemma v_notin_opneigh v : v \notin N(v).
+Proof. by rewrite in_opn sg_irrefl. Qed.
+
+Lemma cl_sg_sym : symmetric (@dominates G).
+Proof. 
+rewrite /symmetric /dominates /closed_neigh => x y ; by rewrite sg_sym eq_sym. 
+Qed.
+
+Lemma opn_proper_cln v : N(v) \proper N[v].
+Proof. 
+  apply/properP; rewrite subsetUr; split => //.
+  by exists v; rewrite !inE ?eqxx sgP.
+Qed.
+
+
+Lemma opn_edges (u : G) : N(u) = [set v | [set u; v] \in E(G)].
+Proof.
+  apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
+  - by apply/subsetP=> w ; rewrite in_opn in_set in_edges.
+  - by apply/subsetP=> w ; rewrite in_opn in_set in_edges.
+Qed.
+
+End Neighborhood_theory.

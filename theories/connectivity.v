@@ -863,18 +863,8 @@ Definition dimatching (G : diGraph) (M : {set G * G}) :=
     (forall e, e \in M -> e.1 -- e.2) 
   /\ {in M &, forall e1 e2 x, x \in [set e1.1;e1.2] -> x \in [set e2.1 ; e2.2] -> e1 = e2}.
 
-Definition edges (G : sgraph) := [set [set x;y] | x in G, y in G & x -- y].
-
-Lemma edgesP (G : sgraph) (e : {set G}) : 
-  reflect (exists x y, e = [set x;y] /\ x -- y) (e \in edges G).
-Proof.
-  apply: (iffP imset2P) => [[x y]|[x] [y] [E xy]].
-  - rewrite !inE /= => _ xy ->. by exists x; exists y.
-  - exists x y => //. by rewrite inE.
-Qed.
-
 Definition matching (G : sgraph) (M : {set {set G}}) := 
-  {subset M <= edges G} /\ 
+  {subset M <= E(G) } /\ 
   {in M&, forall (e1 e2 : {set G}) (x:G), x \in e1 -> x \in e2 -> e1 = e2}.
 
 Lemma connectorC_edge (G : diGraph) (A : {set G}) n (p : 'I_n -> pathS G) i : 
