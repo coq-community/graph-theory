@@ -1,6 +1,3 @@
-
-(* New version of the Domination Theory in Graphs *)
-
 From mathcomp Require Import all_ssreflect.
 Require Import preliminaries digraph sgraph.
 
@@ -10,9 +7,10 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
 
-
 (**********************************************************************************)
-(** * Hereditary and superhereditary properties *)
+(** * Domination Theory                                                           *)
+(**********************************************************************************)
+(** ** Hereditary and superhereditary properties *)
 Section Hereditary.
 Variable (T : finType).
 
@@ -57,7 +55,7 @@ Qed.
 
 End Hereditary.
 
-(** * Weighted Sets *)
+(** ** Weighted Sets *)
 
 Section Weighted_Sets.
 Variables (T : finType) (weight : T -> nat).
@@ -116,14 +114,11 @@ Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
 End Weighted_Sets.
 
 
-(**********************************************************************************)
-(** * Domination Theory *)
 Section Domination_Theory.
 
 Variable G : sgraph.
 
-(**********************************************************************************)
-(** * Definitions of stable, dominating and irredundant sets *)
+(** ** Stable, Dominating and Irredundant Sets *)
 Section Stable_Set.
 
 Variable S : {set G}.
@@ -283,9 +278,7 @@ Proof.
   exact: (H1 u uinD udomx).
 Qed.
 
-
-(**********************************************************************************)
-(** * Fundamental facts about Domination Theory *)
+(** ** Fundamental facts about Domination Theory *)
 Section Relations_between_stable_dominating_irredundant_sets.
 
 Variable D : {set G}.
@@ -301,33 +294,16 @@ Proof.
     have [w winD adjwv] := dominatingD _ vnotinD.
     apply/stablePn; exists v; exists w.
     by rewrite !inE eqxx winD sgP adjwv orbT.
-  - move => [stableD H1].
-    split=> //. apply/dominatingP => x xnotinD.
-    move: (H1 x).
-    move=> /(_ xnotinD). 
-    move/stablePn => [w] [z] [winDcupx zinDcupx adjwz].
-    case: (boolP (z == x)).
-    (* case z = x *)
-    + move/eqP=> zisx.
-      move: adjwz.
-      rewrite zisx => adjwx.
-      exists w ; last by rewrite adjwx.
-      move: winDcupx.
-      rewrite in_setU in_set1.
-      by move: (sg_edgeNeq adjwx) ->.
-    (* case z != x *)
-    + move=> zisnotx.
-      have zinD: z \in D.
-      { move: zinDcupx.
-        rewrite in_setU in_set1.
-        by move/negbTE: zisnotx ->. }
-      exists z.
-      rewrite zinD; split => //.
-      move: winDcupx.
-      rewrite in_setU in_set1.
-      case/predU1P ; first by move<- ; rewrite sg_sym adjwz.
-      move=> winD. move/stableP: stableD.
-      move=> /(_ w z winD zinD).
+  - move => [stableD H1]; split=> //.
+    apply/dominatingP => x xnotinD.
+    have/stablePn [w [z [[winDcupx zinDcupx adjwz]]]] := H1 x xnotinD.
+    case: (eqVneq z x) => [zisx|zisnotx].
+    + by subst z; exists w => //; rewrite !inE (sg_edgeNeq adjwz) in winDcupx.
+    + have zinD : z \in D by rewrite !inE (negbTE zisnotx) /= in zinDcupx.
+      exists z => //.
+      move: winDcupx; rewrite in_setU in_set1.
+      case/predU1P => [|winD]; first by move<- ; rewrite sg_sym adjwz.
+      have := stableP D stableD w z winD zinD.
       apply: contraR. by rewrite adjwz.
 Qed.
 
@@ -348,45 +324,31 @@ Qed.
  * See Prop. 3.8 of Fundamentals of Domination *)
 Theorem minimal_dom_iff_dom_irr : minset dominating D <-> (dominating D /\ irredundant D).
 Proof.
-  rewrite -(rwP (minimal_indsysP _ dom_superhereditary)).
-  rewrite /iff ; split ; last first.
-  - move=> [dominatingD /irredundantP irredundantD].
-    split => // v vinD.
+  rewrite -(rwP (minimal_indsysP _ dom_superhereditary)); split ; last first.
+  - move=> [dominatingD /irredundantP irredundantD]; split => // v vinD.
     apply/dominatingPn.
     move: (irredundantD v vinD) => /set0Pn [w /privateP [vdomw H1]].
     exists w.
-    + rewrite in_setD1 negb_and negbK. 
-      case: (boolP (w \in D)) ; last by rewrite orbT. 
-      { by rewrite orbF ; move=> /(H1 w) ; rewrite dominates_refl=> ->. (* Weird *)}
-    + move=> u.
-      rewrite in_setD1 => /andP [uneqv uinD].
-      move: (H1 u uinD).
-      move/contra_neqN/(_ uneqv). (* Weird *)
-      by apply: contra ; rewrite /dominates ; move-> ; rewrite orbT.
+    + rewrite in_setD1 negb_and negbK orbC.
+      case: (boolP (w \in D)) => //= /H1 -> //. exact: dominates_refl.
+    + move=> u /setD1P [uneqv uinD]. 
+      apply: contra_neqN uneqv => uv. 
+      by apply: H1 => //; rewrite /dominates uv orbT.
   - move => [dominatingD H2] ; split=> //.
     apply/irredundantP => v vinD.
-    move: (H2 v) => /(_ vinD).
-    move/dominatingPn => [w wnotinDminusv H3].
-    apply/set0Pn; exists w.
-    apply/privateP ; split ; last first.
+    have/dominatingPn[w wnotinDminusv H3] := H2 v vinD.
+    apply/set0Pn; exists w; apply/privateP ; split ; last first.
     + move=> u uinD udomw.
-      apply/eqP.
-      move: udomw.
-      apply/contraLR => uneqv.
+      apply: contraTeq udomw => uneqv.
       have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
       rewrite /dominates negb_or (H3 u uinDminusv) andbT.
-      apply/negP=> ueqw ; move/negP: wnotinDminusv ; rewrite -(eqP ueqw).
-      contradiction.
-    + rewrite /dominates ; case: (boolP (v == w)) ; first by move/eqP->.
-      rewrite orFb eq_sym => wneqv.
-      move: wnotinDminusv ; rewrite in_setD1 wneqv andTb => wnotinD.
-      move/dominatingP: dominatingD.
-      move=> /(_ w wnotinD) => [[u uinD]].
-      case: (boolP (u == v)) ; first by move/eqP->.
-      move=> uneqv.
+      by apply: contraNneq wnotinDminusv => <-.
+    + rewrite /dominates ; case: (boolP (v == w)) => //= vneqw. 
+      move: wnotinDminusv ; rewrite in_setD1 eq_sym vneqw andTb => wnotinD.
+      have [u uinD] := dominatingP _ dominatingD w wnotinD.
+      case: (boolP (u == v)) => [|uneqv] ; first by move/eqP->.
       have uinDminusv : u \in D :\ v by rewrite in_setD1 uneqv uinD.
-      move: (H3 u uinDminusv) ; move/negP.
-      contradiction.
+      by rewrite (negbTE (H3 u uinDminusv)). 
 Qed.
 
 (* A minimal dominating set is maximal irredundant
