@@ -296,7 +296,7 @@ Proof.
     by rewrite !inE eqxx winD sgP adjwv orbT.
   - move => [stableD H1]; split=> //.
     apply/dominatingP => x xnotinD.
-    have/stablePn [w [z [[winDcupx zinDcupx adjwz]]]] := H1 x xnotinD.
+    have/stablePn [w [z [winDcupx zinDcupx adjwz]]] := H1 x xnotinD.
     case: (eqVneq z x) => [zisx|zisnotx].
     + by subst z; exists w => //; rewrite !inE (sg_edgeNeq adjwz) in winDcupx.
     + have zinD : z \in D by rewrite !inE (negbTE zisnotx) /= in zinDcupx.
@@ -311,13 +311,10 @@ Qed.
  * See Prop. 3.6 of Fundamentals of Domination *)
 Theorem maximal_st_is_minimal_dom : maxset stable D -> minset dominating D.
 Proof.
-  rewrite maximal_st_iff_st_dom.
-  move=> [stableD dominatingD].
-  rewrite -(rwP (minimal_indsysP _ dom_superhereditary)).
-  split=> // x xinD.
+  rewrite maximal_st_iff_st_dom => -[/stableP stableD dominatingD].
+  apply/(minimal_indsysP _ dom_superhereditary); split=> // x xinD.
   apply/dominatingPn ; exists x ; first by rewrite in_setD1 eqxx andFb.
-  move=> y ; rewrite in_setD1 => /andP [_ yinD].
-  move/stableP: stableD ; by move=> /(_ y x yinD xinD).
+  move=> y /setD1P [_ yinD]. exact: stableD.
 Qed.
 
 (* A dominating set D is minimal iff D is dominating and irredundant
@@ -326,9 +323,8 @@ Theorem minimal_dom_iff_dom_irr : minset dominating D <-> (dominating D /\ irred
 Proof.
   rewrite -(rwP (minimal_indsysP _ dom_superhereditary)); split ; last first.
   - move=> [dominatingD /irredundantP irredundantD]; split => // v vinD.
-    apply/dominatingPn.
-    move: (irredundantD v vinD) => /set0Pn [w /privateP [vdomw H1]].
-    exists w.
+    have/set0Pn [w /privateP [vdomw H1]] := irredundantD v vinD.
+    apply/dominatingPn; exists w.
     + rewrite in_setD1 negb_and negbK orbC.
       case: (boolP (w \in D)) => //= /H1 -> //. exact: dominates_refl.
     + move=> u /setD1P [uneqv uinD]. 
@@ -355,33 +351,12 @@ Qed.
  * See Prop. 3.9 of Fundamentals of Domination *)
 Theorem minimal_dom_is_maximal_irr : minset dominating D -> maxset irredundant D.
 Proof.
-  rewrite minimal_dom_iff_dom_irr.
-  rewrite -(rwP (maximal_indsysP _ irr_hereditary)).
-  move=> [dominatingD irredundantD].
-  split=>// v vnotinD.
-  rewrite /irredundant.
-  rewrite negb_forall.
-  apply/existsP.
-  exists v.
-  have vinDcupv : v \in D :|: [set v] by rewrite in_setU set11 orbT.
-  rewrite setUC negb_imply vinDcupv andTb.
-  apply/negP.
-  case/set0Pn=> x /privateP [vdomx].
-  case: (boolP (x \in D)) => [xinD | xnotinD].
-  (* case when x is in D (x dominates itself) *)
-  - have xinDcupv: x \in D :|: [set v] by rewrite in_setU xinD orTb.
-    move => /(_ x xinDcupv).
-    rewrite dominates_refl => /(_ isT) => xeqv.
-    rewrite -xeqv in vnotinD.
-    by move/negP in vnotinD.
-  (* case when x is not in D (some u in D dominates x) *)
-  - move: dominatingD.
-    move/dominatingP=> /(_ x xnotinD).
-    elim=> u uinD adjux.
-    have uinDcupv: u \in D :|: [set v] by rewrite in_setU uinD orTb.
-    move => /(_ u uinDcupv).
-    rewrite /dominates adjux orbT => /(_ isT) ueqv ; rewrite -ueqv in vnotinD.
-    by move/negP in vnotinD.
+  rewrite minimal_dom_iff_dom_irr -(rwP (maximal_indsysP _ irr_hereditary)).
+  move=> [dominatingD irredundantD]; split=> // v vnotinD.
+  apply/irredundantPn; exists v; first by rewrite in_setU1 eqxx.
+  apply: contraNT vnotinD => /set0Pn [x /privateP [vdomx xpriv]].
+  have/bigcupP [u uinD udomx] := forallP dominatingD x.
+  by rewrite -[v](xpriv u) -?in_cln // inE uinD orbT.
 Qed.
 
 End Relations_between_stable_dominating_irredundant_sets.
