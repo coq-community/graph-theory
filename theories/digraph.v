@@ -1137,6 +1137,11 @@ Notation "NS[ G ; D ]" := (@closed_neigh_set G D)
 Notation "NS[ D ]" := (closed_neigh_set D) 
    (at level 0, D at level 99, format "NS[ D ]").
 
+Notation "N( G ; x )" := (@open_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N( G ; x )") : implicit_scope.
+Notation "N[ G ; x ]" := (@closed_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]") : implicit_scope.
+
 Section Basic_Facts_Neighborhoods.
 
 Variable G : diGraph.
