@@ -849,9 +849,6 @@ Qed.
 
 (** Neighboorhoods and bipartitions are the same for digraphs and simple graphs *)
 
-Definition N (G : diGraph) (A : {set G}) := 
-  [set y in ~: A | [exists x in A, x -- y]].
-
 Definition bipartition (G : diGraph) (A : {set G}) :=
   forall x y : G, x -- y -> (x \in A) = (y \notin A).
 
@@ -924,25 +921,24 @@ Proof.
   move => e1 e2 /= inM1 inM2 E. apply dim_M with e1.1 => //.
   all: by rewrite -?E !inE eqxx.
 Qed. 
-    
+
 Theorem diHall (G : diGraph) A : 
-  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|NS(S)|) -> 
   exists M, dimatching M /\ A = [set x.1 | x in M].
 Proof.
   move => bip_A N_A. 
   have sep_A S : separator G A (~:A) S -> #|A| <= #|S|.
   { move => sep_S. rewrite -[#|A|](cardsID S). 
-    apply: (@leq_trans (#|A :&: S| + #|N (A :\: S)|)).
+    apply: (@leq_trans (#|A :&: S| + #|NS(A :\: S)|)).
     - by rewrite leq_add2l N_A // subsetDl.
     - rewrite -cardsUI [X in _ + X]eq_card0 ?addn0.
-      + apply: subset_leq_card. rewrite subUset subsetIr.
-        apply/subsetP => z. rewrite !inE negb_and negbK. case: (boolP (z \in S)) => //=.
-        move => zS /andP [zA /exists_inP [x /setDP [xA xS] xz]]. 
-        move: (sep_S _ _ (edgep xz)). rewrite xA inE zA. case => // s sS. 
-        rewrite mem_edgep => /orP[]/eqP ?; subst; by contrab. 
-      + move => z. rewrite !inE. case: (boolP (z \in A)) => //=. 
-        apply: contraTF => /and3P[_ _ /exists_inP [x /setDP [xA xS] xz]]. 
-        by rewrite -(bip_A _ _ xz). }
+      + apply: subset_leq_card. rewrite subUset subsetIr /=.
+        apply/subsetP => z /bigcupP [x /setDP[xA xNS]]; rewrite in_opn => xz.
+        have [|s inS] := sep_S _ _ (edgep xz) xA; first by rewrite inE -(bip_A _ _ xz).
+        rewrite mem_edgep => /pred2P [?|<- //]; subst; contrab.
+      + move => z;rewrite !inE -andbA;apply/negbTE/negP.
+        move => /and3P [zA zS /bigcupP [x /setDP [xA xS] xz]].
+        rewrite in_opn in xz. by rewrite (bip_A _ _ xz) zA in xA . }
   case: (Menger sep_A) => p con_p. clear sep_A bip_A.
   exists (dimatching_of p). split; first exact: connector_dimatching con_p.
   apply/setP => a. apply/idP/imsetP => [inA|[x]].
@@ -956,7 +952,7 @@ Proof.
 Qed.
 
 Theorem Hall (G : sgraph) A : 
-  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|N S|) -> 
+  bipartition A -> (forall S : {set G}, S \subset A -> #|S| <= #|NS(S)|) -> 
   exists M, matching M /\ A \subset cover M.
 Proof.
   move => bip_A N_A. case: (@diHall G A) => [//|//|M' [M1 M2]].
@@ -1066,4 +1062,3 @@ Proof.
   rewrite eqn_leq cover_matching // andbT.
   case: (min_vcover_matching (V := V) bip_A _) => // M' H ->. exact: max_M.
 Qed.
-
