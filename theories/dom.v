@@ -129,7 +129,7 @@ Local Lemma stableP_alt :
   reflect {in S&, forall u v, ~~ u -- v} [forall u in S, forall v in S, ~~ (u -- v)].
 Proof. apply: equivP (in11_in2 S S). do 2 (apply: forall_inPP => ?). exact: idP. Qed.
 
-Local Lemma eq_stable_alt : stable = [forall u in S, forall v in S, ~~ (u -- v)].
+Lemma stableEedge : stable = [forall u in S, forall v in S, ~~ (u -- v)].
 Proof.
   symmetry ; rewrite /stable ; apply/stableP_alt/disjointP => stS.
   - move => x /bigcupP [y yS adjyx] xS. 
@@ -139,11 +139,11 @@ Proof.
 Qed.
 
 Proposition stableP : reflect {in S&, forall u v, ~~ u -- v} stable.
-Proof. rewrite eq_stable_alt ; exact: stableP_alt. Qed.
+Proof. rewrite stableEedge ; exact: stableP_alt. Qed.
 
 Proposition stablePn : reflect (exists x y, [/\ x \in S, y \in S & x -- y]) (~~ stable).
 Proof.
-  rewrite eq_stable_alt.
+  rewrite stableEedge.
   set E := exists _, _.
   have EE : (exists2 x, x \in S & exists2 y, y \in S & x -- y) <-> E by firstorder.
   rewrite !negb_forall_in; apply: equivP EE; apply: exists_inPP => x.
@@ -180,40 +180,32 @@ Local Lemma dominatingP_alt : reflect
   [forall (v | v \notin D), exists u in D, u -- v].
 Proof. apply: forall_inPP => v; exact: exists_inP. Qed.
 
-Local Lemma eq_dominating_alt : dominating = [forall (v | v \notin D), exists u in D, u -- v].
+Lemma dominatingEedge : dominating = [forall (v | v \notin D), exists u in D, u -- v].
 Proof.
-  symmetry ; rewrite /dominating ; apply/dominatingP_alt.
-  case: (boolP [forall v, v \in NS[D]]).
-  - move/forallP=> H1 v vnotinD.
-    move: (H1 v).
-    move/bigcupP => [u uinD].
-    rewrite in_cln /dominates.
-    have uneqv : (u == v) = false by apply: negbTE ; move: uinD ; apply: contraL ; move/eqP->.
-    by rewrite uneqv orFb ; exists u => //.
-  - move/forallP ; apply: contra_not => H3 v.
-    case: (boolP (v \in D)) ; first exact/subsetP/set_sub_clns.
-    move=> /(H3 v) => [[u]] ; exact: mem_clns.
+  apply/forallP/forall_inP => [H v vND |H v].
+  - have [u udomv] := bigcupP (H v).
+    rewrite in_cln; case/predU1P => [?|uv]; first by subst;contrab.
+    by apply/exists_inP; exists u.
+  - case: (boolP (v \in D)) => [|/H/exists_inP[u uD uv]]; last exact: mem_clns uv.
+    exact/subsetP/set_sub_clns.
 Qed.
 
 Proposition dominatingP : reflect
   (forall v : G, v \notin D -> exists2 u : G, u \in D & u -- v) dominating.
-Proof. rewrite eq_dominating_alt ; apply/dominatingP_alt. Qed.
+Proof. rewrite dominatingEedge; apply/dominatingP_alt. Qed.
 
 Lemma dominatingPn : 
   reflect (exists2 v : G, v \notin D & {in D, forall u, ~~ u -- v}) (~~ dominating).
 Proof.
-  rewrite eq_dominating_alt negb_forall_in; apply: exists_inPP => x.
-  exact: exists_inPn.
+  rewrite dominatingEedge negb_forall_in.
+  apply: exists_inPP => x; exact: exists_inPn.
 Qed.
 
 End Dominating_Set.
 
 (* V(G) is dominating *)
 Lemma domT : dominating [set: G].
-Proof.
-  move/subsetP: (set_sub_clns [set: G]) => H1.
-  apply/forallP=> v ; exact: (H1 v (in_setT v)).
-Qed.
+Proof. apply/forallP => x. exact: (subsetP (set_sub_clns _)). Qed.
 
 (* if D is dominating, any supraset of D is also dominating *)
 Lemma dom_superhereditary : superhereditary dominating.
@@ -514,7 +506,7 @@ Proof.
   rewrite -/W IRD; exact: IR_max.
 Qed.
 
-(* Weighted version of the Cockayne-Hedetniemi domination chain. *)
+(** ** Weighted version of the Cockayne-Hedetniemi domination chain. *)
 
 Proposition ir_w_leq_gamma_w : ir_w <= gamma_w.
 Proof.
@@ -586,8 +578,8 @@ Arguments alpha_w : clear implicits.
 Arguments Gamma_w : clear implicits.
 Arguments IR_w : clear implicits.
 
-(**********************************************************************************)
-(** * Classic (unweighted) parameters (use cardinality instead of weight) *)
+(** ** Classic (unweighted) parameters (use cardinality instead of weight)        *)
+
 Section Classic_domination_parameters.
 
 Definition ones : (G -> nat) := (fun _ => 1).
@@ -600,7 +592,7 @@ Proof. by rewrite /weight_set sum1dep_card cardsE. Qed.
 Local Notation eq_arg_min := (eq_arg_min _ (frefl _) cardwset1).
 Local Notation eq_arg_max := (eq_arg_max _ (frefl _) cardwset1).
 
-(* Definition of unweighted parameters and its conversion to weighted ones. *)
+(** Definition of unweighted parameters and its conversion to weighted ones. *)
 
 
 Definition ir : nat := #|arg_min inhb_max_irr max_irr W1|.
@@ -633,7 +625,7 @@ Definition IR : nat := #|arg_max set0 irredundant W1|.
 Fact eq_IR_IR1 : IR = IR_w ones.
 Proof. by rewrite /IR /IR_w -cardwset1 eq_arg_max. Qed.
 
-(* Classic Cockayne-Hedetniemi domination chain. *)
+(** ** Classic Cockayne-Hedetniemi domination chain. *)
 
 Corollary ir_leq_gamma : ir <= gamma.
 Proof. by rewrite eq_ir_ir1 eq_gamma_gamma1 ir_w_leq_gamma_w. Qed.
