@@ -13,8 +13,8 @@ Unset Printing Implicit Defensive.
 
 (** *** Tactics *)
 
-Axiom admitted_case : False.
-Ltac admit := case admitted_case.
+(*Axiom admitted_case : False.
+Ltac admit := case admitted_case.*)
 
 Ltac reflect_eq := 
   repeat match goal with [H : is_true (_ == _) |- _] => move/eqP : H => H end.
@@ -850,3 +850,104 @@ Require Import Setoid Morphisms.
 Instance ex2_iff_morphism (A : Type) :  
   Proper (pointwise_relation A iff ==> pointwise_relation A iff ==> iff) (@ex2 A).
 Proof. by firstorder. Qed.
+
+
+(*********************************************************************************)
+(** * Preliminaries (used in Domination Theory) *)
+Section Preliminaries_dom.
+
+Lemma properC (T : finType) (A B : {set T}) : A \proper B = (~: B \proper ~: A).
+Proof. rewrite !properEneq setCS [~: _ == _]inj_eq 1?eq_sym //; exact/inv_inj/setCK. Qed.
+
+Lemma in11_in2 (T1 T2 : predArgType) (P : T1 -> T2 -> Prop) (A1 : {pred T1}) (A2 : {pred T2}) : 
+  {in A1, forall x, {in A2, forall y,  P x y}} <-> {in A1 & A2, forall x y, P x y}.
+Proof. by firstorder. Qed.
+
+Lemma eq_extremum (T : eqType) (I : finType) r x0 (p1 p2 : pred I) (F1 F2 : I -> T) : 
+  p1 =1 p2 -> F1 =1 F2 -> extremum r x0 p1 F1 = extremum r x0 p2 F2.
+Proof.
+move=> eq_p eq_F; rewrite /extremum; apply/f_equal/eq_pick => x.
+by rewrite !inE eq_p; under eq_forallb => i do rewrite !eq_p !eq_F.
+Qed.
+
+Lemma eq_arg_min (I : finType) (x : I) (p1 p2 : pred I) (w1 w2 : I -> nat) :
+  p1 =1 p2 -> w1 =1 w2 -> arg_min x p1 w1 = arg_min x p2 w2.
+Proof. exact: eq_extremum. Qed.
+
+Lemma eq_arg_max (I : finType) (x : I) (p1 p2 : pred I) (w1 w2 : I -> nat) :
+  p1 =1 p2 -> w1 =1 w2 -> arg_max x p1 w1 = arg_max x p2 w2.
+Proof. exact: eq_extremum. Qed.
+
+Variable T : finType.
+
+Proposition maxset_properP (p : pred {set T}) (D : {set T}) :
+  reflect (p D /\ (forall F : {set T}, D \proper F -> ~~ p F)) (maxset p D).
+Proof.
+  apply: (iffP maxsetP) => -[pD maxD]; split => // E.
+  - rewrite properEneq => /andP [DnE DsubE].
+    apply: contra_neqN DnE => pE; exact/esym/maxD.
+  - move => pE SsubE; apply: contraTeq pE => EnD; apply: maxD.
+    by rewrite properEneq eq_sym EnD.
+Qed.
+
+Proposition minset_properP (p : pred {set T}) (D : {set T}) :
+  reflect (p D /\ (forall F : {set T}, F \proper D -> ~~ p F)) (minset p D).
+Proof.
+  rewrite minmaxset; apply (iffP (maxset_properP _ _)).
+  all: rewrite /= setCK => -[pD H]; split => // E.
+  all: by rewrite properC ?setCK => /H; rewrite ?setCK.
+Qed.
+
+(* not used *)
+Lemma largest_maxset (p : pred {set T}) (A : {set T}) :
+  largest p A -> maxset p A.
+Proof.
+  move => [pA maxA]. apply/maxset_properP; split => // B /proper_card; rewrite ltnNge.
+  exact/contraNN/maxA.
+Qed.
+
+(* not used *)
+Lemma smallest_minset (p : pred {set T}) (A : {set T}) : 
+  smallest p A -> minset p A.
+Proof.
+  move => [pA minA]. apply/minset_properP; split => // B /proper_card; rewrite ltnNge.
+  exact/contraNN/minA.
+Qed.
+
+Lemma doubleton_eq_left (u v w : T) : [set u; v] = [set u; w] <-> v = w.
+Proof.
+  rewrite /iff ; split ; last by move->.
+  apply: contra_eq => vDw; apply/eqP/setP.
+  case: (eqVneq v u) => [?|vDu]; subst.
+  - by move/(_ w); rewrite !inE eqxx [_ == u]eq_sym (negbTE vDw).
+  - by move/(_ v); rewrite !inE eqxx (negbTE vDw) (negbTE vDu).
+Qed.
+
+Lemma doubleton_eq_right (u v w : T) : [set u; w] = [set v; w] <-> u = v.
+Proof. rewrite ![[set _;w]]setUC; exact: doubleton_eq_left. Qed.
+
+Lemma doubleton_eq_iff (u v w x : T) : [set u; v] = [set w; x] <->
+  ((u = w /\ v = x) \/ (u = x /\ v = w)).
+Proof.
+  split ; last by case => -[-> ->] //; rewrite setUC.
+  move=> E; case: (eqVneq u w) => [?|uDw]; subst.
+    left; split => //. by move/doubleton_eq_left : E.
+  have ? : u = x; subst.
+  { move/setP/(_ u) : E. rewrite !inE !eqxx (negbTE uDw) /=.
+    by move/esym/eqP. }
+  right; split => //. rewrite [RHS]setUC in E.
+  by move/doubleton_eq_left : E.
+Qed.
+
+Lemma sorted_leq_nth s (srt_s : sorted leq s) : 
+  forall i j, i < j -> i < size s -> j < size s -> nth 0 s i <= nth 0 s j.
+Proof. 
+move => i j /ltnW i_j i_s j_s. apply: sorted_le_nth => //. exact: leq_trans.
+Qed.
+Arguments sorted_leq_nth : clear implicits. 
+
+End Preliminaries_dom.
+
+Arguments in11_in2 [T1 T2 P] A1 A2.
+Arguments maxset_properP {T p D}.
+Arguments minset_properP {T p D}.

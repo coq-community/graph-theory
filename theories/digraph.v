@@ -1094,3 +1094,110 @@ Definition del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b)) :=
 Lemma mem_del_edge_liftS (G : diGraph) (a b : G) (p : pathS (del_edge a b))  x : 
   (x \in del_edge_liftS p) = (x \in p).
 Proof. by case: p => [[u v] p]. Qed.
+
+(** ** Neighborhoods *)
+
+Section Neighborhood_def.
+
+Variable G : diGraph.
+
+Definition open_neigh (u : G) := [set v | u -- v].
+Local Notation "N( x )" := (open_neigh x) (at level 0, x at level 99, format "N( x )").
+
+Definition closed_neigh (u : G) := u |: N(u).
+Local Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99, format "N[ x ]").
+
+Definition dominates (u v : G) : bool := (u == v) || (u -- v).
+
+Variable D : {set G}.
+
+Definition open_neigh_set : {set G} := \bigcup_(w in D) N(w).
+
+Definition closed_neigh_set : {set G} := \bigcup_(w in D) N[w].
+
+End Neighborhood_def.
+
+Notation "x -*- y" := (dominates x y) (at level 30).
+
+Notation "N( x )" := (@open_neigh _ x) 
+   (at level 0, x at level 99, format "N( x )").
+Notation "N[ x ]" := (@closed_neigh _ x) 
+   (at level 0, x at level 99, format "N[ x ]").
+Notation "N( G ; x )" := (@open_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N( G ; x )", only parsing).
+Notation "N[ G ; x ]" := (@closed_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]", only parsing).
+   
+Notation "NS( G ; D )" := (@open_neigh_set G D) 
+   (at level 0, G at level 99, D at level 99, format "NS( G ; D )", only parsing).
+Notation "NS( D )" := (open_neigh_set D) 
+   (at level 0, D at level 99, format "NS( D )").
+Notation "NS[ G ; D ]" := (@closed_neigh_set G D) 
+   (at level 0, G at level 99, D at level 99, format "NS[ G ; D ]", only parsing).
+Notation "NS[ D ]" := (closed_neigh_set D) 
+   (at level 0, D at level 99, format "NS[ D ]").
+
+Notation "N( G ; x )" := (@open_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N( G ; x )") : implicit_scope.
+Notation "N[ G ; x ]" := (@closed_neigh G x)
+   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]") : implicit_scope.
+
+Section Basic_Facts_Neighborhoods.
+
+Variable G : diGraph.
+Implicit Types (u v : G).
+
+Lemma dominates_refl : reflexive (@dominates G). 
+Proof. by move => x; rewrite /dominates eqxx. Qed.
+
+Lemma in_opn u v : u \in N(v) = (v -- u).
+Proof. by rewrite /open_neigh in_set. Qed.
+
+Lemma in_cln u v : u \in N[v] = (v -*- u). 
+Proof. by rewrite /closed_neigh in_setU1 eq_sym in_opn. Qed.
+
+Lemma opns0 : NS(G;set0) = set0. 
+Proof. by rewrite /open_neigh_set big_set0. Qed.
+
+Lemma clns0 : NS[G;set0] = set0.
+Proof. by rewrite /closed_neigh_set big_set0. Qed.
+
+Variables D1 D2 : {set G}.
+
+Lemma opn_sub_opns v : v \in D1 -> N(v) \subset NS(D1).
+Proof. move=> vinD1; exact: bigcup_sup. Qed.
+
+Lemma cln_sub_clns v : v \in D1 -> N[v] \subset NS[D1].
+Proof. move=> vinD1; exact: bigcup_sup. Qed.
+
+Lemma v_in_clneigh v : v \in N[v].
+Proof. by rewrite in_cln dominates_refl. Qed.
+
+Lemma set_sub_clns : D1 \subset NS[D1].
+Proof.
+  apply/subsetP => x xinD1. 
+  apply/bigcupP; exists x => //. exact: v_in_clneigh.
+Qed.
+
+Lemma mem_opns u v : u \in D1 -> u -- v -> v \in NS(D1).
+Proof. move=> uinD1 adjuv. apply/bigcupP ; exists u => // ; by rewrite in_opn. Qed.
+
+Lemma opns_sub_clns : NS(D1) \subset NS[D1].
+Proof.
+  apply/subsetP => u /bigcupP [v vinD1 uinNv].
+  apply/bigcupP; exists v => //; by rewrite /closed_neigh in_setU uinNv orbT.
+Qed.
+
+Lemma mem_clns u v : u \in D1 -> u -- v -> v \in NS[D1].
+Proof. 
+  move=> uinD1 adjuv; apply: (subsetP opns_sub_clns).
+  exact: mem_opns adjuv.
+Qed.
+
+Lemma subset_clns : D1 \subset D2 -> NS[D1] \subset NS[D2]. 
+Proof. 
+  move => D1subD2. 
+  by rewrite -(setID D2 D1) (setIidPr _) // /closed_neigh_set bigcup_setU subsetUl.
+Qed.
+
+End Basic_Facts_Neighborhoods.

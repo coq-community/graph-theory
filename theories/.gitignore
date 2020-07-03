@@ -3,3 +3,8 @@ Makefile.coq
 .coqdeps.d
 depend-graph.*
 html
+*.vo
+*.vok
+*.vos
+*.aux
+*.glob
