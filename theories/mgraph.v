@@ -108,7 +108,65 @@ Section Subgraphs.
 
 End Subgraphs.
 
+Lemma consistent_setD (G : graph) (V : {set G}) E E' : 
+  consistent V E -> consistent V (E :\: E').
+Proof. move => con_E e b /setDP [? _]. exact: con_E. Qed.
+
+(* Frequently used consistent sets of vertices and edges *)
+
+Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
+Proof. by []. Qed.
+
+Lemma consistentTT (G : graph) : consistent [set: G] [set: edge G].
+Proof. done. Qed.
+
+Section Edges.
+Variables (G : graph).
+Implicit Types (x y : G).
+
+Definition edges x y :=
+  [set e | (source e == x) && (target e == y)].
+
+Definition edge_set (S : {set G}) :=
+  (* DPtoCD: forall b, endpoint b e \in S *)
+  [set e | (source e \in S) && (target e \in S)].
+
+Lemma edge_set1 x : edge_set [set x] = edges x x.
+Proof. apply/setP=> e. by rewrite !inE. Qed.
+
+Lemma edge_in_set e (A : {set G}) x y :
+  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
+Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
+
+Definition incident x e := [exists b, endpoint b e == x].
+Definition edges_at x := [set e | incident x e].
+
+Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
+
+Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
+Proof. by rewrite /edges_in big_set1. Qed.
+
+End Edges.
+
+Definition induced_proof (G: graph) (S : {set G}) : consistent S (edge_set S).
+Proof. move => e b; rewrite inE=>/andP[? ?]; by case b. Qed.
+
+Definition induced (G: graph) (S : {set G}) := subgraph_for (@induced_proof G S).
+
+Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
+Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
+
+(* Commonly used subgraphs *)
+Definition remove_vertex (G : graph) (z : G) : graph := 
+  subgraph_for (@consistent_del1 G z).
+
 End s1.
+
+Arguments consistentT [Lv Le G] E.
+Arguments consistentTT [Lv Le] G.
+
+
+Arguments edges_at [Lv Le G] x, [Lv Le] G x.
 
 Declare Scope graph_scope.
 Bind Scope graph_scope with graph.
@@ -127,8 +185,8 @@ Notation "G ∔ [ x , u , y ]" := (add_edge G x y u) (at level 20, left associat
 Arguments add_vertex {Lv Le} G a.
 Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity) : graph_scope.
 
-(** * Structures *)
 
+(** ** Operations that require label structures *)
 
 Section s2.
 Variables (Lv: comMonoid) (Le : elabelType).
@@ -775,63 +833,8 @@ Lemma remove_edges_sub : subgraph (remove_edges E) G.
 Proof. exists id, val, xpred0. split => //=. split. apply inj_id. apply val_inj. Qed.
 End Sub.
 
-Section Edges.
-Variables (G : graph).
-Implicit Types (x y : G).
-
-Definition edges x y :=
-  [set e | (source e == x) && (target e == y)].
-
-Definition edge_set (S : {set G}) :=
-  (* DPtoCD: forall b, endpoint b e \in S *)
-  [set e | (source e \in S) && (target e \in S)].
-
-Lemma edge_set1 x : edge_set [set x] = edges x x.
-Proof. apply/setP=> e. by rewrite !inE. Qed.
-
-Lemma edge_in_set e (A : {set G}) x y :
-  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
-Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
-
-Definition incident x e := [exists b, endpoint b e == x].
-Definition edges_at x := [set e | incident x e].
-
-Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
-
-Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
-Proof. by rewrite /edges_in big_set1. Qed.
-
-End Edges.
-Arguments edges_at [G] x, G x.
-
-(* Frequently used consistent sets of vertices and edges *)
-
-Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
-Proof. by []. Qed.
-Arguments consistentT [G] E.
-
-Lemma consistentTT (G : graph) : consistent [set: G] [set: edge G].
-Proof. done. Qed.
-Arguments consistentTT : clear implicits.
-
-
-Definition induced_proof (G: graph) (S : {set G}) : consistent S (edge_set S).
-Proof. move => e b; rewrite inE=>/andP[? ?]; by case b. Qed.
-
-Definition induced (G: graph) (S : {set G}) := 
-  subgraph_for (@induced_proof G S).
-
-
 Lemma induced_sub (G: graph) (S : {set G}) : subgraph (induced S) G.
 Proof. exact: subgraph_sub. Qed.
-
-
-Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
-Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
-
-(* Commonly used subgraphs *)
-Definition remove_vertex (G : graph) (z : G) : graph := 
-  subgraph_for (@consistent_del1 G z).
 
 (** *** isomorphisms about subgraphs *)
 (* not neded for now *)
@@ -850,13 +853,15 @@ Proof.
   apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
 Qed.
 
-Lemma setT_bij_hom (G : graph) : @is_ihom (subgraph_for (@consistentTT G)) G setT_bij setT_bij xpred0. 
+Lemma setT_bij_hom (G : graph) : @is_ihom (subgraph_for (consistentTT G)) G setT_bij setT_bij xpred0.
 Proof. by []. Qed.
 
 Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G :=
   Iso (setT_bij_hom G).
 
 End s2. 
+
+
 
 Arguments add_vlabel {Lv Le} G x a.
 Notation "G [tst  x <- a ]" :=
@@ -876,7 +881,9 @@ Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
 
 Global Hint Resolve iso_id : core.  (* so that [by] gets it... *)
 
-Arguments edges_at [Lv Le G] x, [Lv Le] G x.
+
+
+
 
 (** ** Merging Subgraphs *)
 
@@ -887,11 +894,6 @@ Arguments edges_at [Lv Le G] x, [Lv Le] G x.
     [G[V1,E1] + G[V2,E2]] to [G[V1 :|: V2, E1 :|: E2]] simply drops the inl/inr.
     For the converse direction, we inject into [G[V1,E1]] if possible and otherwise 
     into [G[V1,E2]]. Note that this only yields a bijection after quotienting. *)
-
-Lemma unit_commMonoidLaws : @comMonoidLaws (eq_setoid unit) tt (fun _ _ => tt).
-Proof. by do 2 (split; try done). Qed.
-
-Canonical unit_comMonoid := ComMonoid unit_commMonoidLaws.
 
 Section MergeSubgraph.
   Variable (Le : elabelType).

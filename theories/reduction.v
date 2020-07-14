@@ -12,11 +12,9 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** Preliminary isomorphisms (on arbitrary graphs) *)
 Section prelim.
-Variable L: labels.
-Notation Le := (le L).
-Notation Lv := (lv L). 
-Notation graph := (graph L).  
-Notation graph2 := (graph2 L).
+Variable (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).  
+Notation graph2 := (graph2 Lv Le).
 Local Open Scope labels.
 
 Lemma two_edges (a b c d: Lv) (u v: Le):
@@ -50,7 +48,7 @@ Proof.
         | _ => inr tt
         end.
   unshelve Iso2
-  (@merge_surj _ G _ H f
+  (@merge_surj _ _ G _ H f
      (fun x =>
         match x with
         | inl (inl _) => inl (inl tt)
@@ -85,7 +83,7 @@ Lemma par_edges (a b c d: Lv) (u v: Le):
 ≃2 two_graph2 (a⊗c) (b⊗d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
 Proof.
   unshelve Iso2
-  (@merge_surj _
+  (@merge_surj _ _
      (edge_graph a u b ⊎ edge_graph c v d) _
      (two_graph2 (a⊗c) (b⊗d) ∔ [_, u, _] ∔ [_, v, _])
      (fun x =>
@@ -116,8 +114,8 @@ End prelim.
 Section s.
 Variable X: pttdom.
 Notation test := (test X). 
-Notation graph := (graph (pttdom_labels X)).
-Notation graph2 := (graph2 (pttdom_labels X)).
+Notation graph := (graph test X).
+Notation graph2 := (graph2 test X).
 Notation step := (@step X).
 Notation steps := (@steps X).
 
@@ -138,8 +136,8 @@ Definition replace_ioL (G G': graph2) (H: eqType) (e : pairs (G+H)) : pairs (G'+
 Arguments replace_ioL [G G' H].
 
 Lemma replace_ioE vT eT1 eT2 st1 st2 lv1 lv2 le1 le2 i o H e : admissible_l e -> 
-   @replace_ioL (point (@Graph _ vT eT1 st1 lv1 le1) i o) 
-                (point (@Graph _ vT eT2 st2 lv2 le2) i o) H e = e.
+   @replace_ioL (point (@Graph _ _ vT eT1 st1 lv1 le1) i o) 
+                (point (@Graph _ _ vT eT2 st2 lv2 le2) i o) H e = e.
 Proof.
   elim: e => //=. case => [[a|a] [b|b]] l /= IH. 
   all: rewrite /admissible_l /=. all: first [case/and3P|case/andP|idtac].
@@ -174,7 +172,7 @@ Lemma merge_add_edgeLE G H x y u l i o z:
   @merge_add_edgeL G H x y u l i o (\pi z) = (\pi z).
 Proof.
   rewrite /merge_add_edgeL/=.
-  rewrite (@merge_isoE _ _ _ (union_add_edge_l H x u y) l).
+  rewrite (@merge_isoE _ _ _ _ (union_add_edge_l H x u y) l).
   rewrite merge_add_edgeE.
   by rewrite merge_sameE.
 Qed.
@@ -224,9 +222,9 @@ Lemma merge_add_vertexLE x:
   match x with inl x => inl (\pi inl x) | _ => inr tt end. 
 Proof.
   simpl.
-  rewrite (@merge_isoE _ _ _ (iso_sym (union_A G (unit_graph a) H)) l).
-  rewrite (@merge_isoE _ _ _ (union_iso iso_id (union_C (unit_graph a) H)) _).
-  rewrite (@merge_isoE _ _ _ (union_A G H (unit_graph a)) _).
+  rewrite (@merge_isoE _ _ _ _ (iso_sym (union_A G (unit_graph a) H)) l).
+  rewrite (@merge_isoE _ _ _ _ (union_iso iso_id (union_C (unit_graph a) H)) _).
+  rewrite (@merge_isoE _ _ _ _ (union_A G H (unit_graph a)) _).
   rewrite merge_same'E.
   rewrite union_merge_lE'. 
   by case x=>[y|[]].
@@ -379,36 +377,58 @@ End s.
 (** ** reduction lemma *)
 (* (in the initial pttdom algebra of terms) *)
 Section s'.
-Variable A: Type.
+Variable A: Type. 
+(* Notation term := (pttdom.term A).   *)
+(* Notation nterm := (pttdom.nterm A).   *)
+(* Notation test := (test (tm_pttdom A)).  *)
+(* Notation tgraph := (graph test term). *)
+(* Notation tgraph2 := (graph2 test term).  *)
+(* Notation graph := (graph unit A). *)
+(* Notation graph2 := (graph2 unit A). *)
+(* Notation step := (@step (tm_pttdom A)). *)
+(* Notation steps := (@steps (tm_pttdom A)). *)
 Notation term := (pttdom.term A).  
 Notation nterm := (pttdom.nterm A).  
-Notation test := (test (tm_pttdom A)). 
-Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
-Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
-Notation graph := (graph (flat_labels A)).
-Notation graph2 := (graph2 (flat_labels A)).
+Notation test := (pttdom_monoid (tm_pttdom A)). 
+Notation tgraph := (graph test (tm_pttdom A)).
+Notation tgraph2 := (graph2 test (tm_pttdom A)).
+Notation graph := (graph unit_comMonoid (flat_elabels A)).
+Notation graph2 := (graph2 unit_comMonoid (flat_elabels A)).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
 
+Canonical unit_comMonoid.
+Canonical tm_elabel := Eval hnf in pttdom_elabelType (tm_pttdom A).
+
 (* TODO: get rid of this hack... *)
-Canonical Structure tm_labels :=
-  @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
-          (mkComMonoidLaws (@tst_dot_eqv (tm_pttdom A)) 
-                      (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A))) 
-          (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
-          (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
+(* Canonical Structure tm_labels := *)
+(*   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A)) *)
+(*           (mkComMonoidLaws (@tst_dot_eqv (tm_pttdom A))  *)
+(*                       (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A)))  *)
+(*           (pttdom.tm_setoid A) (@eqv' (tm_pttdom A)) *)
+(*           (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)). *)
+
 (* Eval hnf in pttdom_labels (tm_pttdom A). *)
 (* Check erefl: tm_setoid A = le _. *)
 (* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
 
 (** *** graphs of terms and normal terms *)
 
+(* Lemma unit_comMonoidLaws : @comMonoidLaws (eq_setoid unit) tt (fun _ _ => tt). *)
+(* Admitted. *)
+
+(* Canonical unit_comMonoid := ComMonoid unit_commMonoidLaws. *)
+
+Check (erefl : term = tm_pttdom A).
+
 (* function g^A from the end of Section 5 *)
-Definition graph_of_term: term -> graph2 := pttdom.eval (fun a: A => @g2_var (flat_labels A) a). 
+Definition graph_of_term: term -> graph2 := 
+  pttdom.eval (fun a: A => @g2_var unit_comMonoid (flat_elabels A) a). 
 
 (* function g^T from the end of Section 5 *)
-Definition tgraph_of_term: term -> tgraph2 := pttdom.eval (fun a: A => g2_var (pttdom.tm_var a)). 
+Definition tgraph_of_term: term -> tgraph2 := 
+  pttdom.eval (fun a: A => @g2_var (pttdom_monoid (tm_pttdom A)) tm_elabel (pttdom.tm_var a)).
 
 Definition tgraph_of_nterm (t: nterm): tgraph2 :=
   match t with
@@ -436,7 +456,7 @@ Proof.
       2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [b·c] v).
       exists. apply dot_edges. 
       apply isop_step. exists.
-      apply (add_edge2_iso' iso2_id).
+      apply: (add_edge2_iso' iso2_id).
       by rewrite !dotA. 
 
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
@@ -468,7 +488,7 @@ Proof.
     apply isop_step. exists.
     etransitivity. refine (iso_iso2 (add_edge_rev _ _ _) _ _).
     simpl. rewrite /eqv'/=. symmetry. apply cnvI.
-    simpl. symmetry. etransitivity. apply (add_edge2_iso (iso_iso2 (union_C _ _) _ _)).
+    simpl. symmetry. etransitivity. apply: (add_edge2_iso (iso_iso2 (union_C _ _) _ _)).
     reflexivity. 
       
   - etransitivity. apply dom_steps, IHu. 

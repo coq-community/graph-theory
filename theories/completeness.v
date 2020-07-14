@@ -12,15 +12,25 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable A: Type.
+(* Notation term := (pttdom.term A).   *)
+(* Notation nterm := (nterm A).   *)
+(* Notation test := (test (tm_pttdom A)).  *)
+(* Notation tgraph := (graph (pttdom_labels (tm_pttdom A))). *)
+(* Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))). *)
+(* Notation graph := (graph (flat_labels A)). *)
+(* Notation graph2 := (graph2 (flat_labels A)). *)
+(* Notation step := (@step (tm_pttdom A)). *)
+(* Notation steps := (@steps (tm_pttdom A)). *)
 Notation term := (pttdom.term A).  
-Notation nterm := (nterm A).  
-Notation test := (test (tm_pttdom A)). 
-Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
-Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
-Notation graph := (graph (flat_labels A)).
-Notation graph2 := (graph2 (flat_labels A)).
+Notation nterm := (pttdom.nterm A).  
+Notation test := (pttdom_monoid (tm_pttdom A)). 
+Notation tgraph := (graph test (tm_pttdom A)).
+Notation tgraph2 := (graph2 test (tm_pttdom A)).
+Notation graph := (graph unit_comMonoid (flat_elabels A)).
+Notation graph2 := (graph2 unit_comMonoid (flat_elabels A)).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
+
 
 (* local confluence of the additive, packaged system (Proposition 8.1) *)
 Proposition local_confluence G G' H H':
@@ -57,7 +67,7 @@ Proof.
   case; intros=>/=; by rewrite ?card_option ?card_sum ?card_unit ?card_void ?addSnnS ?addnS ?addn0.
 Qed.
 
-Lemma iso_stagnates G H: G ≃2p H -> measure H = measure G.
+Lemma iso_stagnates (G H : tgraph2) : G ≃2p H -> measure H = measure G.
 Proof. case. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
 
 (* confluence, via appropriate variant of Newman's lemma  *)
@@ -79,7 +89,7 @@ Proof.
 Qed.
 
 (* graphs of normal forms are in normal form (i.e., can't reduce) *)
-Lemma normal_steps s: forall H, steps (tgraph_of_nterm s) H -> tgraph_of_nterm s ≃2p H.
+Lemma normal_steps s: forall H : tgraph2 , steps (tgraph_of_nterm s) H -> tgraph_of_nterm s ≃2p H.
 Proof.
   suff E: forall G H, steps G H -> G ≃2p tgraph_of_nterm s -> G ≃2p H.
     by intros; apply E=>//; reflexivity. 
@@ -130,7 +140,9 @@ Proof.
 Qed.
 
 (* transferring isomorphisms on letter-labeled graphs to term-labeled graphs *)
-Lemma tgraph_graph (u: term): tgraph_of_term u ≃2 relabel2 (fun _ => tst_one _) (@pttdom.tm_var _) (graph_of_term u).
+Lemma tgraph_graph (u: term): 
+  tgraph_of_term u ≃2 
+  @relabel2 _ _ _ _ (fun _ => tst_one _) (@pttdom.tm_var _ ) (graph_of_term u).
 Proof.
   have Hmon0: eqv_test (tst_one (tm_pttdom A)) (tst_one (tm_pttdom A)) by [].
   have Hmon2 (a b: unit): (tst_one (tm_pttdom A)) ≡ (1 ⊗ 1)%lbl by symmetry; apply dotx1.

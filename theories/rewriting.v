@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import pttdom mgraph mgraph2.
+Require Import setoid_bigop structures pttdom mgraph mgraph2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,9 +9,9 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable X: pttdom.
-Notation test := (test X).
-Notation graph := (graph (pttdom_labels X)).
-Notation graph2 := (graph2 (pttdom_labels X)).
+Notation test := (pttdom_monoid X).
+Notation graph := (graph test X).
+Notation graph2 := (graph2 test X).
 
 (** * Rewrite System on Packaged Graphs *)
 

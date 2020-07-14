@@ -418,7 +418,7 @@ Definition add_test (G : pre_graph) (x:VT) (a:test) :=
   {| vset := vset G;
      eset := eset G;
      endpt  := endpt G;
-     lv := update (lv G) x (a ⊗ lv G x)%lbl;
+     lv := update (lv G) x (a ⊗ lv G x);
      le := le G;
      p_in := p_in G;
      p_out := p_out G |}.
@@ -644,7 +644,7 @@ Proof.
   split => //= z. 
   case: (altP (x =P y)) => xy; subst. 
   - rewrite !update_same. case: (altP (z =P y)) => zy; subst; rewrite !updateE => //=.
-    by rewrite monA [(b ⊗ a)%lbl]monC -monA.
+    by rewrite monA [(b ⊗ a)]monC -monA.
   - case: (altP (z =P x)) => zx; case: (altP (z =P y)) => zy; subst.
     by rewrite eqxx in xy. all: by rewrite !updateE.
 Qed.
@@ -708,7 +708,7 @@ Lemma add_test_merge G x a b :
 Proof. 
   constructor => //= y yG. 
   case: (altP (y =P x)) => [->|?]; rewrite !updateE //=. 
-  by rewrite monA [(b ⊗ a)%lbl]monC -monA.
+  by rewrite monA [(b ⊗ a)]monC -monA.
 Qed.
 
 Lemma flip_edge_add_test (G : pre_graph) (e : ET) (x : VT) a : 

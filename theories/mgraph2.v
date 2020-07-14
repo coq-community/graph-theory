@@ -23,42 +23,75 @@ Declare Scope labels.
 Notation "1" := mon0 : labels.
 Delimit Scope labels with lbl.
 
-Section s.
-    
-Variables (Lv : comMonoid) (Le : elabelType).
-Notation graph := (graph Lv Le).
-Open Scope labels.
-
 (* 2p-graphs  *)
 Set Primitive Projections.
-Record graph2 :=
+Record graph2 Lv Le :=
   Graph2 {
-      graph_of:> graph;
+      graph_of:> graph Lv Le;
       input: graph_of;
       output: graph_of }.
-Arguments input {_}.
-Arguments output {_}.
-Notation point G := (@Graph2 G).
+Arguments input {_ _ _}, [_ _] G : rename.
+Arguments output {_ _ _}, [_ _] G : rename.
+Notation point G := (@Graph2 _ _ G).
+
+
+Section s1.
+    
+Variables (Lv : Type) (Le : Type).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
+Local Notation point G := (@Graph2 Lv Le G).
+Open Scope labels.
+Implicit Types (a : Lv) (u v : Le).
+
 
 (* basic operations *)
 Definition add_vertex2 (G: graph2) a := point (add_vertex G a) (unl input) (unl output).
 Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge G x y u) input output.
-Definition add_vlabel2 (G: graph2) (x: G) a := point (add_vlabel G x a) input output.
-Definition merge2 (G: graph2) (r: equiv_rel G) := point (merge G r) (\pi input) (\pi output).
-Arguments merge2 _ _: clear implicits.
 
 Notation "G ∔ a" := 
-  (add_vertex2 G a) (at level 20, left associativity).
+  (@add_vertex2 G a%lbl) (at level 20, left associativity).
 Notation "G ∔ [ x , u , y ]" := 
   (@add_edge2 G x y u) (at level 20, left associativity).
-Notation "G [tst  x <- a ]" := 
-  (@add_vlabel2 G x a) (at level 20, left associativity).
-Notation merge2_seq G l := (merge2 G (eqv_clot l)).
+
 
 (* basic graphs *)
 Definition unit_graph2 a := point (unit_graph a) tt tt.
 Definition two_graph2 a b := point (two_graph a b) (inl tt) (inr tt). 
 Definition edge_graph2 a u b := two_graph2 a b ∔ [inl tt, u, inr tt]. 
+
+End s1.
+
+Declare Scope graph2_scope.
+Bind Scope graph2_scope with graph2.
+Delimit Scope graph2_scope with G2.
+
+Arguments add_edge2 [_ _] _ _ _ _. 
+Notation "G ∔ [ x , u , y ]" := 
+  (add_edge2 G x y u) (at level 20, left associativity) : graph2_scope.
+Arguments add_vertex2 [_ _] _ _. 
+Notation "G ∔ a" := 
+  (add_vertex2 G a%lbl) (at level 20, left associativity) : graph2_scope.
+
+Arguments two_graph2 [Lv Le] _ _, [Lv] Le _ _.
+Arguments unit_graph2 [Lv Le] _, [Lv] Le _.
+Arguments edge_graph2 [Lv Le] _ _ _.
+
+Section s1.
+Variables (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
+Local Notation point G := (@Graph2 Lv Le G).
+Open Scope labels.
+Implicit Types (a : Lv) (u v : Le).
+
+Definition add_vlabel2 (G: graph2) (x: G) a := point (add_vlabel G x a) input output.
+Definition merge2 (G: graph2) (r: equiv_rel G) := point (merge G r) (\pi input) (\pi output).
+Arguments merge2 _ _: clear implicits.
+Notation "G [tst  x <- a ]" := 
+  (@add_vlabel2 G x a) (at level 20, left associativity).
+Notation merge2_seq G l := (merge2 G (eqv_clot l)).
+
 
 (** ** Isomorphisms of 2p-graphs *)
 
@@ -146,7 +179,7 @@ Definition g2_one: graph2 := unit_graph2 1.
 
 Definition g2_top: graph2 := two_graph2 1 1.
 
-Definition g2_var a: graph2 := edge_graph2 1 a 1.
+Definition g2_var u : graph2 := edge_graph2 1 u 1.
 
 (* Note: would be nicer to prove that this is a 2p algebra (with top)
    and deduce automatically that this is a 2pdom  *)
@@ -166,17 +199,17 @@ Canonical Structure g2_ops: pttdom.ops_ :=
 Local Arguments unit_graph_iso [Lv Le x y] _, [Lv] Le [x y] _. 
 Local Arguments add_vlabel_two [Lv Le] a b x c, [Lv] Le a b x c.
 
-Global Instance unit_graph2_iso: CProper (eqv ==> iso2) unit_graph2.
+Global Instance unit_graph2_iso: CProper (eqv ==> iso2) (@unit_graph2 Lv Le).
 Proof. intros a b e. Iso2 (unit_graph_iso e). Defined.
 
 (* isomorphisms about [two_graph2] *)
 
-Global Instance two_graph2_iso: CProper (eqv ==> eqv ==> iso2) two_graph2.
+Global Instance two_graph2_iso: CProper (eqv ==> eqv ==> iso2) (@two_graph2 Lv Le).
 Proof. intros a b ab c d cd. Iso2 (union_iso (unit_graph_iso ab) (unit_graph_iso cd)). Defined.
 
 (* isomorphisms about [two_vertex2] *)
 
-Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) add_vertex2.
+Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) (@add_vertex2 Lv Le).
 Proof.
   move => F G FG u v uv.
   Iso2 (union_iso FG (unit_graph_iso uv))=>/=; rewrite /unl/=; f_equal; apply FG.
@@ -205,7 +238,7 @@ Proof. Iso2 (add_edge_vlabel _ _ _). Defined.
 
 (* isomorphisms about [edge_graph2] *)
 
-Global Instance edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) edge_graph2.
+Global Instance edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) (@edge_graph2 Lv Le).
 Proof. intros a b ab u v uv c d cd. refine (add_edge2_iso' (two_graph2_iso ab cd) _ _ uv). Defined.
 
 (* isomorphisms about [add_vlabel2] *)
@@ -472,7 +505,7 @@ Proof.
   apply merge_same'=>/=. apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma par2dot F G: @input F = output -> @input G = output -> F ∥ G ≃2 F · G.
+Lemma par2dot F G: input F = output -> input G = output -> F ∥ G ≃2 F · G.
 Proof.
   intros HF HG. apply merge2_same; rewrite !HF !HG //.
   apply eqv_clot_eq; leqv.
@@ -537,7 +570,7 @@ Qed.
 Lemma g2_A11 (F: graph2): F·top ≃2 dom F·top.
 Proof. irewrite topR. symmetry. by irewrite topR. Qed.
 
-Lemma g2_A12' (F G: graph2): @input F = @output F -> F·G ≃2 F·top ∥ G.
+Lemma g2_A12' (F G: graph2): input F = output F -> F·G ≃2 F·top ∥ G.
 Proof.
   intro H.
   irewrite' (merge_iso2 (union_merge_l _ _)).
@@ -724,26 +757,15 @@ Proof.
   - irewrite (iso_iso2 (iso_subgraph_forT _)). rewrite /= Ho Hi. by case G. 
 Qed.
 
-End s. 
-
-Declare Scope graph2_scope.
-Bind Scope graph2_scope with graph2.
-Delimit Scope graph2_scope with G2.
+End s1. 
 
 Arguments input {_ _ _}.
 Arguments output {_ _ _}.
-Arguments add_edge2 [_] _ _ _ _. 
-Arguments add_vertex2 [_] _ _. 
-Arguments add_vlabel2 [_] _ _ _. 
-Arguments merge2 [_] _ _. 
+Arguments add_vlabel2 [_ _] _ _ _. 
+Arguments merge2 [_ _] _ _. 
 
 Notation IO := [set input;output].
-Notation point G i o := (@Graph2 _ _ G i o).
 
-Notation "G ∔ [ x , u , y ]" := 
-  (add_edge2 G x y u) (at level 20, left associativity) : graph2_scope.
-Notation "G ∔ a" := 
-  (add_vertex2 G a%lbl) (at level 20, left associativity) : graph2_scope.
 Notation "G [tst  x <- a ]" := 
   (add_vlabel2 G x a%lbl) (at level 20, left associativity) : graph2_scope.
 Notation merge2_seq G l := (merge2 G (eqv_clot l)).
@@ -758,7 +780,6 @@ Hint Resolve iso2_id : core.   (* so that [by] gets it... *)
 
 Tactic Notation "Iso2" uconstr(f) :=
   match goal with |- ?F ≃2 ?G => refine (@Iso2 _ _ F G f _ _)=>// end.
-
 
 (* temporary *)
 Notation add_test := add_vlabel2 (only parsing).

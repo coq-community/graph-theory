@@ -382,6 +382,17 @@ Section terms.
 
 End terms.
 
+(** pttdom algebra as an elabelType *)
+Definition pttdom_elabelType (A : pttdom) : elabelType :=
+  @ElabelType A (@eqv' A) (@eqv'_sym A) (@eqv01 A) (@eqv11 A).
+
+(** The tests of a pttdom algebra form a commutative monoid *)
+(* Lemma test_comMonoidLaws (A : pttdom) :  *)
+(*   @comMonoidLaws (pttdom_test_setoid A) (tst_one A) (@tst_dot A). *)
+(* Proof. *)
+(* exact: (mkComMonoidLaws (@tst_dot_eqv A) (@tst_dotA A) (@tst_dotC A) (@tst_dotU A)). *)
+(* Qed. *)
+(* Definition test_monoid (A : pttdom) := ComMonoid (test_comMonoidLaws A). *)
 
 (* unused for now
 Ltac fold_ops := 

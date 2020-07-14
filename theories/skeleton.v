@@ -14,8 +14,8 @@ Set Bullet Behavior "Strict Subproofs".
 (** * Skeletons *)
 
 Section Skeleton.
-Variable (L : labels).
-Notation graph := (graph L).
+Variables Lv Le : Type.
+Notation graph := (graph Lv Le).
 
 Definition adjacent (G : graph) (x y : G) :=
   [exists e, e \in edges x y :|: edges y x].
@@ -63,9 +63,18 @@ Proof.
   case/orP=> /andP[/eqP<- /eqP<-]; last rewrite eq_sym; move=> /H//. exact: S.
 Qed.
 
+End Skeleton.
+
+Coercion skeleton : graph >-> sgraph.
+
+Section SSkeleton.
+Variables (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
+
 (** Edges of skeletons of quotients *)
 Lemma sk_rel_mergeE (G : graph) (e : equiv_rel G) x y :
-  @sk_rel (merge G e) x y <-> 
+  @sk_rel _ _ (merge G e) x y <-> 
   x != y /\ exists x0 y0 : skeleton G, [/\ \pi x0 = x, \pi y0 = y & x0 -- y0].
 Proof.
   rewrite /= /sk_rel. 
@@ -75,7 +84,7 @@ Proof.
     + move => {x y A} x y H xy. 
       case: H => [|x0 [y0] [? ? /andP [E A]]]; first by rewrite eq_sym.
       exists y0; exists x0. by rewrite /edge_rel/=/sk_rel eq_sym adjacent_sym A E. 
-    + move => e0. exists (@endpoint _ G false e0). exists (@endpoint _ G true e0).
+    + move => e0. exists (@endpoint _ _ G false e0). exists (@endpoint _ _ G true e0).
       split => // ; last apply/andP;split => //. 
       * apply: contraNN xy => /eqP H. by rewrite eqmodE H.
       * apply/existsP; exists e0. by rewrite !inE !eqxx.
@@ -99,7 +108,7 @@ Proof.
     case (h.d e)=>/=; by rewrite !eqxx. 
 Qed.
 
-Instance skel_iso: CProper (iso ==> diso) skeleton.
+Instance skel_iso: CProper (iso ==> diso) (@skeleton Lv Le).
 Proof.
   intros F G h. exists (iso_v h). apply: hom_skel. apply: (hom_skel (iso_sym h)).
 Defined.
@@ -111,18 +120,8 @@ Proof.
 Qed.
 Arguments pi_hom [G] e.
 
-End Skeleton.
-
-Coercion skeleton : graph >-> sgraph.
-Arguments sk_rel [L G] / _ _.
-
-Section SSkeleton.
-Variable (L : labels).
-Notation graph := (graph L).
-Notation graph2 := (graph2 L).
-
-
 (** ** Strong skeletons *)
+
 
 Definition sskeleton (G : graph2) := @sgraph.add_edge (skeleton G) input output.
 
@@ -142,7 +141,6 @@ Lemma skel_sub (G : graph2) : sgraph.subgraph (skeleton G) (sskeleton G).
 Proof. exists id => //= x y H _. exact: subrelUl. Qed.
 
 
-
 (** Isomorphim Lemmas *)
 
 Lemma hom2_sskel (G1 G2 : graph2) (h: iso2 G1 G2) :
@@ -152,7 +150,7 @@ Proof.
   apply sskelP.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel /=  [_ -- _](_ : _ = true) /= /edge_rel //=. 
-    rewrite /= bij_eq ?He //=. apply/existsP; exists (h.e e).
+    rewrite /sk_rel /= bij_eq ?He //=. apply/existsP; exists (h.e e).
     rewrite !inE !endpoint_iso.
     case (h.d e)=>/=; by rewrite !eqxx. 
   - move => H. by rewrite /edge_rel /= bij_eq // H iso2_input iso2_output !eqxx.
@@ -183,7 +181,7 @@ Proof.
 Qed.
 
 Lemma edge_set_adj (G : graph2) (x y : G) : 
-  @edge_set _ G [set x; y] == set0 -> ~~ @adjacent _ G x y. 
+  @edge_set _ _ G [set x; y] == set0 -> ~~ @adjacent _ _ G x y. 
 Proof. 
   apply: contraTN => /existsP[e]. rewrite !inE => He.
   apply/set0Pn. exists e. rewrite !inE.
@@ -227,7 +225,7 @@ Lemma remove_loops (G : graph) (E : {set edge G}) :
   diso G (remove_edges E).
 Proof.
   move=> Eloops.
-  have Esame x y : x != y -> @edges _ (remove_edges E) x y = val @^-1: @edges _ G x y.
+  have Esame x y : x != y -> @edges _ _ (remove_edges E) x y = val @^-1: @edges _ _ G x y.
   { move=> xNy. apply/setP=> e. by rewrite !inE. }
   exists (bij_id: bij G (remove_edges E)) => //= x y; rewrite /=/sk_rel => /andP[xNy].
   all: rewrite /edge_rel/=/sk_rel.
@@ -240,7 +238,7 @@ Proof.
 Qed.
 
 Lemma remove_edges_connected (G : graph) (E : {set edge G}) :
-  {in E, forall e : edge G, connect (@sk_rel _ (remove_edges E)) (source e) (target e)} ->
+  {in E, forall e : edge G, connect (@sk_rel _ _ (remove_edges E)) (source e) (target e)} ->
   connected [set: skeleton G] -> connected [set: skeleton (remove_edges E)].
 Proof.
   move=> E_conn G_conn. apply: connectedTI => x y. have := connectedTE G_conn x y.
@@ -252,7 +250,7 @@ Proof.
 Qed.
 
 Lemma remove_edges_cross (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
-  E \subset edge_set V -> sk_rel x y -> y \notin V -> @sk_rel _ (remove_edges E) x y.
+  E \subset edge_set V -> sk_rel x y -> y \notin V -> @sk_rel _ _ (remove_edges E) x y.
 Proof.
   move=> E_subV xy yNV.
   have {yNV} : (x \notin V) || (y \notin V) by rewrite yNV.
@@ -265,15 +263,15 @@ Proof.
 Qed.
 
 Lemma remove_edges_restrict (G : graph) (V : {set G}) (E : {set edge G}) (x y : G) :
-  E \subset edge_set V -> connect (restrict (~: V) (@sk_rel _ G)) x y ->
-  connect (@sk_rel _ (remove_edges E)) x y.
+  E \subset edge_set V -> connect (restrict (~: V) (@sk_rel _ _ G)) x y ->
+  connect (@sk_rel _ _ (remove_edges E)) x y.
 Proof.
   move=> E_subV. apply: connect_mono x y => x y /=. rewrite !inE -andbA.
   case/and3P=> xNV yNV xy. exact: remove_edges_cross xy yNV.
 Qed.
 
 Lemma sskeleton_remove_io (G : graph2) (E : {set edge G}) :
-  E \subset @edge_set _ G IO ->
+  E \subset @edge_set _ _ G IO ->
   diso (sskeleton (point (remove_edges E) input output)) (sskeleton G).
 Proof.
   move=> E_subIO. 
@@ -554,17 +552,13 @@ Proof.
   case/andP: xx' => _. case/existsP=> e _. by exists e.
 Qed.
 
-Lemma consistent_setD (G : graph) V E E' : 
-  @consistent _ G V E -> consistent V (E :\: E').
-Proof. move => con_E e b /setDP [? _]. exact: con_E. Qed.
-
 (* Is this the most general type? *)
 Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
   #|val @: A| = #|A|.
 Proof. rewrite card_imset //. exact: val_inj. Qed.
 
 (* lifting connectedness from the skeleton *)
-Lemma connected_skeleton' (G : graph) V E (con : @consistent _ G V E) :
+Lemma connected_skeleton' (G : graph) V E (con : @consistent _ _ G V E) :
   forall U : {set subgraph_for con}, @connected (skeleton G) (val @: U) ->
   (forall e, e \in edge_set (val @: U) -> source e != target e ->
              let x := source e in let y := target e in
@@ -598,7 +592,7 @@ Proof.
   apply/existsP. by exists e.
 Qed.
 
-Lemma connected_skeleton (G : graph) V E (con : @consistent _ G V E) :
+Lemma connected_skeleton (G : graph) V E (con : @consistent _ _ G V E) :
   forall U : {set subgraph_for con}, @connected (skeleton G) (val @: U) ->
   (forall e, e \in edge_set (val @: U) -> source e != target e -> e \in E) ->
   @connected (skeleton (subgraph_for con)) U.
@@ -647,7 +641,7 @@ Proof.
   case => hv [he] [hd] [hom] [inj_hv inj_he].
   exists hv => // x y xy _. move: x y xy. 
   apply skelP; first by move=> x y; rewrite sg_sym.
-  move=> e sNt. (* by *) rewrite /edge_rel/= (inj_eq inj_hv) sNt.
+  move=> e sNt. (* by *) rewrite /edge_rel/=/sk_rel (inj_eq inj_hv) sNt.
   generalize (endpoint_ihom (is_ihom:=hom) e false).
   generalize (endpoint_ihom (is_ihom:=hom) e true).
   case (hd e)=>/= <- <-.
@@ -663,7 +657,7 @@ Definition flesh_out_graph (G : sgraph) sym0 tt (z : G) : graph2 :=
           elabel := fun _ => sym0 |} ;
      input := z; output := z |}.
 
-Lemma flesh_out (G : sgraph) (sym0 : le L) (tt: lv L) (z : G) :
+Lemma flesh_out (G : sgraph) (sym0 : Le) (tt: Lv) (z : G) :
   { G' & (diso (sskeleton G') G * diso (skeleton G') G)%type}.
 Proof.
   pose G' := flesh_out_graph sym0 tt z. exists G'.
@@ -672,7 +666,7 @@ Proof.
   exists (bij_id : bij (skeleton G') G) => x y; rewrite /sk_rel.
   - case/andP=> _ /existsP[][/=][u v /=] uv. rewrite !inE /=.
     case/orP=> /andP[/eqP<- /eqP<-] //; by rewrite sg_sym.
-  - move=> xy. rewrite /edge_rel /= sg_edgeNeq //=.
+  - move=> xy. rewrite /edge_rel/=/sk_rel sg_edgeNeq //=.
     apply/existsP; exists (Sub (x, y) xy). by rewrite !inE !eqxx.
 Qed.
 
@@ -685,13 +679,13 @@ Proof.
   case: (altP (source e =P target e)) => [->//|sDt].
   apply: same_pblock => //. apply/components_pblockP.
   have st : (source e : skeleton G) -- (target e) . 
-  { by rewrite /edge_rel/= sDt adjacent_edge. }
+  { by rewrite /edge_rel/=/sk_rel sDt adjacent_edge. }
   by exists (prev (edgep st)). 
 Qed.
 Opaque merge.
 
-Arguments unl [L G H] x : simpl never.
-Arguments unr [L G H] x : simpl never.
+Arguments unl [Lv Le G H] x : simpl never.
+Arguments unr [Lv Le G H] x : simpl never.
 
 Lemma edge_set_component (G : graph) (C : {set skeleton G}) (e : edge G) : 
   C \in @components G [set: G] -> (source e \in C) = (target e \in C).

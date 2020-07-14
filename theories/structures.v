@@ -180,7 +180,17 @@ Qed.
 Lemma eq_unit (a b: unit): a = b.
 Proof. by case a; case b. Qed.
 Hint Resolve eq_unit: core.
-  
+
+Definition flat_elabels (A : Type) : elabelType.
+  by refine (@ElabelType (eq_setoid A) (fun _ _ => False) _ _ _); done. 
+Defined.
+
+Lemma unit_commMonoidLaws : @comMonoidLaws (eq_setoid unit) tt (fun _ _ => tt).
+Proof. by do 2 (split; try done). Qed.
+
+Canonical unit_comMonoid := ComMonoid unit_commMonoidLaws.
+
+
 
 (** notations for vertex labels *)
 (* Declare Scope labels. *)
