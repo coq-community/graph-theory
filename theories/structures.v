@@ -121,7 +121,7 @@ Definition flat_labels (X: Type): labels.
 Defined.
 *)
 
-Record commMonoid := 
+Record comMonoid := 
   ComMonoid { cm_car :> setoid ;
               cm_id : cm_car;
               cm_op : cm_car -> cm_car -> cm_car;
@@ -182,7 +182,7 @@ Proof. by case a; case b. Qed.
 Hint Resolve eq_unit: core.
   
 
-(* notations for vertex labels *)
+(** notations for vertex labels *)
 (* Declare Scope labels. *)
 (* Bind Scope labels with lv. *)
 (* Delimit Scope labels with lbl. *)

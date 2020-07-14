@@ -131,7 +131,7 @@ Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity) : graph
 
 
 Section s2.
-Variables (Lv: commMonoid) (Le : elabelType).
+Variables (Lv: comMonoid) (Le : elabelType).
 Local Notation graph := (graph Lv Le).
 Local Notation Graph := (@Graph Lv Le).
 

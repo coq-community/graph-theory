@@ -171,11 +171,12 @@ Section derived.
  Proof. by move=> /= ->. Qed.
  Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
  Proof. move=> /= -> ->. apply cnvI. Qed.
- 
- Canonical Structure pttdom_labels: labels :=
-   Labels
-     (mkComMonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU)
-     eqv'_sym eqv01 eqv11.
+
+ Definition pttdom_monoid_laws := 
+   mkComMonoidLaws tst_dot_eqv tst_dotA tst_dotC tst_dotU.
+ Canonical Structure pttdom_monoid := ComMonoid pttdom_monoid_laws.
+
+ Canonical Structure pttdom_elabel := ElabelType eqv'_sym eqv01 eqv11.
  
  (* Lemmas to turn pttdom expressions into (projections of) tests *)
  Lemma par1tst u : 1 ∥ u = [1∥u]. by []. Qed.
@@ -223,7 +224,7 @@ Section derived.
  Proof. rewrite /infer_test. by subst. Qed.
 
 End derived.
-Coercion pttdom_labels: pttdom >-> labels. 
+(* Coercion pttdom_labels: pttdom >-> labels.  *)
 Notation "[ x ]" := (@infer_test _ x%ptt _ erefl): pttdom_ops.
 
 (** ** initial algebra of terms *)
