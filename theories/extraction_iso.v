@@ -12,13 +12,16 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+Arguments g2_top {_ _}.
+Arguments g2_one {_ _}.
+
 Section ExtractionIso.
 Variable sym : Type.
-Notation Lv := unit_comMonoid.
-Notation Le := (flat_elabels sym).
+Notation graph := (graph unit (flat sym)).
+Notation graph2 := (graph2 unit (flat sym)).
 
-Notation graph := (graph Lv Le).
-Notation graph2 := (graph2 Lv Le). 
+Notation g2_top := (g2_top : graph2).
+Notation g2_one := (g2_one : graph2).
 
 (** * Isomorphim Theorem *)
 
@@ -34,13 +37,13 @@ Lemma iso_top (G : graph2) :
   (forall e : edge G, False) -> G ≃2 top.
 Proof.
   move => Dio A B. 
-  pose f (x : G) : @g2_top Lv Le := 
+  pose f (x : G) : g2_top := 
     if x == input then input else output.
-  pose f' (x : @g2_top Lv Le) : G := 
+  pose f' (x : g2_top) : G := 
     if x == input then input else output.
-  pose g (e : edge G) : edge (@g2_top Lv Le) := 
+  pose g (e : edge G) : edge g2_top := 
     match (B e) with end.
-  pose g' (e : edge (@g2_top Lv Le)) : edge G := 
+  pose g' (e : edge g2_top) : edge G := 
     match e with inl e |inr e => vfun e end.
   unshelve Iso2 (@Iso _ _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
   - rewrite /f/f'/= => x.
@@ -62,11 +65,11 @@ Lemma iso_one (G : graph2) :
   (forall e : edge G, False) -> G ≃2 1.
 Proof.
   move => Dio A B. 
-  pose f (x : G) : @g2_one Lv Le := input.
-  pose f' (x : @g2_one Lv Le) : G := input.
-  pose g (e : edge G) : edge (@g2_one Lv Le) := 
+  pose f (x : G) : g2_one := input.
+  pose f' (x : g2_one) : G := input.
+  pose g (e : edge G) : edge g2_one := 
     match (B e) with end.
-  pose g' (e : edge (@g2_one Lv Le)) : edge G := 
+  pose g' (e : edge g2_one) : edge G := 
     match e with end.
   unshelve Iso2 (@Iso _ _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
   - rewrite /f/f'/= => x.
@@ -318,7 +321,7 @@ Proof.
   apply: iso2_comp. apply: iso_iso2. apply: merge_add_edge. rewrite !merge_add_edgeE.
   apply: iso2_comp. apply: iso_iso2. apply: add_edge_iso. apply: merge_iso. 
     apply: union_C. rewrite !merge_isoE /=. 
-  pose k (x : @two_graph Lv Le tt tt) : remove_edges [set e] := 
+  pose k (x : @two_graph _ (flat sym) tt tt) : remove_edges [set e] := 
     match x with inl tt => input | inr tt => output end.
   eapply iso2_comp. apply: iso_iso2. apply: add_edge_iso. apply (merge_union_K (k := k)).
   - done.

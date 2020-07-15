@@ -184,18 +184,28 @@ Lemma eq_unit (a b: unit): a = b.
 Proof. by case a; case b. Qed.
 Hint Resolve eq_unit: core.
 
-Definition flat_elabels (A : Type) : elabelType.
-  by refine (@ElabelType (eq_setoid A) (fun _ _ => False) _ _ _); done. 
-Defined.
+(** ** Structure Inference *)
+
+(** On [unit], [eq] is the only equivalence relation. Hence, we can
+safely register [unit_setoid] as the canonical setoid for unit *)
 
 Canonical unit_setoid := Eval hnf in eq_setoid unit.
-
-Check (tt ≡ tt).
 
 Lemma unit_commMonoidLaws : comMonoidLaws tt (fun _ _ => tt).
 Proof. by do 2 (split; try done). Qed.
 
-
 Canonical unit_comMonoid := Eval hnf in ComMonoid unit_commMonoidLaws.
 
-Check (fun x : unit => (x ⊗ x)%CM).
+(** Any type can be endowed with a flat edge-label structure over the
+equality setoid. However, we cannot declare this canonical for
+arbitrary types, because this would take precedence over all other
+setoids. Instead, we introduce an alias [flat] and equip it with a
+flat edge-label structure. Note that [flat A] is convertible to [A] *)
+
+Definition flat_elabels (A : Type) : elabelType.
+by refine (@ElabelType (eq_setoid A) (fun _ _ => False) _ _ _); done.
+Defined.
+
+Definition flat (A : Type) := A.  
+Canonical flat_setoid (A : Type) := eq_setoid (flat A). 
+Canonical flat_elabelsType (A : Type) := Eval hnf in flat_elabels (flat A).

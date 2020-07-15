@@ -757,6 +757,8 @@ End s1.
 
 Arguments input {_ _ _}.
 Arguments output {_ _ _}.
+Arguments g2_top {_ _}.
+Arguments g2_one {_ _}.
 Arguments add_vlabel2 [_ _] _ _ _. 
 Arguments merge2 [_ _] _ _. 
 
@@ -844,7 +846,7 @@ Section h.
     transitivity (unit_graph2 Le2 (fv 1%CM)). Iso2 (relabel_unit _).
     apply unit_graph2_iso, Hfvmon0.
   Qed.
-  Lemma relabel2_top: relabel2 (g2_top Lv1 Le1) ≃2 g2_top Lv2 Le2.
+  Lemma relabel2_top: relabel2 g2_top ≃2 g2_top.
   Proof.
     transitivity (two_graph2 Le2 (fv 1%CM) (fv 1%CM)). Iso2 (relabel_two _ _).
     apply two_graph2_iso; apply Hfvmon0.

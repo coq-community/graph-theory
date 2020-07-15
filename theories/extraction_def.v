@@ -15,8 +15,8 @@ Arguments edge_set [Lv Le] G _,[Lv Le G] _.
 
 Section ExtractionDef.
 Variable sym : Type.
-Notation graph := (graph unit_comMonoid (flat_elabels sym)).
-Notation graph2 := (graph2 unit_comMonoid (flat_elabels sym)).
+Notation graph := (graph unit (flat sym)).
+Notation graph2 := (graph2 unit (flat sym)).
 
 (* TODO: resolve this name clash *)
 Local Notation link_rel := checkpoint.link_rel.

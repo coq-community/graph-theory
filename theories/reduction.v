@@ -373,30 +373,25 @@ Qed.
 
 End s.
 
-
 (** ** reduction lemma *)
 (* (in the initial pttdom algebra of terms) *)
 Section s'.
 Variable A: Type. 
 Notation term := (pttdom.term A).  
 Notation nterm := (pttdom.nterm A).  
-Notation test := (pttdom_monoid (tm_pttdom A)). 
-Notation tgraph := (graph test (tm_pttdom A)).
-Notation tgraph2 := (graph2 test (tm_pttdom A)).
-Notation graph := (graph unit_comMonoid (flat_elabels A)).
-Notation graph2 := (graph2 unit_comMonoid (flat_elabels A)).
+Notation test := (test (tm_pttdom A)). 
+Notation tgraph2 := (graph2 (pttdom_monoid (tm_pttdom A)) (tm_pttdom A)).
+Notation graph := (graph unit (flat A)).
+Notation graph2 := (graph2 unit (flat A)).
 Notation step := (@step (tm_pttdom A)).
 Notation steps := (@steps (tm_pttdom A)).
 
-
-Canonical unit_comMonoid.
-Canonical tm_elabel := Eval hnf in pttdom_elabelType (tm_pttdom A).
+Definition tm_elabel := Eval hnf in pttdom_elabelType (tm_pttdom A). 
 
 (** *** graphs of terms and normal terms *)
 
 (* function g^A from the end of Section 5 *)
-Definition graph_of_term: term -> graph2 := 
-  pttdom.eval (fun a: A => @g2_var unit_comMonoid (flat_elabels A) a). 
+Definition graph_of_term: term -> graph2 := pttdom.eval (fun a: flat A => g2_var _ a). 
 
 (* function g^T from the end of Section 5 *)
 Definition tgraph_of_term: term -> tgraph2 := 

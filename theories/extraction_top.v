@@ -16,14 +16,8 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section ExtractionTop.
 Variable sym : Type.
-Definition Lv := unit_comMonoid.
-Definition Le := (flat_elabels sym).
-Notation graph := (graph Lv Le).
-Notation graph2 := (graph2 Lv Le). 
-
-Canonical Lv.
-Canonical Le.
-
+Notation graph := (graph unit (flat sym)).
+Notation graph2 := (graph2 unit (flat sym)).
 Open Scope ptt_ops.
 
 
@@ -34,7 +28,7 @@ Arguments merge_union_K_l [Lv Le F K i o h] k.
 
 Arguments car : simpl never.
 
-Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ g2_top Lv Le) (inr input) (inr output).
+Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ g2_top) (inr input) (inr output).
 Proof. 
   rewrite-> topL, topR => /=. 
   Iso2 (iso_sym (union_A _ _ _)).
@@ -53,7 +47,7 @@ Proof.
 Qed.
 
 Lemma par_component (G : graph) (H : graph2) :
-  point (G ⊎ g2_top _ _) (inr input) (inr output) ∥ H ≃2 point (G ⊎ H) (inr input) (inr output).
+  point (G ⊎ g2_top) (inr input) (inr output) ∥ H ≃2 point (G ⊎ H) (inr input) (inr output).
 Proof.
   rewrite-> par2C. 
   setoid_rewrite-> (merge_iso2 (union_A _ _ _)) =>/=.

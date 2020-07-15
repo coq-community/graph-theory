@@ -9,7 +9,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable X: pttdom.
-Notation test := (pttdom_monoid X).
+Notation test := (test X).
 Notation graph := (graph test X).
 Notation graph2 := (graph2 test X).
 
