@@ -12,10 +12,6 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** labeled directed multigraphs and their operations *)
 
-(* the notion of multigraph defined here allows labels on vertices and edge-fliping isomorphisms 
-   we can recover multigraphs without vertex-labels and non-flipping isomophisms using the [flat_labels] structure
- *)
-
 Set Primitive Projections.
 Record graph (Lv Le : Type) : Type :=
   Graph {
@@ -187,6 +183,8 @@ Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity) : graph
 
 
 (** ** Operations that require label structures *)
+
+
 
 Section s2.
 Variables (Lv: comMonoid) (Le : elabelType).
@@ -898,8 +896,9 @@ Global Hint Resolve iso_id : core.  (* so that [by] gets it... *)
 
 Section MergeSubgraph.
   Variable (Le : elabelType).
-  Notation graph := (graph unit_comMonoid Le).
-  (* note: the lemma also holds for arbitrarily-labeled graphs when vertices in the intersection are labeled with idempotent elements *)
+  Notation graph := (graph unit Le).
+  (* note: the lemma also holds for arbitrarily-labeled graphs when vertices in
+  the intersection are labeled with idempotent elements *)
   Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
             (con1 : consistent V1 E1) (con2 : consistent V2 E2)
             (h : pairs (subgraph_for con1 ⊎ subgraph_for con2)%G).
