@@ -12,20 +12,12 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section s.
 Variable A: Type.
-(* Notation term := (pttdom.term A).   *)
-(* Notation nterm := (nterm A).   *)
-(* Notation test := (test (tm_pttdom A)).  *)
-(* Notation tgraph := (graph (pttdom_labels (tm_pttdom A))). *)
-(* Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))). *)
-(* Notation graph := (graph (flat_labels A)). *)
-(* Notation graph2 := (graph2 (flat_labels A)). *)
-(* Notation step := (@step (tm_pttdom A)). *)
-(* Notation steps := (@steps (tm_pttdom A)). *)
 Notation term := (pttdom.term A).  
 Notation nterm := (pttdom.nterm A).  
 Notation test := (pttdom_monoid (tm_pttdom A)). 
-Notation tgraph := (graph test (tm_pttdom A)).
-Notation tgraph2 := (graph2 test (tm_pttdom A)).
+Notation tgraph := (graph test term).
+Notation tgraph2 := (graph2 test term).
+Notation tgraph2' := (graph2 (pttdom_monoid (tm_pttdom A)) (tm_pttdom A)).
 Notation graph := (graph unit_comMonoid (flat_elabels A)).
 Notation graph2 := (graph2 unit_comMonoid (flat_elabels A)).
 Notation step := (@step (tm_pttdom A)).
@@ -67,7 +59,7 @@ Proof.
   case; intros=>/=; by rewrite ?card_option ?card_sum ?card_unit ?card_void ?addSnnS ?addnS ?addn0.
 Qed.
 
-Lemma iso_stagnates (G H : tgraph2) : G ≃2p H -> measure H = measure G.
+Lemma iso_stagnates (G H : tgraph2) : (G : tgraph2') ≃2p H -> measure H = measure G.
 Proof. case. move=>[l _]. by rewrite /measure (card_bij (iso_v l)) (card_bij (iso_e l)). Qed.
 
 (* confluence, via appropriate variant of Newman's lemma  *)
@@ -142,7 +134,9 @@ Qed.
 (* transferring isomorphisms on letter-labeled graphs to term-labeled graphs *)
 Lemma tgraph_graph (u: term): 
   tgraph_of_term u ≃2 
-  @relabel2 _ _ _ _ (fun _ => tst_one _) (@pttdom.tm_var _ ) (graph_of_term u).
+  @relabel2 
+    unit_comMonoid (pttdom_monoid (tm_pttdom A)) (flat_elabels A) (pttdom_elabel (tm_pttdom A))
+    (fun _ => tst_one _) (@pttdom.tm_var _) (graph_of_term u).
 Proof.
   have Hmon0: eqv_test (tst_one (tm_pttdom A)) (tst_one (tm_pttdom A)) by [].
   have Hmon2 (a b: unit): (tst_one (tm_pttdom A)) ≡ (1 ⊗ 1)%lbl by symmetry; apply dotx1.

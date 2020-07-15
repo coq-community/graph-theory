@@ -378,15 +378,6 @@ End s.
 (* (in the initial pttdom algebra of terms) *)
 Section s'.
 Variable A: Type. 
-(* Notation term := (pttdom.term A).   *)
-(* Notation nterm := (pttdom.nterm A).   *)
-(* Notation test := (test (tm_pttdom A)).  *)
-(* Notation tgraph := (graph test term). *)
-(* Notation tgraph2 := (graph2 test term).  *)
-(* Notation graph := (graph unit A). *)
-(* Notation graph2 := (graph2 unit A). *)
-(* Notation step := (@step (tm_pttdom A)). *)
-(* Notation steps := (@steps (tm_pttdom A)). *)
 Notation term := (pttdom.term A).  
 Notation nterm := (pttdom.nterm A).  
 Notation test := (pttdom_monoid (tm_pttdom A)). 
@@ -401,26 +392,7 @@ Notation steps := (@steps (tm_pttdom A)).
 Canonical unit_comMonoid.
 Canonical tm_elabel := Eval hnf in pttdom_elabelType (tm_pttdom A).
 
-(* TODO: get rid of this hack... *)
-(* Canonical Structure tm_labels := *)
-(*   @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A)) *)
-(*           (mkComMonoidLaws (@tst_dot_eqv (tm_pttdom A))  *)
-(*                       (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A)))  *)
-(*           (pttdom.tm_setoid A) (@eqv' (tm_pttdom A)) *)
-(*           (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)). *)
-
-(* Eval hnf in pttdom_labels (tm_pttdom A). *)
-(* Check erefl: tm_setoid A = le _. *)
-(* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
-
 (** *** graphs of terms and normal terms *)
-
-(* Lemma unit_comMonoidLaws : @comMonoidLaws (eq_setoid unit) tt (fun _ _ => tt). *)
-(* Admitted. *)
-
-(* Canonical unit_comMonoid := ComMonoid unit_commMonoidLaws. *)
-
-Check (erefl : term = tm_pttdom A).
 
 (* function g^A from the end of Section 5 *)
 Definition graph_of_term: term -> graph2 := 
