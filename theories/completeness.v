@@ -139,7 +139,7 @@ Lemma tgraph_graph (u: term):
     (fun _ => tst_one _) (@pttdom.tm_var _) (graph_of_term u).
 Proof.
   have Hmon0: eqv_test (tst_one (tm_pttdom A)) (tst_one (tm_pttdom A)) by [].
-  have Hmon2 (a b: unit): (tst_one (tm_pttdom A)) ≡ (1 ⊗ 1)%lbl by symmetry; apply dotx1.
+  have Hmon2 (a b: unit): (tst_one (tm_pttdom A)) ≡ (1 ⊗ 1)%CM by symmetry; apply dotx1.
   induction u=>/=.
   - etransitivity. apply (dot_iso2 IHu1 IHu2). symmetry. apply relabel2_dot=>//. 
   - etransitivity. apply (par_iso2 IHu1 IHu2). symmetry. apply relabel2_par=>//. 

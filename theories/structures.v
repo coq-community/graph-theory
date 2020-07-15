@@ -129,9 +129,12 @@ Record comMonoid :=
 
 Existing Instance cm_laws.
 
-Infix "⊗" := cm_op (left associativity, at level 25).
-Notation mon2 := (@cm_op _). (* TODO *)
-Notation mon0 := (@cm_id _). (* TODO *)
+Arguments cm_op {_} _ _.
+Declare Scope cm_scope.
+Delimit Scope cm_scope with CM.
+Infix "⊗" := cm_op (left associativity, at level 25) : cm_scope.
+Arguments cm_id {_}.
+Notation "1" := cm_id : cm_scope.
 
 Record elabelType :=
   ElabelType { el_car :> setoid ;
@@ -185,18 +188,14 @@ Definition flat_elabels (A : Type) : elabelType.
   by refine (@ElabelType (eq_setoid A) (fun _ _ => False) _ _ _); done. 
 Defined.
 
-Lemma unit_commMonoidLaws : @comMonoidLaws (eq_setoid unit) tt (fun _ _ => tt).
+Canonical unit_setoid := Eval hnf in eq_setoid unit.
+
+Check (tt ≡ tt).
+
+Lemma unit_commMonoidLaws : comMonoidLaws tt (fun _ _ => tt).
 Proof. by do 2 (split; try done). Qed.
 
-Canonical unit_comMonoid := ComMonoid unit_commMonoidLaws.
 
+Canonical unit_comMonoid := Eval hnf in ComMonoid unit_commMonoidLaws.
 
-
-(** notations for vertex labels *)
-(* Declare Scope labels. *)
-(* Bind Scope labels with lv. *)
-(* Delimit Scope labels with lbl. *)
-(* Infix "⊗" := mon2 (left associativity, at level 25): labels. *)
-(* Notation "1" := mon0: labels. *)
-
-
+Check (fun x : unit => (x ⊗ x)%CM).

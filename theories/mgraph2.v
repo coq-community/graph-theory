@@ -19,10 +19,6 @@ Set Bullet Behavior "Strict Subproofs".
  - recheck status of [unr/unl]
  *)
 
-Declare Scope labels.
-Notation "1" := mon0 : labels.
-Delimit Scope labels with lbl.
-
 (* 2p-graphs  *)
 Set Primitive Projections.
 Record graph2 Lv Le :=
@@ -41,7 +37,6 @@ Variables (Lv : Type) (Le : Type).
 Notation graph := (graph Lv Le).
 Notation graph2 := (graph2 Lv Le).
 Local Notation point G := (@Graph2 Lv Le G).
-Open Scope labels.
 Implicit Types (a : Lv) (u v : Le).
 
 
@@ -50,7 +45,7 @@ Definition add_vertex2 (G: graph2) a := point (add_vertex G a) (unl input) (unl 
 Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge G x y u) input output.
 
 Notation "G ∔ a" := 
-  (@add_vertex2 G a%lbl) (at level 20, left associativity).
+  (@add_vertex2 G a%CM) (at level 20, left associativity).
 Notation "G ∔ [ x , u , y ]" := 
   (@add_edge2 G x y u) (at level 20, left associativity).
 
@@ -71,7 +66,7 @@ Notation "G ∔ [ x , u , y ]" :=
   (add_edge2 G x y u) (at level 20, left associativity) : graph2_scope.
 Arguments add_vertex2 [_ _] _ _. 
 Notation "G ∔ a" := 
-  (add_vertex2 G a%lbl) (at level 20, left associativity) : graph2_scope.
+  (add_vertex2 G a%CM) (at level 20, left associativity) : graph2_scope.
 
 Arguments two_graph2 [Lv Le] _ _, [Lv] Le _ _.
 Arguments unit_graph2 [Lv Le] _, [Lv] Le _.
@@ -82,8 +77,9 @@ Variables (Lv : comMonoid) (Le : elabelType).
 Notation graph := (graph Lv Le).
 Notation graph2 := (graph2 Lv Le).
 Local Notation point G := (@Graph2 Lv Le G).
-Open Scope labels.
 Implicit Types (a : Lv) (u v : Le).
+Local Open Scope cm_scope.
+
 
 Definition add_vlabel2 (G: graph2) (x: G) a := point (add_vlabel G x a) input output.
 Definition merge2 (G: graph2) (r: equiv_rel G) := point (merge G r) (\pi input) (\pi output).
@@ -368,7 +364,7 @@ Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Defined.
    we might want to downgrade some of them to Prop [iso2prop]
  *)
 
-Local Close Scope labels.
+Local Close Scope cm_scope.
 
 Lemma par2C (F G: graph2): F ∥ G ≃2 G ∥ F.
 Proof.
@@ -549,7 +545,7 @@ Proof.
 Qed.
 
 (* TOFIX: topL should be obtained from topR by duality *)
-Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%lbl) (@unr _ _ F (unit_graph _) tt) (unl output).
+Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%CM) (@unr _ _ F (unit_graph _) tt) (unl output).
 Proof.
   irewrite (merge_iso2 (union_C _ _))=>/=.
   etransitivity. refine (merge_iso2 (union_A _ _ _) _ _ _)=>/=.
@@ -558,7 +554,7 @@ Proof.
   intros []. apply /eqquotP. eqv.
 Qed.
 
-Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (@unr _ _ F (unit_graph _) tt).
+Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%CM) (unl input) (@unr _ _ F (unit_graph _) tt).
 Proof.
   irewrite (merge_iso2 (union_iso iso_id (union_C _ _))).
   irewrite (merge_iso2 (union_A _ _ _)).
@@ -692,7 +688,7 @@ Canonical g2_pttdom.
 (** ** additional laws required for the completeness proof *)
 
 (* additional lemmas needed in reduction.v *)
-Local Open Scope labels.
+Local Open Scope cm_scope.
 
 Lemma dot2unit_l (G: graph2) a: unit_graph2 a · G ≃2 G [tst input <- a].
 Proof.
@@ -767,7 +763,7 @@ Arguments merge2 [_ _] _ _.
 Notation IO := [set input;output].
 
 Notation "G [tst  x <- a ]" := 
-  (add_vlabel2 G x a%lbl) (at level 20, left associativity) : graph2_scope.
+  (add_vlabel2 G x a%CM) (at level 20, left associativity) : graph2_scope.
 Notation merge2_seq G l := (merge2 G (eqv_clot l)).
 
 Arguments iso2 {_ _}.
@@ -806,8 +802,8 @@ Section h.
   Defined.
   Lemma relabel_union F G: relabel (F ⊎ G) ≃ relabel F ⊎ relabel G.
   Proof. Iso bij_id bij_id xpred0. by split=>//; case. Defined.
-  Hypothesis Hfvmon2: forall a b, fv (a ⊗ b)%lbl ≡ (fv a ⊗ fv b)%lbl.
-  Hypothesis Hfvmon0: fv 1%lbl ≡ 1%lbl.
+  Hypothesis Hfvmon2: forall a b, fv (a ⊗ b)%CM ≡ (fv a ⊗ fv b)%CM.
+  Hypothesis Hfvmon0: fv 1%CM ≡ 1%CM.
   Lemma relabel_merge F r: relabel (merge F r) ≃ merge (relabel F) r.
   Proof.
     Iso bij_id bij_id xpred0.
@@ -845,17 +841,17 @@ Section h.
   Proof. reflexivity. Qed.
   Lemma relabel2_one: relabel2 1 ≃2 1.
   Proof.
-    transitivity (unit_graph2 Le2 (fv 1%lbl)). Iso2 (relabel_unit _).
+    transitivity (unit_graph2 Le2 (fv 1%CM)). Iso2 (relabel_unit _).
     apply unit_graph2_iso, Hfvmon0.
   Qed.
   Lemma relabel2_top: relabel2 (g2_top Lv1 Le1) ≃2 g2_top Lv2 Le2.
   Proof.
-    transitivity (two_graph2 Le2 (fv 1%lbl) (fv 1%lbl)). Iso2 (relabel_two _ _).
+    transitivity (two_graph2 Le2 (fv 1%CM) (fv 1%CM)). Iso2 (relabel_two _ _).
     apply two_graph2_iso; apply Hfvmon0.
   Qed.
   Lemma relabel2_var a: relabel2 (g2_var _ a) ≃2 g2_var _ (fe a).
   Proof.
-    transitivity (edge_graph2 (fv 1%lbl) (fe a) (fv 1%lbl)). Iso2 (relabel_edge _ _ _).
+    transitivity (edge_graph2 (fv 1%CM) (fe a) (fv 1%CM)). Iso2 (relabel_edge _ _ _).
     apply edge_graph2_iso=>//.
   Qed.
 End h.

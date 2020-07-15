@@ -310,7 +310,7 @@ Qed.
 
 Lemma split_io_edge (G : graph2) (e : edge G) : 
   e \in edges input output -> 
-  G ≃2 edge_graph2 1%lbl (elabel e) 1%lbl ∥ point (remove_edges [set e]) input output.
+  G ≃2 edge_graph2 1%CM (elabel e) 1%CM ∥ point (remove_edges [set e]) input output.
 Proof.
   move => e_io. symmetry. 
   rewrite /par/=/g2_par/=. 

@@ -192,6 +192,7 @@ Section s2.
 Variables (Lv: comMonoid) (Le : elabelType).
 Local Notation graph := (graph Lv Le).
 Local Notation Graph := (@Graph Lv Le).
+Local Open Scope cm_scope.
 
 (* adding a label to a vertex (cumulative w.r.t existing label) *)
 Definition add_vlabel (G: graph) (x: G) (a: Lv): graph :=
@@ -206,7 +207,7 @@ Definition merge (G: graph) (r : equiv_rel G) :=
   {| vertex := quot r;
      edge := edge G;
      endpoint b e := \pi (endpoint b e);
-     vlabel c := \big[mon2/mon0]_(w | \pi w == c) vlabel w;
+     vlabel c := \big[cm_op/1]_(w | \pi w == c) vlabel w;
      elabel e := elabel e |}.
 Arguments merge _ _: clear implicits. 
 Notation merge_seq G l := (merge G (eqv_clot l)).
@@ -217,7 +218,7 @@ Notation merge_seq G l := (merge G (eqv_clot l)).
 (* Definition 4.8  *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
   { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
-    vlabel_hom: forall v, vlabel v ≡ (\big[mon2/mon0]_(u | hv u == v) vlabel u);
+    vlabel_hom: forall v, vlabel v ≡ (\big[cm_op/1]_(u | hv u == v) vlabel u);
     elabel_hom: forall e, elabel (he e) ≡[hd e] elabel e;
   }.
 
@@ -265,12 +266,12 @@ Class is_ihom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bo
     elabel_ihom: forall e, elabel (he e) ≡[hd e] elabel e }.
 
 Lemma big_bij_eq (I1 I2 : finType) (F : I1 -> Lv) (f : bij I1 I2) (y : I2) :
-  \big[mon2/mon0]_(x | f x == y) F x ≡ F (f^-1 y).
+  \big[cm_op/1]_(x | f x == y) F x ≡ F (f^-1 y).
 Proof. apply: big_pred1 => x /=. exact: bij_eqLR. Qed.
 
 (* TOTHINK: this is necessary because f^-1 is a bijective function and not a bijection ... *)
 Lemma big_bij_eq' (I1 I2 : finType) (F : I1 -> Lv) (f : bij I2 I1) (y : I2) :
-  \big[mon2/mon0]_(x | f^-1 x == y) F x ≡ F (f y).
+  \big[cm_op/1]_(x | f^-1 x == y) F x ≡ F (f y).
 Proof. apply: big_pred1 => x /=. by rewrite eq_sym -bij_eqLR eq_sym. Qed.
 
 Lemma ihom_id G: @is_ihom G G id id xpred0.
@@ -430,7 +431,7 @@ Defined.
 Lemma add_vlabel_unit a x b: unit_graph a [tst x <- b] ≃ unit_graph (a⊗b).
 Proof. apply (unit_graph_iso (monC b a)). Defined.
 
-Lemma add_vlabel_mon0 G x: G [tst x <- mon0] ≃ G.
+Lemma add_vlabel_mon0 G x: G [tst x <- 1] ≃ G.
 Proof.
   Iso bij_id bij_id xpred0. 
   split=>//=. move=>v.
@@ -747,7 +748,7 @@ Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
   Definition union_K_pairs := map_pairs (sum_left k) h.
 
-  Hypothesis kv: forall x: K, vlabel x = mon0. 
+  Hypothesis kv: forall x: K, vlabel x = 1. 
   Hypothesis kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)].
 
   Lemma equiv_clot_Kl: union_K_equiv (eqv_clot h) =2 eqv_clot union_K_pairs.
@@ -799,7 +800,7 @@ Section merge_union_K.
       rewrite -equiv_clot_Kl. simpl. rewrite /map_equiv_rel/=.
       set (r := repr _). case r=>//= w.
       generalize (kh w). rewrite -eqmodE. move <-. by rewrite eqmodE.
-    - rewrite andbC kv -[X in X ≡ _]/mon0. by case: ifP.
+    - rewrite andbC kv -[X in X ≡ _]/1. by case: ifP.
   Qed.
 
   Definition merge_union_K: merge_seq (F ⊎ K) h ≃ merge_seq F union_K_pairs :=

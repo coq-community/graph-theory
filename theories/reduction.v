@@ -15,7 +15,7 @@ Section prelim.
 Variable (Lv : comMonoid) (Le : elabelType).
 Notation graph := (graph Lv Le).  
 Notation graph2 := (graph2 Lv Le).
-Local Open Scope labels.
+Local Open Scope cm_scope.
 
 Lemma two_edges (a b c d: Lv) (u v: Le):
   edge_graph a u b ⊎ edge_graph c v d
