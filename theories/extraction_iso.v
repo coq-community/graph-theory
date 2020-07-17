@@ -12,8 +12,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-Arguments g2_top {_ _}.
-Arguments g2_one {_ _}.
 
 Section ExtractionIso.
 Variable sym : Type.

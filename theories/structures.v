@@ -1,4 +1,5 @@
 Require Import RelationClasses Morphisms Relation_Definitions.
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries setoid_bigop.
 
@@ -75,29 +76,29 @@ Global Existing Instance lv_monoid. *)
 the vertex labels) and an "elabel Type" (accounting for possible edge-flipping)
 for edge labels. *)
 
-Record comMonoid := 
-  ComMonoid { cm_car :> setoid ;
-              cm_id : cm_car;
-              cm_op : cm_car -> cm_car -> cm_car;
-              cm_laws : comMonoidLaws cm_id cm_op }.
-
-Record elabelType :=
-  ElabelType { el_car :> setoid ;
-               eqv': Relation_Definitions.relation el_car;
-               Eqv'_sym: Symmetric eqv';
-               eqv01: forall x y z, eqv  x y -> eqv' y z -> eqv' x z;
-               eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z }.
-
-Infix "≡'" := eqv' (at level 79).
+HB.mixin Record ComMonoid_of_Setoid A of Setoid_of_Type A := 
+  { cm_id : A;
+    cm_op : A -> A -> A;
+    cm_laws : comMonoidLaws cm_id cm_op }.
+HB.structure Definition ComMonoid := { A of ComMonoid_of_Setoid A & }.
+Notation comMonoid := ComMonoid.type.
 
 Existing Instance cm_laws.
-
 Arguments cm_op {_} _ _.
 Declare Scope cm_scope.
 Delimit Scope cm_scope with CM.
 Infix "⊗" := cm_op (left associativity, at level 25) : cm_scope.
 Arguments cm_id {_}.
 Notation "1" := cm_id : cm_scope.
+
+HB.mixin Record Elabel_of_Setoid A of Setoid_of_Type A := 
+  { eqv': Relation_Definitions.relation A;
+    Eqv'_sym: Symmetric eqv';
+    eqv01: forall x y z : A, eqv  x y -> eqv' y z -> eqv' x z;
+    eqv11: forall x y z : A, eqv' x y -> eqv' y z -> eqv  x z }.
+HB.structure Definition Elabel := { A of Elabel_of_Setoid A & }.
+Notation elabelType := Elabel.type.
+Infix "≡'" := eqv' (at level 79).
 
 Lemma eqv10 (l : elabelType) (x y z : l) : eqv' x y -> eqv  y z -> eqv' x z.
 Proof. move => /Eqv'_sym A B. apply: Eqv'_sym. apply: eqv01 A. by symmetry. Qed.
@@ -112,7 +113,7 @@ Proof. case b=> x y/=. apply Eqv'_sym. by symmetry. Qed.
 Lemma eqvb_trans (X : elabelType) (u v w : X) (b1 b2 : bool) : 
   u ≡[b1] v -> v ≡[b2] w -> u ≡[b1 (+) b2] w.
 Proof. 
-  case: b1; case: b2 => //=; eauto using eqv10, eqv01, eqv11. 
+  case: b1; case: b2 => /=; try solve [exact: eqv01|exact: eqv11|exact: eqv10].
   by transitivity v.
 Qed.
 
@@ -143,12 +144,11 @@ Hint Resolve eq_unit: core.
 (** On [unit], [eq] is the only equivalence relation. Hence, we can
 safely register [unit_setoid] as the canonical setoid for unit *)
 
-Canonical unit_setoid := Eval hnf in eq_setoid unit.
-
 Lemma unit_commMonoidLaws : comMonoidLaws tt (fun _ _ => tt).
 Proof. by do 2 (split; try done). Qed.
 
-Canonical unit_comMonoid := Eval hnf in ComMonoid unit_commMonoidLaws.
+HB.instance Definition unit_commMonoid := 
+  ComMonoid_of_Setoid.Build unit unit_commMonoidLaws.
 
 (** Any type can be endowed with a flat edge-label structure over the
 equality setoid. However, we cannot declare this canonical for
@@ -156,10 +156,13 @@ arbitrary types, because this would take precedence over all other
 setoids. Instead, we introduce an alias [flat] and equip it with a
 flat edge-label structure. Note that [flat A] is convertible to [A] *)
 
-Definition flat_elabels (A : Type) : elabelType.
-by refine (@ElabelType (eq_setoid A) (fun _ _ => False) _ _ _); done.
-Defined.
+(* Section E. *)
+(* Variable (A : Type). *)
+(* Let rel := (fun _ _ : A  => False). *)
+(* Let rel_sym : Symmetric rel. by []. Qed. *)
+(* Let rel01 (x y z : A) : x = y -> rel y z -> rel x z. by []. Qed. *)
+(* Let rel11 (x y z : A) : rel x y -> rel y z -> x = z. by []. Qed. *)
 
-Definition flat (A : Type) := A.  
-Canonical flat_setoid (A : Type) := eq_setoid (flat A). 
-Canonical flat_elabelsType (A : Type) := Eval hnf in flat_elabels (flat A).
+(* HB.instance Definition flat_elabel_mixin :=  *)
+(*   @Elabel_of_Setoid.Build (flat A) rel rel_sym rel01 rel11. *)
+(* End E. *)
