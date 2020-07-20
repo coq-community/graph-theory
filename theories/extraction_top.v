@@ -26,8 +26,6 @@ Open Scope ptt_ops.
 Arguments iso_id {Lv Le G}.
 Arguments merge_union_K_l [Lv Le F K i o h] k.
 
-Arguments car : simpl never.
-
 Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ g2_top) (inr input) (inr output).
 Proof. 
   rewrite-> topL, topR => /=. 
@@ -198,7 +196,7 @@ Proof.
   { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
     apply: leq_trans (width_bound _) _. by rewrite G_empty. }
   move=>HG.
-  have [G' [iso_G _]] := @flesh_out unit_comMonoid (flat_elabels nat) G 0 tt x.
+  have [G' [iso_G _]] := flesh_out (0 : flat nat) tt x.
   apply (iso_K4_free iso_G) in HG.
   apply minor_exclusion_2p in HG as (T&B&D&W).
   case: (decomp_iso D iso_G) => B' D' W'.

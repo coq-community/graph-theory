@@ -23,8 +23,7 @@ Local Notation link_rel := checkpoint.link_rel.
 
 (* same as in mgraph2_tw2.v, but different from [reduction.graph_of_term] 
    (the latter start from a 2pdom term rather than a 2p term) *)
-Definition graph_of_term: term sym -> graph2 := 
-  eval (@g2_var unit_comMonoid (flat_elabels sym)).
+Definition graph_of_term: term sym -> graph2 := eval (fun a : flat sym => @g2_var _ _ a).
 
 (** * Term Extraction Function *)
 
@@ -138,8 +137,7 @@ Arguments Path : clear implicits.
 
 
 
-Definition CK4F (G : graph2) := 
-  connected [set: skeleton G] /\ K4_free (@sskeleton unit_comMonoid (flat_elabels sym) G).
+Definition CK4F (G : graph2) := connected [set: skeleton G] /\ K4_free (sskeleton G).
 
 (** If G is a lens with non non-adjacent input and output, then it has
 at least two parallel components *)
@@ -309,8 +307,7 @@ Proof.
   - rewrite pathp_cons /= -!andbA => /and5P [A B C D E].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
     apply: connect1. move: C. rewrite /sk_rel -val_eqE.
-    (* FIXME: simplification elimates the structure *)
-    by rewrite (@adjacent_induced unit_comMonoid (flat_elabels sym)).
+    by rewrite adjacent_induced.
 Qed.
 
 Lemma induced_K4_free (G : graph2) (V : {set G}) : 

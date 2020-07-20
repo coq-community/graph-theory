@@ -1,4 +1,5 @@
 Require Import Setoid Morphisms.
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
 Require Import setoid_bigop structures pttdom mgraph ptt.
@@ -74,9 +75,11 @@ Arguments edge_graph2 [Lv Le] _ _ _.
 
 Section s1.
 Variables (Lv : comMonoid) (Le : elabelType).
+Notation LvS := (ComMonoid.sort Lv).
+Notation LeS := (Elabel.sort Le).
 Notation graph := (graph Lv Le).
 Notation graph2 := (graph2 Lv Le).
-Local Notation point G := (@Graph2 Lv Le G).
+Local Notation point G := (@Graph2 LvS LeS G).
 Implicit Types (a : Lv) (u v : Le).
 Local Open Scope cm_scope.
 
@@ -129,7 +132,8 @@ Proof.
   - intros G H [f]. constructor. by symmetry.
   - intros F G H [h] [k]. constructor. etransitivity; eassumption.
 Qed.
-Canonical Structure g2_setoid: setoid := Setoid iso2prop_Equivalence. 
+HB.instance Definition g2_setoid := 
+  Setoid_of_Type.Build (mgraph2.graph2 LvS LeS) iso2prop_Equivalence.
 
 Tactic Notation "Iso2" uconstr(f) :=
   match goal with |- ?F ≃2 ?G => refine (@Iso2 F G f _ _)=>// end.
@@ -179,13 +183,9 @@ Definition g2_var u : graph2 := edge_graph2 1 u 1.
 
 (* Note: would be nicer to prove that this is a 2p algebra (with top)
    and deduce automatically that this is a 2pdom  *)
-Canonical Structure g2_ops: pttdom.ops_ :=
-  {| dot := g2_dot;
-     par := g2_par;
-     cnv := g2_cnv;
-     dom := g2_dom;
-     one := g2_one;
-     top := g2_top |}.
+
+HB.instance Definition g2_ops := 
+  Ops_of_Type.Build (mgraph2.graph2 LvS LeS) g2_dot g2_par g2_cnv g2_dom g2_one g2_top.
 
 (** ** laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) *)
 (* mostly recasting the ones proved in [mgraph]  *)
@@ -643,8 +643,8 @@ Global Instance dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
 (* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
-Definition g2_ptt: ptt.
-  refine (@Build_ptt g2_ops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+Definition g2_ptt: Ptt_of_Ops.axioms_ g2_setoid g2_ops.
+  refine (Ptt_of_Ops.Build (mgraph2.graph2 LvS LeS) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
      abstract apply CProper2, dot_iso2. 
      abstract apply CProper2, par_iso2. 
      abstract apply CProper1, cnv_iso2. 
@@ -661,29 +661,8 @@ Definition g2_ptt: ptt.
      abstract (exists; apply g2_A11).
      abstract (exists; apply g2_A12).
 Defined.
-Canonical g2_ptt.
-
-(* TODO should be inferred via ptt.pttdom_of, but required for below for applying [cnv_eqv] *)
-(* Canonical Structure g2_pttdom: pttdom := Eval hnf in ptt.pttdom_of g2_ptt. *)
-Definition g2_pttdom: pttdom.
-  refine (@Build_pttdom g2_ops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-     abstract apply dot_eqv_.
-     abstract apply par_eqv_.
-     abstract apply cnv_eqv_.
-     abstract apply dom_eqv_.
-     abstract apply parA_.
-     abstract apply parC_.
-     abstract apply dotA_.
-     abstract apply dotx1_.
-     abstract apply cnvI_.
-     abstract apply cnvpar_.
-     abstract apply cnvdot_.
-     abstract apply par11_.
-     abstract apply A10_.
-     abstract apply A13_.
-     abstract apply A14_.
-Defined.
-Canonical g2_pttdom.
+HB.instance (mgraph2.graph2 LvS LeS) g2_ptt. 
+HB.instance (mgraph2.graph2 LvS LeS) (pttdom_of_ptt graph2_is_a_Ptt).
 
 (** ** additional laws required for the completeness proof *)
 

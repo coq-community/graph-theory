@@ -156,13 +156,13 @@ arbitrary types, because this would take precedence over all other
 setoids. Instead, we introduce an alias [flat] and equip it with a
 flat edge-label structure. Note that [flat A] is convertible to [A] *)
 
-(* Section E. *)
-(* Variable (A : Type). *)
-(* Let rel := (fun _ _ : A  => False). *)
-(* Let rel_sym : Symmetric rel. by []. Qed. *)
-(* Let rel01 (x y z : A) : x = y -> rel y z -> rel x z. by []. Qed. *)
-(* Let rel11 (x y z : A) : rel x y -> rel y z -> x = z. by []. Qed. *)
+Section E.
+Variable (A : Type).
+Let rel := (fun _ _ : A  => False).
+Let rel_sym : Symmetric rel. by []. Qed.
+Let rel01 (x y z : A) : x = y -> rel y z -> rel x z. by []. Qed.
+Let rel11 (x y z : A) : rel x y -> rel y z -> x = z. by []. Qed.
 
-(* HB.instance Definition flat_elabel_mixin :=  *)
-(*   @Elabel_of_Setoid.Build (flat A) rel rel_sym rel01 rel11. *)
-(* End E. *)
+HB.instance Definition flat_elabel_mixin :=
+  @Elabel_of_Setoid.Build (flat A) rel rel_sym rel01 rel11.
+End E.

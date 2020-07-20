@@ -168,7 +168,7 @@ Section PttdomGraphTheory.
 Variable tm : pttdom. 
 Notation test := (test tm).
 
-Notation pre_graph := (pre_graph test (car (setoid_of_ops (pttdom.ops tm)))).
+Notation pre_graph := (pre_graph test tm).
 Notation graph := (graph test tm).
 Notation graph2 := (graph2 test tm). 
 
@@ -815,14 +815,14 @@ Proof with eauto with vset.
   - move => x z e u Iz IOz arc_e xDz i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     have Vz : z \in vset F by apply: oarc_vsetR arc_e.
-    exists (H[adt i x <- [dom (u·lv H (i z))]] \ i z)%O. split.
+    exists (H[adt i x <- [dom (u·elem_of (lv H (i z)))]] \ i z)%O. split.
     + apply: (ostep_v1 (e := efun_of i e)). 
       * by rewrite oiso2_edges_at // Iz imfset1. 
       * by rewrite -oiso2_pIO.
       * exact: oiso2_oarc arc_e.
       * apply: contra_neq xDz. apply: vfun_of_inj...
     + unshelve apply: oiso2_remove_vertex_. apply: oiso2_add_test...
-      * by rewrite infer_testE  (rwT (oiso2_lv i Vz)). 
+      * by rewrite eqv_testE (rwT (oiso2_lv i Vz)). 
       * done.
       * done.
       * by rewrite oiso2_add_testE. 
@@ -830,7 +830,7 @@ Proof with eauto with vset.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     have Vz : z \in vset F...
     set e : ET := maxn (efun_of i e1) (efun_of i e2).
-    exists ((H \ i z) ∔ [e, i x, u·lv H (i z)·v,i y])%O. split.
+    exists ((H \ i z) ∔ [e, i x, u·elem_of (lv H (i z))·v,i y])%O. split.
     + apply: (ostep_v2).
       * by rewrite oiso2_edges_at // Iz imfset1U imfset1.
       * apply: contra_neq e1De2. apply: efun_of_inj... 

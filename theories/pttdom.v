@@ -12,7 +12,9 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** 2pdom algebra (the top-free fragment of 2p algebra) *)
 
-HB.mixin Record Ops_of_Type A :=
+(** NOTE: we let Ops inherit from Setoid, to avoid having a
+"criss-cross" inheritance pattern that is not (yet) supported by HB *)
+HB.mixin Record Ops_of_Type A of Setoid_of_Type A :=
   { dot: A -> A -> A;
     par: A -> A -> A;
     cnv: A -> A;
@@ -20,7 +22,7 @@ HB.mixin Record Ops_of_Type A :=
     one: A;
     top: A;         (* top is left uninterpreted in 2pdom *)
   }.
-HB.structure Definition Ops := { A of Ops_of_Type A}.
+HB.structure Definition Ops := { A of Ops_of_Type A & }.
 
 Arguments one {_}: simpl never.
 Arguments top {_}: simpl never.
@@ -312,7 +314,7 @@ Section terms.
    u ≡ v -> eval f u ≡ eval f v. 
  Proof. exact. Qed.
 
- Definition tm_pttdom : Pttdom_of_Ops.axioms_ tm_ops tm_setoid.
+ Definition tm_pttdom : Pttdom_of_Ops.axioms_ tm_setoid tm_ops.
  Proof.
    refine (Pttdom_of_Ops.Build term _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
    abstract (by repeat intro; simpl; apply dot_eqv; apply: tm_eqv_eqv).
@@ -332,8 +334,7 @@ Section terms.
    abstract (by repeat intro; simpl; apply A14; apply: tm_eqv_eqv).
  Defined.
  HB.instance term tm_pttdom.
-
-
+ HB.instance term (pttdom_elabel term_is_a_Pttdom).
 
  Notation test := (test term_is_a_Pttdom).
  

@@ -215,8 +215,7 @@ End Subalgebra.
 
 Section s.
 Variable A: Type.
-Let graph_of_term: term A -> graph2 unit_comMonoid (flat_elabels A) := 
-  eval (@g2_var unit_comMonoid (flat_elabels A)).
+Let graph_of_term: term A -> graph2 unit (flat A) := eval (fun a : flat A => g2_var _ a). 
 
 Theorem graph_of_TW2 (u : term A) : 
   exists T D, [/\ @sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].

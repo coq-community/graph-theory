@@ -26,15 +26,15 @@ Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
   | step_v1: forall (G: graph2) x u alpha,
       step
         (G ∔ alpha ∔ [inl x, u, inr tt])
-        (G [tst x <- [dom (u·alpha)]])
+        (G [tst x <- [dom (u·elem_of alpha)]])
   | step_v2: forall G x y u alpha v,
       step
         (G ∔ alpha ∔ [inl x, u, inr tt] ∔ [inr tt, v, inl y])
-        (G ∔ [x, u·alpha·v, y])
+        (G ∔ [x, u·elem_of alpha·v, y])
   | step_e0: forall G x u,
       step
         (G ∔ [x, u, x])
-        (G [tst x <- [1∥u]])
+        (G [tst x <- [1%ptt∥u]])
   | step_e2: forall G x y u v,
       step
         (G ∔ [x, u, y] ∔ [x, v, y])
