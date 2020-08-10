@@ -63,14 +63,7 @@ HB.structure Definition Pttdom := { A of Pttdom_of_Ops A & }.
 Notation pttdom := Pttdom.type.
 Existing Instances dot_eqv par_eqv cnv_eqv dom_eqv.
 
-Notation "x ≡ y" := (eqv x y) (at level 79). (* Bug [eqv gets shadowed on import] gets shadowed *)
-
 Class is_test (X : pttdom) (x : X) := { testE : dom x ≡ x }.
-
-Notation "x ≡ y :> X" := ((x : X) ≡ (y : X)) (at level 79, y at next level, only parsing).
-
-
-
 
 (* Coercion ops_of (X : pttdom) (x : Pttdom.sort X) : Ops.sort X := x. *)
 (* Coercion setoid_of (X : Ops) (x : Pttdom.sort X) : Setoid.sort X := x. *)

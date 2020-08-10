@@ -35,18 +35,6 @@ HB.mixin Record Ptt_of_Ops A of Ops_of_Type A & Setoid_of_Type A :=
 HB.structure Definition Ptt := { A of Ptt_of_Ops A & }.
 Notation ptt := Ptt.type.
 
-(** working around the notation export bug *)
-Declare Scope bug_scope.
-Open Scope bug_scope.
-Notation "x ≡ y" := (eqv x y) (at level 79) : bug_scope.
-Notation "x ∥ y" := (par x y) (left associativity, at level 40, format "x ∥ y"): bug_scope.
-Notation "x · y" := (dot x y) (left associativity, at level 25, format "x · y"): bug_scope.
-Notation "x °"  := (cnv x) (left associativity, at level 5, format "x °"): bug_scope.
-Notation "1"  := (one): bug_scope.
-Notation dom  := dom.
-Notation eqv  := eqv.
-
-
 (** ** basic derivable laws  *)
 Section derived.
  Variable X: ptt.

@@ -21,8 +21,9 @@ HB.structure Definition Setoid := { A of Setoid_of_Type A }.
 Notation setoid := Setoid.type.
 
 Declare Scope setoid_scope.
-Infix "≡" := eqv (at level 79) : setoid_scope.
 Open Scope setoid_scope.
+Infix "≡" := eqv (at level 79) : setoid_scope.
+Notation "x ≡ y :> X" := ((x : X) ≡ (y : X)) (at level 79, y at next level, only parsing) : setoid_scope.
 Global Existing Instance Eqv.
 
 Definition flat (A : Type) := A.
