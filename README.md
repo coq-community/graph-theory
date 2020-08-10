@@ -43,6 +43,7 @@ isomorphism).
 - Additional dependencies:
   - MathComp's SSReflect library, version 1.10 or later
   - MathComp's finmap library
+  - Hierarchy Builder
 - Coq namespace: `GraphTheory`
 - Related publication(s):
   - [Graph Theory in Coq - Minors, Treewidth, and Isomorphisms](https://hal.archives-ouvertes.fr/hal-02316859) doi:[10.1007/s10817-020-09543-2](https://doi.org/10.1007/s10817-020-09543-2)
