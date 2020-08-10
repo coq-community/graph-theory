@@ -405,11 +405,13 @@ Section terms.
  Proposition nt_correct (u: term): u ≡ term_of_nterm (nt u).
  Proof.
    induction u=>//=; fold_ops.
-   - rewrite {1}IHu1 {1}IHu2.
+   - (* rewrite {1}IHu1 {1}IHu2. - coq 8.12 regression *)
+     rewrite (dot_eqv _ _ IHu1 _ _ IHu2).
      case (nt u1) =>[a|a u b];
      case (nt u2)=>[c|c v d] //=;
      rewrite !dotA//.
-   - rewrite {1}IHu1 {1}IHu2.
+   - (* rewrite {1}IHu1 {1}IHu2. *)
+     rewrite (par_eqv _ _ IHu1 _ _ IHu2).
      case (nt u1)=>[a|a u b];
      case (nt u2)=>[c|c v d]=>//=.
      exact: pardot.

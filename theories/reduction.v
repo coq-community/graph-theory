@@ -424,7 +424,7 @@ Proof.
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [elem_of b·elem_of c] v).
-      exists. apply dot_edges. 
+      exists. apply: dot_edges. 
       apply isop_step. exists.
       apply: (add_edge2_iso' iso2_id).
       by rewrite !dotA. 
@@ -436,14 +436,14 @@ Proof.
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_e0 (G:=unit_graph2 (c⊗(d⊗a))%CM) tt v).
-      rewrite parC. exists. apply par2edgeunit. 
+      rewrite parC. exists. apply: par2edgeunit. 
       apply isop_step. exists.
       etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
       exact: reduce_shuffle.
     * etransitivity. apply isop_step.
       2: etransitivity.
       2: apply one_step, (step_e0 (G:=unit_graph2 (a⊗(b⊗c))%CM) tt u).
-      exists. apply par2edgeunit.
+      exists. apply: par2edgeunit.
       apply isop_step. exists.
       etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
       exact: reduce_shuffle.
@@ -451,7 +451,7 @@ Proof.
       2: etransitivity.
       2: apply one_step, (step_e2 (G:=two_graph2 (a⊗c)%CM (b⊗d)%CM) (inl tt) (inr tt) u v).
       2: reflexivity. 
-      exists. apply par_edges. 
+      exists. apply: par_edges. 
       
   - etransitivity. apply cnv_steps, IHu. 
     case (nt u)=>[a|a v b]=>//=.
