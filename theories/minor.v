@@ -53,8 +53,8 @@ Proof.
   - move => x. apply/set0Pn. case: (P1 x) => x0 H0. exists x0. by rewrite !inE H0.
   - move => x u v Hu Hv. move: (P2 x _ _ Hu Hv). 
     apply: connect_mono => a b. by rewrite /= !inE.
-  - move => x y D. rewrite disjoint_exists. 
-    apply: contraNN D => /exists_inP [x0]. by rewrite -Some_eqE !inE => /eqP<-/eqP<-.
+  - move => x y. apply: contraNT => /pred0Pn [x0 /= /andP[]].
+    by rewrite -Some_eqE !inE => /eqP<-/eqP<-.
   - move => x y /P3 [x0] [y0] [*]. apply/neighborP. exists x0;exists y0. by rewrite !inE !mem_preim. 
 Qed.
 
@@ -106,7 +106,7 @@ Proof.
   - move/g3 => Dx. apply/disjointP => z. 
     case/bigcupP => y1 y1_g z_fy1; case/bigcupP => y2 y2_g z_fy2.
     suff: y1 != y2 by move/f3/disjointP/(_ z); apply.
-    apply: contraTneq Dx => ?;subst. exact: disjointNI y2_g.
+    apply: contraTneq y2_g => <-. by rewrite (disjointFr Dx).
   - move/g4/neighborP => [y1] [y2] [Y1 Y2 /f4 /neighborP [z1] [z2] [? ? e]].
     by apply/neighborP; exists z1; exists z2; rewrite (mem_bigcup y1) ?(mem_bigcup y2).
 Qed.

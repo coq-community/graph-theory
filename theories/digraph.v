@@ -937,7 +937,7 @@ Proof.
         have [[xy ->] [xy' ->]] := (interior0E Dxy Ip1 N1,interior0E Dxy Ip2 N2).
         exact/eqP. }
     by exists x; exists y; exists (Build_IPath Ip1); exists (Build_IPath Ip2). 
-  - rewrite disjoint_exists negbK. case/exists_inP => z Z1 Z2.
+  - case/pred0Pn => z /= /andP [Z1 Z2].
     case/(isplitP Ip1) def_p1 : _ / (interiorW Z1) => [p1l p1r Ip1l Ip1r Iz1].
     case/(isplitP Ip2) def_p2 : _ / (interiorW Z2) => [p2l p2r Ip2l Ip2r Iz2].
     have/orP [Dl|Dr] : (p1l != p2l) || (p1r != p2r).

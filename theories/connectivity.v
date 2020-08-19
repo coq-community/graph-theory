@@ -387,8 +387,8 @@ Lemma separatesNE x y (U : {set G}) :
 Proof.
   move => xU yU /(introN separatesP). rewrite /separatesb xU yU !negb_and //= negb_forall.
   case: (altP (x =P y)) => [<-|xDy H]; first by rewrite connect0.
-  apply/connect_irredRP => //. case/existsP : H => p Hp. exists p => //. 
-  by rewrite -disjoint_subset disjoint_exists.
+  apply/connect_irredRP => //. case/existsP : H => p Hp. exists p => //.
+  exact/subsetP/(exists_inPn Hp). 
 Qed.
 
 Definition vseparator U := exists x y, separates x y U.
