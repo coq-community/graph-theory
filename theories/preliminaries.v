@@ -439,28 +439,34 @@ Proof. firstorder. Qed.
 
 (** *** Disjointness *)
 
-Lemma disjointFr (T : finType) (A B : pred T) (x:T) : 
-  [disjoint A & B] -> x \in A -> x \in B = false.
-Proof. by move/pred0P/(_ x) => /=; case (x \in A). Qed.
+(* This section is part of >=mathcomp-8.12 *)
+Section Disjoint.
+Variable (T : finType).
+Implicit Types (A B C D: {pred T}) (P Q : pred T) (x y : T) (s : seq T).
 
-Lemma disjointFl (T : finType) (A B : pred T) (x:T) : 
-  [disjoint A & B] -> x \in B -> x \in A = false.
+Lemma disjointFr A B x : [disjoint A & B] -> x \in A -> x \in B = false.
+Proof. by move/pred0P/(_ x) => /=; case: (x \in A). Qed.
+
+Lemma disjointFl A B x : [disjoint A & B] -> x \in B -> x \in A = false.
 Proof. rewrite disjoint_sym; exact: disjointFr. Qed.
 
-Definition disjoint_transL := disjoint_trans.
+Lemma disjointWl A B C :
+   A \subset B -> [disjoint B & C] -> [disjoint A & C].
+Proof. by rewrite 2!disjoint_subset; apply: subset_trans. Qed.
 
-Lemma disjoint_transR (T : finType) (A B C : pred T) :
- A \subset B -> [disjoint C & B] -> [disjoint C & A].
-Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjoint_trans. Qed.
+Lemma disjointWr A B C : A \subset B -> [disjoint C & B] -> [disjoint C & A].
+Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjointWl. Qed.
 
-Lemma disjointW (T : finType) (A B C D : pred T) : 
-    A \subset B -> C \subset D -> [disjoint B & D] -> [disjoint A & C].
-Proof. 
-by move => subAB subCD BD; apply/(disjoint_trans subAB)/(disjoint_transR subCD).
+Lemma disjointW A B C D :
+  A \subset B -> C \subset D -> [disjoint B & D] -> [disjoint A & C].
+Proof.
+by move=> subAB subCD BD; apply/(disjointWl subAB)/(disjointWr subCD).
 Qed.
 
-Lemma disjoints1 (T : finType) (x : T) (A : pred T) : [disjoint [set x] & A] = (x \notin A).
-Proof. rewrite (@eq_disjoint1 _ x) // => ?. by rewrite !inE. Qed.
+Lemma disjoints1 A x : [disjoint [set x] & A] = (x \notin A).
+Proof. by rewrite (@eq_disjoint1 _ x) // => y; rewrite !inE. Qed.
+
+End Disjoint.
 
 Lemma disjointP (T : finType) (A B : pred T):
   reflect (forall x, x \in A -> x \in B -> False) [disjoint A & B].
@@ -476,7 +482,6 @@ Proof.
   move => a b. 
   apply/disjointP => x /setUP[]; by move: x; apply/disjointP.
 Qed.
-
 
 (** *** Function Update *)
 

@@ -534,7 +534,7 @@ Proof.
         -- rewrite add_edge_connected_sym. apply: map1.
         -- apply: contraNN xi => s1x. by rewrite (disjE s2 x i s1x s2i).
       * have disC1y: forall y, i!=y -> [disjoint C s1 & (phi y : {set G})].
-        { move => y' y'Ni. apply: disjoint_transL (map2 _ _ y'Ni). 
+        { move => y' y'Ni. apply: disjointWl (map2 _ _ y'Ni). 
           rewrite -C_def /component_in setIdE. exact: subsetIl. }
         case: (altP (x =P i)) => xNi //=; try subst x;
         case: (altP (y =P i)) => yNi //=; try subst y.
@@ -583,9 +583,9 @@ Proof.
              | |- is_true [disjoint _ & _ (_ :|: _)] => rewrite disjoint_sym; apply disjointsU
              | |- is_true [disjoint _ (C s2) & _ (C s1)] => by rewrite disjoint_sym
              | |- is_true [disjoint _ (C _) & _ (phi _)] => 
-                 apply disjoint_transL with (mem (phi i)) => //
+                 apply disjointWl with (mem (phi i)) => //
              | |- is_true [disjoint _ (phi _) & _ (C _)] => 
-                 apply disjoint_transR with (mem (phi i)) => //
+                 apply disjointWr with (mem (phi i)) => //
              end. 
         all: apply: map2 => //; by rewrite eq_sym.
       * rewrite /= in xy.
