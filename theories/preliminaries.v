@@ -224,9 +224,9 @@ Proof.
   move => f_inj fP E y yP.
   pose rT' := { y : rT | P y}.
   pose f' (x:aT) : rT' := Sub (f x) (fP x).
-  have/inj_card_onto f'_inj : injective f'. { move => x1 x2 []. exact: f_inj. }
-  rewrite card_sig E in f'_inj. 
-  case/mapP : (f'_inj erefl (Sub y yP)) => x _ [] ->. exact: codom_f. 
+  have/inj_card_onto : injective f' by move => x1 x2 []; exact: f_inj.
+  case/(_ _ (Sub y yP))/Wrap => [|/codomP[x]]; first by rewrite card_sig E.
+  by move/(congr1 val) => /= ->; exact: codom_f.
 Qed.
 
 (** TODO: check whether the collection of lemmas on sets/predicates
