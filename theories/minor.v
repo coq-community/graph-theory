@@ -67,6 +67,13 @@ Proof.
     apply/neighborP; exists x'; exists y'. by rewrite add_edgeC.
 Qed.
 
+Lemma rmap_disjE (G H : sgraph) (phi : H -> {set G}) x i j :
+  minor_rmap phi -> x \in phi i -> x \in phi j -> i=j.
+Proof.
+  move => [_ _ map _] xi. apply contraTeq => iNj. 
+  by erewrite (disjointFr (map _ _ iNj)).
+Qed.
+
 Definition minor (G H : sgraph) : Prop := exists phi : G -> option H, minor_map phi.
 
 Fact minor_of_map (G H : sgraph) (phi : G -> option H): 
@@ -195,8 +202,28 @@ Proof.
     split=> //. exact: hH.
 Qed.
 
-Lemma induced_minor (G : sgraph) (S : {set G}) : minor G (induced S).
-Proof. apply: sub_minor. exact: induced_sub. Qed.
+(** Induced subgraphs are trivially minors *)
+Section induced_rmap.
+Variables (G : sgraph) (S : {set G}).
+
+Definition induced_rmap := (fun x : induced S => [set val x]).
+
+Lemma induced_rmapP : minor_rmap induced_rmap.
+Proof.
+split.
+- move=> ?; exact: set10.
+- move=> ?; exact: connected1.
+- by move=> ? ?; rewrite disjoints1 inE val_eqE.
+- by move=> ? ?; rewrite neighbor11.
+Qed.
+
+Lemma induced_rmap_sub u : induced_rmap u \subset S.
+Proof. by rewrite /induced_rmap sub1set; apply: (valP u). Qed.
+
+Lemma induced_minor : minor G (induced S).
+Proof. exact: minor_of_rmap induced_rmapP. Qed.
+
+End induced_rmap.
 
 Definition edge_surjective (G1 G2 : sgraph) (h : G1 -> G2) :=
   forall x y : G2 , x -- y -> exists x0 y0, [/\ h x0 = x, h y0 = y & x0 -- y0].

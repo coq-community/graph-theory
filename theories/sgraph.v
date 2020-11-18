@@ -1287,6 +1287,12 @@ Section Neighbor.
   Lemma neighborUr A B C : neighbor A C -> neighbor A (B :|: C).
   Proof. apply: neighborW => //. exact: subsetUr. Qed.
 
+  Lemma neighbor11 x y: neighbor [set x] [set y] = x -- y.
+  Proof.
+    apply/neighborP/idP => [[?[?[/set1P -> /set1P ->]]] //|xy].
+    by exists x,y; rewrite !inE eqxx.
+  Qed.
+
 End Neighbor.
 Arguments neighborW : clear implicits.
 
