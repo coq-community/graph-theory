@@ -1,13 +1,13 @@
 # Graph Theory
 
-[![Travis][travis-shield]][travis-link]
+[![CI][action-shield]][action-link]
 [![Contributing][contributing-shield]][contributing-link]
 [![Code of Conduct][conduct-shield]][conduct-link]
 [![Zulip][zulip-shield]][zulip-link]
 [![DOI][doi-shield]][doi-link]
 
-[travis-shield]: https://travis-ci.com/coq-community/graph-theory.svg?branch=master
-[travis-link]: https://travis-ci.com/coq-community/graph-theory/builds
+[action-shield]: https://github.com/coq-community/graph-theory/workflows/CI/badge.svg?branch=master
+[action-link]: https://github.com/coq-community/graph-theory/actions?query=workflow%3ACI
 
 [contributing-shield]: https://img.shields.io/badge/contributions-welcome-%23f7931e.svg
 [contributing-link]: https://github.com/coq-community/manifesto/blob/master/CONTRIBUTING.md

@@ -3,7 +3,7 @@ fullname: Graph Theory
 shortname: graph-theory
 organization: coq-community
 community: true
-travis: true
+action: true
 coqdoc: false
 doi: 10.1007/s10817-020-09543-2
 
