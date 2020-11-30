@@ -8,13 +8,6 @@ Unset Strict Implicit.
 
 (** * Setoids and Label Structures *)
 
-
-(*  
-TODO: packed classes? (does not seem to be problematic for now)
-but we should at least understand the current hack in rewriting.v for setoid_of_bisetoid
-*)
-
-
 (* Note on Equivalences and Morphisms: This development mixes both
 rewriting in Prop (e.g., 2pdom algebras) and rewriting in Type (e.g.,
 iso). To facilitate this, we import the Prop versions and introduce
@@ -50,14 +43,14 @@ Lemma CProper2: Proper (i R ==> i S ==> i T) g.
 Proof. intros x y [E] u v [F]. exists. by apply Hg. Qed.
 End CProper.
 
-(*
 
 (** ** label structures (Definition 4.1) *)
-(* ingredients required to label graphs
-   - eqv' x y = eqv x y° (when we have an involution _°)
-   - eqv' _ _ = False    (otherwise)
- *)
 
+(** The original label structure (comment has been split into a commutative monoid (for
+the vertex labels) and an "elabel Type" (accounting for possible edge-flipping)
+for edge labels. *)
+
+(*
 Record labels :=
   Labels {
       lv: setoid;
@@ -70,11 +63,8 @@ Record labels :=
       eqv01: forall x y z, eqv  x y -> eqv' y z -> eqv' x z;
       eqv11: forall x y z, eqv' x y -> eqv' y z -> eqv  x z;
     }.
-Global Existing Instance lv_monoid. *)
-
-(** The original label structure has been split into a commutative monoid (for
-the vertex labels) and an "elabel Type" (accounting for possible edge-flipping)
-for edge labels. *)
+Global Existing Instance lv_monoid. 
+*)
 
 HB.mixin Record ComMonoid_of_Setoid A of Setoid_of_Type A := 
   { cm_id : A;
@@ -90,6 +80,10 @@ Delimit Scope cm_scope with CM.
 Infix "⊗" := cm_op (left associativity, at level 25) : cm_scope.
 Arguments cm_id {_}.
 Notation "1" := cm_id : cm_scope.
+
+(** ingredients required to label graphs
+    - eqv' x y = eqv x y° (when we have an involution _°)
+   - eqv' _ _ = False    (otherwise) *)
 
 HB.mixin Record Elabel_of_Setoid A of Setoid_of_Type A := 
   { eqv': Relation_Definitions.relation A;
