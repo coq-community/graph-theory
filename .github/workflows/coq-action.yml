@@ -16,9 +16,7 @@ jobs:
       matrix:
         image:
           - 'coqorg/coq:dev'
-          - 'coqorg/coq:8.12'
-          - 'mathcomp/mathcomp:1.11.0-coq-8.11'
-          - 'mathcomp/mathcomp:1.11.0-coq-8.10'
+          - 'mathcomp/mathcomp:1.11.0-coq-8.12'
           - 'mathcomp/mathcomp:1.10.0-coq-8.11'
       fail-fast: false
     steps:
