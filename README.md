@@ -35,6 +35,7 @@ isomorphism).
 - Author(s):
   - Christian Doczkal (initial)
   - Damien Pous (initial)
+  - Daniel Severín (external contributor)
 - Coq-community maintainer(s):
   - Christian Doczkal ([**@chdoc**](https://github.com/chdoc))
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
