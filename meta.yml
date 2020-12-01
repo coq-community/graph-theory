@@ -36,6 +36,9 @@ authors:
 - name: Damien Pous
   initial: true
 
+after_authors: |2
+    - Daniel Severín (external contributor)
+
 maintainers:
 - name: Christian Doczkal
   nickname: chdoc
