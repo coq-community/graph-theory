@@ -87,7 +87,7 @@ Global Instance tm_inh_type : inh_type tm.
 exact: Build_inh_type (1%ptt).
 Defined.
 
-Notation pre_graph := (pre_graph test (car (setoid_of_ops (pttdom.ops tm)))).
+Notation pre_graph := (pre_graph test tm).
 (* Notation graph := (graph (pttdom_labels tm)). *)
 (* Notation graph2 := (graph2 (pttdom_labels tm)). *)
 
@@ -418,7 +418,7 @@ Definition add_test (G : pre_graph) (x:VT) (a:test) :=
   {| vset := vset G;
      eset := eset G;
      endpt  := endpt G;
-     lv := update (lv G) x (a ⊗ lv G x)%lbl;
+     lv := update (lv G) x (a ⊗ lv G x)%CM;
      le := le G;
      p_in := p_in G;
      p_out := p_out G |}.
@@ -644,7 +644,7 @@ Proof.
   split => //= z. 
   case: (altP (x =P y)) => xy; subst. 
   - rewrite !update_same. case: (altP (z =P y)) => zy; subst; rewrite !updateE => //=.
-    by rewrite monA [(b ⊗ a)%lbl]monC -monA.
+    by rewrite monA [(b ⊗ a)%CM]monC -monA.
   - case: (altP (z =P x)) => zx; case: (altP (z =P y)) => zy; subst.
     by rewrite eqxx in xy. all: by rewrite !updateE.
 Qed.
@@ -704,11 +704,11 @@ Proof.
 Qed.
 
 Lemma add_test_merge G x a b : 
-  G[adt x <- a][adt x <- b] ≡G G[adt x <- [a·b]].
+  G[adt x <- a][adt x <- b] ≡G G[adt x <- [elem_of a·elem_of b]].
 Proof. 
   constructor => //= y yG. 
   case: (altP (y =P x)) => [->|?]; rewrite !updateE //=. 
-  by rewrite monA [(b ⊗ a)%lbl]monC -monA.
+  by rewrite monA [(b ⊗ a)%CM]monC -monA.
 Qed.
 
 Lemma flip_edge_add_test (G : pre_graph) (e : ET) (x : VT) a : 
@@ -864,11 +864,11 @@ Variant ostep (G : pre_graph) : pre_graph -> Type :=
     edges_at G z = fset0 -> z \notin pIO G -> ostep G (G \ z)
 | ostep_v1 x z e u : 
     edges_at G z = [fset e] -> z \notin pIO G -> oarc G e x u z -> x != z ->
-    ostep G (add_test G  x [dom(u·lv G z)] \ z)
+    ostep G (add_test G  x [dom(u·elem_of (lv G z))] \ z)
 | ostep_v2 x y z e1 e2 u v : 
     edges_at G z = [fset e1;e2] -> e1 != e2 -> z \notin pIO G -> x != z -> y != z ->
     oarc G e1 x u z -> oarc G e2 z v y -> 
-    ostep G ((G \ z) ∔ [maxn e1 e2, x,u·lv G z·v,y])
+    ostep G ((G \ z) ∔ [maxn e1 e2, x,u·elem_of (lv G z)·v,y])
 | ostep_e0 x e u :
     oarc G e x u x -> 
     ostep G ((remove_edges G [fset e])[adt x <- [1∥le G e]])
@@ -945,7 +945,7 @@ Proof.
   - by rewrite eqxx orbT eq_sym E3 eq_sym E2.
 Qed.
 
-Lemma critical_pair1 u v (a :test) : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v. 
+Lemma critical_pair1 (u v a : tm) of is_test a : dom ((u∥v°)·a) ≡ 1 ∥ u·a·v. 
 Proof. by rewrite -dotA A10 cnvdot cnvtst partst. Qed. 
 
 Lemma critical_pair2 (u v : tm) : (1∥u)·(1∥v) ≡ 1∥(u∥v).
@@ -954,8 +954,9 @@ Proof.
   by rewrite parA [_∥1]parC !parA par11. 
 Qed. 
 
-Lemma critical_pair3 u u' (a b : test) :  dom (u'·(dom (u·a)·b)) ≡ dom (u'·b·u·a).
-by rewrite (dom_tst (u·a)) tst_dotC /= dotA -A13 !dotA.
+Lemma critical_pair3 (u u' a b : tm) of is_test a & is_test b :
+  dom (u'·(dom (u·a)·b)) ≡ dom (u'·b·u·a).
+by rewrite dotC /= dotA -A13 !dotA.
 Qed.
 
 Ltac e2split := do 2 eexists; split; [split|].
@@ -1047,8 +1048,9 @@ Proof with eauto with typeclass_instances.
       have ? : e' = e by apply: oarc_uniqeR arc_e'. subst e'.
       have ? : x = x' by apply: oarc_injL arc_e arc_e'. subst x'.
       apply: close_same_step. 
-      suff -> : [dom (u·lv G z)] ≡ [dom (u'·lv G z)] by [].
-      by rewrite infer_testE (oarc_eqv _ arc_e arc_e').
+      suff -> : [dom (u·elem_of (lv G z))] ≡ [dom (u'·elem_of (lv G z))] by [].
+      move => ? ?.
+      by rewrite eqv_testE (oarc_eqv _ arc_e arc_e').
     + (* isolated [z --e-- z'] pseudo-case *) subst e'.
       case: (same_oarc arc_e arc_e') => [[? ? U]|[? ? U]]; subst z' x'; first by rewrite eqxx in D.
       e2split.
@@ -1106,7 +1108,7 @@ Proof with eauto with typeclass_instances.
         rewrite -remove_vertex_add_test remove_vertexC add_testK. 
         rewrite -remove_vertex_add_test add_edgeKr /= ?Iz' ?maxn_fsetD //.
         apply: add_test_morphism => //=.
-        rewrite infer_testE (oarc_eqv _ arc_e2' arc_e) //. exact: critical_pair3.
+        rewrite eqv_testE (oarc_eqv _ arc_e2' arc_e) //. exact: critical_pair3.
     + (* independent case *)
       move: xD'. rewrite in_fset2 negb_or => /andP [zDx zDy].
       have E1 : e1' != e. 
@@ -1354,7 +1356,7 @@ Proof with eauto with typeclass_instances.
         rewrite -remove_vertex_add_test add_edgeKr /= ?maxn_fsetD //.
         rewrite add_edge_remove_edgesK ?inE ?eqxx // remove_vertex_edges. 
         rewrite !remove_edges_vertexK ?fsubUset ?fsub1set ?Iz ?in_fset2 ?eqxx ?maxn_eq //.
-        apply: add_test_morphism => //=. by rewrite infer_testE -Eu -Ev critical_pair1.
+        apply: add_test_morphism => //=. by rewrite eqv_testE -Eu -Ev critical_pair1.
     + (* independent case *)
       rewrite in_fset2 negb_or ![z == _]eq_sym in Hz. case/andP : Hz => xDz' yDz'.
       gen have H,H1 : e1' u' {e1De2'} arc_e1' / e1' \notin edges_at G z.
@@ -1416,7 +1418,7 @@ Proof with eauto with typeclass_instances.
         rewrite -remove_edges_add_test remove_edges_edges add_edge_remove_edgesK ?inE ?eqxx //.
         rewrite remove_edges_edges [[fset _ ; _ ; _]]fsetUC [maxn _ _ |` _]mem_fset1U ?maxn_fset2 //.
         rewrite add_test_merge. apply: add_test_morphism => //.
-        rewrite infer_testE /= (oarcxx_le arc_e1') (oarcxx_le arc_e2').
+        rewrite eqv_testE /= (oarcxx_le arc_e1') (oarcxx_le arc_e2').
         by rewrite critical_pair2.
     + (* independent case *)
       set e' := maxn _ _. 
@@ -1456,8 +1458,8 @@ Proof with eauto with typeclass_instances.
         -- eapply ostep_step,ostep_e0. apply: oarc_added_edge.
         -- eapply ostep_step,ostep_e0. apply: oarc_added_edge.
         -- rewrite /= !updateE !add_edge_remove_edgesK ?in_fset1 ?eqxx //.
-           apply: add_test_morphism => //. rewrite infer_testE Hu Hv.
-           by rewrite parA par1tst par_tst_cnv parA.
+           apply: add_test_morphism => //. rewrite eqv_testE Hu Hv.
+           by rewrite parA par_tst_cnv parA.
     + (* independent instances *)
       move: (fdisjointP D) => D1. rewrite fdisjoint_sym in D. move: (fdisjointP D) => {D} D2.
       e2split. 

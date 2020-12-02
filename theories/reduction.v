@@ -12,23 +12,24 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** Preliminary isomorphisms (on arbitrary graphs) *)
 Section prelim.
-Variable L: labels.
-Notation Le := (le L).
-Notation Lv := (lv L). 
-Notation graph := (graph L).  
-Notation graph2 := (graph2 L).
-Local Open Scope labels.
+Variable (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).  
+Notation graph2 := (graph2 Lv Le).
+Local Open Scope cm_scope.
 
 Lemma two_edges (a b c d: Lv) (u v: Le):
   edge_graph a u b ⊎ edge_graph c v d
-≃ (two_graph a b ⊎ two_graph c d) ∔ [inl (inl tt), u, inl (inr tt)] ∔ [inr (inl tt), v, inr (inr tt)].
+≃ (two_graph a b ⊎ two_graph c d) 
+  ∔ [inl (inl tt), u, inl (inr tt)] 
+  ∔ [inr (inl tt), v, inr (inr tt)].
 Proof.
   etransitivity. apply (union_add_edge_l _ _ _ _). 
   etransitivity. apply (add_edge_iso (union_add_edge_r _ _ _ _) _ _ _).
   apply add_edge_C.
 Defined.
 
-Definition two_option_void: bij (option (void+void) + option (void+void)) (option (option ((void+void)+void))).
+Definition two_option_void: 
+  bij (option (void+void) + option (void+void)) (option (option ((void+void)+void))).
 Proof.
   etransitivity. apply sum_option_r. apply option_bij.
   etransitivity. apply sum_bij. reflexivity. apply sumxU.
@@ -50,7 +51,7 @@ Proof.
         | _ => inr tt
         end.
   unshelve Iso2
-  (@merge_surj _ G _ H f
+  (@merge_surj _ _ G _ H f
      (fun x =>
         match x with
         | inl (inl _) => inl (inl tt)
@@ -85,7 +86,7 @@ Lemma par_edges (a b c d: Lv) (u v: Le):
 ≃2 two_graph2 (a⊗c) (b⊗d) ∔ [inl tt, u, inr tt] ∔ [inl tt, v, inr tt].
 Proof.
   unshelve Iso2
-  (@merge_surj _
+  (@merge_surj _ _
      (edge_graph a u b ⊎ edge_graph c v d) _
      (two_graph2 (a⊗c) (b⊗d) ∔ [_, u, _] ∔ [_, v, _])
      (fun x =>
@@ -116,8 +117,8 @@ End prelim.
 Section s.
 Variable X: pttdom.
 Notation test := (test X). 
-Notation graph := (graph (pttdom_labels X)).
-Notation graph2 := (graph2 (pttdom_labels X)).
+Notation graph := (graph test X).
+Notation graph2 := (graph2 test X).
 Notation step := (@step X).
 Notation steps := (@steps X).
 
@@ -138,8 +139,8 @@ Definition replace_ioL (G G': graph2) (H: eqType) (e : pairs (G+H)) : pairs (G'+
 Arguments replace_ioL [G G' H].
 
 Lemma replace_ioE vT eT1 eT2 st1 st2 lv1 lv2 le1 le2 i o H e : admissible_l e -> 
-   @replace_ioL (point (@Graph _ vT eT1 st1 lv1 le1) i o) 
-                (point (@Graph _ vT eT2 st2 lv2 le2) i o) H e = e.
+   @replace_ioL (point (@Graph _ _ vT eT1 st1 lv1 le1) i o) 
+                (point (@Graph _ _ vT eT2 st2 lv2 le2) i o) H e = e.
 Proof.
   elim: e => //=. case => [[a|a] [b|b]] l /= IH. 
   all: rewrite /admissible_l /=. all: first [case/and3P|case/andP|idtac].
@@ -169,12 +170,13 @@ Proof.
   all: by rewrite merge_sameE. 
 Defined.
 
-(* TOFIX: even with Opaque merge_iso h_merge, the rewrite merge_add_edgeE succeeds by unfolding if we don't do the rewrite merge_isoE first. *)
+(* TOFIX: even with Opaque merge_iso h_merge, the rewrite merge_add_edgeE 
+   succeeds by unfolding if we don't do the rewrite merge_isoE first. *)
 Lemma merge_add_edgeLE G H x y u l i o z:
   @merge_add_edgeL G H x y u l i o (\pi z) = (\pi z).
 Proof.
   rewrite /merge_add_edgeL/=.
-  rewrite (@merge_isoE _ _ _ (union_add_edge_l H x u y) l).
+  rewrite (@merge_isoE _ _ _ _ (union_add_edge_l H x u y) l).
   rewrite merge_add_edgeE.
   by rewrite merge_sameE.
 Qed.
@@ -214,7 +216,7 @@ Proof.
   eapply iso2_comp.
   refine (iso_iso2' (h:=union_merge_l _ _) _ _).
   1,2: rewrite union_merge_lEl//.
-  eapply iso2_sym.              (* just so that [merge_add_vertexLE] gets easier below... *)
+  eapply iso2_sym.  (* just so that [merge_add_vertexLE] gets easier below... *)
   apply merge_same'.
   by rewrite admissible_map.
 Defined.
@@ -224,9 +226,9 @@ Lemma merge_add_vertexLE x:
   match x with inl x => inl (\pi inl x) | _ => inr tt end. 
 Proof.
   simpl.
-  rewrite (@merge_isoE _ _ _ (iso_sym (union_A G (unit_graph a) H)) l).
-  rewrite (@merge_isoE _ _ _ (union_iso iso_id (union_C (unit_graph a) H)) _).
-  rewrite (@merge_isoE _ _ _ (union_A G H (unit_graph a)) _).
+  rewrite (@merge_isoE _ _ _ _ (iso_sym (union_A G (unit_graph a) H)) l).
+  rewrite (@merge_isoE _ _ _ _ (union_iso iso_id (union_C (unit_graph a) H)) _).
+  rewrite (@merge_isoE _ _ _ _ (union_A G H (unit_graph a)) _).
   rewrite merge_same'E.
   rewrite union_merge_lE'. 
   by case x=>[y|[]].
@@ -296,7 +298,7 @@ Lemma step_IO G G': step G G' -> (input == output :> G) = (input == output :> G'
 Proof. by case. Qed.
 
 Lemma step_to_steps f:
-  Proper (iso2prop ==> iso2prop) f -> Proper (step ==> steps) f -> Proper (steps ==> steps) f.
+  Proper (eqv ==> eqv) f -> Proper (step ==> steps) f -> Proper (steps ==> steps) f.
 Proof.
   intros If Sf G G' S.
   induction S as [G G' I|G G' F H' I S Ss IH].
@@ -305,11 +307,12 @@ Proof.
     etransitivity. apply Sf, S. apply IH. 
 Qed.
 
+
 (** *** Lemma 6.2 *)
 
-Instance cnv_steps: Proper (steps ==> steps) (@cnv _).
+Instance cnv_steps: Proper (steps ==> steps) (cnv : graph2 -> graph2).
 Proof.
-  apply step_to_steps. simpl. by apply cnv_eqv.
+  apply: step_to_steps.
   move=>F G S. eapply one_step. destruct S.
   * apply (@step_v0 _ (point G output input) alpha).
   * apply (@step_v1 _ (point G output input) x u alpha).
@@ -320,7 +323,7 @@ Qed.
 
 Instance dom_steps: Proper (steps ==> steps) (@dom _).
 Proof.
-  apply step_to_steps. by apply dom_eqv.
+  apply: step_to_steps. 
   move=>F G S. eapply one_step. destruct S.
   * apply (@step_v0 _ (point G input input) alpha).
   * apply (@step_v1 _ (point G input input) x u alpha).
@@ -331,8 +334,8 @@ Qed.
 
 Lemma dot_steps_l G G' H: steps G G' -> steps (G·H) (G'·H).
 Proof.
-  apply (step_to_steps (f:=fun G => G·H)) => {G G'}.
-  - move=> ?? E. apply dot_eqv=>//. 
+  apply: (step_to_steps (f:=fun G => G·H)) => {G G'}. 
+  - move => F G E. exact: dot_eqv.
   - move => G G' GG'. etransitivity. apply (@merge_step G') => //=.
     + rewrite /admissible_l/=. by rewrite !inE eqxx.
     + by rewrite /replace_ioL/= eqxx.
@@ -353,7 +356,7 @@ Qed.
 Lemma par_steps_l G G' H: steps G G' -> steps (G∥H) (G'∥H).
 Proof.
   apply (step_to_steps (f:=fun G => (G∥H)))  => {G G'}. 
-  - move => G G' I. apply par_eqv=>//. 
+  - move => G G' I; exact: par_eqv. 
   - move => G G' step_G_G'. 
     etransitivity. apply: (@merge_step G') => //=.
     + by rewrite /admissible_l/= !inE !eqxx.
@@ -375,40 +378,31 @@ Qed.
 
 End s.
 
+Lemma eqvEcnv (X : pttdom) (x y : X) : x ≡' y <-> x ≡ y°. 
+Proof. done. Qed.
+
+From HB Require Import structures.
 
 (** ** reduction lemma *)
 (* (in the initial pttdom algebra of terms) *)
 Section s'.
-Variable A: Type.
+Variable A: Type. 
 Notation term := (pttdom.term A).  
-Notation nterm := (pttdom.nterm A).  
-Notation test := (test (tm_pttdom A)). 
-Notation tgraph := (graph (pttdom_labels (tm_pttdom A))).
-Notation tgraph2 := (graph2 (pttdom_labels (tm_pttdom A))).
-Notation graph := (graph (flat_labels A)).
-Notation graph2 := (graph2 (flat_labels A)).
-Notation step := (@step (tm_pttdom A)).
-Notation steps := (@steps (tm_pttdom A)).
-
-
-(* TODO: get rid of this hack... *)
-Canonical Structure tm_labels :=
-  @Labels (pttdom_test_setoid (tm_pttdom A)) (tst_one (tm_pttdom A)) (@tst_dot (tm_pttdom A))
-          (mkComMonoidLaws (@tst_dot_eqv (tm_pttdom A)) 
-                      (@tst_dotA (tm_pttdom A)) (@tst_dotC (tm_pttdom A)) (@tst_dotU (tm_pttdom A))) 
-          (pttdom.tm_setoid A) (@eqv' (tm_pttdom A))
-          (@eqv'_sym (tm_pttdom A)) (@eqv01 (tm_pttdom A)) (@eqv11 (tm_pttdom A)).
-(* Eval hnf in pttdom_labels (tm_pttdom A). *)
-(* Check erefl: tm_setoid A = le _. *)
-(* Check erefl: tm_setoid A = setoid_of_bisetoid _.   *)
+Notation nterm := (pttdom.nterm A).
+Notation test := (test (term_is_a_Pttdom A)). 
+Notation tgraph2 := (graph2 test term).
+Notation graph := (graph unit (flat A)).
+Notation graph2 := (graph2 unit (flat A)).
+Notation step := (@step (term_is_a_Pttdom A)).
+Notation steps := (@steps (term_is_a_Pttdom A)).
 
 (** *** graphs of terms and normal terms *)
 
 (* function g^A from the end of Section 5 *)
-Definition graph_of_term: term -> graph2 := pttdom.eval (fun a: A => @g2_var (flat_labels A) a). 
+Definition graph_of_term: term -> graph2 := pttdom.eval (fun a: flat A => g2_var _ a). 
 
 (* function g^T from the end of Section 5 *)
-Definition tgraph_of_term: term -> tgraph2 := pttdom.eval (fun a: A => g2_var (pttdom.tm_var a)). 
+Definition tgraph_of_term: term -> tgraph2 := pttdom.eval (fun a: A => g2_var _ (pttdom.tm_var a)).
 
 Definition tgraph_of_nterm (t: nterm): tgraph2 :=
   match t with
@@ -433,10 +427,10 @@ Proof.
       etransitivity. apply dot2unit_r. apply add_vlabel2_edge. 
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [b·c] v).
-      exists. apply dot_edges. 
+      2: apply one_step, (step_v2 (G:=two_graph2 a d) (inl tt) (inr tt) u [elem_of b·elem_of c] v).
+      exists. apply: dot_edges. 
       apply isop_step. exists.
-      apply (add_edge2_iso' iso2_id).
+      apply: (add_edge2_iso' iso2_id).
       by rewrite !dotA. 
 
   - etransitivity. apply par_steps; [apply IHu1|apply IHu2].
@@ -445,30 +439,30 @@ Proof.
     * apply isop_step. exists. apply par2unitunit.
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_e0 (G:=unit_graph2 [c·(d·a)]) tt v).
-      rewrite parC. exists. apply par2edgeunit.
+      2: apply one_step, (step_e0 (G:=unit_graph2 (c⊗(d⊗a))%CM) tt v).
+      rewrite parC. exists. apply: par2edgeunit. 
       apply isop_step. exists.
       etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
       exact: reduce_shuffle.
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_e0 (G:=unit_graph2 [a·(b·c)]) tt u).
-      exists. apply par2edgeunit.
+      2: apply one_step, (step_e0 (G:=unit_graph2 (a⊗(b⊗c))%CM) tt u).
+      exists. apply: par2edgeunit.
       apply isop_step. exists.
       etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
       exact: reduce_shuffle.
     * etransitivity. apply isop_step.
       2: etransitivity.
-      2: apply one_step, (step_e2 (G:=two_graph2 [a·c] [b·d]) (inl tt) (inr tt) u v).
+      2: apply one_step, (step_e2 (G:=two_graph2 (a⊗c)%CM (b⊗d)%CM) (inl tt) (inr tt) u v).
       2: reflexivity. 
-      exists. apply par_edges. 
+      exists. apply: par_edges. 
       
   - etransitivity. apply cnv_steps, IHu. 
     case (nt u)=>[a|a v b]=>//=.
     apply isop_step. exists.
-    etransitivity. refine (iso_iso2 (add_edge_rev _ _ _) _ _).
-    simpl. rewrite /eqv'/=. symmetry. apply cnvI.
-    simpl. symmetry. etransitivity. apply (add_edge2_iso (iso_iso2 (union_C _ _) _ _)).
+    etransitivity. refine (iso_iso2 (add_edge_rev _ _ _) _ _). 
+    rewrite eqvEcnv. symmetry. apply cnvI.
+    simpl. symmetry. etransitivity. apply: (add_edge2_iso (iso_iso2 (union_C _ _) _ _)).
     reflexivity. 
       
   - etransitivity. apply dom_steps, IHu. 
@@ -476,7 +470,7 @@ Proof.
     etransitivity. apply one_step, (@step_v1 _ (unit_graph2 a) tt v b).
     apply isop_step. exists. 
     etransitivity. apply add_vlabel2_unit. apply unit_graph2_iso.
-    reflexivity.
+    done. (* reflexivity fails ... *)
 Qed.
 
 End s'.

@@ -1,6 +1,6 @@
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
-Require Import pttdom mgraph mgraph2.
+Require Import setoid_bigop structures pttdom mgraph mgraph2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -10,15 +10,21 @@ Set Bullet Behavior "Strict Subproofs".
 Section s.
 Variable X: pttdom.
 Notation test := (test X).
-Notation graph := (graph (pttdom_labels X)).
-Notation graph2 := (graph2 (pttdom_labels X)).
+Notation graph := (graph test X).
+Notation graph2 := (graph2 test X).
 
 (** * Rewrite System on Packaged Graphs *)
 
-(* additive presentation *)
+(** note: 
+- we need everything to be finite to get a terminating rewrite system
+- elsewhere we don't care that the edge type is a finType, it could certainly just be a Type
+- the vertex type has to be an eqType at various places since we regularly compare vertices (e.g., [add_vlabel])
+- the vertex type has to be a finType for the [merge] operation, but only in order to express the new vertex labeling function... we could imagine a [finitary_merge] operation that would not impose this restriction
+- the vertex type has to be finite also when we go to open graphs (although maybe countable would suffice) *)
 
-(* Universe S. *)
-Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
+(** additive presentation *)
+
+Inductive step: graph2 -> graph2 -> Prop :=
   | step_v0: forall G alpha,
       step
         (G ∔ alpha)
@@ -26,15 +32,15 @@ Inductive step: graph2 -> graph2 -> Prop (* Type@{S} *) :=
   | step_v1: forall (G: graph2) x u alpha,
       step
         (G ∔ alpha ∔ [inl x, u, inr tt])
-        (G [tst x <- [dom (u·alpha)]])
+        (G [tst x <- [dom (u·elem_of alpha)]])
   | step_v2: forall G x y u alpha v,
       step
         (G ∔ alpha ∔ [inl x, u, inr tt] ∔ [inr tt, v, inl y])
-        (G ∔ [x, u·alpha·v, y])
+        (G ∔ [x, u·elem_of alpha·v, y])
   | step_e0: forall G x u,
       step
         (G ∔ [x, u, x])
-        (G [tst x <- [1∥u]])
+        (G [tst x <- [1%ptt∥u]])
   | step_e2: forall G x y u v,
       step
         (G ∔ [x, u, y] ∔ [x, v, y])

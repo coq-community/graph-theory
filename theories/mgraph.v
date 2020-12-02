@@ -10,22 +10,16 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** * Directed Labeled Multigraphs *)
 
-(** ** labeled directed multigraphs and their operations *)
+(** Finite labeled directed multigraphs (not pointed, Definition 4.4) *)
 
-(* the notion of multigraph defined here allows labels on vertices and edge-fliping isomorphisms 
-   we can recover multigraphs without vertex-labels and non-flipping isomophisms using the [flat_labels] structure
- *)
+(** We use a single [endpoint] function for "source" and "target" of
+edges. This frequently allows us to treat the cases for source and
+target as a single case in proofs. Further, this allows view ing
+multigraphs as undirected with [b : bool] being one end and [~~ b] the
+other. *)
 
-Section s.
-    
-Variable L: labels.
-Notation Lv := (lv L).  
-Notation Le := (le L).
-Local Open Scope labels.
-
-(* labelled directed multigraphs (not pointed, Definition 4.4) *)
 Set Primitive Projections.
-Record graph: Type :=
+Record graph (Lv Le : Type) : Type :=
   Graph {
       vertex:> finType;
       edge: finType;
@@ -35,46 +29,38 @@ Record graph: Type :=
 Unset Primitive Projections.
 Notation source := (endpoint false).
 Notation target := (endpoint true).
-(* note: 
-   - we need everything to be finite to get a terminating rewrite system
-   - elsewhere we don't care that the edge type is a finType, it could certainly just be a Type
-   - the vertex type has to be an eqType at various places since we regularly compare vertices (e.g., [add_vlabel])
-   - the vertex type has to be a finType for the [merge] operation, but only in order to express the new vertex labeling function... we could imagine a [finitary_merge] operation that would not impose this restriction
-   - the vertex type has to be finite also when we go to open graphs (although maybe countable would suffice)
- *)
+
+Section s1.
+Variables (Lv Le : Type).
+Local Notation graph := (graph Lv Le).
+Local Notation Graph := (@Graph Lv Le).
 
 (** ** Basic Operations *)
 
-(* empty graph *)
+(** These operations require no structures on either label type *)
+
+(** empty graph *)
 Definition void_graph := Graph (fun _ => vfun) vfun vfun.
 
-(* graph with a single vertex *)
+(** graph with a single vertex *)
 Definition unit_graph a := Graph (fun _ => vfun) (fun _: unit => a) vfun.
 
-(* adding an edge to a graph *)
+(** adding an edge to a graph *)
 Definition add_edge (G: graph) (x y: G) (u: Le): graph :=
   @Graph (vertex G) (option_finType (edge G))
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
-         (@vlabel G)
+         (@vlabel _ _ G)
          (fun e => match e with Some e => elabel e | None => u end).
 Notation "G ∔ [ x , u , y ]" := (@add_edge G x y u) (at level 20, left associativity).
 
-(* adding a label to a vertex (cumulative w.r.t existing label) *)
-Definition add_vlabel (G: graph) (x: G) (a: Lv): graph :=
-  @Graph (vertex G) (edge G)
-         (@endpoint G)
-         (fun v => if v==x then a⊗vlabel v else vlabel v)
-         (@elabel G).
-Notation "G [tst  x <- a ]" := (@add_vlabel G x a) (at level 20, left associativity).
+(** disjoint union (Definition 4.5)*)
 
-
-(** ** Disjoint Union and Quotients of graphs *)
-
-(* disjoint union (Definition 4.5)*)
+(** We use an explicit [sum_finType F G], because [[finType of F + G]]
+generates a significantly bigger term *)
 Definition union (F G : graph) : graph :=
   {| vertex := sum_finType F G;
      edge := sum_finType (edge F) (edge G);
-     endpoint b := sumf (@endpoint F b) (@endpoint G b);
+     endpoint b := sumf (@endpoint _ _ F b) (@endpoint _ _ G b);
      vlabel e := match e with inl e => vlabel e | inr e => vlabel e end;
      elabel e := match e with inl e => elabel e | inr e => elabel e end;
   |}.
@@ -84,28 +70,153 @@ Infix "⊎" := union (at level 50, left associativity).
 Definition unl {G H: graph} (x: G): G ⊎ H := inl x.
 Definition unr {G H: graph} (x: H): G ⊎ H := inr x.
 
-(* quotient (Definition 4.6): merging vertices according to an equivalence relation *)
+(** derived operations (Definition 4.7) *)
+Definition two_graph a b := unit_graph a ⊎ unit_graph b.
+Definition edge_graph a u b := two_graph a b ∔ [inl tt, u, inr tt].                
+Definition add_vertex G a := G ⊎ unit_graph a.
+
+Section Subgraphs.
+  Variables (G : graph) (V : {set G}) (E : {set edge G}).
+  Definition consistent := forall e b, e \in E -> endpoint b e \in V.
+  Hypothesis in_V : consistent.
+  
+  Definition sub_vertex := sig_finType (fun x => x \in V).
+  Definition sub_edge := sig_finType (fun e => e \in E).
+
+  Definition subgraph_for := 
+    {| vertex := sub_vertex;
+       edge := sub_edge;
+       endpoint b e := Sub (endpoint b (val e)) (in_V b (valP e)); 
+       vlabel x := vlabel (val x);
+       elabel e := elabel (val e);
+    |}.
+
+
+(** edge deletion is treated as a special case, because this avoids the change in the vertex type *)
+
+  Definition remove_edges := 
+    {| vertex := G;
+       edge := sig_finType (fun e: edge G => e \notin E);
+       endpoint b e := endpoint b (val e); 
+       vlabel x := vlabel x;
+       elabel e := elabel (val e); |}.
+
+(* TOTHINK: it might be more natural to have a 'restrict_edges'
+operations (same as remove_edge, without set complement on E) and
+maybe also define [restrict_vertices], which would assume that removed
+vertices have no incident edge, and [subgraph_for] be defined in terms
+of [restrict_edges] and [restrict_vertices] *)
+
+End Subgraphs.
+
+Lemma consistent_setD (G : graph) (V : {set G}) E E' : 
+  consistent V E -> consistent V (E :\: E').
+Proof. move => con_E e b /setDP [? _]. exact: con_E. Qed.
+
+(** Frequently used consistent sets of vertices and edges *)
+
+Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
+Proof. by []. Qed.
+
+Lemma consistentTT (G : graph) : consistent [set: G] [set: edge G].
+Proof. done. Qed.
+
+Section Edges.
+Variables (G : graph).
+Implicit Types (x y : G).
+
+Definition edges x y :=
+  [set e | (source e == x) && (target e == y)].
+
+Definition edge_set (S : {set G}) :=
+  (* DPtoCD: forall b, endpoint b e \in S *)
+  [set e | (source e \in S) && (target e \in S)].
+
+Lemma edge_set1 x : edge_set [set x] = edges x x.
+Proof. apply/setP=> e. by rewrite !inE. Qed.
+
+Lemma edge_in_set e (A : {set G}) x y :
+  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
+Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
+
+Definition incident x e := [exists b, endpoint b e == x].
+Definition edges_at x := [set e | incident x e].
+
+Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
+
+Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
+Proof. by rewrite /edges_in big_set1. Qed.
+
+End Edges.
+
+Definition induced_proof (G: graph) (S : {set G}) : consistent S (edge_set S).
+Proof. move => e b; rewrite inE=>/andP[? ?]; by case b. Qed.
+
+Definition induced (G: graph) (S : {set G}) := subgraph_for (@induced_proof G S).
+
+Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
+Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
+
+Definition remove_vertex (G : graph) (z : G) : graph := 
+  subgraph_for (@consistent_del1 G z).
+
+End s1.
+
+Arguments consistentT [Lv Le G] E.
+Arguments consistentTT [Lv Le] G.
+
+
+Arguments edges_at [Lv Le G] x, [Lv Le] G x.
+
+Declare Scope graph_scope.
+Bind Scope graph_scope with graph.
+Delimit Scope graph_scope with G.
+
+Arguments unit_graph {Lv} Le a, {Lv Le} a.
+Arguments two_graph {Lv} Le a b, {Lv Le} a b.
+
+Arguments union {Lv Le} F G.
+Infix "⊎" := union (at level 50, left associativity) : graph_scope.
+Arguments unl {Lv Le G H}.
+Arguments unr {Lv Le G H}.
+
+Arguments add_edge {Lv Le} G x y u.
+Notation "G ∔ [ x , u , y ]" := (add_edge G x y u) (at level 20, left associativity).
+Arguments add_vertex {Lv Le} G a.
+Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity) : graph_scope.
+
+(** ** Operations that require structures on labels *)
+
+Section s2.
+Variables (Lv: comMonoid) (Le : elabelType).
+Local Notation graph := (graph Lv Le).
+Local Notation Graph := (@Graph Lv Le).
+Local Open Scope cm_scope.
+
+(** adding a label to a vertex (cumulative w.r.t existing label) *)
+Definition add_vlabel (G: graph) (x: G) (a: Lv): graph :=
+  @Graph (vertex G) (edge G)
+         (@endpoint _ _ G)
+         (fun v => if v==x then a ⊗ vlabel v else vlabel v)
+         (@elabel _ _ G).
+Notation "G [tst  x <- a ]" := (@add_vlabel G x a) (at level 20, left associativity).
+
+(** quotient (Definition 4.6): merging vertices according to an equivalence relation *)
 Definition merge (G: graph) (r : equiv_rel G) :=
   {| vertex := quot r;
      edge := edge G;
      endpoint b e := \pi (endpoint b e);
-     vlabel c := \big[mon2/mon0]_(w | \pi w == c) vlabel w;
+     vlabel c := \big[cm_op/1]_(w | \pi w == c) vlabel w;
      elabel e := elabel e |}.
 Arguments merge _ _: clear implicits. 
 Notation merge_seq G l := (merge G (eqv_clot l)).
-
-(* derived operations (Definition 4.7) *)
-Definition two_graph a b := unit_graph a ⊎ unit_graph b.
-Definition edge_graph a u b := two_graph a b ∔ [inl tt, u, inr tt].                           
-Definition add_vertex G a := G ⊎ unit_graph a.
-Notation "G ∔ a" := (add_vertex G a) (at level 20, left associativity).
 
 (** ** Homomorphisms *)
 
 (* Definition 4.8  *)
 Class is_hom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := Hom
   { endpoint_hom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
-    vlabel_hom: forall v, vlabel v ≡ (\big[mon2/mon0]_(u | hv u == v) vlabel u);
+    vlabel_hom: forall v, vlabel v ≡ (\big[cm_op/1]_(u | hv u == v) vlabel u);
     elabel_hom: forall e, elabel (he e) ≡[hd e] elabel e;
   }.
 
@@ -141,26 +252,15 @@ Qed.
 
 (** ** Isomorphisms *)
 
-(* Definition 4.8 *)
-
 (** When the underlying functions are bijective, as is the case with
 isomorphisms, the definition of homomorphism simlifies to the
 follwing, which does not require a bigop for gathering vertex labels *)
 
+(* Definition 4.8 *)
 Class is_ihom (F G: graph) (hv: F -> G) (he: edge F -> edge G) (hd: edge F -> bool): Prop := IHom
   { endpoint_ihom: forall e b, endpoint b (he e) = hv (endpoint (hd e (+) b) e);
     vlabel_ihom: forall v, vlabel (hv v) ≡ vlabel v;
     elabel_ihom: forall e, elabel (he e) ≡[hd e] elabel e }.
-
-Lemma big_bij_eq (I1 I2 : finType) (F : I1 -> lv L) (f : bij I1 I2) (y : I2) :
-  \big[mon2/1]_(x | f x == y) F x ≡ F (f^-1 y).
-Proof. apply: big_pred1 => x /=. exact: bij_eqLR. Qed.
-
-(* TOTHINK: this is necessary because f^-1 is a bijective function and not a bijection ... *)
-Lemma big_bij_eq' (I1 I2 : finType) (F : I1 -> lv L) (f : bij I2 I1) (y : I2) :
-  \big[mon2/mon0]_(x | f^-1 x == y) F x ≡ F (f y).
-Proof. apply: big_pred1 => x /=. by rewrite eq_sym -bij_eqLR eq_sym. Qed.
-
 
 Lemma ihom_id G: @is_ihom G G id id xpred0.
 Proof. by split. Qed.
@@ -229,7 +329,8 @@ Defined.
 Global Instance iso_Equivalence: CEquivalence iso.
 Proof. constructor. exact @iso_id. exact @iso_sym. exact @iso_comp. Defined.
 
-Lemma endpoint_iso' F G (h: iso F G) b e: endpoint b (h.e^-1 e) = h^-1 (endpoint (h.d (h.e^-1 e) (+) b) e).
+Lemma endpoint_iso' F G (h: iso F G) b e: 
+  endpoint b (h.e^-1 e) = h^-1 (endpoint (h.d (h.e^-1 e) (+) b) e).
 Proof. apply (endpoint_iso (iso_sym h)). Qed.
 
 Lemma vlabel_iso' F G (h: iso F G) v: vlabel (h^-1 v) ≡ vlabel v.
@@ -256,7 +357,7 @@ Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
 
 (** *** isomorphisms about [unit_graph] *)
 
-Global Instance unit_graph_iso: CProper (eqv ==> iso) unit_graph.
+Global Instance unit_graph_iso: CProper (eqv ==> iso) (@unit_graph Lv Le).
 Proof.
   intros a b ab. Iso bij_id bij_id xpred0.
   abstract by split=>//=;symmetry.
@@ -294,7 +395,8 @@ Lemma add_edge_vlabel F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃ F ∔ [y, u,
 Proof. reflexivity. Defined.
 
 
-Lemma add_vlabel_iso'' F G (h: F ≃ G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃ G [tst x' <- b].
+Lemma add_vlabel_iso'' F G (h: F ≃ G) x x' (ex: h x = x') a b (e: a ≡ b): 
+  F [tst x <- a] ≃ G [tst x' <- b].
 Proof.
   Iso h h.e h.d.
   split; try apply h.
@@ -396,10 +498,6 @@ Defined.
 
 
 (** *** isomorphisms about [merge] *)
-
-(* remove if no longer used below *)
-Lemma eq_eqv {X: setoid} (x y: X): x = y -> x ≡ y.
-Proof. by move=>->. Qed.
 
 Section merge_surj.
  Variable (G: graph) (r: equiv_rel G).
@@ -541,13 +639,16 @@ Proof.
   + by rewrite eqv_clot_map_eq ?sum_eqE // inr_codom_inl.
 Qed.
 
-Lemma merge_add_edge (G: graph) (r: equiv_rel G) x u y: merge (G ∔ [x, u, y]) r ≃ merge G r ∔ [\pi x, u, \pi y].
+Lemma merge_add_edge (G: graph) (r: equiv_rel G) x u y: 
+  merge (G ∔ [x, u, y]) r ≃ merge G r ∔ [\pi x, u, \pi y].
 Proof. Iso bij_id bij_id xpred0. split=>//. case=>//. by case. Defined.
-Lemma merge_add_edgeE (G: graph) (r: equiv_rel G) x u y (z: G): @merge_add_edge G r x u y (\pi z) = \pi z.
+Lemma merge_add_edgeE (G: graph) (r: equiv_rel G) x u y (z: G): 
+  @merge_add_edge G r x u y (\pi z) = \pi z.
 Proof. by []. Qed.
 Global Opaque merge_add_edge.
 
-Lemma merge_add_vlabel (G: graph) (r: equiv_rel G) x a: merge (G [tst x <- a]) r ≃ merge G r [tst \pi x <- a].
+Lemma merge_add_vlabel (G: graph) (r: equiv_rel G) x a: 
+  merge (G [tst x <- a]) r ≃ merge G r [tst \pi x <- a].
 Proof.
   Iso bij_id bij_id xpred0. split=>//= v. case: (altP (v =P \pi x)) => [-> {v}|D].
   - rewrite (bigD1 x) // [in X in _ ≡ X](bigD1 x) // ?eqxx monA. apply: mon_eqv => //.
@@ -556,17 +657,16 @@ Proof.
     + exact: bij_perm_enum.
     + move => /= y /eqP ?. case: (altP (y =P x)) => // ?; subst. by rewrite eqxx in D.
 Defined.
-Lemma merge_add_vlabelE (G: graph) (r: equiv_rel G) x a (z: G): @merge_add_vlabel G r x a (\pi z) = \pi z.
+Lemma merge_add_vlabelE (G: graph) (r: equiv_rel G) x a (z: G): 
+  @merge_add_vlabel G r x a (\pi z) = \pi z.
 Proof. by []. Qed.
 Global Opaque merge_add_vlabel.
 
-
 (** *** isomorphisms about [union] and [merge] (Lemma 4.11) *)
-
 
 Section union_merge_l.
   Variables (F G: graph) (l: pairs F).
-  Definition h_union_merge_l: bij (merge_seq F l ⊎ G) (merge_seq (F ⊎ G) (map_pairs unl l)).
+  Definition h_union_merge_l: bij (merge_seq F l ⊎ G)%G (merge_seq (F ⊎ G) (map_pairs unl l)).
   Proof. eapply bij_comp. apply union_quot_l. apply quot_same. apply union_equiv_l_eqv_clot. Defined.
   Lemma hom_union_merge_l: is_ihom h_union_merge_l bij_id xpred0.
   Proof.
@@ -589,18 +689,19 @@ Section union_merge_l.
   Qed.
   Definition union_merge_l: merge_seq F l ⊎ G ≃ merge_seq (F ⊎ G) (map_pairs unl l) :=
     Iso hom_union_merge_l.
-  Lemma union_merge_lEl (x: F): union_merge_l (@unl (merge_seq F l) _ (\pi x)) = \pi unl x.
+  Lemma union_merge_lEl (x: F): union_merge_l (@unl _ _ (merge_seq F l) _ (\pi x)) = \pi unl x.
   Proof. by rewrite /=union_quot_lEl quot_sameE. Qed.
   Lemma union_merge_lEr (x: G): union_merge_l (unr x) = \pi unr x.
   Proof. by rewrite /=union_quot_lEr quot_sameE. Qed.
   Lemma union_merge_lE' (x: F+G):
     union_merge_l^-1 (\pi x) =
-    match x with inl y => @unl (merge_seq F l) _ (\pi y) | inr y => unr y end.
+    match x with inl y => @unl _ _ (merge_seq F l) _ (\pi y) | inr y => unr y end.
   Proof. by rewrite /=quot_sameE' union_quot_lE'. Qed.
 End union_merge_l.  
 Global Opaque union_merge_l.
 
-Lemma map_map_pairs {A B C} (f: A -> B) (g: B -> C) l: map_pairs g (map_pairs f l) = map_pairs (g \o f) l.
+Lemma map_map_pairs {A B C} (f: A -> B) (g: B -> C) l: 
+  map_pairs g (map_pairs f l) = map_pairs (g \o f) l.
 Proof. by rewrite /map_pairs -map_comp. Qed.
 
 Lemma map_pairs_id {A} (l: pairs A): map_pairs id l = l.
@@ -616,7 +717,7 @@ Section union_merge_r.
     eapply iso_comp. apply (merge_iso (union_C _ _)).
     apply merge_same. abstract by rewrite map_map_pairs. 
   Defined.
-  Lemma union_merge_rEr (x: G): union_merge_r (@unr _ (merge_seq G l) (\pi x)) = \pi (unr x).
+  Lemma union_merge_rEr (x: G): union_merge_r (@unr _ _ _ (merge_seq G l) (\pi x)) = \pi (unr x).
   Proof.
     (* BUG: the second rewrite hangs if F and x are not given *)
     rewrite /=. rewrite (union_merge_lEl F _ x).
@@ -636,7 +737,7 @@ Section merge_union_K.
   Variables (F K: graph) (h: pairs (F+K)) (k: K -> F).
   Definition union_K_pairs := map_pairs (sum_left k) h.
 
-  Hypothesis kv: forall x: K, vlabel x = 1%lbl.
+  Hypothesis kv: forall x: K, vlabel x = 1. 
   Hypothesis kh: forall x: K, unr x = unl (k x) %[mod (eqv_clot h)].
 
   Lemma equiv_clot_Kl: union_K_equiv (eqv_clot h) =2 eqv_clot union_K_pairs.
@@ -668,10 +769,12 @@ Section merge_union_K.
 
   Hypothesis ke: edge K -> False.
 
-  Definition h_merge_union_Ke1 (e: edge (merge_seq (union F K) h)): edge (merge_seq F union_K_pairs) :=
+  Definition h_merge_union_Ke1 (e: edge (merge_seq (union F K) h))
+    : edge (merge_seq F union_K_pairs) :=
     match e with inl e => e | inr e => match ke e with end end.
 
-  Definition h_merge_union_Ke: bij (edge (merge_seq (union F K) h)) (edge (merge_seq F union_K_pairs)).
+  Definition h_merge_union_Ke: 
+    bij (edge (merge_seq (union F K) h)) (edge (merge_seq F union_K_pairs)).
     exists h_merge_union_Ke1 inl=>x//. by case x.
   Defined.
 
@@ -706,105 +809,24 @@ Proof. apply union_C. Defined.
 Global Instance add_vertex_iso : CProper (iso ==> eqv ==> iso) add_vertex.
 Proof. move => F G h a b ab. apply (union_iso h (unit_graph_iso ab)). Defined.
 
-
 (** ** Subgraphs and Induced Subgraphs *)
 
 Definition subgraph (H G : graph) := 
   exists hv he hd, @is_ihom H G hv he hd /\ injective hv /\ injective he.
 
-Section Subgraphs.
-  Variables (G : graph) (V : {set G}) (E : {set edge G}).
-  Definition consistent := forall e b, e \in E -> endpoint b e \in V.
-  Hypothesis in_V : consistent.
-  
-  Definition sub_vertex := sig_finType (fun x => x \in V).
-  Definition sub_edge := sig_finType (fun e => e \in E).
+Section Sub.
+Variables (G : graph) (V : {set G}) (E : {set edge G}).
+Hypothesis con : consistent V E. 
 
-  Definition subgraph_for := 
-    {| vertex := sub_vertex;
-       edge := sub_edge;
-       endpoint b e := Sub (endpoint b (val e)) (in_V b (valP e)); 
-       vlabel x := vlabel (val x);
-       elabel e := elabel (val e);
-    |}.
+Lemma subgraph_sub : subgraph (subgraph_for con) G.
+Proof. exists val, val, xpred0. split => //=. split; exact: val_inj. Qed.
 
-  Lemma subgraph_sub : subgraph subgraph_for G.
-  Proof. exists val, val, xpred0. split => //=. split; exact: val_inj. Qed.
-
-  (* edge deletion is treated as a special case, because this avoids the change in the vertex type *)
-  (* TODO: would be more natural to have a 'restrict_edges' operations 
-     (same as remove_edge, without set complement on E)  
-     and maybe also define [restrict_vertices], which would assume that removed vertices have no incident edge, and [subgraph_for] be defined in terms of [restrict_edges] and [restrict_vertices]
-   *)
-  Definition remove_edges := 
-    {| vertex := G;
-       edge := sig_finType (fun e: edge G => e \notin E);
-       endpoint b e := endpoint b (val e); 
-       vlabel x := vlabel x;
-       elabel e := elabel (val e); |}.
-
-  Lemma remove_edges_sub : subgraph remove_edges G.
-  Proof. exists id, val, xpred0. split => //=. split. apply inj_id. apply val_inj. Qed.
-  
-End Subgraphs.
-
-Section Edges.
-Variables (G : graph).
-Implicit Types (x y : G).
-
-Definition edges x y :=
-  [set e | (source e == x) && (target e == y)].
-
-Definition edge_set (S : {set G}) :=
-  (* DPtoCD: forall b, endpoint b e \in S *)
-  [set e | (source e \in S) && (target e \in S)].
-
-Lemma edge_set1 x : edge_set [set x] = edges x x.
-Proof. apply/setP=> e. by rewrite !inE. Qed.
-
-Lemma edge_in_set e (A : {set G}) x y :
-  x \in A -> y \in A -> e \in edges x y -> e \in edge_set A.
-Proof. move => Hx Hy. rewrite !inE => /andP[/eqP->/eqP->]. by rewrite Hx. Qed.
-
-Definition incident x e := [exists b, endpoint b e == x].
-Definition edges_at x := [set e | incident x e].
-
-Definition edges_in (V : {set G}) := (\bigcup_(x in V) edges_at x)%SET.
-
-Lemma edges_in1 (x : G) : edges_in [set x] = edges_at x. 
-Proof. by rewrite /edges_in big_set1. Qed.
-
-End Edges.
-Arguments edges_at [G] x, G x.
-
-(* Frequently used consistent sets of vertices and edges *)
-
-Lemma consistentT (G : graph) (E : {set edge G}) : consistent setT E.
-Proof. by []. Qed.
-Arguments consistentT [G] E.
-
-Lemma consistentTT (G : graph) : consistent [set: G] [set: edge G].
-Proof. done. Qed.
-Arguments consistentTT : clear implicits.
-
-
-Definition induced_proof (G: graph) (S : {set G}) : consistent S (edge_set S).
-Proof. move => e b; rewrite inE=>/andP[? ?]; by case b. Qed.
-
-Definition induced (G: graph) (S : {set G}) := 
-  subgraph_for (@induced_proof G S).
-
+Lemma remove_edges_sub : subgraph (remove_edges E) G.
+Proof. exists id, val, xpred0. split => //=. split. apply inj_id. apply val_inj. Qed.
+End Sub.
 
 Lemma induced_sub (G: graph) (S : {set G}) : subgraph (induced S) G.
 Proof. exact: subgraph_sub. Qed.
-
-
-Lemma consistent_del1 (G : graph) (x : G) : consistent [set~ x] (~: edges_at x).
-Proof. move => e b. rewrite !inE. apply: contraNneq => <-. by existsb b. Qed.
-
-(* Commonly used subgraphs *)
-Definition remove_vertex (G : graph) (z : G) : graph := 
-  subgraph_for (@consistent_del1 G z).
 
 (** *** isomorphisms about subgraphs *)
 (* not neded for now *)
@@ -823,51 +845,35 @@ Proof.
   apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
 Qed.
 
-Lemma setT_bij_hom (G : graph) : @is_ihom (subgraph_for (@consistentTT G)) G setT_bij setT_bij xpred0. 
+Lemma setT_bij_hom (G : graph) : 
+  @is_ihom (subgraph_for (consistentTT G)) G setT_bij setT_bij xpred0.
 Proof. by []. Qed.
 
 Definition iso_subgraph_forT (G : graph) : subgraph_for (consistentTT G) ≃ G :=
   Iso (setT_bij_hom G).
 
-End s. 
+End s2. 
 
-Notation source := (endpoint false).
-Notation target := (endpoint true).
 
-Declare Scope graph_scope.
-Bind Scope graph_scope with graph.
-Delimit Scope graph_scope with G.
 
-Arguments union {L} F G.
-Infix "⊎" := union (at level 50, left associativity) : graph_scope.
-Arguments unl {L G H}.
-Arguments unr {L G H}.
-
-Arguments add_edge {L} G x y u.
-Arguments add_vertex {L} G a.
-Arguments add_vlabel {L} G x a.
-Notation "G ∔ [ x , u , y ]" := 
-  (add_edge G x y u) (at level 20, left associativity) : graph_scope.
-Notation "G ∔ a" := 
-  (add_vertex G a%lbl) (at level 20, left associativity) : graph_scope.
+Arguments add_vlabel {Lv Le} G x a.
 Notation "G [tst  x <- a ]" :=
-  (add_vlabel G x a%lbl) (at level 20, left associativity) : graph_scope.
+  (add_vlabel G x a) (at level 20, left associativity) : graph_scope.
 
-Arguments merge {L} _ _.
+Arguments merge {Lv Le} _ _.
 Notation merge_seq G l := (merge G (eqv_clot l)).
 
-Arguments iso {L}.
-Arguments iso_id {_ _}.
+Arguments iso {Lv Le}.
+Arguments iso_id {_ _ _}.
 Infix "≃" := iso (at level 79).
 Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'").
 Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
 
 Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
-  match goal with |- ?F ≃ ?G => refine (@Iso _ F G f g h _) end.
+  match goal with |- ?F ≃ ?G => refine (@Iso _ _ F G f g h _) end.
 
 Global Hint Resolve iso_id : core.  (* so that [by] gets it... *)
 
-Arguments edges_at [L G] x, [L] G x.
 
 
 
@@ -883,9 +889,10 @@ Arguments edges_at [L G] x, [L] G x.
     into [G[V1,E2]]. Note that this only yields a bijection after quotienting. *)
 
 Section MergeSubgraph.
-  Variable A: Type.
-  Notation graph := (graph (flat_labels A)).
-  (* note: the lemma also holds for arbitrarily-labeled graphs when vertices in the intersection are labeled with idempotent elements *)
+  Variable (Le : elabelType).
+  Notation graph := (graph unit Le).
+  (* note: the lemma also holds for arbitrarily-labeled graphs when vertices in
+  the intersection are labeled with idempotent elements *)
   Variables (G : graph) (V1 V2 : {set G}) (E1 E2 : {set edge G}) 
             (con1 : consistent V1 E1) (con2 : consistent V2 E2)
             (h : pairs (subgraph_for con1 ⊎ subgraph_for con2)%G).
@@ -957,15 +964,15 @@ End MergeSubgraph.
 
 (** ** Walks *)
 
-Definition mgraph_rel L (G : graph L) : rel G := 
+Definition mgraph_rel Lv Le (G : graph Lv Le) : rel G := 
   fun x y => [exists e, (source e == x) && (target e == y)].
 
-Definition digraph_of L (G : graph L) := DiGraph (@mgraph_rel L G).
+Definition digraph_of Lv Le (G : graph Lv Le) := DiGraph (@mgraph_rel Lv Le G).
 (* Coercion mgraph_relType : graph >-> diGraph. -- breaks skeleton.v *)
 
 
 Section Walk.
-Variable (L : labels) (G : graph L).
+Variable (Lv Le : Type) (G : graph Lv Le).
 Implicit Types (x y z : G) (e : edge G) (w : seq (edge G)).
 
 Fixpoint walk x y w := 

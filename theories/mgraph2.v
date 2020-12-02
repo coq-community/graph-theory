@@ -1,4 +1,5 @@
 Require Import Setoid Morphisms.
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
 Require Import setoid_bigop structures pttdom mgraph ptt.
@@ -13,50 +14,81 @@ Set Bullet Behavior "Strict Subproofs".
 (** 2pdom-operations on such graphs and proof that they form a 2pdom-algebra *)
 (** local operations on such graphs (for the rewrite system) *)
 
-
 (* TODO:
  - input/output as a function from [bool]?
  - recheck status of [unr/unl]
  *)
 
-Section s.
-    
-Variable L: labels.
-Notation Lv := (lv L).  
-Notation Le := (le L).
-Notation graph := (graph L).
-Local Open Scope labels.
-
 (* 2p-graphs  *)
 Set Primitive Projections.
-Record graph2 :=
+Record graph2 Lv Le :=
   Graph2 {
-      graph_of:> graph;
+      graph_of:> graph Lv Le;
       input: graph_of;
       output: graph_of }.
-Arguments input {_}.
-Arguments output {_}.
-Notation point G := (@Graph2 G).
+Arguments input {_ _ _}, [_ _] G : rename.
+Arguments output {_ _ _}, [_ _] G : rename.
+Notation point G := (@Graph2 _ _ G).
+
+Section s1.
+    
+Variables (Lv : Type) (Le : Type).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
+Local Notation point G := (@Graph2 Lv Le G).
+Implicit Types (a : Lv) (u v : Le).
+
 
 (* basic operations *)
 Definition add_vertex2 (G: graph2) a := point (add_vertex G a) (unl input) (unl output).
 Definition add_edge2 (G: graph2) (x y: G) u := point (add_edge G x y u) input output.
-Definition add_vlabel2 (G: graph2) (x: G) a := point (add_vlabel G x a) input output.
-Definition merge2 (G: graph2) (r: equiv_rel G) := point (merge G r) (\pi input) (\pi output).
-Arguments merge2 _ _: clear implicits.
 
 Notation "G ∔ a" := 
-  (add_vertex2 G a) (at level 20, left associativity).
+  (@add_vertex2 G a%CM) (at level 20, left associativity).
 Notation "G ∔ [ x , u , y ]" := 
   (@add_edge2 G x y u) (at level 20, left associativity).
-Notation "G [tst  x <- a ]" := 
-  (@add_vlabel2 G x a) (at level 20, left associativity).
-Notation merge2_seq G l := (merge2 G (eqv_clot l)).
+
 
 (* basic graphs *)
 Definition unit_graph2 a := point (unit_graph a) tt tt.
 Definition two_graph2 a b := point (two_graph a b) (inl tt) (inr tt). 
 Definition edge_graph2 a u b := two_graph2 a b ∔ [inl tt, u, inr tt]. 
+
+End s1.
+
+Declare Scope graph2_scope.
+Bind Scope graph2_scope with graph2.
+Delimit Scope graph2_scope with G2.
+
+Arguments add_edge2 [_ _] _ _ _ _. 
+Notation "G ∔ [ x , u , y ]" := 
+  (add_edge2 G x y u) (at level 20, left associativity) : graph2_scope.
+Arguments add_vertex2 [_ _] _ _. 
+Notation "G ∔ a" := 
+  (add_vertex2 G a%CM) (at level 20, left associativity) : graph2_scope.
+
+Arguments two_graph2 [Lv Le] _ _, [Lv] Le _ _.
+Arguments unit_graph2 [Lv Le] _, [Lv] Le _.
+Arguments edge_graph2 [Lv Le] _ _ _.
+
+Section s1.
+Variables (Lv : comMonoid) (Le : elabelType).
+Notation LvS := (ComMonoid.sort Lv).
+Notation LeS := (Elabel.sort Le).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
+Local Notation point G := (@Graph2 LvS LeS G).
+Implicit Types (a : Lv) (u v : Le).
+Local Open Scope cm_scope.
+
+
+Definition add_vlabel2 (G: graph2) (x: G) a := point (add_vlabel G x a) input output.
+Definition merge2 (G: graph2) (r: equiv_rel G) := point (merge G r) (\pi input) (\pi output).
+Arguments merge2 _ _: clear implicits.
+Notation "G [tst  x <- a ]" := 
+  (@add_vlabel2 G x a) (at level 20, left associativity).
+Notation merge2_seq G l := (merge2 G (eqv_clot l)).
+
 
 (** ** Isomorphisms of 2p-graphs *)
 
@@ -98,7 +130,8 @@ Proof.
   - intros G H [f]. constructor. by symmetry.
   - intros F G H [h] [k]. constructor. etransitivity; eassumption.
 Qed.
-Canonical Structure g2_setoid: setoid := Setoid iso2prop_Equivalence. 
+HB.instance Definition g2_setoid := 
+  Setoid_of_Type.Build (mgraph2.graph2 LvS LeS) iso2prop_Equivalence.
 
 Tactic Notation "Iso2" uconstr(f) :=
   match goal with |- ?F ≃2 ?G => refine (@Iso2 F G f _ _)=>// end.
@@ -144,40 +177,39 @@ Definition g2_one: graph2 := unit_graph2 1.
 
 Definition g2_top: graph2 := two_graph2 1 1.
 
-Definition g2_var a: graph2 := edge_graph2 1 a 1.
+Definition g2_var u : graph2 := edge_graph2 1 u 1.
 
 (* Note: would be nicer to prove that this is a 2p algebra (with top)
    and deduce automatically that this is a 2pdom  *)
-Canonical Structure g2_ops: pttdom.ops_ :=
-  {| dot := g2_dot;
-     par := g2_par;
-     cnv := g2_cnv;
-     dom := g2_dom;
-     one := g2_one;
-     top := g2_top |}.
 
-(** ** laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) *)
-(* mostly recasting the ones proved in [mgraph]  *)
+HB.instance Definition g2_ops := 
+  Ops_of_Type.Build (mgraph2.graph2 LvS LeS) g2_dot g2_par g2_cnv g2_dom g2_one g2_top.
 
-(* isomorphisms about [unit_graph2] *)
+(** Laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) 
+    (mostly recasting the ones proved in [mgraph]) *)
 
-Global Instance unit_graph2_iso: CProper (eqv ==> iso2) unit_graph2.
+(** isomorphisms about [unit_graph2] *)
+
+Local Arguments unit_graph_iso [Lv Le x y] _, [Lv] Le [x y] _. 
+Local Arguments add_vlabel_two [Lv Le] a b x c, [Lv] Le a b x c.
+
+Global Instance unit_graph2_iso: CProper (eqv ==> iso2) (@unit_graph2 Lv Le).
 Proof. intros a b e. Iso2 (unit_graph_iso e). Defined.
 
-(* isomorphisms about [two_graph2] *)
+(** isomorphisms about [two_graph2] *)
 
-Global Instance two_graph2_iso: CProper (eqv ==> eqv ==> iso2) two_graph2.
+Global Instance two_graph2_iso: CProper (eqv ==> eqv ==> iso2) (@two_graph2 Lv Le).
 Proof. intros a b ab c d cd. Iso2 (union_iso (unit_graph_iso ab) (unit_graph_iso cd)). Defined.
 
-(* isomorphisms about [two_vertex2] *)
+(** isomorphisms about [two_vertex2] *)
 
-Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) add_vertex2.
+Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) (@add_vertex2 Lv Le).
 Proof.
   move => F G FG u v uv.
   Iso2 (union_iso FG (unit_graph_iso uv))=>/=; rewrite /unl/=; f_equal; apply FG.
 Defined.
 
-(* isomorphisms about [add_edge2] *)
+(** isomorphisms about [add_edge2] *)
 
 Lemma add_edge2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
   F ∔ [x, u, y] ≃2 G ∔ [x', v, y'].
@@ -198,12 +230,12 @@ Proof. Iso2 (add_edge_rev _ _ e). Defined.
 Lemma add_edge2_vlabel F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃2 F ∔ [y, u, z] [tst x <- a].
 Proof. Iso2 (add_edge_vlabel _ _ _). Defined.
 
-(* isomorphisms about [edge_graph2] *)
+(** isomorphisms about [edge_graph2] *)
 
-Global Instance edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) edge_graph2.
+Global Instance edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) (@edge_graph2 Lv Le).
 Proof. intros a b ab u v uv c d cd. refine (add_edge2_iso' (two_graph2_iso ab cd) _ _ uv). Defined.
 
-(* isomorphisms about [add_vlabel2] *)
+(** isomorphisms about [add_vlabel2] *)
 
 Lemma add_vlabel2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst x' <- b].
 Proof. Iso2 (add_vlabel_iso'' ex e); apply h. Defined.
@@ -234,12 +266,11 @@ Proof. Iso2 (add_vlabel_edge _ _ _ _ _); by case x; case. Defined.
 Lemma add_vlabel2_mon0 G x: G [tst x <- 1] ≃2 G.
 Proof. Iso2 (add_vlabel_mon0 x). Defined.
 
+(** isomorphisms about [merge] *)
 
-(* isomorphisms about [merge] *)
-
+(** note: h should be informative so that map_pairs can be simplified. *)
 Lemma merge2_iso2 F G (h: F ≃2 G) l:
   merge2_seq F l ≃2 merge2_seq G (map_pairs h l).
-  (* note: h should be informative so that map_pairs can be simplified... *)
 Proof. Iso2 (merge_iso h l); by rewrite h_mergeE ?iso2_input ?iso2_output. Qed.
 
 Lemma merge_iso2 (F G : graph) (h: F ≃ G) l (i o: F):
@@ -330,6 +361,8 @@ Proof. Iso2 (merge_add_vlabel _ _ _); by rewrite merge_add_vlabelE. Defined.
    we might want to downgrade some of them to Prop [iso2prop]
  *)
 
+Local Close Scope cm_scope.
+
 Lemma par2C (F G: graph2): F ∥ G ≃2 G ∥ F.
 Proof.
   irewrite (merge_iso2 (union_C F G)) =>/=.
@@ -391,7 +424,7 @@ Lemma dot2unit_r' (G: graph2) a: G · unit_graph2 a ≃2 G [tst output <- a].
 Proof.
   (* global proof, via surjective homomorphism *)
   unshelve Iso2
-   (@merge_surj _
+   (@merge_surj _ _
      (G ⊎ unit_graph2 a) _
      (G [tst output <- a])
      (fun x => match x with inl y => y | inr tt => output end)
@@ -410,8 +443,6 @@ Proof.
     * rewrite big_pred0 ?monU // => [[]]. by rewrite eq_sym (negbTE xDo).
     + by case.  
 Qed.
-
-Local Close Scope labels.
 
 (* [dot2one] follows from [dot2unit_r] *)
 Lemma dot2one (F: graph2): F · 1 ≃2 F.
@@ -467,7 +498,7 @@ Proof.
   apply merge_same'=>/=. apply eqv_clot_eq; leqv.
 Qed.
 
-Lemma par2dot F G: @input F = output -> @input G = output -> F ∥ G ≃2 F · G.
+Lemma par2dot F G: input F = output -> input G = output -> F ∥ G ≃2 F · G.
 Proof.
   intros HF HG. apply merge2_same; rewrite !HF !HG //.
   apply eqv_clot_eq; leqv.
@@ -511,7 +542,8 @@ Proof.
 Qed.
 
 (* TOFIX: topL should be obtained from topR by duality *)
-Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%lbl) (@unr _ F (unit_graph _) tt) (unl output).
+Lemma topL (F: graph2): 
+  top·F ≃2 point (F ⊎ unit_graph 1%CM) (@unr _ _ F (unit_graph _) tt) (unl output).
 Proof.
   irewrite (merge_iso2 (union_C _ _))=>/=.
   etransitivity. refine (merge_iso2 (union_A _ _ _) _ _ _)=>/=.
@@ -520,7 +552,8 @@ Proof.
   intros []. apply /eqquotP. eqv.
 Qed.
 
-Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%lbl) (unl input) (@unr _ F (unit_graph _) tt).
+Lemma topR (F: graph2): 
+  F·top ≃2 point (F ⊎ unit_graph 1%CM) (unl input) (@unr _ _ F (unit_graph _) tt).
 Proof.
   irewrite (merge_iso2 (union_iso iso_id (union_C _ _))).
   irewrite (merge_iso2 (union_A _ _ _)).
@@ -532,7 +565,7 @@ Qed.
 Lemma g2_A11 (F: graph2): F·top ≃2 dom F·top.
 Proof. irewrite topR. symmetry. by irewrite topR. Qed.
 
-Lemma g2_A12' (F G: graph2): @input F = @output F -> F·G ≃2 F·top ∥ G.
+Lemma g2_A12' (F G: graph2): input F = output F -> F·G ≃2 F·top ∥ G.
 Proof.
   intro H.
   irewrite' (merge_iso2 (union_merge_l _ _)).
@@ -555,10 +588,9 @@ Proof.
   apply /eqquotP. apply eqv_clot_trans with (inr tt); eqv.
 Qed.
 
+(** these two laws are skipped since we go through 2p algebra *)
+
 (*
-
-(* these two laws are skipped since we go through 2p algebra *)
-
 Lemma g2_A13 (F G: graph2): dom(F·G) ≃2 dom(F·dom G).
 Proof. reflexivity. Qed.
 
@@ -608,9 +640,9 @@ Proof. intros F F' f. eexists; apply f. Qed.
 Global Instance dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
-(* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
-Definition g2_ptt: ptt.
-  refine (@Build_ptt g2_ops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+(** 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
+Definition g2_ptt: Ptt_of_Ops.axioms_ g2_setoid g2_ops.
+  refine (Ptt_of_Ops.Build (mgraph2.graph2 LvS LeS) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
      abstract apply CProper2, dot_iso2. 
      abstract apply CProper2, par_iso2. 
      abstract apply CProper1, cnv_iso2. 
@@ -627,34 +659,13 @@ Definition g2_ptt: ptt.
      abstract (exists; apply g2_A11).
      abstract (exists; apply g2_A12).
 Defined.
-Canonical g2_ptt.
-
-(* TODO should be inferred via ptt.pttdom_of, but required for below for applying [cnv_eqv] *)
-(* Canonical Structure g2_pttdom: pttdom := Eval hnf in ptt.pttdom_of g2_ptt. *)
-Definition g2_pttdom: pttdom.
-  refine (@Build_pttdom g2_ops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-     abstract apply dot_eqv_.
-     abstract apply par_eqv_.
-     abstract apply cnv_eqv_.
-     abstract apply dom_eqv_.
-     abstract apply parA_.
-     abstract apply parC_.
-     abstract apply dotA_.
-     abstract apply dotx1_.
-     abstract apply cnvI_.
-     abstract apply cnvpar_.
-     abstract apply cnvdot_.
-     abstract apply par11_.
-     abstract apply A10_.
-     abstract apply A13_.
-     abstract apply A14_.
-Defined.
-Canonical g2_pttdom.
+HB.instance (mgraph2.graph2 LvS LeS) g2_ptt. 
+HB.instance (mgraph2.graph2 LvS LeS) (pttdom_of_ptt graph2_is_a_Ptt).
 
 (** ** additional laws required for the completeness proof *)
 
 (* additional lemmas needed in reduction.v *)
-Local Open Scope labels.
+Local Open Scope cm_scope.
 
 Lemma dot2unit_l (G: graph2) a: unit_graph2 a · G ≃2 G [tst input <- a].
 Proof.
@@ -672,9 +683,11 @@ Proof.
   apply add_vlabel2_unit.
 Qed.
 
-Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt].
+Lemma par2edgeunit a u b c: 
+  edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt].
+Proof.
   unshelve Iso2
-   (@merge_surj _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt])
+   (@merge_surj _ _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt])
      (fun _ => tt)
      (fun _ => inr tt)
      (bij_comp sumxU (option_bij sumxU)) xpred0 _ _ _).
@@ -689,19 +702,19 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
 Qed.
 
 
-(* lemmas for term extraction *)
+(** lemmas for term extraction *)
 
 (** Extensionality lemma for [subgraph_for], the general construction
 underlying bag and interval subgraphs used in the extraction
 function. *)
 Lemma subgraph_for_iso (G : graph2) V1 V2 E1 E2 i1 i2 o1 o2
-  (C1 : @consistent _ G V1 E1) (C2: consistent V2 E2) :
+  (C1 : @consistent _ _ G V1 E1) (C2: consistent V2 E2) :
   V1 = V2 -> E1 = E2 -> val i1 = val i2 -> val o1 = val o2 ->
   point (subgraph_for C1) i1 o1 ≃2 point (subgraph_for C2) i2 o2.
 Proof.
   move => eq_V eq_E eq_i eq_o. subst.
   move/val_inj : eq_i => ->. move/val_inj : eq_o => ->.
-  unshelve Iso2 (@Iso _ (subgraph_for C1) (subgraph_for C2) bij_id bij_id xpred0 _).
+  unshelve Iso2 (@Iso _ _ (subgraph_for C1) (subgraph_for C2) bij_id bij_id xpred0 _).
   split=>//e b//=. by apply val_inj. 
 Qed.
 
@@ -714,46 +727,36 @@ Proof.
   have ? : V = [set: G] by apply/setP => z; rewrite inE HV.
   have ? : E = [set: edge G] by apply/setP => z; rewrite inE HE.
   subst.
-  transitivity (point (subgraph_for (@consistentTT _ G)) i o).
+  transitivity (point (subgraph_for (@consistentTT _ _ G)) i o).
   - exact: subgraph_for_iso.
   - irewrite (iso_iso2 (iso_subgraph_forT _)). rewrite /= Ho Hi. by case G. 
 Qed.
 
-End s. 
+End s1. 
 
-Declare Scope graph2_scope.
-Bind Scope graph2_scope with graph2.
-Delimit Scope graph2_scope with G2.
-
-Arguments input {_ _}.
-Arguments output {_ _}.
-Arguments add_edge2 [_] _ _ _ _. 
-Arguments add_vertex2 [_] _ _. 
-Arguments add_vlabel2 [_] _ _ _. 
-Arguments merge2 [_] _ _. 
+Arguments input {_ _ _}.
+Arguments output {_ _ _}.
+Arguments g2_top {_ _}.
+Arguments g2_one {_ _}.
+Arguments add_vlabel2 [_ _] _ _ _. 
+Arguments merge2 [_ _] _ _. 
 
 Notation IO := [set input;output].
-Notation point G i o := (@Graph2 _ G i o).
 
-Notation "G ∔ [ x , u , y ]" := 
-  (add_edge2 G x y u) (at level 20, left associativity) : graph2_scope.
-Notation "G ∔ a" := 
-  (add_vertex2 G a%lbl) (at level 20, left associativity) : graph2_scope.
 Notation "G [tst  x <- a ]" := 
-  (add_vlabel2 G x a%lbl) (at level 20, left associativity) : graph2_scope.
+  (add_vlabel2 G x a%CM) (at level 20, left associativity) : graph2_scope.
 Notation merge2_seq G l := (merge2 G (eqv_clot l)).
 
-Arguments iso2 {_}.
-Arguments iso2prop {_}.
-Arguments iso2_id {_ _}.
+Arguments iso2 {_ _}.
+Arguments iso2prop {_ _}.
+Arguments iso2_id {_ _ _}.
 
 Infix "≃2" := iso2 (at level 79).
 Infix "≃2p" := iso2prop (at level 79).
 Hint Resolve iso2_id : core.   (* so that [by] gets it... *)
 
 Tactic Notation "Iso2" uconstr(f) :=
-  match goal with |- ?F ≃2 ?G => refine (@Iso2 _ F G f _ _)=>// end.
-
+  match goal with |- ?F ≃2 ?G => refine (@Iso2 _ _ F G f _ _)=>// end.
 
 (* temporary *)
 Notation add_test := add_vlabel2 (only parsing).
@@ -764,11 +767,11 @@ Notation add_test_cong := add_vlabel2_iso' (only parsing).
 (* used to move from letter-labeled graphs to term-labeled graphs (Lemma 5.3) *)
 (* (i.e., the [g2_pttdom] construction is functorial) *)
 Section h.
-  Variables X Y: labels.
-  Variable fv: lv X -> lv Y.
-  Variable fe: le X -> le Y.
-  Definition relabel (G: graph X): graph Y :=
-    Graph (@endpoint _ G) (fv \o (@vlabel _ G)) (fe \o (@elabel _ G)).
+  Variable (Lv1 Lv2 : comMonoid) (Le1 Le2 : elabelType).
+  Variable fv: Lv1 -> Lv2.
+  Variable fe: Le1 -> Le2.
+  Definition relabel (G: graph Lv1 Le1): graph Lv2 Le2 :=
+    Graph (@endpoint _ _ G) (fv \o (@vlabel _ _  G)) (fe \o (@elabel _ _ G)).
   Hypothesis Hfv: Proper (eqv ==> eqv) fv.
   Hypothesis Hfe: forall b, Proper (eqv_ b ==> eqv_ b) fe.
   Global Instance relabel_iso: CProper (iso ==> iso) relabel.
@@ -780,8 +783,8 @@ Section h.
   Defined.
   Lemma relabel_union F G: relabel (F ⊎ G) ≃ relabel F ⊎ relabel G.
   Proof. Iso bij_id bij_id xpred0. by split=>//; case. Defined.
-  Hypothesis Hfvmon2: forall a b, fv (a ⊗ b)%lbl ≡ (fv a ⊗ fv b)%lbl.
-  Hypothesis Hfvmon0: fv 1%lbl ≡ 1%lbl.
+  Hypothesis Hfvmon2: forall a b, fv (a ⊗ b)%CM ≡ (fv a ⊗ fv b)%CM.
+  Hypothesis Hfvmon0: fv 1%CM ≡ 1%CM.
   Lemma relabel_merge F r: relabel (merge F r) ≃ merge (relabel F) r.
   Proof.
     Iso bij_id bij_id xpred0.
@@ -799,37 +802,37 @@ Section h.
   Lemma relabel_edge a u b: relabel (edge_graph a u b) ≃ edge_graph (fv a) (fe u) (fv b).
   Proof. etransitivity. apply relabel_add_edge. by apply (add_edge_iso'' (h:=relabel_two _ _)). Defined.
 
-  Definition relabel2 (G: graph2 X): graph2 Y :=
+  Definition relabel2 (G: graph2 Lv1 Le1): graph2 Lv2 Le2 :=
     point (relabel G) input output.
   Global Instance relabel2_iso: CProper (iso2 ==> iso2) relabel2.
   Proof. intros G H h. Iso2 (relabel_iso h); apply h. Defined.
-  Lemma relabel2_dot (F G: graph2 X): relabel2 (F · G) ≃2 relabel2 F · relabel2 G.
+  Lemma relabel2_dot (F G: graph2 Lv1 Le1): relabel2 (F · G) ≃2 relabel2 F · relabel2 G.
   Proof.
     etransitivity. apply (iso_iso2 (relabel_merge _)).
     refine (merge_iso2 (relabel_union F G) _ _ _).
   Qed.
-  Lemma relabel2_par (F G: graph2 X): relabel2 (F ∥ G) ≃2 relabel2 F ∥ relabel2 G.
+  Lemma relabel2_par (F G: graph2 Lv1 Le1): relabel2 (F ∥ G) ≃2 relabel2 F ∥ relabel2 G.
   Proof.
     etransitivity. apply (iso_iso2 (relabel_merge _)).
     refine (merge_iso2 (relabel_union F G) _ _ _).
   Qed.
-  Lemma relabel2_cnv (F: graph2 X): relabel2 (F°) ≃2 (relabel2 F)°.
+  Lemma relabel2_cnv (F: graph2 Lv1 Le1): relabel2 (F°) ≃2 (relabel2 F)°.
   Proof. reflexivity. Qed.
-  Lemma relabel2_dom (F: graph2 X): relabel2 (dom F) ≃2 dom (relabel2 F).
+  Lemma relabel2_dom (F: graph2 Lv1 Le1): relabel2 (dom F) ≃2 dom (relabel2 F).
   Proof. reflexivity. Qed.
   Lemma relabel2_one: relabel2 1 ≃2 1.
   Proof.
-    transitivity (unit_graph2 (fv 1%lbl)). Iso2 (relabel_unit _).
+    transitivity (unit_graph2 Le2 (fv 1%CM)). Iso2 (relabel_unit _).
     apply unit_graph2_iso, Hfvmon0.
   Qed.
-  Lemma relabel2_top: relabel2 (g2_top X) ≃2 g2_top Y.
+  Lemma relabel2_top: relabel2 g2_top ≃2 g2_top.
   Proof.
-    transitivity (two_graph2 (fv 1%lbl) (fv 1%lbl)). Iso2 (relabel_two _ _).
+    transitivity (two_graph2 Le2 (fv 1%CM) (fv 1%CM)). Iso2 (relabel_two _ _).
     apply two_graph2_iso; apply Hfvmon0.
   Qed.
-  Lemma relabel2_var a: relabel2 (g2_var a) ≃2 g2_var (fe a).
+  Lemma relabel2_var a: relabel2 (g2_var _ a) ≃2 g2_var _ (fe a).
   Proof.
-    transitivity (edge_graph2 (fv 1%lbl) (fe a) (fv 1%lbl)). Iso2 (relabel_edge _ _ _).
+    transitivity (edge_graph2 (fv 1%CM) (fe a) (fv 1%CM)). Iso2 (relabel_edge _ _ _).
     apply edge_graph2_iso=>//.
   Qed.
 End h.

@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries bij set_tac.
 Require Import digraph sgraph minor checkpoint.
-Require Import structures pttdom mgraph mgraph2 skeleton.
+Require Import setoid_bigop structures pttdom mgraph mgraph2 skeleton.
 Require Import bounded equiv extraction_def.
 
 Set Implicit Arguments.
@@ -12,10 +12,14 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
+
 Section ExtractionIso.
 Variable sym : Type.
-Notation graph := (graph (flat_labels sym)).
-Notation graph2 := (graph2 (flat_labels sym)).
+Notation graph := (graph unit (flat sym)).
+Notation graph2 := (graph2 unit (flat sym)).
+
+Notation g2_top := (g2_top : graph2).
+Notation g2_one := (g2_one : graph2).
 
 (** * Isomorphim Theorem *)
 
@@ -31,15 +35,15 @@ Lemma iso_top (G : graph2) :
   (forall e : edge G, False) -> G ≃2 top.
 Proof.
   move => Dio A B. 
-  pose f (x : G) : @g2_top (flat_labels sym) := 
+  pose f (x : G) : g2_top := 
     if x == input then input else output.
-  pose f' (x : @g2_top (flat_labels sym)) : G := 
+  pose f' (x : g2_top) : G := 
     if x == input then input else output.
-  pose g (e : edge G) : edge (@g2_top (flat_labels sym)) := 
+  pose g (e : edge G) : edge g2_top := 
     match (B e) with end.
-  pose g' (e : edge (@g2_top (flat_labels sym))) : edge G := 
+  pose g' (e : edge g2_top) : edge G := 
     match e with inl e |inr e => vfun e end.
-  unshelve Iso2 (@Iso _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
+  unshelve Iso2 (@Iso _ _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
   - rewrite /f/f'/= => x.
     case: (boolP (x == input)) => [/eqP <-|/=]//. 
     move: (A x). case/setUP => /set1P => -> //. by rewrite eqxx.
@@ -59,13 +63,13 @@ Lemma iso_one (G : graph2) :
   (forall e : edge G, False) -> G ≃2 1.
 Proof.
   move => Dio A B. 
-  pose f (x : G) : @g2_one (flat_labels sym) := input.
-  pose f' (x : @g2_one (flat_labels sym)) : G := input.
-  pose g (e : edge G) : edge (@g2_one (flat_labels sym)) := 
+  pose f (x : G) : g2_one := input.
+  pose f' (x : g2_one) : G := input.
+  pose g (e : edge G) : edge g2_one := 
     match (B e) with end.
-  pose g' (e : edge (@g2_one (flat_labels sym))) : edge G := 
+  pose g' (e : edge g2_one) : edge G := 
     match e with end.
-  unshelve Iso2 (@Iso _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
+  unshelve Iso2 (@Iso _ _ _ _ (@Bij _ _ f f' _ _) (@Bij _ _ g g' _ _) xpred0 _)=>/=.
   - rewrite /f/f'/= => x.
     move: (A x). rewrite !inE -(eqP Dio) => /orP. by case => /eqP->.
   - by move => [].
@@ -149,7 +153,7 @@ simplifying their proofs (compared to the proofs underlying the ITP
 
 Lemma split_pip (G : graph2) : 
   connected [set: skeleton G] -> input != output :> G ->
-  G ≃2 @bgraph _ G IO input · (@igraph _ G input output · @bgraph _ G IO output).
+  G ≃2 @bgraph _ _ G IO input · (@igraph _ _ G input output · @bgraph _ _ G IO output).
 Proof.
   move => conn_G Dio. symmetry.
   have [Hi Ho] : input \in @CP (skeleton G) IO /\ output \in @CP (skeleton G) IO
@@ -177,7 +181,7 @@ Lemma split_cp (G : graph2) (u : skeleton G) :
   connected [set: skeleton G] -> u \in @cp G input output :\: IO ->
   edge_set (@bag G IO input) == set0 -> 
   edge_set (@bag G IO output) == set0 ->
-  G ≃2 @igraph _ G input u · (@bgraph _ G IO u · @igraph _ G u output).
+  G ≃2 @igraph _ _ G input u · (@bgraph _ _ G IO u · @igraph _ _ G u output).
 Proof.
   move => conn_G proper_u Ei0 Eo0. symmetry.
   have Dio: input != output :> G. 
@@ -286,7 +290,7 @@ Qed.
 
 Lemma componentless_top (G : graph2) : 
   input != output :> G -> @components G (~: IO) == set0 -> 
-  point (@remove_edges _ G (edge_set IO)) input output ≃2 top.
+  point (@remove_edges _ _ G (edge_set IO)) input output ≃2 top.
 Proof.
   move => Dio com0.
   have A (x: G) : x \in IO. 
@@ -307,7 +311,7 @@ Qed.
 
 Lemma split_io_edge (G : graph2) (e : edge G) : 
   e \in edges input output -> 
-  G ≃2 edge_graph2 1%lbl (elabel e) 1%lbl ∥ point (remove_edges [set e]) input output.
+  G ≃2 edge_graph2 1%CM (elabel e) 1%CM ∥ point (remove_edges [set e]) input output.
 Proof.
   move => e_io. symmetry. 
   rewrite /par/=/g2_par/=. 
@@ -315,7 +319,7 @@ Proof.
   apply: iso2_comp. apply: iso_iso2. apply: merge_add_edge. rewrite !merge_add_edgeE.
   apply: iso2_comp. apply: iso_iso2. apply: add_edge_iso. apply: merge_iso. 
     apply: union_C. rewrite !merge_isoE /=. 
-  pose k (x : @two_graph (flat_labels sym) tt tt) : remove_edges [set e] := 
+  pose k (x : @two_graph _ (flat sym) tt tt) : remove_edges [set e] := 
     match x with inl tt => input | inr tt => output end.
   eapply iso2_comp. apply: iso_iso2. apply: add_edge_iso. apply (merge_union_K (k := k)).
   - done.
@@ -324,7 +328,7 @@ Proof.
   - rewrite /= !merge_union_KE /= {}/k. 
     apply: iso2_comp. apply: iso_iso2. apply: iso_sym. apply: merge_add_edge. 
     Unshelve. (* why? *)
-    rewrite !(@merge_add_edgeE _ _ _ input (elabel e) output _).
+    rewrite !(@merge_add_edgeE _ _ _ _ input (elabel e) output _).
     apply: iso2_comp. apply: @merge_nothing. 
     + abstract (repeat constructor).
     + exact: split_io_edge_aux.
@@ -336,7 +340,7 @@ Proof.
   move => e_io lens_G. rewrite lens_io_set // inE in e_io. 
   rewrite /tm_. case: ifP e_io => //= [e_io _|eNio e_oi]; first exact: split_io_edge.
   rewrite <- cnv2I. 
-  have e_io : e \in @edges _ (g2_cnv G) input output by [].
+  have e_io : e \in @edges _ _ (g2_cnv G) input output by [].
   rewrite -> (split_io_edge e_io) at 1. by rewrite -> cnv2par. 
 Qed.
 

@@ -1,4 +1,5 @@
 Require Import Setoid Morphisms.
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries setoid_bigop structures pttdom.
 
@@ -11,25 +12,28 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** 2p algebras (2pdom algebras with top) *)
 
+(** TOTHINK: We could also let [ptt] inherit from [pttdom] and turn the record below into a factory *)
+
 (* 2p axioms *)
-Structure ptt :=
-  { ops:> ops_;
-    dot_eqv_: Proper (eqv ==> eqv ==> eqv) (@dot ops);
-    par_eqv_: Proper (eqv ==> eqv ==> eqv) (@par ops);
-    cnv_eqv_: Proper (eqv ==> eqv) (@cnv ops);
-    domE: forall x: ops, dom x ≡ 1 ∥ x·top;
-    parA_: forall x y z: ops, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
-    parC_: forall x y: ops, x ∥ y ≡ y ∥ x;
-    dotA_: forall x y z: ops, x · (y · z) ≡ (x · y) · z;
-    dotx1_: forall x: ops, x · 1 ≡ x;
-    cnvI_: forall x: ops, x°° ≡ x;
-    cnvpar_: forall x y: ops, (x ∥ y)° ≡ x° ∥ y°;
-    cnvdot_: forall x y: ops, (x · y)° ≡ y° · x°;
-    par11_: 1 ∥ 1 ≡ @one ops;
-    A10_: forall x y: ops, 1 ∥ x·y ≡ dom (x ∥ y°);
-    A11: forall x: ops, x · top ≡ dom x · top;
-    A12: forall x y: ops, (x∥1) · y ≡ (x∥1)·top ∥ y
+HB.mixin Record Ptt_of_Ops A of Ops_of_Type A & Setoid_of_Type A := 
+  { dot_eqv_: Proper (eqv ==> eqv ==> eqv) (dot : A -> A -> A);
+    par_eqv_: Proper (eqv ==> eqv ==> eqv) (par : A -> A -> A);
+    cnv_eqv_: Proper (eqv ==> eqv) (cnv : A -> A);
+    domE: forall x: A, dom x ≡ 1 ∥ x·top;
+    parA_: forall x y z: A, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
+    parC_: forall x y: A, x ∥ y ≡ y ∥ x;
+    dotA_: forall x y z: A, x · (y · z) ≡ (x · y) · z;
+    dotx1_: forall x: A, x · 1 ≡ x;
+    cnvI_: forall x: A, x°° ≡ x;
+    cnvpar_: forall x y: A, (x ∥ y)° ≡ x° ∥ y°;
+    cnvdot_: forall x y: A, (x · y)° ≡ y° · x°;
+    par11_: 1 ∥ 1 ≡ 1 :> A ;
+    A10_: forall x y: A, 1 ∥ x·y ≡ dom (x ∥ y°);
+    A11: forall x: A, x · top ≡ dom x · top;
+    A12: forall x y: A, (x∥1) · y ≡ (x∥1)·top ∥ y
   }.
+HB.structure Definition Ptt := { A of Ptt_of_Ops A & }.
+Notation ptt := Ptt.type.
 
 (** ** basic derivable laws  *)
 Section derived.
@@ -45,8 +49,8 @@ Section derived.
  Lemma A14_ (x y z: X): dom x·(y∥z) ≡ dom x·y ∥ z.
  Proof. by rewrite domE parC_ A12 (A12 _ y) parA_. Qed.
 
- Canonical Structure pttdom_of: pttdom := 
-   Build_pttdom 
+ HB.instance Definition pttdom_of_ptt := 
+   Pttdom_of_Ops.Build (Ptt.sort X)
     (@dot_eqv_ X)
     (@par_eqv_ X)
     (@cnv_eqv_ X)
@@ -62,7 +66,7 @@ Section derived.
     (@A10_ X)
     (A13_)
     (A14_).
-
+ 
  Lemma parxtop (x: X): x ∥ top ≡ x.
  Proof.
    symmetry. generalize (A12 1 x).
@@ -91,7 +95,7 @@ Section terms.
  | tm_top: term
  | tm_var: A -> term.
  Section e.
- Variable (X: ops_) (f: A -> X).
+ Variable (X: Ops.type) (f: A -> X).
  Fixpoint eval (u: term): X :=
    match u with
    | tm_dot u v => eval u · eval v
@@ -113,36 +117,33 @@ Section terms.
      intros ?? H X f. specialize (H X f). by symmetry. 
      intros ??? H H' X f. specialize (H X f). specialize (H' X f). etransitivity. apply H. apply H'.
  Qed.
- Canonical Structure tm_setoid := Setoid tm_eqv_equivalence. 
- Canonical Structure tm_ops_ :=
-   {| setoid_of_ops := tm_setoid;
-      dot := tm_dot;
-      par := tm_par;
-      cnv := tm_cnv;
-      dom := tm_dom;
-      one := tm_one;
-      top := tm_top |}.
+ HB.instance Definition tm_setoid := Setoid_of_Type.Build term tm_eqv_equivalence.
  
- (* quotiented terms indeed form a 2pdom algebra *)
- Definition tm_ptt: ptt.
-  refine (@Build_ptt tm_ops_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-    abstract (repeat intro; simpl; by apply dot_eqv_).
-    abstract (repeat intro; simpl; by apply par_eqv_).
-    abstract (repeat intro; simpl; by apply cnv_eqv_).
-    abstract (repeat intro; simpl; by apply domE).
-    abstract (repeat intro; simpl; by apply parA_).
-    abstract (repeat intro; simpl; by apply parC_).
-    abstract (repeat intro; simpl; by apply dotA_).
-    abstract (repeat intro; simpl; by apply dotx1_).
-    abstract (repeat intro; simpl; by apply cnvI_).
-    abstract (repeat intro; simpl; by apply cnvpar_).
-    abstract (repeat intro; simpl; by apply cnvdot_).
-    abstract (repeat intro; simpl; by apply par11_).
-    abstract (repeat intro; simpl; by apply A10_).
-    abstract (repeat intro; simpl; by apply A11).
-    abstract (repeat intro; simpl; by apply A12).
+ HB.instance Definition tm_ops := Ops_of_Type.Build term tm_dot tm_par tm_cnv tm_dom tm_one tm_top.
+
+ Let tm_eqv_eqv (u v: term) (X: ptt) (f: A -> X) : u ≡ v -> eval f u ≡ eval f v. 
+ Proof. exact. Qed.
+ 
+ (* quotiented terms indeed form a 2p algebra *)
+ Definition tm_ptt : Ptt_of_Ops.axioms_ tm_setoid tm_ops.
+  refine (Ptt_of_Ops.Build term _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+    abstract (repeat intro; simpl; by apply dot_eqv_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply par_eqv_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply cnv_eqv_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply domE; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply parA_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply parC_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply dotA_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply dotx1_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply cnvI_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply cnvpar_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply cnvdot_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply par11_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply A10_; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply A11; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply A12; apply: tm_eqv_eqv).
  Defined.
- (* Canonical tm_ptt.  *)
+ HB.instance term tm_ptt.
 
 End terms.
 Declare Scope ptt_ops.

@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Require Import edone finite_quotient preliminaries set_tac.
 Require Import digraph sgraph treewidth minor checkpoint.
-Require Import equiv structures pttdom ptt mgraph mgraph2 ptt mgraph2_tw2 skeleton.
+Require Import equiv setoid_bigop structures pttdom ptt mgraph mgraph2 ptt mgraph2_tw2 skeleton.
 Require Import bounded extraction_def extraction_iso.
 Require Import excluded.
 
@@ -16,17 +16,17 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section ExtractionTop.
 Variable sym : Type.
-Notation graph := (graph (flat_labels sym)).
-Notation graph2 := (graph2 (flat_labels sym)).
+Notation graph := (graph unit (flat sym)).
+Notation graph2 := (graph2 unit (flat sym)).
 Open Scope ptt_ops.
 
 
 (** * Extraction from Disconnected Graphs *)
 
-Arguments iso_id {L G}.
-Arguments merge_union_K_l [L F K i o h] k.
+Arguments iso_id {Lv Le G}.
+Arguments merge_union_K_l [Lv Le F K i o h] k.
 
-Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ g2_top _) (inr input) (inr output).
+Lemma iso2_TGT (G : graph2) : top · G · top ≃2 point (G ⊎ g2_top) (inr input) (inr output).
 Proof. 
   rewrite-> topL, topR => /=. 
   Iso2 (iso_sym (union_A _ _ _)).
@@ -45,7 +45,7 @@ Proof.
 Qed.
 
 Lemma par_component (G : graph) (H : graph2) :
-  point (G ⊎ g2_top _) (inr input) (inr output) ∥ H ≃2 point (G ⊎ H) (inr input) (inr output).
+  point (G ⊎ g2_top) (inr input) (inr output) ∥ H ≃2 point (G ⊎ H) (inr input) (inr output).
 Proof.
   rewrite-> par2C. 
   setoid_rewrite-> (merge_iso2 (union_A _ _ _)) =>/=.
@@ -196,7 +196,7 @@ Proof.
   { exists tunit; exists (fun _ => [set: G]). split; first exact: triv_sdecomp.
     apply: leq_trans (width_bound _) _. by rewrite G_empty. }
   move=>HG.
-  have [G' [iso_G _]] := flesh_out (L:=flat_labels nat) 0 tt x.
+  have [G' [iso_G _]] := flesh_out (0 : flat nat) tt x.
   apply (iso_K4_free iso_G) in HG.
   apply minor_exclusion_2p in HG as (T&B&D&W).
   case: (decomp_iso D iso_G) => B' D' W'.

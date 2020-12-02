@@ -822,7 +822,7 @@ Qed.
 
 (** *** Edge Version *)
 
-Corollary independent_walks L (G : graph L) (a b : G) n : 
+Corollary independent_walks Lv Le (G : graph Lv Le) (a b : G) n : 
   a != b -> (forall E, eseparates a b E -> n <= #|E|) -> 
   exists2 W : 'I_n -> seq (edge G), 
     forall i, walk a b (W i) & forall i j, i != j -> [disjoint W i & W j].

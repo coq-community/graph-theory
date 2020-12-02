@@ -1,7 +1,7 @@
 Require Import RelationClasses Setoid.
 From mathcomp Require Import all_ssreflect.
 Require Import edone set_tac finite_quotient preliminaries digraph sgraph treewidth minor equiv.
-Require Import structures mgraph pttdom ptt mgraph2 skeleton.
+Require Import setoid_bigop structures mgraph pttdom ptt mgraph2 skeleton.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,9 +9,9 @@ Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
 Section Subalgebra.
-Variable L : labels.
-Notation graph := (graph L).
-Notation graph2 := (graph2 L).
+Variable (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
 
 Implicit Types (G H : graph) (U : sgraph) (T : forest).
 
@@ -48,16 +48,16 @@ Lemma hom_eqL (V : finType) (e1 e2 : rel V) (G : sgraph) (h : V -> G)
 Proof. move => E hom_h x y. rewrite /edge_rel/= -E. exact: hom_h. Qed.
 
 
-Lemma skel_union_join (G1 G2 : graph) : @sk_rel _ (union G1 G2) =2 @join_rel G1 G2.
+Lemma skel_union_join (G1 G2 : graph) : @sk_rel _ _ (union G1 G2) =2 @join_rel G1 G2.
 Proof.
   move => [x|x] [y|y] /=. 
-  - rewrite /edge_rel/= sum_eqE. 
+  - rewrite /edge_rel/=/sk_rel sum_eqE. 
     case: (boolP (x == y)) => //= E. apply/existsP/existsP. 
     + move => [[e|e]]; rewrite !inE //= !sum_eqE. by exists e; rewrite !inE.
     + move => [e] H. exists (inl e). by rewrite !inE /= !sum_eqE in H *. 
   - apply: contraTF isT => /existsP [[e|e]]; by rewrite !inE //= andbC.
   - apply: contraTF isT => /existsP [[e|e]]; by rewrite !inE //= andbC.
-  - rewrite /edge_rel/= sum_eqE. 
+  - rewrite /edge_rel/=/sk_rel sum_eqE. 
     case: (boolP (x == y)) => //= E. apply/existsP/existsP. 
     + move => [[e|e]]; rewrite !inE //= !sum_eqE. by exists e; rewrite !inE.
     + move => [e] H. exists (inr e). by rewrite !inE /= !sum_eqE in H *. 
@@ -215,7 +215,8 @@ End Subalgebra.
 
 Section s.
 Variable A: Type.
-Let graph_of_term: term A -> graph2 (flat_labels A) := eval (@g2_var (flat_labels A)).
+Let graph_of_term: term A -> graph2 unit (flat A) := eval (fun a : flat A => g2_var _ a). 
+
 Theorem graph_of_TW2 (u : term A) : 
   exists T D, [/\ @sdecomp T (sskeleton (graph_of_term u)) D & width D <= 3].
 Proof.

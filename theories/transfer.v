@@ -17,12 +17,13 @@ Set Bullet Behavior "Strict Subproofs".
 (** ** Opening and packing of type-based graphs *)
 Ltac e2split := do 2 eexists; split; [split|].
 
-Lemma iso2_intro (L : labels) (G H : graph2 L) (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
+Lemma iso2_intro (Lv : comMonoid) (Le : elabelType) (G H : graph2 Lv Le) 
+      (hv : bij G H) (he : bij (edge G) (edge H)) (hd : edge G -> bool) :
   is_ihom hv he hd -> hv input = input -> hv output = output -> G ≃2 H.
 Proof. move => hom_h. by exists (Iso hom_h). Defined.
 
 Tactic Notation "iso2" uconstr(hv) uconstr(he) uconstr(hd) := 
-  match goal with |- ?G ≃2 ?H => refine (@iso2_intro _ G H hv he hd _ _ _) end.
+  match goal with |- ?G ≃2 ?H => refine (@iso2_intro _ _ G H hv he hd _ _ _) end.
 
 
 (** In order turn packaged graphs into open graphs, we need to inject
@@ -47,11 +48,9 @@ Arguments inj_v {T}.
 Arguments inj_e {T}.
 
 Section Open.
-Variable L: labels.
-Notation Le := (structures.le L).                
-Notation Lv := (structures.lv L).
-Notation graph := (graph L).
-Notation graph2 := (graph2 L).
+Variable (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
 Variables (G : graph2).
 Context `{inh_type Le}.
 
@@ -117,11 +116,9 @@ Hint Resolve freshP : vset.
 
 
 Section Pack.
-Variable L: labels.
-Notation Le := (structures.le L).
-Notation Lv := (structures.lv L).
-Notation graph := (graph L).
-Notation graph2 := (graph2 L).
+Variable (Lv : comMonoid) (Le : elabelType).
+Notation graph := (graph Lv Le).
+Notation graph2 := (graph2 Lv Le).
 Variable (G : pre_graph Lv Le).
 Context {graph_G : is_graph G}.
 
@@ -159,8 +156,8 @@ Lemma pack_fsval (v : vset G) : pack_v (fsval v) = v.
 Proof. apply: val_inj => //=. by rewrite pack_vK ?fsvalP. Qed.
 
 End Pack.
-Arguments pack [_] G {_} , [_] G graph_G.
-Arguments pack_v [L G _] x,[L] G [_] x. 
+Arguments pack [_ _] G {_} , [_ _] G graph_G.
+Arguments pack_v [Lv Le G _] x,[Lv Le] G [_] x. 
 Arguments pack_v : simpl never.
 
 
@@ -171,9 +168,9 @@ Section PttdomGraphTheory.
 Variable tm : pttdom. 
 Notation test := (test tm).
 
-Notation pre_graph := (pre_graph test (car (setoid_of_ops (pttdom.ops tm)))).
-Notation graph := (graph (pttdom_labels tm)).
-Notation graph2 := (graph2 (pttdom_labels tm)).
+Notation pre_graph := (pre_graph test tm).
+Notation graph := (graph test tm).
+Notation graph2 := (graph2 test tm). 
 
 (** We define isomorphisms of open graphs via packing *)
 Set Primitive Projections.
@@ -335,13 +332,13 @@ Proof. case: h => /= isG isH h /= xG. rewrite /vfun_of vfun_bodyE. exact: valP. 
 Lemma oiso2_input (F G : pre_graph) (i : F ⩭2 G) : i (p_in F) = p_in G.
 Proof. 
   case: i => isF isG i /=. rewrite vfun_bodyE => [|p]. exact: p_inP.
-  rewrite [Sub _ _](_ : _ = @input _ (pack F)) ?iso2_input //. exact: val_inj. 
+  rewrite [Sub _ _](_ : _ = @input _ _ (pack F)) ?iso2_input //. exact: val_inj. 
 Qed.
 
 Lemma oiso2_output (F G : pre_graph) (i : F ⩭2 G) : i (p_out F) = p_out G.
 Proof. 
   case: i => isF isG i /=. rewrite vfun_bodyE => [|p]. exact: p_outP.
-  rewrite [Sub _ _](_ : _ = @output _ (pack F)) ?iso2_output //. exact: val_inj. 
+  rewrite [Sub _ _](_ : _ = @output _ _ (pack F)) ?iso2_output //. exact: val_inj. 
 Qed.
 
 Lemma oiso2_id G (isG : is_graph G) : G ⩭2 G. 
@@ -375,11 +372,11 @@ Lemma oiso2_pIO_vfun (F G : pre_graph) (isF : is_graph F) (isG : is_graph G)
 Proof. by rewrite (oiso2_pIO (OIso2 i)) //= vfun_bodyE. Qed. 
 
 Lemma pack_v_IO (F : pre_graph) (isF : is_graph F) z (Hz : z \notin pIO F) : 
-  z \in vset F -> @pack_v _ F isF z \notin IO.
+  z \in vset F -> @pack_v _ _ F isF z \notin IO.
 Proof. move => Vz. apply: contraNN Hz. by rewrite pack_vE !inE. Qed.
 
 Lemma Sub_endpt (G : pre_graph) (isG : is_graph G) (e : ET) (He : e \in eset G) b (p : endpt G b e \in vset G) :
-  Sub (endpt G b e) p = @endpoint _ (pack G) b (Sub e He).
+  Sub (endpt G b e) p = @endpoint _ _ (pack G) b (Sub e He).
 Proof. exact: val_inj. Qed.
 
 Lemma oiso2_endpoint (F G : pre_graph) (i : F ⩭2 G) (e : ET) b :
@@ -818,14 +815,14 @@ Proof with eauto with vset.
   - move => x z e u Iz IOz arc_e xDz i.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     have Vz : z \in vset F by apply: oarc_vsetR arc_e.
-    exists (H[adt i x <- [dom (u·lv H (i z))]] \ i z)%O. split.
+    exists (H[adt i x <- [dom (u·elem_of (lv H (i z)))]] \ i z)%O. split.
     + apply: (ostep_v1 (e := efun_of i e)). 
       * by rewrite oiso2_edges_at // Iz imfset1. 
       * by rewrite -oiso2_pIO.
       * exact: oiso2_oarc arc_e.
       * apply: contra_neq xDz. apply: vfun_of_inj...
     + unshelve apply: oiso2_remove_vertex_. apply: oiso2_add_test...
-      * by rewrite infer_testE  (rwT (oiso2_lv i Vz)). 
+      * by rewrite eqv_testE (rwT (oiso2_lv i Vz)). 
       * done.
       * done.
       * by rewrite oiso2_add_testE. 
@@ -833,7 +830,7 @@ Proof with eauto with vset.
     have [isF isH] : is_graph F /\ is_graph H by eauto with typeclass_instances.
     have Vz : z \in vset F...
     set e : ET := maxn (efun_of i e1) (efun_of i e2).
-    exists ((H \ i z) ∔ [e, i x, u·lv H (i z)·v,i y])%O. split.
+    exists ((H \ i z) ∔ [e, i x, u·elem_of (lv H (i z))·v,i y])%O. split.
     + apply: (ostep_v2).
       * by rewrite oiso2_edges_at // Iz imfset1U imfset1.
       * apply: contra_neq e1De2. apply: efun_of_inj... 
