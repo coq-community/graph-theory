@@ -19,14 +19,17 @@ Local Open Scope cm_scope.
 
 Lemma two_edges (a b c d: Lv) (u v: Le):
   edge_graph a u b ⊎ edge_graph c v d
-≃ (two_graph a b ⊎ two_graph c d) ∔ [inl (inl tt), u, inl (inr tt)] ∔ [inr (inl tt), v, inr (inr tt)].
+≃ (two_graph a b ⊎ two_graph c d) 
+  ∔ [inl (inl tt), u, inl (inr tt)] 
+  ∔ [inr (inl tt), v, inr (inr tt)].
 Proof.
   etransitivity. apply (union_add_edge_l _ _ _ _). 
   etransitivity. apply (add_edge_iso (union_add_edge_r _ _ _ _) _ _ _).
   apply add_edge_C.
 Defined.
 
-Definition two_option_void: bij (option (void+void) + option (void+void)) (option (option ((void+void)+void))).
+Definition two_option_void: 
+  bij (option (void+void) + option (void+void)) (option (option ((void+void)+void))).
 Proof.
   etransitivity. apply sum_option_r. apply option_bij.
   etransitivity. apply sum_bij. reflexivity. apply sumxU.
@@ -167,7 +170,8 @@ Proof.
   all: by rewrite merge_sameE. 
 Defined.
 
-(* TOFIX: even with Opaque merge_iso h_merge, the rewrite merge_add_edgeE succeeds by unfolding if we don't do the rewrite merge_isoE first. *)
+(* TOFIX: even with Opaque merge_iso h_merge, the rewrite merge_add_edgeE 
+   succeeds by unfolding if we don't do the rewrite merge_isoE first. *)
 Lemma merge_add_edgeLE G H x y u l i o z:
   @merge_add_edgeL G H x y u l i o (\pi z) = (\pi z).
 Proof.
@@ -212,7 +216,7 @@ Proof.
   eapply iso2_comp.
   refine (iso_iso2' (h:=union_merge_l _ _) _ _).
   1,2: rewrite union_merge_lEl//.
-  eapply iso2_sym.              (* just so that [merge_add_vertexLE] gets easier below... *)
+  eapply iso2_sym.  (* just so that [merge_add_vertexLE] gets easier below... *)
   apply merge_same'.
   by rewrite admissible_map.
 Defined.

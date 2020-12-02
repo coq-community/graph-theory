@@ -14,7 +14,6 @@ Set Bullet Behavior "Strict Subproofs".
 (** 2pdom-operations on such graphs and proof that they form a 2pdom-algebra *)
 (** local operations on such graphs (for the rewrite system) *)
 
-
 (* TODO:
  - input/output as a function from [bool]?
  - recheck status of [unr/unl]
@@ -30,7 +29,6 @@ Record graph2 Lv Le :=
 Arguments input {_ _ _}, [_ _] G : rename.
 Arguments output {_ _ _}, [_ _] G : rename.
 Notation point G := (@Graph2 _ _ G).
-
 
 Section s1.
     
@@ -187,10 +185,10 @@ Definition g2_var u : graph2 := edge_graph2 1 u 1.
 HB.instance Definition g2_ops := 
   Ops_of_Type.Build (mgraph2.graph2 LvS LeS) g2_dot g2_par g2_cnv g2_dom g2_one g2_top.
 
-(** ** laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) *)
-(* mostly recasting the ones proved in [mgraph]  *)
+(** Laws about low level operations ([union]/[merge]/[add_vertex]/[add_vlabel]/[add_edge]) 
+    (mostly recasting the ones proved in [mgraph]) *)
 
-(* isomorphisms about [unit_graph2] *)
+(** isomorphisms about [unit_graph2] *)
 
 Local Arguments unit_graph_iso [Lv Le x y] _, [Lv] Le [x y] _. 
 Local Arguments add_vlabel_two [Lv Le] a b x c, [Lv] Le a b x c.
@@ -198,12 +196,12 @@ Local Arguments add_vlabel_two [Lv Le] a b x c, [Lv] Le a b x c.
 Global Instance unit_graph2_iso: CProper (eqv ==> iso2) (@unit_graph2 Lv Le).
 Proof. intros a b e. Iso2 (unit_graph_iso e). Defined.
 
-(* isomorphisms about [two_graph2] *)
+(** isomorphisms about [two_graph2] *)
 
 Global Instance two_graph2_iso: CProper (eqv ==> eqv ==> iso2) (@two_graph2 Lv Le).
 Proof. intros a b ab c d cd. Iso2 (union_iso (unit_graph_iso ab) (unit_graph_iso cd)). Defined.
 
-(* isomorphisms about [two_vertex2] *)
+(** isomorphisms about [two_vertex2] *)
 
 Global Instance add_vertex2_iso: CProper (iso2 ==> eqv ==> iso2) (@add_vertex2 Lv Le).
 Proof.
@@ -211,7 +209,7 @@ Proof.
   Iso2 (union_iso FG (unit_graph_iso uv))=>/=; rewrite /unl/=; f_equal; apply FG.
 Defined.
 
-(* isomorphisms about [add_edge2] *)
+(** isomorphisms about [add_edge2] *)
 
 Lemma add_edge2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') y y' (ey: h y = y') u v (e: u ≡ v):
   F ∔ [x, u, y] ≃2 G ∔ [x', v, y'].
@@ -232,12 +230,12 @@ Proof. Iso2 (add_edge_rev _ _ e). Defined.
 Lemma add_edge2_vlabel F x a y u z: F [tst x <- a] ∔ [y, u, z] ≃2 F ∔ [y, u, z] [tst x <- a].
 Proof. Iso2 (add_edge_vlabel _ _ _). Defined.
 
-(* isomorphisms about [edge_graph2] *)
+(** isomorphisms about [edge_graph2] *)
 
 Global Instance edge_graph2_iso: CProper (eqv ==> eqv ==> eqv ==> iso2) (@edge_graph2 Lv Le).
 Proof. intros a b ab u v uv c d cd. refine (add_edge2_iso' (two_graph2_iso ab cd) _ _ uv). Defined.
 
-(* isomorphisms about [add_vlabel2] *)
+(** isomorphisms about [add_vlabel2] *)
 
 Lemma add_vlabel2_iso'' F G (h: F ≃2 G) x x' (ex: h x = x') a b (e: a ≡ b): F [tst x <- a] ≃2 G [tst x' <- b].
 Proof. Iso2 (add_vlabel_iso'' ex e); apply h. Defined.
@@ -268,12 +266,11 @@ Proof. Iso2 (add_vlabel_edge _ _ _ _ _); by case x; case. Defined.
 Lemma add_vlabel2_mon0 G x: G [tst x <- 1] ≃2 G.
 Proof. Iso2 (add_vlabel_mon0 x). Defined.
 
+(** isomorphisms about [merge] *)
 
-(* isomorphisms about [merge] *)
-
+(** note: h should be informative so that map_pairs can be simplified. *)
 Lemma merge2_iso2 F G (h: F ≃2 G) l:
   merge2_seq F l ≃2 merge2_seq G (map_pairs h l).
-  (* note: h should be informative so that map_pairs can be simplified... *)
 Proof. Iso2 (merge_iso h l); by rewrite h_mergeE ?iso2_input ?iso2_output. Qed.
 
 Lemma merge_iso2 (F G : graph) (h: F ≃ G) l (i o: F):
@@ -545,7 +542,8 @@ Proof.
 Qed.
 
 (* TOFIX: topL should be obtained from topR by duality *)
-Lemma topL (F: graph2): top·F ≃2 point (F ⊎ unit_graph 1%CM) (@unr _ _ F (unit_graph _) tt) (unl output).
+Lemma topL (F: graph2): 
+  top·F ≃2 point (F ⊎ unit_graph 1%CM) (@unr _ _ F (unit_graph _) tt) (unl output).
 Proof.
   irewrite (merge_iso2 (union_C _ _))=>/=.
   etransitivity. refine (merge_iso2 (union_A _ _ _) _ _ _)=>/=.
@@ -554,7 +552,8 @@ Proof.
   intros []. apply /eqquotP. eqv.
 Qed.
 
-Lemma topR (F: graph2): F·top ≃2 point (F ⊎ unit_graph 1%CM) (unl input) (@unr _ _ F (unit_graph _) tt).
+Lemma topR (F: graph2): 
+  F·top ≃2 point (F ⊎ unit_graph 1%CM) (unl input) (@unr _ _ F (unit_graph _) tt).
 Proof.
   irewrite (merge_iso2 (union_iso iso_id (union_C _ _))).
   irewrite (merge_iso2 (union_A _ _ _)).
@@ -589,10 +588,9 @@ Proof.
   apply /eqquotP. apply eqv_clot_trans with (inr tt); eqv.
 Qed.
 
+(** these two laws are skipped since we go through 2p algebra *)
+
 (*
-
-(* these two laws are skipped since we go through 2p algebra *)
-
 Lemma g2_A13 (F G: graph2): dom(F·G) ≃2 dom(F·dom G).
 Proof. reflexivity. Qed.
 
@@ -642,7 +640,7 @@ Proof. intros F F' f. eexists; apply f. Qed.
 Global Instance dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
-(* 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
+(** 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
 Definition g2_ptt: Ptt_of_Ops.axioms_ g2_setoid g2_ops.
   refine (Ptt_of_Ops.Build (mgraph2.graph2 LvS LeS) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
      abstract apply CProper2, dot_iso2. 
@@ -685,7 +683,9 @@ Proof.
   apply add_vlabel2_unit.
 Qed.
 
-Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt].
+Lemma par2edgeunit a u b c: 
+  edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt].
+Proof.
   unshelve Iso2
    (@merge_surj _ _ (edge_graph2 a u b ⊎ unit_graph2 c) _ (unit_graph2 (a⊗(b⊗c)) ∔ [tt, u, tt])
      (fun _ => tt)
@@ -702,7 +702,7 @@ Lemma par2edgeunit a u b c: edge_graph2 a u b ∥ unit_graph2 c ≃2 unit_graph2
 Qed.
 
 
-(* lemmas for term extraction *)
+(** lemmas for term extraction *)
 
 (** Extensionality lemma for [subgraph_for], the general construction
 underlying bag and interval subgraphs used in the extraction

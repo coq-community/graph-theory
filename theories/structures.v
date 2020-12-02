@@ -1,7 +1,7 @@
 Require Import RelationClasses Morphisms Relation_Definitions.
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries setoid_bigop.
+Require Import edone preliminaries setoid_bigop bij.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -132,6 +132,15 @@ Qed.
 Lemma eq_unit (a b: unit): a = b.
 Proof. by case a; case b. Qed.
 Hint Resolve eq_unit: core.
+
+Lemma big_bij_eq (T : comMonoid) (I1 I2 : finType) (F : I1 -> T) (f : bij I1 I2) (y : I2) :
+  \big[cm_op/1%CM]_(x | f x == y) F x ≡ F (f^-1 y).
+Proof. apply: big_pred1 => x /=. exact: bij_eqLR. Qed.
+
+(* TOTHINK: this is necessary because f^-1 is a bijective function and not a bijection ... *)
+Lemma big_bij_eq' (T : comMonoid) (I1 I2 : finType) (F : I1 -> T) (f : bij I2 I1) (y : I2) :
+  \big[cm_op/1%CM]_(x | f^-1 x == y) F x ≡ F (f y).
+Proof. apply: big_pred1 => x /=. by rewrite eq_sym -bij_eqLR eq_sym. Qed.
 
 (** ** Structure Inference *)
 
