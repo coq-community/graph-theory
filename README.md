@@ -1,13 +1,17 @@
+<!---
+This file was generated from `meta.yml`, please do not edit manually.
+Follow the instructions on https://github.com/coq-community/templates to regenerate.
+--->
 # Graph Theory
 
-[![CI][action-shield]][action-link]
+[![Docker CI][docker-action-shield]][docker-action-link]
 [![Contributing][contributing-shield]][contributing-link]
 [![Code of Conduct][conduct-shield]][conduct-link]
 [![Zulip][zulip-shield]][zulip-link]
 [![DOI][doi-shield]][doi-link]
 
-[action-shield]: https://github.com/coq-community/graph-theory/workflows/CI/badge.svg?branch=master
-[action-link]: https://github.com/coq-community/graph-theory/actions?query=workflow%3ACI
+[docker-action-shield]: https://github.com/coq-community/graph-theory/workflows/Docker%20CI/badge.svg?branch=master
+[docker-action-link]: https://github.com/coq-community/graph-theory/actions?query=workflow:"Docker%20CI"
 
 [contributing-shield]: https://img.shields.io/badge/contributions-welcome-%23f7931e.svg
 [contributing-link]: https://github.com/coq-community/manifesto/blob/master/CONTRIBUTING.md
@@ -44,7 +48,7 @@ isomorphism).
 - Additional dependencies:
   - MathComp's SSReflect library, version 1.10 or later
   - MathComp's finmap library
-  - Hierarchy Builder
+  - Hierarchy Builder, version 0.10 or later
 - Coq namespace: `GraphTheory`
 - Related publication(s):
   - [Graph Theory in Coq - Minors, Treewidth, and Isomorphisms](https://hal.archives-ouvertes.fr/hal-02316859) doi:[10.1007/s10817-020-09543-2](https://doi.org/10.1007/s10817-020-09543-2)
