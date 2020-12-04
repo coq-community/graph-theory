@@ -29,6 +29,9 @@ publications:
 - pub_url: https://hal.archives-ouvertes.fr/hal-01703922
   pub_title: A Formal Proof of the Minor-Exclusion Property for Treewidth-Two Graphs
   pub_doi: 10.1007/978-3-319-94821-8_11
+- pub_url: https://drops.dagstuhl.de/opus/volltexte/2019/11091/
+  pub_title: Formalization of the Domination Chain with Weighted Parameters (Short Paper)
+  pub_doi: 10.4230/LIPIcs.ITP.2019.36
 
 authors:
 - name: Christian Doczkal
