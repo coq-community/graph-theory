@@ -9,6 +9,7 @@ digraph dependencies {
 		"bij";
 		"finite_quotient";
 		"equiv";
+		"setoid_bigop";
 	}
 	subgraph { # general purpose graph lib
 		node [style=filled; color="orange"];
@@ -20,6 +21,7 @@ digraph dependencies {
 		"connectivity";
 		"excluded";
 		"checkpoint";
+		"dom";
 	}
 	subgraph { # 2p algebra of multigraphs (JAR19 generalised in CPP20)
 		node [style=filled; color="magenta3"];
