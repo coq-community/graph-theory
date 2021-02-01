@@ -28,6 +28,34 @@ Definition minor_rmap (G H : sgraph) (phi : H -> {set G}) :=
      (forall x y : H, x != y -> [disjoint phi x & phi y]) &
      (forall x y : H, x -- y -> neighbor (phi x) (phi y))].
 
+(** introduction lemma for minor maps, that uses an injection [m : H -> nat] 
+to order the vertices and reduce the number of cases when constructing minor
+maps from constant graphs (e.g., 'K_5 or 'K_3,3). *)
+
+Lemma ordered_rmap (G H : sgraph) (phi : H -> {set G}) (m : H -> nat) :
+  injective m ->
+  [/\ forall x : H, phi x != set0, 
+     forall x : H, sgraph.connected (phi x),
+     forall x y : H, m x < m y -> x != y -> [disjoint phi x & phi y]
+   & forall x y : H, m x < m y -> x -- y -> neighbor (phi x) (phi y)]
+  -> minor_rmap phi.
+Proof.
+move => inj_m [P1 P2 P3 P4]; split => //.
+- move => i j iNj. 
+  wlog iltj: i j iNj / m i < m j; last exact: P3.
+  move => W. case: (ltngtP (m i) (m j)) => [||E].
+  +  exact: W.
+  + by rewrite disjoint_sym; apply: W; rewrite eq_sym.
+  + apply: contra_neqT iNj => _. exact: inj_m E. 
+- move => i j iNj.
+  wlog iltj: i j iNj / m i < m j; last exact: P4.
+  move => W. case: (ltngtP (m i) (m j)) => [||E].
+  + exact: W.
+  + by rewrite neighborC; apply: W; rewrite sgP.
+  + apply: contraTT iNj => _. by rewrite (inj_m _ _ E) sgP. 
+Qed.
+Arguments ordered_rmap [G H phi] m.  
+
 Lemma minor_map_rmap (G H : sgraph) (phi : H -> {set G}) : 
   minor_rmap phi -> minor_map (fun x : G => [pick x0 : H | x \in phi x0]).
 Proof.
@@ -87,11 +115,6 @@ Proof. move/minor_map_rmap. exact: minor_of_map. Qed.
 Lemma minorRE G H : minor G H -> exists phi : H -> {set G}, minor_rmap phi.
 Proof. case => phi /minor_rmap_map D. eexists. exact: D. Qed.
 
-Lemma mem_bigcup (T1 T2 : finType) (F : T1 -> {set T2}) (P : pred T1) z y : 
-  P y -> z \in F y -> z \in \bigcup_(x | P x) F x.
-Proof. move => Py zF. by apply/bigcupP; exists y; rewrite ?yA. Qed.
-Arguments mem_bigcup [T1 T2 F P z] y _ _.
-
 Lemma minor_rmap_comp (G H K : sgraph) (f : H -> {set G}) (g : K -> {set H}) :
   minor_rmap f -> minor_rmap g -> minor_rmap (fun x => \bigcup_(y in g x) f y).
 Proof.
@@ -148,6 +171,8 @@ Proof.
     exists x0. exists y0. rewrite !inE in Hx' Hy' Hx0 Hy0 *. 
     split => //; reflect_eq; by rewrite (Hx0,Hy0) /= (Hx',Hy'). 
 Qed.
+
+
 
 Lemma minor_trans : Transitive minor.
 Proof. 

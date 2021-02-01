@@ -1,4 +1,4 @@
-Require Import RelationClasses Morphisms Setoid Omega.
+Require Import RelationClasses Morphisms Setoid Lia.
 
 From mathcomp Require Import all_ssreflect.
 
@@ -40,7 +40,7 @@ Ltac normH := match goal
   | [ H : is_true (_ == _) |- _] => move/eqP : H 
   end.
 Ltac elim_ops := rewrite -multE -plusE -!(rwP leP).
-Ltac somega := repeat normH; elim_ops; intros; omega.
+Ltac somega := repeat normH; elim_ops; intros; lia.
 
 Lemma measure_card (G' G : graph2) : 
   #|edge G'| < #|edge G| -> measure G' < measure G.

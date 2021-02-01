@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import edone preliminaries digraph sgraph mgraph set_tac.
+Require Import edone preliminaries digraph mgraph sgraph set_tac.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -374,11 +374,24 @@ Section VSeparator.
 Variable (G : sgraph).
 Implicit Types (x y z u v : G) (S U V : {set G}).
 
+Lemma separates_sym x y S : separates x y S <-> separates y x S.
+Proof.
+suff X u v: separates u v  S -> separates v u S by split; exact: X.
+move => [uNS vNS P]; split => // p; have [z] := P (prev p). 
+by rewrite mem_prev; exists z.
+Qed.
+
 Fact separates0P x y : reflect (separates x y set0) (~~ connect edge_rel x y).
 Proof.
   apply:(iffP idP) => [nconn_xy|]. 
   - rewrite /separates !inE. split => // p. by rewrite Path_connect in nconn_xy.
   - case => _ _ H. apply/negP. case/connect_irredP => p _. case: (H p) => z. by rewrite inE.
+Qed.
+
+Lemma opn_separates x y : x != y -> ~~ x -- y -> separates x y N(x).
+Proof.
+move=> xDy xNy. split; rewrite ?inE ?sg_irrefl // => p.
+case: (splitL p) => // x' [xx'] [p'] [->] _. by exists x'; rewrite !inE.
 Qed.
 
 (** TODO: this does not actually depend on G being simple *)
@@ -391,10 +404,27 @@ Proof.
   exact/subsetP/(exists_inPn Hp). 
 Qed.
 
+Lemma induced_separates (V : {set G}) (S : {set induced V}) (x y : induced V) :
+  separates x y S -> separates (val x) (val y) (val @: S :|: ~:V).
+Proof.
+case => xS yS sepS.
+split => [||p]; rewrite ?inE ?negb_or ?negbK ?inj_imset ?xS ?yS ?(valP x) ?(valP y) //=. 
+case: (boolP (p \subset V)) => [/subsetP subA|/subsetPn [z Z1 Z2]]; last first.
+   by exists z; rewrite ?inE ?Z1 ?Z2.
+have [q nodes_q] := Path_to_induced subA.
+have [z Z1 Z2] := sepS q.
+exists (val z); by [rewrite mem_path -nodes_q map_f|rewrite !inE inj_imset ?Z2].
+Qed.
+
+
 Definition vseparator U := exists x y, separates x y U.
 
 Lemma vseparatorNE U x y : ~ vseparator U -> ~ separates x y U.
 Proof. move => nsepU sepU. by apply nsepU; exists x; exists y. Qed.
+
+Lemma separates_vseparator (x y : G) (S : {set G}) : 
+  separates x y S -> vseparator S. 
+Proof. by firstorder. Qed.
 
 Lemma svseparator_connected S : 
   smallest vseparator S -> 0 < #|S| -> connected [set: G].
@@ -432,8 +462,7 @@ Qed.
 Lemma separation_separates x y V1 V2:
   separation V1 V2 -> x \notin V2 -> y \notin V1 -> separates x y (V1 :&: V2).
 Proof.
-  move => sepV Hx Hy. split; rewrite ?inE ?negb_and ?Hx ?Hy //. 
-  move => p.
+  move => sepV Hx Hy. split; rewrite ?inE ?negb_and ?Hx ?Hy // => p.
   case: (@split_at_first G (mem V2) x y p y) => // ; rewrite ?(sep_inR sepV) //.
   move => z [p1 [p2 [H1 H2 H3]]]. rewrite inE in H2. 
   exists z; rewrite ?H1 !inE ?H2 // andbT.
@@ -452,29 +481,27 @@ Qed.
 Lemma vseparator_separation S : 
   vseparator S -> exists V1 V2, proper_separation V1 V2 /\ S = V1 :&: V2.
 Proof.
-  case => x1 [x2] [S1 S2 P12].
-  set U := locked [set x | connect (restrict [predC S] sedge) x1 x].
-  set V1 := U :|: S. set V2 := ~: U. exists V1; exists V2.
-  have D : x1 != x2.
-  { apply/negP => /eqP A. subst x2. case: (P12 (idp x1)) => ?.
-    rewrite mem_idp => /eqP-> ?. contrab. }
-  have HU x : x \in U -> x \notin S.
-  { rewrite /U -lock inE srestrict_sym. case/connectP => [[/= _ <- //|/= y p]].
-    rewrite inE /=. by case: (x \in S). }
-  split; first split; first split.
-  - move => x. rewrite !inE. by case: (x \in U).
-  - move => u v. rewrite !inE !(negb_or,negb_and,negbK) => [Hu] /andP [Hv1 Hv2].
-    apply: contraNF Hv1 => uv. move: (Hu). rewrite /U -lock !inE => H.
-    apply: connect_trans H _. apply: connect1. by rewrite /= !inE HU.
-  - exists x1; exists x2; split.
-    + suff H: (x1 \in U) by rewrite !inE H.
-      by rewrite /U -lock inE connect0.
-    + rewrite !inE negb_or S2 (_ : x2 \notin U = true) //.
-      apply: contraTN isT. rewrite /U -lock inE => /connect_irredRP.
-      case => [//|p Ip /subsetP subS].
-      case: (P12 p) => z /subS. rewrite inE /= => *. contrab.
-  - apply/setP => x. rewrite !inE. case E: (x \in U) => //=.
-    by rewrite (negbTE (HU _ _)).
+  move => [x [y sepS]]; have xDy := separatesNeq sepS.  
+  set U := locked [set z in ~: S | connect (restrict (~: S) sedge) x z].
+  set V1 := U :|: S; set V2 := ~: U; exists V1, V2.
+  move: sepS => [S1 S2 P12];  split; first split; first split.
+  - by rewrite /V1 /V2; set_tac.
+  - move=> u v. rewrite !inE negbK negb_or => Hu /andP [Hv1 Hv2].
+    apply: contraNF Hv1 => uv.
+    move: (Hu); rewrite /U -lock !inE Hv2 /= => /andP [uNS H]. 
+    by apply: connect_trans H (connect1 _); rewrite /= !inE uNS Hv2.
+  - exists x,y; split; first by rewrite !inE negbK /U -lock !inE connect0.
+    rewrite !inE negb_or S2 andbT; apply: contraTN isT.
+    rewrite /U -lock !inE => /andP [_ /connect_irredRP -/(_ xDy) [p Ip subS]].
+    by have [s ?] := P12 p; set_tac.
+  - apply/setP => z;rewrite !inE andb_orl andbN /= andb_idr // => z_S.
+    by rewrite /U -lock !inE z_S.
+Qed.
+
+Lemma proper_separation_card V1 V2 : 
+  proper_separation V1 V2 -> (#|V1| < #|G|)%type * (#|V2| < #|G|)%type.
+Proof.
+by case => [_ [x2 [x1 [HV1 HV2]]]]; rewrite (card_ltnT HV1) (card_ltnT HV2).
 Qed.
 
 Definition vseparatorb U := [exists x, exists y, separatesb x y U].
@@ -585,11 +612,87 @@ Proof.
   + have ? : (z \notin S) by apply: Hp; rewrite H1 !inE. by subst S; set_tac.
 Qed.
 
+Lemma diso_separation V1 V2 : 
+  separation V1 V2 -> [disjoint V1 & V2] -> 
+  diso ((induced V1) ∔ (induced V2))%sg G.
+Proof.
+move => sepV disV; have V2E : V2 = ~: V1.
+{ apply/setP => x; rewrite inE; apply/idP/idP => Hx.
+    by rewrite (disjointFl disV Hx).
+  exact: sep_inR Hx. }
+rewrite V2E; apply: ssplit_disconnected => x y ? ?.
+by rewrite sepV // V2E inE negbK.
+Qed.
+
 End VSeparator.
+Arguments vseparator {G} _.
+
+(** lifing a [vseparator] from an induced subgraph *)
+Lemma induced_vseparator (G : sgraph) (A : {set G}) (S : {set induced A}) : 
+  vseparator S -> vseparator (val @: S :|: ~: A).
+Proof. by move => [x] [y] /induced_separates ?; exists (val x); exists (val y). Qed.
 
 
+(** Lifting separations to/from [add_edge] *)
 
+Section AddEdgeSep.
 
+Local Arguments separation : clear implicits.
+Local Arguments proper_separation : clear implicits.
+Local Arguments vseparator : clear implicits.
+
+Lemma add_edge_separation' (G : sgraph) (V1 V2 : {set G}) x y:
+  separation (add_edge x y) V1 V2 -> separation G V1 V2.
+Proof.
+  move=> [covV sepV]; split => // u v Hu Hv. 
+  by apply: contraFF (sepV _ _ Hu Hv); rewrite [in X in _ -> X]/edge_rel/= => ->.
+Qed.
+
+Lemma add_edge_separation (G : sgraph) V1 V2 x y:
+  x \in V1:&:V2 -> y \in V1:&:V2 -> separation G V1 V2 -> separation (add_edge x y) V1 V2.
+Proof.
+  move => xS yS sep.
+  split; first by move => z; apply sep. 
+  move => x1 x2 x1V2 x2V1 /=. rewrite /edge_rel/= sep //=.
+  apply: contraTF isT. case/orP => [] /and3P[_ /eqP ? /eqP ?]; by set_tac.
+Qed.
+
+Lemma add_edge_proper_separation (G : sgraph) (V1 V2 : {set G}) x y :
+  x \in V1 :&: V2 -> y \in V1 :&: V2 -> 
+  proper_separation G V1 V2 -> proper_separation (add_edge x y) V1 V2.
+Proof.
+move => xV yV [sepV properV]; split => //. exact: add_edge_separation sepV.
+Qed.
+
+Lemma add_edge_proper_separation' (G : sgraph) (V1 V2 : {set G}) x y :
+  proper_separation (add_edge x y) V1 V2 -> proper_separation G V1 V2.
+Proof.
+move => [sepV properV]; split => //. exact: add_edge_separation' sepV.
+Qed.
+
+Lemma add_edge_vseparator' (G : sgraph) (x y : G) (S : {set G}) :
+  vseparator (add_edge x y) S -> vseparator G S.
+Proof.
+move=> /vseparator_separation [V1 [V2 [psepV ?]]]; subst S.
+apply: proper_vseparator; exact: add_edge_proper_separation' psepV.
+Qed.
+
+Lemma add_edge_vseparator (G : sgraph) (x y : G) (S : {set G}) :
+  x \in S -> y \in S -> vseparator G S -> vseparator (add_edge x y) S.
+Proof.
+move => xS yS /vseparator_separation [V1 [V2 [psepV ?]]]; subst S.
+by apply: proper_vseparator; exact: add_edge_proper_separation.
+Qed.
+
+Lemma add_edge_smallest_vseparator (G : sgraph) (x y : G) (S : {set G}) :
+  x \in S -> y \in S -> 
+  smallest (vseparator G) S -> smallest (vseparator (add_edge x y)) S.
+Proof.
+move=> xS yS [sepS smallS]; split => [|U]; first exact: add_edge_vseparator.
+move/add_edge_vseparator'; exact: smallS.
+Qed.
+
+End AddEdgeSep.
 
 Arguments separator : clear implicits.
 Arguments separatorb : clear implicits.
@@ -798,7 +901,7 @@ Proof.
     - move: (U2) U1. rewrite 4!inE negb_or mem_pcat_edgeL mem_pcat_edgeR => /andP [/negbTE-> /negbTE->] /=.
       by rewrite mem_path P2 => /mapP. 
     - case => u' => U1' U2'. rewrite -in_setC U2' (valP u') !inE [_ \in pi'](_ : _ = true) //.
-      rewrite mem_path P2 mem_map //. exact: val_inj. }
+      rewrite mem_path P2 mem_map //. }
   exists (fun i => sval (X i)). 
   + move => i j iDj. apply/disjointP => u. rewrite (svalP (X i)) (svalP (X j)).
     case/imsetP => u1 UP1 UE1. case/imsetP => u2 UP2 UE2. 
@@ -851,6 +954,28 @@ Qed.
 
 Definition bipartition (G : diGraph) (A : {set G}) :=
   forall x y : G, x -- y -> (x \in A) = (y \notin A).
+
+Lemma bipartition_path (G : diGraph) (A : {set G}) (x : G) (s: seq G) : 
+  bipartition A -> 
+  path (--) x s -> ~~ odd (((last x s \in A) (+) (x \in A)) + size s).
+Proof.
+move=> bipA; elim: s x => [|/= y s IH] x; first by rewrite addbb. 
+move=> /andP[xy /IH]; rewrite (bipA _ _ xy) addbN. 
+by case: (_ (+) _); rewrite //= negbK.
+Qed.
+
+Lemma bipartition_cycle (G : diGraph) (A : {set G}) (s: seq G) : 
+  bipartition A -> cycle (--) s -> ~~ odd (size s).
+Proof.
+move => bipA; case: s => //= x s /(bipartition_path bipA); rewrite negbK.
+by rewrite last_rcons addbb size_rcons /= negbK.
+Qed.
+
+Lemma even_cycle_Knm n m (s : seq 'K_n,m) : cycle (--) s -> ~~ odd (size s).
+Proof.
+suff: bipartition [set x : 'K_n,m | x] by apply: bipartition_cycle.
+by move => [x|x] [y|y] //= _; rewrite !inE.
+Qed.
 
 (** The (natural) notion of a matching on digraphs - a set of ordered
 pairs - is not a resonable notion of matching on simple graphs, where
@@ -1061,4 +1186,98 @@ Proof.
   move => bip_A [cov_V min_V] [match_M max_M]. apply/eqP.
   rewrite eqn_leq cover_matching // andbT.
   case: (min_vcover_matching (V := V) bip_A _) => // M' H ->. exact: max_M.
+Qed.
+
+
+(** * k-connectivity *)
+
+Definition kconnected (k : nat) (G : sgraph) := 
+  k < #|G| /\ forall S : {set G}, vseparator S -> k <= #|S|.
+
+Definition kconnectedb (k : nat) (G : sgraph) := 
+  (k < #|G|) && [forall (S | @vseparatorb G S), k <= #|S|].
+
+Lemma kconnectedP k G : reflect (kconnected k G) (kconnectedb k G).
+Proof.
+apply: (iffP andP) => [[gtk /forall_inP sepG]|[gtk sepG]]; split => //.
+- move => S /vseparatorP; exact: sepG.
+- apply/forall_inP => S /vseparatorP; exact: sepG.
+Qed.
+
+Notation "k .-connected" := (kconnected k)
+  (at level 2, format "k .-connected") : type_scope.
+
+Lemma connectedVseparator (G : sgraph) k : 
+  k < #|G| -> k.-connected G + { S : {set G} | #|S| < k & vseparator S}.
+Proof. 
+move => gtk. case: (boolP (kconnectedb k G)) => [/kconnectedP|]; first by left.
+rewrite negb_and gtk /= => /forallPn => ex_S.
+have := xchooseP (ex_S); rewrite negb_imply -ltnNge => /andP [/vseparatorP ? ?].
+by right; exists (xchoose ex_S).
+Qed.
+
+Lemma kconnected_degree (G : sgraph) k (x : G) : k.-connected G -> k <= #|N(x)|.
+Proof.
+move => [card_G sep_G].
+case: (boolP [exists (y | x != y), ~~ x -- y]).
+- case/exists_inP => y xDy xNy. 
+  by apply/sep_G/separates_vseparator; apply: opn_separates xNy.
+- rewrite negb_exists_in => /forall_inP; setoid_rewrite negbK => Hx.
+  apply: (@leq_trans #|[set~ x]|). 
+  + by rewrite cardsC1 -ltnS (@ltn_predK k).
+  + apply/subset_leq_card/subsetP => x'. rewrite !inE eq_sym. exact: Hx.
+Qed.
+
+
+Lemma kconnected_edge (G : sgraph) (k : nat) : 
+  k.+1.-connected G -> exists x y : G , x -- y.
+Proof.
+move=> k1G. have [gt1kG _] := k1G.
+have/card_gt0P [x _] : 0 < #|G| by apply: leq_trans gt1kG.
+have k_edge := kconnected_degree x k1G.
+have/card_gt0P [y /in_setP xy] : 0 < #|N(x)| by apply: leq_trans k_edge.
+by exists x,y.
+Qed.
+
+Lemma kconnected_induced (G : sgraph) (A : {set G}) k : 
+  (k + #|~: A|).-connected G -> k.-connected (induced A).
+Proof.
+move => [cardG sepG]; split => [|S].
+- by rewrite card_sig -(leq_add2r #|~: A|) cardsC addSn.
+- move/induced_vseparator/sepG. rewrite cardsU card_imset //.
+  rewrite [#|_ :&: _|]eq_card0 ?subn0 ?leq_add2r // => z.
+  by apply: contraTF isT => /setIP [/imsetP[x _ ->]]; rewrite inE (valP x).
+Qed.
+
+Lemma konnected_del1 k (G : sgraph) (x : G) : 
+  k.+1.-connected G -> k.-connected (induced [set~ x]).
+Proof.
+by move => kG; apply: kconnected_induced; rewrite setCK cards1 addn1.
+Qed.
+
+Lemma kconnected_bounds (G : sgraph) k : 
+  k.+1 < #|G| -> k.-connected G -> ~ k.+1.-connected G -> 
+  exists2 S : {set G}, #|S| == k & smallest vseparator S.
+Proof.
+move => large_G [_ min_k]. 
+move/kconnectedP; rewrite negb_and large_G /= => /forall_inPn [S].
+move/vseparatorP; rewrite -leqNgt => S1 S2; exists S => //.
+- by rewrite eqn_leq S2 min_k.
+- split => // V /min_k. exact: leq_trans.
+Qed.
+
+Lemma kconnectedW n k G : (k+n).-connected G -> k.-connected G.
+Proof. 
+case => lt_kn_G sep_kn; split; first exact: leq_ltn_trans (leq_addr _ _) lt_kn_G.
+by move=> S /sep_kn; apply/leq_trans/leq_addr.
+Qed.
+
+Lemma kconnected_complete G k : 
+  k.-connected G -> #|G| <= k.+1 -> (forall x y : G, x != y -> x -- y).
+Proof.
+move => [lt_k_G sepG] le_G_k x y xDy; pose S := [set~ x] :&: [set~ y].
+apply: contraTT le_G_k => xNy; rewrite -ltnNge.
+have/sepG le_k_S : vseparator S.
+  by apply/proper_vseparator/separate_nonadjacent.
+by rewrite -(cardsC S) setCI !setCK cards2 xDy /= addn2.
 Qed.

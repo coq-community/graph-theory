@@ -44,11 +44,12 @@ isomorphism).
   - Christian Doczkal ([**@chdoc**](https://github.com/chdoc))
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [CeCILL-B](LICENSE)
-- Compatible Coq versions: 8.11 or later
+- Compatible Coq versions: 8.12 or later
 - Additional dependencies:
-  - MathComp's SSReflect library, version 1.10 or later
+  - MathComp's SSReflect library, version 1.11 or later
   - MathComp's finmap library
   - Hierarchy Builder, version 0.10 or later
+  - Gonthier's Formal Proof of the Four-Color Theorem
 - Coq namespace: `GraphTheory`
 - Related publication(s):
   - [Graph Theory in Coq - Minors, Treewidth, and Isomorphisms](https://hal.archives-ouvertes.fr/hal-02316859) doi:[10.1007/s10817-020-09543-2](https://doi.org/10.1007/s10817-020-09543-2)
