@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta http-equiv="content-language" content="en">
+  <meta name="author" content="Christian Doczkal">
+  <meta name="keywords" content="ITP ITP2021 Graph-Theory Wagner Coq Ssreflect MathComp">
+  <meta name="description" content="">
+
+  <style type="text/css">
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <style type="text/css"> body {font-family: Arial, Helvetica; margin-left: 5em; font-size: large;} </style>
+  <style type="text/css"> h1 {margin-left: 0em; padding: 0px; text-align: center} </style>
+  <style type="text/css"> h2 {margin-left: 0em; padding: 0px; color: #580909} </style>
+  <style type="text/css"> h3 {margin-left: 1em; padding: 0px; color: #C05001;} </style>
+  <style type="text/css"> body { width: 1100px; margin-left: 30px; }</style> 
+<title>A Variant of Wagner’s Theorem Based on Combinatorial Hypermaps</title>
+</head>
+
+<body>
+
+<h1>A Variant of Wagner’s Theorem <br> Based on Combinatorial Hypermaps</h1>
+<!-- hspace="50" vspace="20" height="600" -->
+<div style="float:right">
+   <svg
+     width="400pt" height="490pt" viewBox="0.00 0.00 801.09 980.00"
+     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+     <use xlink:href="depend-graph.svg#graph0"></use>
+   </svg>
+</div>
+
+<p> Christian Doczkal</p>
+
+<p>
+  <b>Abstract </b> Wagner&apos;s theorem states that a graph is planar
+  (i.e., it can be embedded in the real plane without crossing
+  edges) iff it contains neither K<sub>5</sub> nor K<sub>3,3</sub> as
+  a minor.  We provide a combinatorial representation of embeddings in
+  the plane that abstracts from topological properties of plane
+  embeddings (e.g., angles or distances), representing only the
+  combinatorial properties (e.g., arities of faces or the clockwise
+  order of the outgoing edges of a vertex).  The representation
+  employs combinatorial hypermaps as used by Gonthier in the proof of
+  the four-color theorem.  We then give a formal proof that for every
+  simple graph containing neither K<sub>5</sub> nor K<sub>3,3</sub> as
+  a minor, there exists such a combinatorial plane embedding.
+  Together with the formal proof of the four-color theorem, we obtain
+  a formal proof that all graphs without K<sub>5</sub> and
+  K<sub>3,3</sub> minors are four-colorable.  The development is
+  carried out in Coq, building on the mathematical components library,
+  the formal proof of the four-color theorem, and a general-purpose
+  graph library developed previously.
+</p>
+
+<p>
+  The formal development has been developed as a branch of the
+  <a href="https://github.com/coq-community/graph-theory">graph-theory project</a>, 
+  and this branch has not yet beein integrated.
+  The graph on the right highlights the new libraris (orange) and
+  those that received substantial additions (yellow). 
+</p>
+
+<p>
+  The nodes of the graph are hyperlinked to the coqdoc documentation.
+  Alternatively, you can view <a href="https://github.com/coq-community/graph-theory/tree/wagner">the branch</a> and the
+  corresponding <a href="https://github.com/coq-community/graph-theory/pull/14">pull request</a> on GitHub
+  or <a href="https://github.com/coq-community/graph-theory/archive/wagner.zip">download a snapshot</a>
+</p>
+
+<p>
+  In order to check the development, you need:
+  <ul>
+    <li> coq-8.12 or coq-8.13 </li>
+    <li> mathcomp-1.11.0 or mathcomp-1.12.0 </li>
+    <li> >=coq-hierarchy-builder-0.10 </li>
+    <li> coq-mathcomp-finmap (any compatible version) </li>
+    <li> coq-fourcolor (any compatible version) </li>      
+  </ul>
+  The easiest way to build and investigate the sources locally is to install all dependencies (and their dependencies) using OPAM by executing:
+  <ol>
+    <li> opam switch create graph-theory ocaml-variants.4.09.1+flambda </li>
+    <li> eval $(opam env) </li>
+    <li> opam repo add coq-released https://coq.inria.fr/opam/released </li>
+    <li> opam update </li>
+    <li> wget https://github.com/coq-community/graph-theory/archive/wagner.zip </li>
+    <li> unzip wagner.zip; cd graph-theory-wagner </li>
+    <li> opam pin add -n -k path coq-graph-theory .</li>
+    <li> opam install coq-graph-theory --deps-only </li>
+    <li> make -j9 all </li>
+  </ol>
+  Note that coq-hierarchy-builder has quite a few dependencies (dune, elpi, etc.) while coq-fourcolor can easily take more than 30 minutes to compile, even on recent hardware.
+</p>
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="coqdocjs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="config.js"></script>
+<script type="text/javascript" src="coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="../">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./toc.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<div id="toc">
+<ul class="doclist">
+<li><a href="GraphTheory.edone.html#lab1">A slightly more powerful done tactic</a>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="GraphTheory.bounded.html#lab2">A fixpoint operator for bounded recursion</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab3">Preliminaries</a>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="GraphTheory.preliminaries.html#lab4">Tactics</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab5">Notations</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab6">Generic Trivialities</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab7">Disjointness</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab8">Function Update</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab9">Sequences and Paths</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab10">Reflexive Transitive Closure</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab11">Set preimage</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab12">Set image</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab13">Replacement for partial functions</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab14">Partitions</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab15">Preliminaries (used in Domination Theory)</a>
+
+</li>
+<li><a href="GraphTheory.preliminaries.html#lab16">Extra Preliminaries from Kuratowski/Wagner development</a>
+
+</li>
+<li><a href="GraphTheory.setoid_bigop.html#lab17">Bigops over Setoids</a>
+<ul class="doclist">
+<li><a href="GraphTheory.setoid_bigop.html#lab18">setoids</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.set_tac.html#lab19">Simple Experimental Tactic for finite sets</a>
+
+</li>
+<li><a href="GraphTheory.bij.html#lab20">Bijections between Types</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab21">Directed Graphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.digraph.html#lab22">Unpackaged Paths</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab23">Packaged paths</a>
+<ul class="doclist">
+<li><a href="GraphTheory.digraph.html#lab24">Splitting Paths</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab25">Between nodes (reflection lemmas)</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab26">Packaged Irredundant Paths</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab27">Basic Constructions on digraphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.digraph.html#lab28">Induced Subgraphs</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab29">Edge Deletion</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab30">Interior of irredundant paths</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab31">Isomorphisms</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab32">Unindexed paths</a>
+
+</li>
+<li><a href="GraphTheory.digraph.html#lab33">Neighborhoods</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab34">Simple Graphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.sgraph.html#lab35">Disjoint Union</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab36">Homomorphisms</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab37">Isomorphism of simple graphs</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab38">Unpackaged Simple Paths</a>
+<ul class="doclist">
+<li><a href="GraphTheory.sgraph.html#lab39">Transporting paths to and from induced subgraphs</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab40">Path indexing and 3-way split</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab41">Connectedness</a>
+<ul class="doclist">
+<li><a href="GraphTheory.sgraph.html#lab42">Of subsets</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab43">Connected components</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab44">Cliques</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab45">Forests and Trees</a>
+<ul class="doclist">
+<li><a href="GraphTheory.sgraph.html#lab46">Forest Type (for tree decompositions)</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab47">Complete graphs</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab48">Complete bipartite graphs</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab49">Adding Edges</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab50">Neighboring sets</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab51">Edge Sets</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab52">Edge Deletion</a>
+
+</li>
+<li><a href="GraphTheory.sgraph.html#lab53">Neighborhood lemmas for simple graphs</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab54">Graph Connectivty</a>
+<ul class="doclist">
+<li><a href="GraphTheory.connectivity.html#lab55">Connectors, Separators, and Separations</a>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab56">Menger's Theorem</a>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab57">Independent Path Corollaries</a>
+<ul class="doclist">
+<li><a href="GraphTheory.connectivity.html#lab58">Vertex version</a>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab59">Edge Version</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab60">Hall's Marriage Theorem</a>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab61">König's Theorem</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.connectivity.html#lab62">k-connectivity</a>
+
+</li>
+<li><a href="GraphTheory.treewidth.html#lab63">Tree Decompositions and treewidth</a>
+<ul class="doclist">
+<li><a href="GraphTheory.treewidth.html#lab64">Renaming</a>
+
+</li>
+<li><a href="GraphTheory.treewidth.html#lab65">Disjoint Union</a>
+
+</li>
+<li><a href="GraphTheory.treewidth.html#lab66">Link Construction (without intermediate node)</a>
+
+</li>
+<li><a href="GraphTheory.treewidth.html#lab67">Link Construction (with intermediate node)</a>
+
+</li>
+<li><a href="GraphTheory.treewidth.html#lab68">Every clique is contained in some bag</a>
+
+</li>
+<li><a href="GraphTheory.treewidth.html#lab69">Forests have treewidth 1</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.minor.html#lab70">Minors</a>
+<ul class="doclist">
+<li><a href="GraphTheory.minor.html#lab71">Links with Treewidth</a>
+
+</li>
+<li><a href="GraphTheory.minor.html#lab72">Excluded-Minor Characterization of Forests</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.excluded.html#lab73">Tree Decompositions for K4-free graphs</a>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab74">Checkpoints</a>
+<ul class="doclist">
+<li><a href="GraphTheory.checkpoint.html#lab75">Link Graph</a>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab76">CP Closure Operator</a>
+<ul class="doclist">
+<li><a href="GraphTheory.checkpoint.html#lab77">Checkpoint graph</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab78">Intervals and bags</a>
+<ul class="doclist">
+<li><a href="GraphTheory.checkpoint.html#lab79">Strict intervals</a>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab80">Intervals</a>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab81">Bags</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab82">Neighouring Checkpoints</a>
+<ul class="doclist">
+<li><a href="GraphTheory.checkpoint.html#lab83">Application to bags</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab84">Partitioning with intervals, bags and checkpoints</a>
+<ul class="doclist">
+<li><a href="GraphTheory.checkpoint.html#lab85">Disjointness statements</a>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab86">Covering statements</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.checkpoint.html#lab87">Checkpoint Order</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.cp_minor.html#lab88">Combined Minor and Checkpoint Properties</a>
+<ul class="doclist">
+<li><a href="GraphTheory.cp_minor.html#lab89">Collapsing Bags</a>
+
+</li>
+<li><a href="GraphTheory.cp_minor.html#lab90">K4-freenes of Intervals</a>
+
+</li>
+<li><a href="GraphTheory.cp_minor.html#lab91">Parallel Split Lemma</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.structures.html#lab92">Setoids and Label Structures</a>
+<ul class="doclist">
+<li><a href="GraphTheory.structures.html#lab93">label structures (Definition 4.1)</a>
+
+</li>
+<li><a href="GraphTheory.structures.html#lab94">Structure Inference</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab95">2pdom algebra, tests, initial algebra of terms</a>
+<ul class="doclist">
+<li><a href="GraphTheory.pttdom.html#lab96">2pdom algebra (the top-free fragment of 2p algebra)</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab97">basic derivable laws</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab98">tests</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab99">commutative monoid of  tests</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab100">label structure of a 2pdom algebra (Definition 4.3)</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab101">other derivable laws used in the completeness proof</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab102">initial algebra of terms</a>
+
+</li>
+<li><a href="GraphTheory.pttdom.html#lab103">normal terms and normalisation function (Section 7)</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab104">Directed Labeled Multigraphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.mgraph.html#lab105">Basic Operations</a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab106">Operations that require structures on labels</a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab107">Homomorphisms</a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab108">Isomorphisms</a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab109">isomorphisms about local and global operations</a>
+<ul class="doclist">
+<li><a href="GraphTheory.mgraph.html#lab110">isomorphisms about <span class="inlinecode"><span class="id" title="var">unit_graph</span></span></a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab111">isomorphisms about <span class="inlinecode"><span class="id" title="var">add_edge</span></span></a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab112">isomorphisms about <span class="inlinecode"><span class="id" title="var">union</span></span></a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab113">isomorphisms about <span class="inlinecode"><span class="id" title="var">merge</span></span></a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab114">isomorphisms about <span class="inlinecode"><span class="id" title="var">union</span></span> and <span class="inlinecode"><span class="id" title="var">merge</span></span> (Lemma 4.11)</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab115">Subgraphs and Induced Subgraphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.mgraph.html#lab116">isomorphisms about subgraphs</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab117">Merging Subgraphs</a>
+
+</li>
+<li><a href="GraphTheory.mgraph.html#lab118">Walks</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.mgraph2.html#lab119">Two-pointed labelled multigraphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.mgraph2.html#lab120">Isomorphisms of 2p-graphs</a>
+
+</li>
+<li><a href="GraphTheory.mgraph2.html#lab121">2pdom operations on graphs</a>
+
+</li>
+<li><a href="GraphTheory.mgraph2.html#lab122">2p-graphs form a 2p-algebra</a>
+
+</li>
+<li><a href="GraphTheory.mgraph2.html#lab123">additional laws required for the completeness proof</a>
+
+</li>
+<li><a href="GraphTheory.mgraph2.html#lab124">Relabeling Graphs</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.rewriting.html#lab125">Rewrite System on Packaged Graphs</a>
+
+</li>
+<li><a href="GraphTheory.reduction.html#lab126">Reducibility for the rewrite system</a>
+<ul class="doclist">
+<li><a href="GraphTheory.reduction.html#lab127">Preliminary isomorphisms (on arbitrary graphs)</a>
+
+</li>
+<li><a href="GraphTheory.reduction.html#lab128">preservation of steps under algebraic operations</a>
+<ul class="doclist">
+<li><a href="GraphTheory.reduction.html#lab129">Lemma 6.3</a>
+
+</li>
+<li><a href="GraphTheory.reduction.html#lab130">Lemma 6.2</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.reduction.html#lab131">reduction lemma</a>
+<ul class="doclist">
+<li><a href="GraphTheory.reduction.html#lab132">graphs of terms and normal terms</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab133">Open Graphs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.open_confluence.html#lab134">Open 2p-graphs labeled with elements of a 2pdom algebra</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab135">Strong Equivalence</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab136">Helper functions</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab137">Operatons on open graphs</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab138">Properties of the operations</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab139">Commutation Lemmas</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab140">Morphism Lemmas</a>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab141">Killing Lemmas</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.open_confluence.html#lab142">Open Step relation</a>
+<ul class="doclist">
+<li><a href="GraphTheory.open_confluence.html#lab143">Open Local Confluence</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab144">Transfer of Open Local Confluence</a>
+<ul class="doclist">
+<li><a href="GraphTheory.transfer.html#lab145">Opening and packing of type-based graphs</a>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab146">Isomorphism and Commutation Properties</a>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab147">Commutation with open/pack</a>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab148">Isomorphisms on open graphs</a>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab149">Preservation of open steps under isomorphisms</a>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab150">Packaged steps to open steps</a>
+
+</li>
+<li><a href="GraphTheory.transfer.html#lab151">Open steps to packaged steps</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.completeness.html#lab152">Completeness</a>
+<ul class="doclist">
+<li><a href="GraphTheory.completeness.html#lab153">Main Result</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.ptt.html#lab154">2p algebras, tests, initial algebra of terms</a>
+<ul class="doclist">
+<li><a href="GraphTheory.ptt.html#lab155">2p algebras (2pdom algebras with top)</a>
+
+</li>
+<li><a href="GraphTheory.ptt.html#lab156">basic derivable laws</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.skeleton.html#lab157">Skeletons</a>
+<ul class="doclist">
+<li><a href="GraphTheory.skeleton.html#lab158">Strong skeletons</a>
+
+</li>
+<li><a href="GraphTheory.skeleton.html#lab159">Interval and Bag Graphs</a>
+
+</li>
+<li><a href="GraphTheory.skeleton.html#lab160">Disjoint Union of a connected component and the remainder of the graph</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.mgraph2_tw2.html#lab161">Subalgebra of Tree-Width 2 Graphs</a>
+
+</li>
+<li><a href="GraphTheory.extraction_def.html#lab162">Term Extraction Function</a>
+<ul class="doclist">
+<li><a href="GraphTheory.extraction_def.html#lab163">Termination Metric</a>
+
+</li>
+<li><a href="GraphTheory.extraction_def.html#lab164">Subroutines</a>
+
+</li>
+<li><a href="GraphTheory.extraction_def.html#lab165">The Extraction Functional</a>
+
+</li>
+<li><a href="GraphTheory.extraction_def.html#lab166">Termination Argument</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.extraction_iso.html#lab167">Isomorphim Theorem</a>
+
+</li>
+<li><a href="GraphTheory.extraction_top.html#lab168">Extraction from Disconnected Graphs</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab169">Domination Theory</a>
+<ul class="doclist">
+<li><a href="GraphTheory.dom.html#lab170">Hereditary and superhereditary properties</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab171">Weighted Sets</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab172">Stable, Dominating and Irredundant Sets</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab173">Fundamental facts about Domination Theory</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab174">Weighted version of the Cockayne-Hedetniemi domination chain.</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab175">Classic (unweighted) parameters (use cardinality instead of weight)</a>
+
+</li>
+<li><a href="GraphTheory.dom.html#lab176">Classic Cockayne-Hedetniemi domination chain.</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.smerge.html#lab177">Merging Vertices</a>
+<ul class="doclist">
+<li><a href="GraphTheory.smerge.html#lab178">Edge Contraction in 3-connected graphs</a>
+
+</li>
+<li><a href="GraphTheory.smerge.html#lab179">Isomorphims for vertex merging</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab180">Constructions on Hypermaps</a>
+<ul class="doclist">
+<li><a href="GraphTheory.hmap_ops.html#lab181">Preliminaries</a>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab182">Adjacency</a>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab183">Isomorphims of Hypermaps</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab184">Operations on Hypermaps</a>
+<ul class="doclist">
+<li><a href="GraphTheory.hmap_ops.html#lab185">The Switch Construct</a>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab186">The merge operation</a>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab187">Disjoint Union</a>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab188">Deleting a node (and incident edges)</a>
+
+</li>
+<li><a href="GraphTheory.hmap_ops.html#lab189">Adding an Edge.</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.embedding.html#lab190">Hypermaps as embeddings of (planar) grahs</a>
+<ul class="doclist">
+<li><a href="GraphTheory.embedding.html#lab191">Packaged plane embeddings</a>
+
+</li>
+<li><a href="GraphTheory.embedding.html#lab192">Constructions on Plane Embeddings</a>
+
+</li>
+<li><a href="GraphTheory.embedding.html#lab193">Obtaining plane embeddings for smerge2</a>
+
+</li>
+<li><a href="GraphTheory.embedding.html#lab194">Non-planarity proofs</a>
+
+</li>
+<li><a href="GraphTheory.arc.html#lab195">Lemmas on <span class="inlinecode"><span class="id" title="var">rot</span></span></a>
+
+</li>
+<li><a href="GraphTheory.arc.html#lab196">Lemmas on <span class="inlinecode"><span class="id" title="var">index</span></span>, <span class="inlinecode"><span class="id" title="var">mask</span></span>, and <span class="inlinecode"><span class="id" title="var">subseq</span></span></a>
+
+</li>
+<li><a href="GraphTheory.arc.html#lab197">Lemmas on <span class="inlinecode"><span class="id" title="var">next</span></span> and <span class="inlinecode"><span class="id" title="var">rot</span></span></a>
+
+</li>
+<li><a href="GraphTheory.arc.html#lab198">Lemmas on <span class="inlinecode"><span class="id" title="var">index</span></span></a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="GraphTheory.wagner.html#lab199">Wagners Theorem (Main Direction)</a>
+<ul class="doclist">
+<li><a href="GraphTheory.wagner.html#lab200">Preliminaries</a>
+
+</li>
+<li><a href="GraphTheory.wagner.html#lab201">The 3-connected Case</a>
+
+</li>
+<li><a href="GraphTheory.wagner.html#lab202">The General Case</a>
+
+</li>
+<li><a href="GraphTheory.wagner.html#lab203">Structural Four-Color Theorem</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/tebbi/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
