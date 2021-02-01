@@ -40,6 +40,7 @@ Ltac normH := match goal
   | [ H : is_true (_ == _) |- _] => move/eqP : H 
   end.
 Ltac elim_ops := rewrite -multE -plusE -!(rwP leP).
+
 Ltac slia := repeat normH; elim_ops; intros; lia.
 
 Lemma measure_card (G' G : graph2) : 

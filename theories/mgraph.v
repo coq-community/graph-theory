@@ -819,7 +819,7 @@ Variables (G : graph) (V : {set G}) (E : {set edge G}).
 Hypothesis con : consistent V E. 
 
 Lemma subgraph_sub : subgraph (subgraph_for con) G.
-Proof. exists val, val, xpred0. split => //=. split; exact: val_inj. Qed.
+Proof. exists val, val, xpred0. split => //=. Qed.
 
 Lemma remove_edges_sub : subgraph (remove_edges E) G.
 Proof. exists id, val, xpred0. split => //=. split. apply inj_id. apply val_inj. Qed.

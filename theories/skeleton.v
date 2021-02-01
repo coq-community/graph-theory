@@ -555,7 +555,7 @@ Qed.
 (* Is this the most general type? *)
 Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
   #|val @: A| = #|A|.
-Proof. rewrite card_imset //. exact: val_inj. Qed.
+Proof. by rewrite card_imset. Qed.
 
 (* lifting connectedness from the skeleton *)
 Lemma connected_skeleton' (G : graph) V E (con : @consistent _ _ G V E) :

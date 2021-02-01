@@ -372,15 +372,6 @@ Proof.
     apply: contraTT. by rewrite ltnNge negbK.
 Qed.
 
-Lemma add_edge_separation (G : sgraph) V1 V2 s1 s2:
-  @separation G V1 V2 -> s1 \in V1:&:V2 -> s2 \in V1:&:V2 ->
-  @separation (add_edge s1 s2) V1 V2.
-Proof.
-  move => sep s1S s2S. split; first by move => x; apply sep.  
-  move => x1 x2 x1V2 x2V1 /=. rewrite /edge_rel/= sep //=.
-  apply: contraTF isT. case/orP => [] /and3P[_ /eqP ? /eqP ?]; by set_tac.
-Qed.
-
 Theorem TW2_of_K4F (G : sgraph) :
   K4_free G -> exists (T : forest) (B : T -> {set G}), sdecomp T G B /\ width B <= 3.
 Proof.
@@ -439,7 +430,7 @@ Proof.
   wlog [phi rmapphi HphiV1] : {K4G'} V1 V2 psep SV12 / exists2 phi : K4 -> {set add_edge s1 s2},
          minor_rmap phi & forall x : K4, phi x \subset V1.
   { move => W.  case: (@separation_K4side (add_edge s1 s2) V1 V2) => //.
-    - apply: add_edge_separation psep.1 _ _; by rewrite -SV12 S12 !inE eqxx.
+    - apply: add_edge_separation psep.1; by rewrite -SV12 S12 !inE eqxx.
     - rewrite -SV12 S12. apply: clique2. by rewrite /edge_rel/= !eqxx s1Ns2. 
     - by rewrite -SV12 S12 cards2 s1Ns2. 
     - move => phi map_phi [subV1|subV2]; first by apply: (W V1 V2) => //; exists phi.

@@ -54,6 +54,10 @@ Lemma sedge_equiv_in (G : sgraph) (A : {set G}) :
   {in A & &, equivalence_rel (connect (restrict A sedge))}.
 Proof. exact: in3W (sedge_in_equiv A). Qed.
 
+Declare Scope sgraph_scope.
+Delimit Scope sgraph_scope with sg.
+Bind Scope sgraph_scope with sgraph.
+
 (** ** Disjoint Union *)
 
 Section JoinSG.
@@ -83,6 +87,15 @@ Section JoinSG.
 
 End JoinSG.
 
+Notation "G ∔ H" := (sjoin G H) (at level 20, left associativity) : sgraph_scope.
+
+Lemma sjoin_disconnected (G H : sgraph) (x : G) (y : H) :
+  ~~ connect (--) (inl x : (G ∔ H)%sg) (inr y).
+Proof.
+apply: contraTN isT => /connectP [p]; elim: p x => // -[/=|//] z p IHp x.
+case/andP => _ . exact: IHp.
+Qed.
+
 Prenex Implicits join_rel.
 
 (** ** Homomorphisms *)
@@ -96,7 +109,7 @@ Definition subgraph (S G : sgraph) :=
 Section InducedSubgraph.
   Variables (G : sgraph) (S : {set G}).
 
-  Definition induced_type := sig [eta mem S].
+  Definition induced_type := { x | x \in S}.
 
   Definition induced_rel := [rel x y : induced_type | val x -- val y].
 
@@ -109,7 +122,19 @@ Section InducedSubgraph.
   Definition induced := SGraph induced_sym induced_irrefl.
 
   Lemma induced_sub : subgraph induced G.
-  Proof. exists val => //. exact: val_inj. Qed.
+  Proof. by exists val. Qed.
+
+  Lemma induced_val_edge (x y : induced) : val x -- val y = (x -- y). 
+  Proof. by []. Qed.
+
+  Lemma ucycle_induced (s : seq induced) : 
+    ucycle (--) s = ucycle (--) [seq val x | x <- s].
+  Proof.
+    rewrite /ucycle map_inj_uniq; last exact: val_inj; congr (_ && _).
+    rewrite /cycle; case: s => //= x s. rewrite -map_rcons.
+    by elim: (rcons s x) {1 3}x => //= {x s} y s <- x.
+  Qed.
+
 
 End InducedSubgraph.
 
@@ -124,7 +149,9 @@ Lemma eq_diso (T : finType) (e1 e2 : rel T)
   (e1_sym : symmetric e1) (e1_irrefl : irreflexive e1) 
   (e2_sym : symmetric e2) (e2_irrefl : irreflexive e2) :
 e1 =2 e2 -> diso (SGraph e1_sym e1_irrefl) (SGraph e2_sym e2_irrefl).
-Proof. intro E. exists (@bij_id T) => x y /=; by rewrite /edge_rel /= E. Qed.
+Proof. 
+intro E. exists (@bij_id T); abstract (move => x y /=; by rewrite /edge_rel /= E). 
+Defined.
 
 Lemma iso_subgraph (G H : sgraph) : diso G H -> subgraph G H.
 Proof.
@@ -325,7 +352,7 @@ Lemma path_to_induced (G : sgraph) (S : {set G}) (x y : induced S) p' :
   exists2 p, pathp x y p & p' = map val p.
 Proof.
   move=> pth_p' sub_p'.
-  case: (lift_pathp _ _ pth_p' _) => //; first exact: val_inj.
+  case: (lift_pathp _ _ pth_p' _) => //.
   - move=> z /sub_p' z_S. by apply/codomP; exists (Sub z z_S).
   - move=> p [pth_p /esym eq_p']. by exists p.
 Qed.
@@ -1075,6 +1102,55 @@ Notation "''K_' n" := (complete n)
 Definition C3 := 'K_3.
 Definition K4 := 'K_4.
 
+Lemma diso_Kn (G : sgraph) : (forall x y : G, x != y -> x -- y) -> diso G 'K_#|G|.
+Proof.
+move => completeG; apply: (@Diso G 'K_#|G| bij_ord).
+- by move=> x y xy; rewrite /edge_rel/= -(inj_eq enum_val_inj) !enum_rankK sg_edgeNeq.
+- move => x y xy /=. apply: completeG.
+  by rewrite -(inj_eq enum_rank_inj) !enum_valK.
+Qed.
+
+Lemma sub_Kn n (G : sgraph) : #|G| <= n -> subgraph G 'K_n.
+Proof.
+move=> leGn; pose h (x : G) : 'K_n := widen_ord leGn (enum_rank x).
+by exists h; move => // x y /(congr1 val) E; apply /enum_rank_inj/ord_inj.
+Qed.
+
+(** ** Complete bipartite graphs *)
+Section Knm.
+Variables n m : nat.
+Definition kb_rel (x y : 'I_n + 'I_m) := is_inl x (+) is_inl y.
+Lemma kb_rel_sym : symmetric kb_rel. exact: addbC. Qed. 
+Lemma kb_rel_irrefl : irreflexive kb_rel.
+Proof. move => x. by rewrite /kb_rel -negb_eqb eqxx. Qed.
+Definition KB := SGraph kb_rel_sym kb_rel_irrefl.
+
+(** Injection from ['K_n,m] to nat, used to order the vertices to
+break symmeties *)
+Definition pickle_Knm (i : KB) : nat := 
+  match i with inl (Ordinal k _) => k | inr (Ordinal k _) => n + k end.
+
+Lemma pickle_Knn_inj : injective pickle_Knm.
+Proof.
+case => -[i Hi]; case => -[j Hj] => //= Eij.
+- congr (inl _); exact/val_inj.
+- case:notF. by rewrite Eij -ltn_subRL subnn ltn0 in Hi.
+- case:notF. by rewrite -Eij -ltn_subRL subnn ltn0 in Hj.
+- congr (inr _). by apply/val_inj/eqP; rewrite /= -(eqn_add2l n) Eij.
+Qed.
+
+End Knm.
+Notation "''K_' n , m" := (KB n m)
+  (at level 8, n at level 2, m at level 2,format "''K_' n , m").
+
+Lemma Knm_connected n m : connected [set: 'K_n.+1,m.+1].
+Proof.
+apply: (@connected_center _ (inl ord0 : 'K_n.+1,m.+1)) => // y _.
+rewrite restrictE; last by move=> ?; rewrite inE.
+case: y => [y|y]; last exact: connect1.
+by apply: (@connect_trans _ _ (inr ord0)); apply: connect1.
+Qed.
+
 (** ** Adding Edges *)
 
 Definition add_edge_rel (G:sgraph) (i o : G) := 
@@ -1154,6 +1230,29 @@ Proof.
 Qed.
 Arguments add_edge_avoid [G s1 s2 x y] p.  
 
+Lemma add_edge_subgraph (G : sgraph) (x y : G) : subgraph G (add_edge x y).
+Proof. by exists id => // u v uv _; rewrite /edge_rel/= uv. Qed.
+
+(** Andding all edges between two sets of vertices (i.e., adding a complete bipartite subgraph graph) *)
+
+Section AddEdges2.
+Variables (G : sgraph) (U V : {set G}).
+Definition add_edges2_rel := 
+  [rel u v : G | u -- v || (u != v) && ((u \in U) && (v \in V) || (u \in V) && (v \in U))].
+
+Fact add_edges2_irrefl : irreflexive add_edges2_rel.
+Proof. by move=> x /=; rewrite sg_irrefl eqxx. Qed.
+
+Fact add_edges2_sym : symmetric add_edges2_rel.
+Proof. 
+by move=> x y; rewrite /= ![_ && (x \in _)]andbC [_ && _ || _]orbC eq_sym sg_sym.
+Qed.
+
+Definition add_edges2 := SGraph add_edges2_sym add_edges2_irrefl.
+End AddEdges2.
+
+Arguments add_edges2 : clear implicits.
+
 (* TODO: load earlier *)
 Require Import set_tac.
 
@@ -1227,17 +1326,12 @@ Section AddNode.
 End AddNode.
 Arguments add_node : clear implicits.
 
-Lemma add_node_complete n : diso 'K_n.+1 (add_node 'K_n setT).
+(** recursive characterization of ['K_n] *)
+Lemma diso_add_edge_KSn n : diso 'K_n.+1 (add_node 'K_n setT).
 Proof.
-  pose g : add_node 'K_n setT -> 'K_n.+1 := oapp (lift ord_max) ord_max.
-  pose h : 'K_n.+1 -> add_node 'K_n setT := unlift ord_max.
-  apply Diso'' with h g; rewrite /g/h/=.
-  + by move=> x; case: unliftP.
-  + move=> [x|] /=; [by rewrite liftK | by rewrite unlift_none].
-  + move=> x y /=; do 2 case: unliftP => /= [?|]-> //; rewrite /edge_rel //= ?eqxx //.
-    by rewrite (inj_eq (@lift_inj _ ord_max)).
-  + move=> [x|] [y|]; rewrite /edge_rel//= ?[_ == ord_max]eq_sym ?neq_lift //.
-    by rewrite (inj_eq (@lift_inj _ ord_max)).
+set G := add_node _ _; apply: diso_sym.
+have -> : n.+1 = #|G| by rewrite card_option card_ord.
+by apply: diso_Kn => -[x|] [y|] // _; rewrite /edge_rel/= inE.
 Qed.
 
 Lemma connected_add_node (G : sgraph) (U A : {set G}) : 
@@ -1250,6 +1344,25 @@ Proof.
   apply: (connectRI q) => ?; rewrite mem_path E.
   case/mapP => z Hz ->. rewrite imset_f //. exact: (subsetP Hp).
 Qed.
+
+(** Spliting [add_node] into adding one edge/node and the remaining
+edges. Useful for constructing plane embeddings *)
+
+Lemma add_node_diso_proof (G : sgraph) (A : {set G}) (x : G) : x \in A ->
+     @add_edges2_rel (add_node G [set x]) [set None] [set Some x | x in A :\ x] 
+  =2 add_node_rel A.
+Proof.
+move=> x_A [u|] [v|] //=; rewrite [in LHS]/edge_rel/= ?inE //.
+- rewrite andbT andFb /= inj_imset ?inE; last exact: Some_inj.
+  by have [->|//] := eqVneq u x; rewrite x_A.
+- rewrite andbF andTb orbF inj_imset ?inE; last exact: Some_inj.
+  by have [->|//] := eqVneq v x; rewrite x_A.
+Qed.
+
+Lemma add_node_diso (G : sgraph) (A : {set G}) (x : G) : 
+  x \in A -> 
+  diso (add_edges2 (add_node G [set x]) [set None] (Some @: (A :\ x))) (add_node G A).
+Proof. by move=> x_A; exact/eq_diso/add_node_diso_proof. Defined.
 
 (** ** Neighboring sets *)
 
@@ -1264,6 +1377,13 @@ Section Neighbor.
     apply:(iffP exists_inP) => [[x xA] /exists_inP [y inB xy]|[x] [y] [xA yB xy]].
     - by exists x; exists y.
     - exists x => //. apply/exists_inP; by exists y.
+  Qed.
+
+  Lemma neighbor1P (x : G) (A : {set G}) : 
+    reflect (exists2 y, x -- y & y \in A) (neighbor [set x] A).
+  Proof.
+    apply: (iffP (neighborP _ _)) => [[z] [y] [/set1P->]|[y ? ?]]; first by exists y.
+    by exists x, y; rewrite !inE.
   Qed.
 
   Lemma neighborC A B : neighbor A B = neighbor B A.
@@ -1432,6 +1552,40 @@ move => E0; apply: eq_card0 => y; rewrite !inE; apply: contra_eqF E0 => xy.
 by apply/set0Pn; exists [set x;y]; rewrite in_edges.
 Qed.
 
+(* TODO: this shoudld be the definition of subgraph *)
+Lemma sub_card_edge (G H : sgraph) (h : G -> H) : 
+  injective h -> is_dhom h -> #|E(G)| <= #|E(H)|. 
+Proof.
+move=> inj_h hom_h ; pose h' (e : {set G}) := h @: e.
+have inj_h' : {in E(G) &, injective h'} by apply:in2W; apply: imset_inj.
+rewrite -(card_in_imset inj_h'); apply/subset_leq_card/subsetP => ?.
+case/imsetP => e /edgesP [x[y [-> /hom_h xy]]] ->; apply/edgesP; exists (h x),(h y).
+by rewrite /h' imsetU1 imset_set1.
+Qed.
+Arguments sub_card_edge [G H] h.
+
+Lemma diso_card_edge (G H : sgraph) : diso G H -> #|E(G)| = #|E(H)|.
+Proof.
+case => -[g h can_g can_h] /= hom_g hom_h; apply/eqP.
+rewrite eqn_leq (sub_card_edge g) ?(sub_card_edge h) //; exact: can_inj.
+Qed.
+
+(** useful to define functions (morally on edge-sets) that need access
+to the endpoints of the edge *)
+Variant edge_spec (G : sgraph) (e : {set G}) : Type :=
+| Edge x y of x -- y & e = [set x; y] : edge_spec e 
+| NoEdge of e \notin E(G) : edge_spec e.
+
+Lemma edgeP (G : sgraph) (e : {set G}) : edge_spec e.
+Proof. 
+  have [edge_e|] := boolP (e \in E(G)); last by constructor.
+  have E : exists p : G * G, (e == [set p.1; p.2]) && (p.1 -- p.2).
+  { case/edgesP : edge_e => x [y] [/eqP ? ?]. by exists (x,y). }
+  set p := xchoose E; case/andP: (xchooseP E) => /eqP ? ?.
+  exact: (@Edge _ e p.1 p.2).
+Qed.
+
+(* TODO: use [disjoint e1 & e2] *)
 Lemma edges_eqn_sub (G : sgraph) (e1 e2 : {set G}) : 
   e1 \in E(G) -> e2 \in E(G) -> e1 != e2 -> ~~ (e1 \subset e2).
 Proof.
@@ -1439,6 +1593,91 @@ move => /edgesP [x1 [y1 [-> xy1]]] /edgesP [x2 [y2 [-> xy2]]].
 apply/contraNN; rewrite subUset !sub1set !inE => EQS.
 case/andP : EQS xy1 xy2 => /pred2P[->|->] /pred2P [->|->].
 all: by rewrite ?sg_irrefl // setUC.
+Qed.
+
+(** edge sets and neighboorhoods for ['K_n] *)
+
+Lemma deg_Kn n (x : 'K_n.+1) : n <= #|N(x)|.
+Proof.
+have E : N(x) =i [pred y in 'K_n.+1 | y != x] by move=> y; rewrite !inE eq_sym.
+by rewrite -ltnS -[#|_|.+1]add1n (eq_card E) -cardD1x // card_ord.
+Qed.
+
+Lemma card_edge_Kn n : #|E('K_n)| = 'C(n,2).
+Proof.
+rewrite -[in RHS](card_ord n) -card_draws; apply: eq_card => e.
+by rewrite !inE; apply/edgesP/cards2P => [[x[y[-> xy]]]|[x[y[xy ->]]]]; exists x,y.
+Qed.
+
+(** edge sets and neighboorhoods for 'K_3,3 *)
+
+Lemma Knm_edges n m : 
+  E('K_n,m) = [set [set inl x; inr y] | x in [set:'I_n], y in [set: 'I_m]].
+Proof.
+apply/setP=> e. apply/edgesP/imset2P => [|[x y _ _ ->]]; last by exists (inl x), (inr y).
+by move=> [[x|x] [[y|y] [// -> _]]]; [exists x y|exists y x]; rewrite // setUC.
+Qed.
+
+Lemma card_edge_Knm n m : #|E('K_n,m)| = n * m.
+Proof.
+rewrite Knm_edges curry_imset2X card_imset ?cardsX ?cardsT ?card_ord //=.
+by move => [x y] [x' y']; rewrite /= doubleton_eq_iff => -[[[->] [->]]|[//]].
+Qed.
+
+Lemma opn_Knm_l n m (x : 'I_n) : 
+  N(inl x : 'K_n,m) = [set inr y | y in [set: 'I_m]].
+Proof.
+apply/setP=> -[z|z]; rewrite ?inj_imset ?inE //; last exact: inr_inj.
+by symmetry; apply: contraTF isT => /imsetP [z']. 
+Qed.
+
+Lemma opn_Knm_r n m (y : 'I_m) : 
+  N(inr y : 'K_n,m) = [set inl x | x in [set: 'I_n]].
+Proof.
+apply/setP=> -[z|z]; rewrite ?inj_imset ?inE //; first exact: inl_inj.
+by symmetry; apply: contraTF isT => /imsetP [z']. 
+Qed.
+
+Lemma deg_Knm_l n m (x : 'I_n) : #|N(inl x : 'K_n,m)| = m.
+Proof. by rewrite opn_Knm_l card_imset ?cardsT ?card_ord //; exact: inr_inj. Qed.
+
+Lemma deg_Knm_r n m (y : 'I_m) : #|N(inr y : 'K_n,m)| = n.
+Proof. by rewrite opn_Knm_r card_imset ?cardsT ?card_ord //; exact: inl_inj. Qed.
+  
+Lemma deg_Knm n m (x : 'K_n,m) : minn n m <= #|N(x)|.
+Proof. by case: x => [x|y]; rewrite ?deg_Knm_l ?deg_Knm_r ?geq_minr ?geq_minl. Qed.
+
+(** edge sets for add_node *)
+
+(* not used currently *)
+Lemma edges_add_node (G : sgraph) (A : {set G}) :
+  E(add_node G A) = [set [set None; Some x] | x in A] :|: 
+                    [set Some @: (e : {set G}) | e in E(G)].
+Proof.
+apply/setP => e; apply/edgesP/setUP => [[x] [y] [-> xy]|].
+- have [None_e|NoneNe] := boolP (None \in [set x;y]); [left|right].
+  + wlog ? : x y xy {None_e} / None = x; [move=> W|subst x].
+      by case/set2P : None_e; last rewrite setUC; apply: W; rewrite // sgP.
+    by case: y xy => //= a a_A; apply: imset_f.
+  + move: x y xy NoneNe => [x|] [y|]; rewrite !inE ?eqxx //= => xy _.
+    by apply/imsetP; exists [set x;y]; rewrite ?in_edges // imsetU1 imset_set1. 
+- move=> [/imsetP[x xA ->]|/imsetP[e' eG ->]]; first by exists None, (Some x).
+  have [x[y [-> xy]]] := edgesP _ eG; exists (Some x),(Some y).
+  by rewrite imsetU1 imset_set1.
+Qed.
+
+Lemma card_edge_add_node (G : sgraph) (A : {set G}) :
+  #|E(add_node G A)| = #|A| + #|E(G)|.
+Proof.
+rewrite edges_add_node cardsU disjoint_setI0 ?cards0 ?subn0; first congr (_ + _).
+- apply: card_imset => x y /setP /(_ (Some y)); rewrite !inE eqxx orbT.
+  by rewrite Some_eqE => /eqP ->.
+- apply: card_imset => e1 e2 eq_Some; apply/setP => x.
+  by rewrite -[LHS](inj_imset _ _ Some_inj) eq_Some inj_imset.
+- apply/disjointP => e E1 E2. 
+  have: None \in e by case/imsetP : E1 => x _ ->; rewrite !inE eqxx.
+  suff: None \notin e by move/negPf->.
+  by case/imsetP : E2 => x _ ->; apply/negP=>/imsetP => -[?].
 Qed.
 
 (** ** Edge Deletion  *)

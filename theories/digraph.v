@@ -23,6 +23,10 @@ Record relType := RelType { rel_car :> finType; edge_rel : rel rel_car }.
 Notation "x -- y" := (edge_rel x y) (at level 30).
 Prenex Implicits edge_rel.
 
+(** experimental notation for passing [edge_rel] or [sedge] *)
+(* TODO/TOTHINK : use this pervasively *)
+Notation "(--)" := (fun x y => x -- y).
+
 (** maintain the notation [x -- y] under simplification *)
 
 Arguments edge_rel : simpl never.
@@ -40,13 +44,15 @@ this by providing a type family of packaged paths [Path x y] which abstracts
 away this asymmetry. We then lift many of the lemmas from the path library to
 the setting of simple graphs. *)
 
+
+
 (** ** Unpackaged Paths *)
 
 Section PathP.
 Variable (T : relType).
 Implicit Types (x y : T) (p : seq T).
 
-Definition pathp x y p := path (@edge_rel T) x p && (last x p == y).
+Definition pathp x y p := path (--) x p && (last x p == y).
 
 Lemma pathpW y x p : pathp x y p -> path edge_rel x p.
 Proof. by case/andP. Qed.
@@ -196,6 +202,14 @@ Section PathDef.
 
 End PathDef.
 End Pack.
+
+(** constructor for [Path x (last x p)] given [pth_p : path (--) x p] *)
+Lemma Path_of_proof (G : relType) (x : G) (p : seq G) : 
+  path (--) x p -> pathp x (last x p) p.
+Proof. by rewrite /pathp eqxx andbT. Qed.
+
+Definition Path_of_path (G : relType) (x : G) (p : seq G) (pth_p : path (--) x p)
+  := Build_Path (Path_of_proof pth_p).
 
 Section PathOps.
 Variables (T : relType) (x y z : T) (p : Path x y) (q : Path y z).
@@ -758,7 +772,7 @@ Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.
 Section InducedSubgraph.
   Variables (G : diGraph) (S : {set G}).
 
-  Definition induced_type := sig [eta mem S].
+  Definition induced_type := { x | x \in S}.
 
   Definition induced_rel := [rel x y : induced_type | val x -- val y].
 
@@ -771,7 +785,7 @@ Lemma path_to_induced (G : diGraph) (S : {set G}) (x y : induced S) p' :
   exists2 p, pathp x y p & p' = map val p.
 Proof.
   move=> pth_p' sub_p'.
-  case: (lift_pathp _ _ pth_p' _) => //; first exact: val_inj.
+  case: (lift_pathp _ _ pth_p' _) => //.
   - move=> z /sub_p' z_S. by apply/codomP; exists (Sub z z_S).
   - move=> p [pth_p /esym eq_p']. by exists p.
 Qed.
@@ -1125,16 +1139,16 @@ Notation "N( x )" := (@open_neigh _ x)
 Notation "N[ x ]" := (@closed_neigh _ x) 
    (at level 0, x at level 99, format "N[ x ]").
 Notation "N( G ; x )" := (@open_neigh G x)
-   (at level 0, G at level 99, x at level 99, format "N( G ; x )", only parsing).
+   (at level 0, G at level 99, x at level 99, only parsing).
 Notation "N[ G ; x ]" := (@closed_neigh G x)
-   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]", only parsing).
+   (at level 0, G at level 99, x at level 99, only parsing).
    
 Notation "NS( G ; D )" := (@open_neigh_set G D) 
-   (at level 0, G at level 99, D at level 99, format "NS( G ; D )", only parsing).
+   (at level 0, G at level 99, D at level 99, only parsing).
 Notation "NS( D )" := (open_neigh_set D) 
    (at level 0, D at level 99, format "NS( D )").
 Notation "NS[ G ; D ]" := (@closed_neigh_set G D) 
-   (at level 0, G at level 99, D at level 99, format "NS[ G ; D ]", only parsing).
+   (at level 0, G at level 99, D at level 99, only parsing).
 Notation "NS[ D ]" := (closed_neigh_set D) 
    (at level 0, D at level 99, format "NS[ D ]").
 
