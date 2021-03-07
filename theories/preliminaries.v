@@ -14,8 +14,22 @@ Unset Printing Implicit Defensive.
 
 (** *** Tactics *)
 
-Axiom admitted_case : False.
-Ltac admit := case admitted_case.
+(** *** Tactics *)
+
+(** Coq treats axioms of type [False] specially: the [Print Asssumptions] command
+prints the types that are inhabited by an (empty) case analysis on the
+axiom. The alternative definition of [admit] below allows closing proofs that
+contain admits by [Qed], leading to a more precise tracking of the "holes"
+during proof development.
+
+Of course, the axiom makes the global context inconsistent, making it necessary
+to check final results using [Print Assumptions] to ensure the axiom is not
+acually used. *)
+
+(** The tactics below should be commented out in released and review versions. *)
+
+(* Axiom admitted_case : False. *) 
+(* Ltac admit := case admitted_case. *)
 
 Ltac reflect_eq := 
   repeat match goal with [H : is_true (_ == _) |- _] => move/eqP : H => H end.
