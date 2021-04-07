@@ -1,3 +1,4 @@
+From HB Require Import structures.
 Require Import RelationClasses Morphisms Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 
@@ -12,7 +13,6 @@ up to the equivalence of some setoid. *)
 
 (** ** setoids *)
 
-From HB Require Import structures.
 
 HB.mixin Record Setoid_of_Type A := 
   { eqv : relation A; Eqv : Equivalence eqv }.

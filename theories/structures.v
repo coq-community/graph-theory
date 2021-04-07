@@ -1,5 +1,5 @@
-Require Import RelationClasses Morphisms Relation_Definitions.
 From HB Require Import structures.
+Require Import RelationClasses Morphisms Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 Require Import edone preliminaries setoid_bigop bij.
 

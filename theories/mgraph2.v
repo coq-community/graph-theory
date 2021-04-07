@@ -1,5 +1,5 @@
-Require Import Setoid Morphisms.
 From HB Require Import structures.
+Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
 Require Import setoid_bigop structures pttdom mgraph ptt.

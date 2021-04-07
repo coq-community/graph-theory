@@ -1,3 +1,4 @@
+From HB Require Import structures.
 Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 Require Import edone finite_quotient preliminaries bij equiv.
@@ -380,8 +381,6 @@ End s.
 
 Lemma eqvEcnv (X : pttdom) (x y : X) : x ≡' y <-> x ≡ y°. 
 Proof. done. Qed.
-
-From HB Require Import structures.
 
 (** ** reduction lemma *)
 (* (in the initial pttdom algebra of terms) *)
