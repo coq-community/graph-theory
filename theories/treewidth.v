@@ -67,12 +67,12 @@ Proof.
     + move => x. case: (D1 (f x)) => t Ht. exists t. 
       apply/imsetP. by exists (f x).
     + move => x y /hom_f /D2 [t] /andP [t1 t2]. 
-      exists t. by rewrite -[x]can_f -[y]can_f !mem_imset. 
+      exists t. by rewrite -[x]can_f -[y]can_f !imset_f. 
     + move => x t1 t2 /imsetP [x1] X1 ? /imsetP [x2] X2 P. subst.
       have ?: x1 = x2 by rewrite -[x1]can_g P can_g. subst => {P}.
       have := D3 _ _ _ X1 X2. 
       apply: connect_mono => t t' /=. 
-      rewrite !inE -andbA => /and3P [A B ->]. by rewrite !mem_imset.
+      rewrite !inE -andbA => /and3P [A B ->]. by rewrite !imset_f.
   - rewrite /width. apply: eq_bigr => i _. rewrite card_imset //.
     apply: can_inj can_g.
 Qed.
@@ -122,7 +122,7 @@ Proof.
     + move => [t0'] [t1'] [t0t1 H0 H1].
       apply: connect_trans (connT _ _ _ A H0) _.
       rewrite E. apply: connect_trans (connect1 _) (connT _ _ _ H1 C).
-      by rewrite /= t0t1 !inE -{1}E !mem_imset.
+      by rewrite /= t0t1 !inE -{1}E !imset_f.
 Qed.
 
 Lemma rename_width (T : forest) (G : sgraph) (D : T -> {set G}) (G' : finType) (h : G -> G') :
@@ -183,11 +183,11 @@ Section JoinT.
   Proof using.
     move => dec1 dec2. split.
     - move => [x|x]. 
-      + case: (sbag_cover dec1 x) => t Ht. exists (inl t) => /=. by rewrite mem_imset.
-      + case: (sbag_cover dec2 x) => t Ht. exists (inr t) => /=. by rewrite mem_imset.
+      + case: (sbag_cover dec1 x) => t Ht. exists (inl t) => /=. by rewrite imset_f.
+      + case: (sbag_cover dec2 x) => t Ht. exists (inr t) => /=. by rewrite imset_f.
     - move => [x|x] [y|y] // xy. 
-      + case: (sbag_edge dec1 xy) => t /andP [H1 H2]. exists (inl t) => /=. by rewrite !mem_imset.
-      + case: (sbag_edge dec2 xy) => t /andP [H1 H2]. exists (inr t) => /=. by rewrite !mem_imset.
+      + case: (sbag_edge dec1 xy) => t /andP [H1 H2]. exists (inl t) => /=. by rewrite !imset_f.
+      + case: (sbag_edge dec2 xy) => t /andP [H1 H2]. exists (inr t) => /=. by rewrite !imset_f.
     - have inl_inr x t : inl x \in decompU D1 D2 (inr t) = false.
       { rewrite /decompU /=. apply/negbTE/negP. by case/imsetP. }
       have inr_inl x t : inr x \in decompU D1 D2 (inl t) = false.
@@ -196,14 +196,14 @@ Section JoinT.
       + pose e := restrict [pred t | x \in D1 t] sedge.
         apply: (homo_connect (e:= e) (f := inl)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
-          by rewrite !mem_imset.
+          by rewrite !imset_f.
         * apply: sbag_conn => //. 
           move: A. by case/imsetP => ? ? [->].
           move: B. by case/imsetP => ? ? [->].
       + pose e := restrict [pred t | x \in D2 t] sedge.
         apply: (homo_connect (e:= e) (f := inr)).
         * move => a b. rewrite /e /= !in_simpl -andbA => /and3P[? ? ?].  
-          by rewrite !mem_imset.
+          by rewrite !imset_f.
         * apply: sbag_conn => //. 
           move: A. by case/imsetP => ? ? [->].
           move: B. by case/imsetP => ? ? [->].
@@ -600,7 +600,7 @@ Proof.
     + case: dec1 => dec1A dec1B dec1C. case: dec2 => dec2A dec2B dec2C.
       have X (x : induced V1) (y : induced V2) : val x = val y -> 
          ((inl x \in B (inl t1) = true) * (inr y \in B (inr t2) = true))%type.
-      { move => Exy. rewrite /B /decompU /= !mem_imset //.
+      { move => Exy. rewrite /B /decompU /= !imset_f //.
         - apply: (subsetP Ht2). rewrite !inE -{1}Exy. 
           apply/andP; split; exact: valP.
         - apply: (subsetP Ht1). rewrite !inE {2}Exy.
@@ -608,14 +608,14 @@ Proof.
       move => [x|x] [y|y]; simpl h.
       * move/val_inj => ?;subst y. 
         case: (dec1A x) => t Ht. left. exists (inl t). 
-        by rewrite /B /decompU /= mem_imset.
+        by rewrite /B /decompU /= imset_f.
       * move => Exy. right. exists (inl t1). exists (inr t2).
         by rewrite /edge_rel/= !(X _ _ Exy) /= !eqxx.
       * move/esym => Eyx. right. exists (inr t2). exists (inl t1). 
         by rewrite /edge_rel/= !(X _ _ Eyx) /= !eqxx.
       * move/val_inj => ?;subst y. 
         case: (dec2A x) => t Ht. left. exists (inr t). 
-        by rewrite /B /decompU /= mem_imset.
+        by rewrite /B /decompU /= imset_f.
     + move => decRB. do 2 eexists. split. eapply decRB.
       apply: leq_trans (rename_width _ _) _. exact: join_width.
   - (* clique size 0 *)

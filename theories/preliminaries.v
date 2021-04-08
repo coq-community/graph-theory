@@ -11,6 +11,11 @@ Unset Printing Implicit Defensive.
 (* Definition Symmetric := Relation_Definitions.symmetric. *)
 (* Definition Transitive := Relation_Definitions.transitive. *)
 
+(** This triggers the deprecation warning only once and maintains compatibiltiy *)
+Definition imset_f (aT rT : finType) (f : aT -> rT) (D : {pred aT}) (x : aT) : 
+  x \in D -> f x \in [set f x | x in D].
+Proof. exact: mem_imset. Qed.
+
 (** *** Tactics *)
 
 (*Axiom admitted_case : False.
@@ -778,7 +783,7 @@ Proof.
   apply: (@leq_trans #|[set f x | x in A]|); last exact: leq_imset_card.
   rewrite -[X in X <= _](card_imset _ (@Some_inj _)).
   apply: subset_leq_card. apply/subsetP => ? /imsetP [?] /pimsetP [x0].
-  move => H /eqP <- ->. by rewrite mem_imset. 
+  move => H /eqP <- ->. by rewrite imset_f. 
 Qed.
 
 

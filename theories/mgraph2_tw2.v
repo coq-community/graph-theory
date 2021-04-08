@@ -107,8 +107,8 @@ Section Quotients.
       apply/subsetP => x.
       rewrite !inE -!orbA => /or4P [] /eqP->.
       all: apply/bigcupP; solve 
-        [ by exists (inl t1) => //; rewrite ?inE ?mem_imset ?eqxx 
-        | by exists (inr t2) => //; rewrite ?inE ?mem_imset ?eqxx]. }
+        [ by exists (inl t1) => //; rewrite ?inE ?imset_f ?eqxx 
+        | by exists (inr t2) => //; rewrite ?inE ?imset_f ?eqxx]. }
     pose h := pi e : skeleton (union G1 G2) -> skeleton (merge _ e).
     exists T'. exists (rename D' h); split; last by exists None.
     - apply: rename_decomp => //. 
@@ -144,14 +144,14 @@ Section Quotients.
       apply: (@leq_trans #|[set (\pi x : G1 ∥ G2) | x in P']|); last exact: leq_imset_card.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. case/setUP : H1 => H1; first case/setUP : H1 => H1.
-      * by rewrite mem_imset.
+      * by rewrite imset_f.
       * move/set1P : H1 => ->. apply/imsetP. exists (unl input); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
       * move/set1P : H1 => ->. apply/imsetP. exists (unl output); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
-      exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
+      exists t. by rewrite C !imset_f // !inE ?eqxx ?orbT.
   Qed.
 
   Lemma decomp_dot2 (T1 T2 : forest) D1 D2 : 
@@ -169,12 +169,12 @@ Section Quotients.
       apply: subset_leq_card.
       apply/subsetP => ? /imsetP [x H1 ->]. move: H1. 
       rewrite /P -!setUA [[set _;_]]setUC !setUA. case/setUP => H1.
-      * by rewrite mem_imset.
+      * by rewrite imset_f.
       * move/set1P : H1 => ->. apply/imsetP. exists (unl output); first by rewrite !inE eqxx ?orbT.
         apply/eqquotP. eqv. 
     - move => T [D] [A B [t C]]. exists T. exists D. split => //. 
       apply/sdecomp_sskel. split => //. 
-      exists t. by rewrite C !mem_imset // !inE ?eqxx ?orbT.
+      exists t. by rewrite C !imset_f // !inE ?eqxx ?orbT.
   Qed.
 
 End Quotients.

@@ -694,7 +694,7 @@ Proof.
   case: (Path_from_induced p) => q sub_S Hq. 
   apply: (connectRI q) => z.
   rewrite in_collective Hq => /mapP[z'] /subA Hz' ->.
-  exact: mem_imset.
+  exact: imset_f.
 Qed.
 
 Lemma connected_induced (G : sgraph) (S : {set G}) : 
@@ -1248,7 +1248,7 @@ Proof.
   case: (x0 =P y0) => [-> _|_ /(_ isT) [p _ Hp]]; first exact: connect0.
   case: (add_node_lift_Path U p) => q E. 
   apply: (connectRI q) => ?; rewrite mem_path E.
-  case/mapP => z Hz ->. rewrite mem_imset //. exact: (subsetP Hp).
+  case/mapP => z Hz ->. rewrite imset_f //. exact: (subsetP Hp).
 Qed.
 
 (** ** Neighboring sets *)

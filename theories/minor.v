@@ -346,12 +346,12 @@ Proof.
     + rewrite preim_omap_None. exact: connected1.
   - move => [x|] [y|] //=. 
     + move/M3 => [x0] [y0] [H1 H2 H3]. exists (Some x0); exists (Some y0).
-      by rewrite !preim_omap_Some !mem_imset.
+      by rewrite !preim_omap_Some !imset_f.
     + move/H => [x0] H1 H2. exists (Some x0); exists None. 
-      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !mem_imset //.
+      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !imset_f //.
       by rewrite -mem_preim H2.
     + move/H => [y0] H1 H2. exists None; exists (Some y0).
-      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !mem_imset //.
+      rewrite !preim_omap_Some !preim_omap_None !inE !eqxx !imset_f //.
       by rewrite -mem_preim H2.
 Qed.
 
@@ -383,7 +383,7 @@ Proof.
   case: mm_phi => M1 M2 M3. exists psi;split.
   - case. 
     + move => a. case: (M1 a) => x E. exists (val x). apply/eqP. 
-      rewrite mem_preim psi_G' mem_imset //. by rewrite !inE E. 
+      rewrite mem_preim psi_G' imset_f //. by rewrite !inE E. 
     + exists i. rewrite /psi. move: Hi. 
       case: {-}_ / idP => [? ?|_ _]; by [contrab|rewrite eqxx].
   - case. 
@@ -391,9 +391,9 @@ Proof.
     + rewrite psi_None. exact: connected1.
   - move => [a|] [b|]; last by rewrite sg_irrefl.
     + move => /= /M3 [x0] [y0] [? ? ?]. 
-      exists (val x0). exists (val y0). by rewrite !psi_G' !mem_imset.
-    + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !mem_imset.
-    + move => /= /Hphi [x0] ? ?.  exists i;exists (val x0). by rewrite sg_sym psi_None set11 !psi_G' !mem_imset.
+      exists (val x0). exists (val y0). by rewrite !psi_G' !imset_f.
+    + move => /= /Hphi [x0] ? ?. exists (val x0); exists i. by rewrite psi_None set11 !psi_G' !imset_f.
+    + move => /= /Hphi [x0] ? ?.  exists i;exists (val x0). by rewrite sg_sym psi_None set11 !psi_G' !imset_f.
 Qed.
 
 

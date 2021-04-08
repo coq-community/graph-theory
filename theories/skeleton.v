@@ -566,7 +566,7 @@ Lemma connected_skeleton' (G : graph) V E (con : @consistent _ _ G V E) :
   @connected (skeleton (subgraph_for con)) U.
 Proof.
   move => U. set U' := val @: U => conn_U all_edges x y x_U y_U.
-  case/connectP: (conn_U _ _ (mem_imset val x_U) (mem_imset val y_U)) => p.
+  case/connectP: (conn_U _ _ (imset_f val x_U) (imset_f val y_U)) => p.
   elim: p x x_U => [|a p IH] x x_U; first by move=> _ /val_inj <-; exact: connect0.
   rewrite (lock edge_rel) /= -!andbA -lock. case/and4P=> _ a_U' xa.
   have Ha : a \in V by case/imsetP: a_U' => b _ ->; exact: valP.
@@ -584,7 +584,7 @@ Proof.
     - rewrite adjacent_sym. apply: Hyp => //; by [rewrite eq_sym | exists e]. }
   rewrite inE. case/andP=> /eqP Hsrc /eqP Htgt.
   have Ne0 : source e0 != target e0 by rewrite Hsrc Htgt.
-  have : e0 \in edge_set U' by rewrite inE Hsrc Htgt !mem_imset.
+  have : e0 \in edge_set U' by rewrite inE Hsrc Htgt !imset_f.
   case/all_edges=> [//|] e' Ee'. rewrite Hsrc Htgt => He'.
   set e : edge (subgraph_for con) := Sub e' Ee'.
   have He : e \in edges x b :|: edges b x.

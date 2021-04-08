@@ -363,7 +363,7 @@ Proof.
   move => HM. case (boolP (3 < #|G|)) => sizeG; last by rewrite leqNgt; left. 
   right. case: (boolP ([exists (S : {set G} | #|S| <= 2), vseparatorb S])).
   - case/exists_inP => /= S sizeS sepS. 
-    case: (arg_minP (fun a : {set G} => #|a|) sepS) => U /vseparatorP sepU HU.
+    case: (arg_minnP (fun a : {set G} => #|a|) sepS) => U /vseparatorP sepU HU.
     exists U. repeat split => //. 
     + move => V /vseparatorP. exact: HU.
     + move: (HU S sepS) => ?. exact: leq_trans sizeS.

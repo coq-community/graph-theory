@@ -842,7 +842,7 @@ Qed.
 Lemma edges_at_iso (F G : graph) (h : F ≃ G) (x : F) :
   edges_at (h x) = [set h.e e | e in edges_at x].
 Proof. 
-  apply/setP => e. by rewrite -[e](bijK' h.e) bij_mem_imset !inE (incident_iso h).
+  apply/setP => e. by rewrite -[e](bijK' h.e) bij_imset_f !inE (incident_iso h).
 Qed.
 
 Lemma setT_bij_hom (G : graph) : 

@@ -106,10 +106,10 @@ Proof.
 Qed.
 
 Lemma arg_maxset p A : p A -> maxset p (arg_max A p W).
-Proof. by move => pA; apply/maxweight_maxset; case: arg_maxP. Qed.
+Proof. by move => pA; apply/maxweight_maxset; case: arg_maxnP. Qed.
 
 Lemma arg_minset p A : p A -> minset p (arg_min A p W).
-Proof. by move => pA ; apply/minweight_minset; case: arg_minP. Qed.
+Proof. by move => pA ; apply/minweight_minset; case: arg_minnP. Qed.
 
 End Weighted_Sets.
 
@@ -402,13 +402,13 @@ Definition ir_w : nat := W (arg_min inhb_max_irr max_irr W).
 Fact ir_min D : max_irr D -> ir_w <= W D.
 Proof.
   rewrite /ir_w.
-  by case: (arg_minP W inhb_max_irr_is_maximal_irredundant) => A _ ; apply.
+  by case: (arg_minnP W inhb_max_irr_is_maximal_irredundant) => A _ ; apply.
 Qed.
 
 Fact ir_witness : exists2 D, max_irr D & W D = ir_w.
 Proof.
   rewrite /ir_w.
-  case: (arg_minP W inhb_max_irr_is_maximal_irredundant) => D.
+  case: (arg_minnP W inhb_max_irr_is_maximal_irredundant) => D.
   by exists D.
 Qed.
 
@@ -421,12 +421,12 @@ Qed.
 Definition gamma_w : nat := W (arg_min setT dominating W).
 
 Fact gamma_min D : dominating D -> gamma_w <= W D.
-Proof. rewrite /gamma_w. case: (arg_minP W domT) => A _ ; apply. Qed.
+Proof. rewrite /gamma_w. case: (arg_minnP W domT) => A _ ; apply. Qed.
 
 Fact gamma_witness : exists2 D, dominating D & W D = gamma_w.
 Proof.
   rewrite /gamma_w.
-  case: (arg_minP W domT) => D.
+  case: (arg_minnP W domT) => D.
   by exists D.
 Qed.
 
@@ -441,13 +441,13 @@ Definition ii_w : nat := W (arg_min inhb_max_st max_st W).
 Fact ii_min S : max_st S -> ii_w <= W S.
 Proof.
   rewrite /ii_w.
-  by case: (arg_minP W inhb_max_st_is_maximal_stable) => A _ ; apply.
+  by case: (arg_minnP W inhb_max_st_is_maximal_stable) => A _ ; apply.
 Qed.
 
 Fact ii_witness : exists2 S, max_st S & W S = ii_w.
 Proof.
   rewrite /ii_w.
-  case: (arg_minP W inhb_max_st_is_maximal_stable) => S.
+  case: (arg_minnP W inhb_max_st_is_maximal_stable) => S.
   by exists S.
 Qed.
 
@@ -460,10 +460,10 @@ Qed.
 Definition alpha_w : nat := W (arg_max set0 stable W).
 
 Fact alpha_max S : stable S -> W S <= alpha_w.
-Proof. by move: S; rewrite /alpha_w; case: (arg_maxP W stable0). Qed.
+Proof. by move: S; rewrite /alpha_w; case: (arg_maxnP W stable0). Qed.
 
 Fact alpha_witness : exists2 S, stable S & W S = alpha_w.
-Proof. by rewrite /alpha_w; case: (arg_maxP W stable0) => A; exists A. Qed.
+Proof. by rewrite /alpha_w; case: (arg_maxnP W stable0) => A; exists A. Qed.
 
 Fact alpha_maxset S : stable S -> W S = alpha_w -> maxset stable S.
 Proof.
@@ -476,13 +476,13 @@ Definition Gamma_w : nat := W (arg_max inhb_min_dom min_dom W).
 Fact Gamma_max D : min_dom D -> W D <= Gamma_w.
 Proof. 
   move: D ; rewrite /Gamma_w.
-  by case: (arg_maxP W inhb_min_dom_is_minimal_dominating).
+  by case: (arg_maxnP W inhb_min_dom_is_minimal_dominating).
 Qed.
 
 Fact Gamma_witness : exists2 D, min_dom D & W D = Gamma_w.
 Proof.
   rewrite /Gamma_w.
-  case: (arg_maxP W inhb_min_dom_is_minimal_dominating) => D.
+  case: (arg_maxnP W inhb_min_dom_is_minimal_dominating) => D.
   by exists D.
 Qed.
 
@@ -495,10 +495,10 @@ Qed.
 Definition IR_w : nat := W (arg_max set0 irredundant W).
 
 Fact IR_max D : irredundant D -> W D <= IR_w.
-Proof. by move: D; rewrite /IR_w; case: (arg_maxP W irr0). Qed.
+Proof. by move: D; rewrite /IR_w; case: (arg_maxnP W irr0). Qed.
 
 Fact IR_witness : exists2 D, irredundant D & W D = IR_w.
-Proof. by rewrite /IR_w; case: (arg_maxP W irr0) => D; exists D. Qed.
+Proof. by rewrite /IR_w; case: (arg_maxnP W irr0) => D; exists D. Qed.
 
 Fact IR_maxset D : irredundant D -> W D = IR_w -> maxset irredundant D.
 Proof.
@@ -511,7 +511,7 @@ Qed.
 Proposition ir_w_leq_gamma_w : ir_w <= gamma_w.
 Proof.
   rewrite /gamma_w.
-  have [D domD minWD] := arg_minP W domT.
+  have [D domD minWD] := arg_minnP W domT.
   have min_domD := minweight_minset positive_weights domD minWD.
   have max_irrD := minimal_dom_is_maximal_irr min_domD.
   exact: ir_min.
@@ -520,7 +520,7 @@ Qed.
 Proposition gamma_w_leq_ii_w : gamma_w <= ii_w.
 Proof.
   rewrite /ii_w.
-  have [S max_stS _] := arg_minP W inhb_max_st_is_maximal_stable.
+  have [S max_stS _] := arg_minnP W inhb_max_st_is_maximal_stable.
   have domS := minsetp (maximal_st_is_minimal_dom max_stS).
   exact: gamma_min.
 Qed.
@@ -528,7 +528,7 @@ Qed.
 Proposition ii_w_leq_alpha_w : ii_w <= alpha_w.
 Proof.
   rewrite /alpha_w.
-  have [S stS maxWS] := arg_maxP W stable0.
+  have [S stS maxWS] := arg_maxnP W stable0.
   have max_stS := maxweight_maxset positive_weights stS maxWS.
   exact: ii_min.
 Qed.
@@ -536,7 +536,7 @@ Qed.
 Proposition alpha_w_leq_Gamma_w : alpha_w <= Gamma_w.
 Proof.
   rewrite /alpha_w.
-  have [S stS maxWS] := arg_maxP W stable0.
+  have [S stS maxWS] := arg_maxnP W stable0.
   have max_stS := maxweight_maxset positive_weights stS maxWS.
   have min_domS := maximal_st_is_minimal_dom max_stS.
   exact: Gamma_max.
@@ -545,7 +545,7 @@ Qed.
 Proposition Gamma_w_leq_IR_w : Gamma_w <= IR_w.
 Proof.
   rewrite /Gamma_w.
-  have [D min_domD _] := arg_maxP W inhb_min_dom_is_minimal_dominating.
+  have [D min_domD _] := arg_maxnP W inhb_min_dom_is_minimal_dominating.
   have irrD := maxsetp (minimal_dom_is_maximal_irr min_domD).
   exact: IR_max.
 Qed.

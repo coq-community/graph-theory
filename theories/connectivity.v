@@ -491,7 +491,7 @@ Lemma minimal_separation x y : x != y -> ~~ x -- y ->
 Proof.
   move => xDy xNy. 
   move/proper_vseparator/vseparatorP : (separate_nonadjacent xDy xNy) => sep.
-  case: (arg_minP (fun S => #|S|) sep) => U /vseparatorP sepU HU {sep xDy xNy}.
+  case: (arg_minnP (fun S => #|S|) sep) => U /vseparatorP sepU HU {sep xDy xNy}.
   move: (vseparator_separation sepU) => [V1 [V2 [ps UV]]].
   exists V1; exists V2. repeat split => //; rewrite -UV // => V /vseparatorP. exact: HU.
 Qed.
@@ -769,7 +769,7 @@ Proof.
       have [Ha Hb] : a \in ~: [set x;y] /\ b \in ~: [set x;y] by split; apply: Hq.
       case: (@digraph.Path_to_induced G (~: [set x;y]) (Sub a Ha) (Sub b Hb) q Hq) => q' Eq. 
       case: (sepS _ _ q'); rewrite ?inE // => s0 in_S in_q'.
-      exists (val s0); last exact: mem_imset. subst. 
+      exists (val s0); last exact: imset_f. subst. 
       by rewrite !inE [_ \in q]mem_path -Eq map_f. }
   have min_s' S : separator G' A B S -> s <= #|S|.
   { move => HS. 
@@ -947,7 +947,7 @@ Proof.
     * apply: fst_inj con_p. 
     * apply: connector_fst con_p.
     * by rewrite card_ord.
-    * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite mem_imset.
+    * case/mapP => i _ ->. exists (fst (p i),lst (p i)) => //. by rewrite imset_f.
   + case/imsetP => i _ -> /= ->. apply: connector_fst. exact: con_p.
 Qed.
 
@@ -959,7 +959,7 @@ Proof.
   - case: M1 => M1 M1'. exists (matching_of M'). 
     split; first exact: matching_of_dimatching.
     rewrite M2. apply/subsetP => a. case/imsetP => e E1 E2. apply/bigcupP. 
-    exists [set e.1; e.2]; last by rewrite E2 !inE eqxx. exact: mem_imset.
+    exists [set e.1; e.2]; last by rewrite E2 !inE eqxx. exact: imset_f.
 Qed.
 
 (** ** König's Theorem *)
