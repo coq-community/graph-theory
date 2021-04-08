@@ -2,6 +2,7 @@
 -arg -w -arg -redundant-canonical-projection
 -arg -w -arg -projection-no-head-constant
 -arg -w -arg -duplicate-clear
+-arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 -R theories GraphTheory
 
 ## preliminary modules
