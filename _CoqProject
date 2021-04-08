@@ -3,6 +3,8 @@
 -arg -w -arg -projection-no-head-constant
 -arg -w -arg -duplicate-clear
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
+-arg -w -arg -ambiguous-paths
+
 -R theories GraphTheory
 
 ## preliminary modules
@@ -55,3 +57,10 @@ theories/dom.v
 theories/partition.v
 theories/coloring.v
 theories/wpgt.v
+
+## Kuratowsi's/Wagner's theorem
+theories/hmap_ops.v
+theories/hcycle.v
+theories/embedding.v
+theories/K4plane.v
+theories/wagner.v

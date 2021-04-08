@@ -27,6 +27,7 @@ depends: [
   "coq-mathcomp-ssreflect" {(>= "1.12" & < "1.13~") | (= "dev")}
   "coq-mathcomp-finmap" 
   "coq-hierarchy-builder" { (>= "1.1.0") }
+  "coq-fourcolor" 
 ]
 
 tags: [
