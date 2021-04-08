@@ -82,8 +82,8 @@ dependencies:
   description: MathComp's finmap library
 - opam:
     name: coq-hierarchy-builder
-    version: '{ >= "0.10" }'
-  description: Hierarchy Builder, version 0.10 or later
+    version: '{ (>= "1.0.0") & (!= "1.1.0") }'
+  description: Hierarchy Builder, version 1.0.0 or later
 
 namespace: GraphTheory
 
