@@ -315,6 +315,7 @@ Qed.
 
 End Packaged.
 
+#[export]
 Hint Resolve path_begin path_end : core.
 
 (** *** Transporting paths to and from induced subgraphs *)
@@ -734,6 +735,7 @@ Lemma partition0 (T : finType) (P : {set {set T}}) (D : {set T}) :
 Proof. case/and3P => _ _. by apply: contraNF. Qed.
 Arguments partition0 [T P] D.
 
+#[export]
 Hint Resolve partition_components trivIset_components : core.
 
 Lemma components_pblockP (G : sgraph) (H : {set G}) (x y : G) :

@@ -288,7 +288,7 @@ Section terms.
  (* (via impredicative encoding to avoid repeating the axioms in an inductive definition)) *)
  Definition tm_eqv (u v: term): Prop :=
    forall (X: pttdom) (f: A -> X), eval f u ≡ eval f v.
-(* Do we really want this hint? *)
+
  Hint Unfold tm_eqv : core. 
  Lemma tm_eqv_equivalence: Equivalence tm_eqv.
  Proof.

@@ -57,8 +57,8 @@ license:
   identifier: CECILL-B
 
 supported_coq_versions:
-  text: 8.11 or later
-  opam: '{(>= "8.11" & < "8.14~") | (= "dev")}'
+  text: 8.12 or later
+  opam: '{(>= "8.12" & < "8.14~") | (= "dev")}'
 
 tested_coq_opam_versions:
 - version: 'coq-dev'
@@ -69,14 +69,12 @@ tested_coq_opam_versions:
   repo: 'mathcomp/mathcomp'
 - version: '1.11.0-coq-8.12'
   repo: 'mathcomp/mathcomp'
-- version: '1.10.0-coq-8.11'
-  repo: 'mathcomp/mathcomp'
 
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{(>= "1.10" & < "1.13~") | (= "dev")}'
-  description: MathComp's SSReflect library, version 1.10 or later
+    version: '{(>= "1.11" & < "1.13~") | (= "dev")}'
+  description: MathComp's SSReflect library, version 1.11 or later
 - opam:
     name: coq-mathcomp-finmap
   description: MathComp's finmap library

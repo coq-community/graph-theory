@@ -182,6 +182,7 @@ Ltac set_tac := set_init; subst; repeat set_tac_step.
 (** Use typeclass inference to trigger set_tac using rewrite lemmas *)
 
 Class setBox (P : Prop) : Prop := SetBox { setBoxed : P }.
+#[export]
 Hint Extern 0 (setBox _) => apply SetBox; set_tac : typeclass_instances.
 
 Lemma inD (T : finType) (x : T) (A : pred T) `{setBox (x \in A)} : x \in A. 

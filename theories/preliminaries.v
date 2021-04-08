@@ -24,6 +24,7 @@ Ltac contrab :=
   end.
 Tactic Notation "existsb" uconstr(x) := apply/existsP;exists x.
 
+#[export]
 Hint Extern 0 (injective Some) => exact: @Some_inj : core.
 
 (** *** Notations *) 
@@ -708,6 +709,7 @@ Proof.
     by apply: homo_connect => {x y} x y /=; rewrite !hE !hinvK.
 Qed.
 
+#[export]
 Hint Resolve Some_inj inl_inj inr_inj : core.
 
 

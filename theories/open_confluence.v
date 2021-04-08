@@ -304,6 +304,7 @@ Proof.
 Qed.
 
 End PreGraphTheory.
+
 Hint Resolve is_edge_vsetL is_edge_vsetR : vset.
 Hint Resolve oarc_vsetL oarc_vsetR : vset.
 
@@ -470,6 +471,7 @@ Proof. by apply. Qed.
 
 Lemma in_vsetAV' (G : pre_graph) z a : z \in vset (G ∔ [z,a]).
 Proof. by rewrite !inE eqxx. Qed.
+
 Hint Resolve in_vsetDV in_vsetDE in_vsetAV in_vsetAE in_vsetAV' : vset.
 
 (** Preservation of predicates *)
@@ -909,6 +911,7 @@ Global Existing Instance ostep_step.
 
 Lemma osteps_refl (G : pre_graph) : osteps G G.
 Proof. exact: eqvG_step. Qed.
+
 Hint Resolve osteps_refl : core.
 
 Lemma eqvG_stepL G G' H : G ≡G G' -> osteps G' H -> osteps G H.
@@ -1536,7 +1539,6 @@ Proof with eauto with typeclass_instances.
         by rewrite fsetUC.
 Qed.
 
-
 Hint Resolve oarc_vsetL oarc_vsetR : vset.
 
 Lemma ostep_graph (F G : pre_graph) (isG : is_graph F) : ostep F G -> is_graph G.
@@ -1577,6 +1579,9 @@ Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left as
 Notation "G [adt x <- a ]" := (add_test G x a) 
    (at level 2, left associativity, format "G [adt  x  <-  a ]") : open_scope.
 
+#[export]
 Hint Resolve in_vsetDV in_vsetDE in_vsetAV in_vsetAE in_vsetAV' : vset.
+#[export]
 Hint Resolve is_edge_vsetL is_edge_vsetR oarc_vsetL oarc_vsetR : vset.
+#[export]
 Hint Resolve osteps_refl : core.

@@ -738,6 +738,7 @@ Section IPath.
 End IPath.
 
 End DiPathTheory.
+#[export]
 Hint Resolve ivalP : core.
 
 (** In some constructions a vertex can be typed as belonging to different

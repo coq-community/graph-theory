@@ -61,9 +61,11 @@ Lemma subset_catL (T : eqType) (h k : seq T) : {subset h <= h ++ k}.
 Proof. move => x H. by rewrite mem_cat H. Qed.
 Lemma subset_catR (T : eqType) (h k : seq T) : {subset k <= h ++ k}.
 Proof. move => x H. by rewrite mem_cat H orbT. Qed.
+#[export]
 Hint Resolve subset_catL subset_catR : core.
 Lemma subset_tl (T : eqType) z (l : seq T) : {subset l <= z :: l}.
 Proof. move => x y. exact: mem_tail. Qed. 
+#[export]
 Hint Resolve subset_tl : core.
 
 (* this should be eqv_clot_map, the other lemma should use the _inj suffix *)

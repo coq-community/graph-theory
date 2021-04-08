@@ -109,6 +109,7 @@ Section terms.
  End e.
  Definition tm_eqv (u v: term): Prop :=
    forall (X: ptt) (f: A -> X), eval f u ≡ eval f v.
+
  Hint Unfold tm_eqv : core.
  Lemma tm_eqv_equivalence: Equivalence tm_eqv.
  Proof.

@@ -131,6 +131,7 @@ Qed.
 
 Lemma eq_unit (a b: unit): a = b.
 Proof. by case a; case b. Qed.
+#[export]
 Hint Resolve eq_unit: core.
 
 Lemma big_bij_eq (T : comMonoid) (I1 I2 : finType) (F : I1 -> T) (f : bij I1 I2) (y : I2) :

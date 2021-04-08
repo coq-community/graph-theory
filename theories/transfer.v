@@ -42,6 +42,7 @@ Lemma inj_e_inj : injective inj_e.
 Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
 
 End inject.
+#[export]
 Hint Resolve inj_v_inj inj_e_inj : core.
 Instance VT_inh_type : inh_type VT := Build_inh_type 0. 
 Arguments inj_v {T}.
@@ -111,7 +112,9 @@ Lemma inj_vNfresh (x : G) : inj_v x != fresh (vset open).
 Proof. apply: inj_v_fresh. exact: freshP. Qed.
 
 End Open.
+#[export]
 Hint Resolve inj_v_open : core.
+#[export]
 Hint Resolve freshP : vset.
 
 
