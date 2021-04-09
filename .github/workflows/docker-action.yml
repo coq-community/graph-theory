@@ -3,6 +3,8 @@
 name: Docker CI
 
 on:
+  schedule:
+    - cron: '25 5 * * *' #nightly build at 5:25
   push:
     branches:
       - master
