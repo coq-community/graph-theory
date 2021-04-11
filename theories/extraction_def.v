@@ -307,7 +307,7 @@ Proof.
   - move/pathp_nil/val_inj ->. exact: connect0.
   - rewrite pathp_cons /= -!andbA => /and5P [A B C D E].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
-    apply: connect1. move: C. rewrite /sk_rel -val_eqE.
+    apply: connect1. move: C. rewrite /edge_rel/=/sk_rel -val_eqE.
     by rewrite adjacent_induced.
 Qed.
 

@@ -22,8 +22,8 @@ Coercion digraph_of : sgraph >-> diGraph.
 (** The notation [x -- y] is now inherited *)
 (* Notation "x -- y" := (sedge x y) (at level 30). *)
 
-Definition sg_sym (G : sgraph) : symmetric (@edge_rel G). exact: sg_sym'. Qed.
-Definition sg_irrefl (G : sgraph) : irreflexive (@edge_rel G). exact: sg_irrefl'. Qed.
+Definition sg_sym (G : sgraph) : @symmetric G (--). exact: sg_sym'. Qed.
+Definition sg_irrefl (G : sgraph) : @irreflexive G (--). exact: sg_irrefl'. Qed.
 
 Definition sgP := (sg_sym,sg_irrefl).
 Prenex Implicits sedge.
@@ -31,7 +31,7 @@ Prenex Implicits sedge.
 Lemma sg_edgeNeq (G : sgraph) (x y : G) : x -- y -> (x == y = false).
 Proof. apply: contraTF => /eqP ->. by rewrite sg_irrefl. Qed.
 
-Lemma sconnect_sym (G : sgraph) : connect_sym (@sedge G).
+Lemma sconnect_sym (G : sgraph) : @connect_sym G (--). 
 Proof. exact/connect_symI/sg_sym. Qed.
 
 Lemma sedge_equiv (G : sgraph) : 
@@ -39,19 +39,19 @@ Lemma sedge_equiv (G : sgraph) :
 Proof.  apply: equivalence_rel_of_sym. exact: sg_sym. Qed.
 
 Lemma symmetric_restrict_sedge (G : sgraph) (A : pred G) :
-  symmetric (restrict A sedge).
+  symmetric (restrict A (--)).
 Proof. apply: restrict_sym. exact: sg_sym. Qed.
 
 Lemma srestrict_sym (G : sgraph) (A : pred G) :
-  connect_sym (restrict A sedge).
+  connect_sym (restrict A (--)).
 Proof. exact/connect_symI/symmetric_restrict_sedge. Qed.
 
 Lemma sedge_in_equiv (G : sgraph) (A : {set G}) :
-  equivalence_rel (connect (restrict A sedge)).
+  equivalence_rel (connect (restrict A (--))).
 Proof. exact/equivalence_rel_of_sym/symmetric_restrict_sedge. Qed.
 
 Lemma sedge_equiv_in (G : sgraph) (A : {set G}) :
-  {in A & &, equivalence_rel (connect (restrict A sedge))}.
+  {in A & &, equivalence_rel (connect (restrict A (--)))}.
 Proof. exact: in3W (sedge_in_equiv A). Qed.
 
 Declare Scope sgraph_scope.
@@ -205,9 +205,9 @@ Lemma last_rev_belast x y p :
 Proof. case: p => //= a p _. by rewrite /srev rev_cons last_rcons. Qed.
 
 Lemma path_srev x p : 
-  path sedge x p = path sedge (last x p) (srev x p).
+  path (--) x p = path (--) (last x p) (srev x p).
 Proof. 
-  rewrite rev_path [in RHS](eq_path (e' := sedge)) //. 
+  rewrite rev_path [in RHS](eq_path (e' := (--))) //. 
   move => {x} x y. exact: sg_sym. 
 Qed.
 
@@ -257,7 +257,7 @@ End SimplePaths.
 
 Lemma upathPR (G : sgraph) (x y : G) A :
   reflect (exists p : seq G, @upath (srestrict A) x y p)
-          (connect (restrict A sedge) x y).
+          (connect (restrict A (--)) x y).
 Proof. exact: (@upathP (srestrict A)). Qed.
 
 (* TOTHINK: is this the best way to transfer path from induced subgraphs *)
@@ -590,21 +590,21 @@ Proof.
 Qed.
 
 Lemma connectedTE (G : sgraph) : 
-  connected [set: G] -> forall x y : G, connect sedge x y. 
+  connected [set: G] -> forall x y : G, connect (--) x y. 
 Proof. 
   move => A x y. move: (A x y). 
   rewrite !inE !restrictE; first by apply. by move => ?; rewrite !inE.
 Qed.
 
 Lemma connectedTI (G : sgraph) : 
-  (forall x y : G, connect sedge x y) -> connected [set: G].
+  (forall x y : G, connect (--) x y) -> connected [set: G].
 Proof. move => H x y _ _. rewrite restrictE // => z. by rewrite inE. Qed.
 
 Lemma connected_restrict (G : sgraph) (A : pred G) x : 
-  connected [set y | connect (restrict A sedge) x y].
+  connected [set y | connect (restrict A (--)) x y].
 Proof.
   move => u v. rewrite !inE => Hu Hv. move defP : (mem _) => P.
-  wlog suff W: u Hu / connect (restrict P sedge) x u.
+  wlog suff W: u Hu / connect (restrict P (--)) x u.
   { apply: connect_trans (W _ Hv). rewrite srestrict_sym. exact: W. }
   case: (altP (x =P u)) => [-> //|xDu].
   case/connect_irredRP : Hu => // p Ip Ap.
@@ -615,15 +615,15 @@ Proof.
 Qed.
 
 Lemma connect_range (G : sgraph) (A : pred G) x : x \in A -> 
-  [set y | connect (restrict A sedge) x y] = 
-  [set y in A | connect (restrict A sedge) x y].
+  [set y | connect (restrict A (--)) x y] = 
+  [set y in A | connect (restrict A (--)) x y].
 Proof. 
   move => inA. apply/setP => z. rewrite !inE srestrict_sym.
   apply/idP/andP => [|[//]]. by case/connect_restrict_case => [->|[]].
 Qed.
 
 Lemma connected_restrict_in (G : sgraph) (A : pred G) x : x \in A -> 
-  connected [set y in A | connect (restrict A sedge) x y].
+  connected [set y in A | connect (restrict A (--)) x y].
 Proof. move => inA. rewrite -connect_range //. exact: connected_restrict. Qed.
 
 (* NOTE: This could be generalized to sets and their images *)
@@ -655,7 +655,7 @@ Proof.
 Qed.
 
 Lemma connected_center (G:sgraph) x (S : {set G}) :
-  {in S, forall y, connect (restrict S sedge) x y} -> x \in S ->
+  {in S, forall y, connect (restrict S (--)) x y} -> x \in S ->
   connected S.
 Proof.
   move => H inS y z Hy Hz. apply: connect_trans (H _ Hz).
@@ -748,7 +748,7 @@ Qed.
 (** *** Connected components *)
 
 Definition components (G : sgraph) (H : {set G}) : {set {set G}} :=
-  equivalence_partition (connect (restrict H sedge)) H.
+  equivalence_partition (connect (restrict H (--))) H.
 
 Lemma partition_components (G : sgraph) (H : {set G}) :
   partition (components H) H.
@@ -805,7 +805,7 @@ Proof.
   have CH: {subset C <= H}. 
   { move => z Hz. rewrite -compU. apply/bigcupP; by exists C. } 
   move/CH : (in_C) => in_H. 
-  suff -> : C = [set y in H | connect (restrict H sedge) x y].
+  suff -> : C = [set y in H | connect (restrict H (--)) x y].
   { exact: connected_restrict_in. }
   apply/setP => y. rewrite inE. case: (boolP (y \in H)) => /= [y_in_H|y_notin_H].
   - by rewrite -PEQ // ?(def_pblock _ C_comp).
@@ -841,10 +841,10 @@ Proof.
   move=> ? C_comp G_conn VC_conn.
   case/and3P: (partition_components V) => /eqP compU compI _.
   have sub : C \subset V by rewrite -compU; exact: bigcup_sup.
-  have subr : subrel (connect (restrict (~: V) sedge))
-                     (connect (restrict (~: C) sedge))
+  have subr : subrel (connect (restrict (~: V) (--)))
+                     (connect (restrict (~: C) (--)))
     by apply: connect_mono; apply: restrict_mono; apply/subsetP; rewrite setCS.
-  suff to_x0 (x : G) : x \in ~: C -> connect (restrict (~: C) sedge) x x0.
+  suff to_x0 (x : G) : x \in ~: C -> connect (restrict (~: C) (--)) x x0.
   { move=> x y /to_x0 x_x0 /to_x0. rewrite srestrict_sym. exact: connect_trans. }
   rewrite inE => xNC. wlog x_V : x xNC / x \in V.
   { move=> Hyp. case: (boolP (x \in V)); first exact: Hyp. move=> xNV.
@@ -999,7 +999,7 @@ Proof.
 Qed.
 
 Definition connectedb S := 
-  [forall x in S, forall y in S, connect (restrict S sedge) x y].
+  [forall x in S, forall y in S, connect (restrict S (--)) x y].
 
 Lemma connectedP S : reflect (connected S) (connectedb S).
 Proof. 
