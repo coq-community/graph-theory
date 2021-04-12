@@ -29,7 +29,7 @@ theories/minor.v
 theories/excluded.v
 theories/checkpoint.v
 theories/cp_minor.v
-theories/smerge.v
+theories/smerge.v #(ITP 21)
 
 ## soundness and completeness for 2pdom (CPP20)
 theories/structures.v
@@ -58,7 +58,7 @@ theories/partition.v
 theories/coloring.v
 theories/wpgt.v
 
-## Kuratowsi's/Wagner's theorem
+## Kuratowsi's/Wagner's theorem (ITP 21)
 theories/hmap_ops.v
 theories/hcycle.v
 theories/embedding.v

@@ -88,15 +88,15 @@ apply: connect_restrict_mono (tcG x y _ _); rewrite -?PNz //.
 apply/subsetP => u. by rewrite -PNz.
 Qed.
 
-Definition drestrict (G : diGraph) (A : pred G) := DiGraph (restrict A di_edge).
+Definition drestrict (G : diGraph) (A : pred G) := DiGraph (restrict A (--)).
 
 Lemma upathPR (G : diGraph) (x y : G) A :
   reflect (exists p : seq G, @upath (drestrict A) x y p)
-          (connect (restrict A di_edge) x y).
+          (connect (restrict A (--)) x y).
 Proof. exact: (@upathP (drestrict A)). Qed.
 
 Lemma upath_rconsE (G: diGraph) (x y : G) p : x != y ->
-    upath x y p -> path di_edge x (rcons (behead (belast x p)) y) /\ uniq (rcons (belast x p) y).
+    upath x y p -> path (--) x (rcons (behead (belast x p)) y) /\ uniq (rcons (belast x p) y).
 Proof.
 rewrite /upath/pathp; elim/last_ind : p x y => [x y /negbTE-> //|p z ? x y ?]. 
 rewrite !belast_rcons last_rcons /= -andbA => /and4P [H1 H2 H3 /eqP<-].
@@ -127,7 +127,7 @@ exists (behead (belast x p)); split => //.
 - move/upath_rconsE : (U) => /(_ xDy) => -[P _]. 
   apply/cons_subset; split; last exact: rpath_sub P. 
   destruct p; simpl in *. by rewrite E eqxx in xDy. 
-  case/upath_consE : U => /=. by rewrite /di_edge/=; case: (x \in A).
+  case/upath_consE : U => /=. by rewrite /edge_rel/=; case: (x \in A).
 Qed.
 
 Lemma sub_face_clink { G : hypermap } : @subrel G (frel face) clink.
