@@ -40,6 +40,7 @@ Ltac normH := match goal
   | [ H : is_true (_ == _) |- _] => move/eqP : H 
   end.
 Ltac elim_ops := rewrite -multE -plusE -!(rwP leP).
+
 Ltac slia := repeat normH; elim_ops; intros; lia.
 
 Lemma measure_card (G' G : graph2) : 
@@ -306,7 +307,7 @@ Proof.
   - move/pathp_nil/val_inj ->. exact: connect0.
   - rewrite pathp_cons /= -!andbA => /and5P [A B C D E].
     apply: (connect_trans (y := Sub a B)); last exact: IH.
-    apply: connect1. move: C. rewrite /sk_rel -val_eqE.
+    apply: connect1. move: C. rewrite /edge_rel/=/sk_rel -val_eqE.
     by rewrite adjacent_induced.
 Qed.
 

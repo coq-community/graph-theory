@@ -60,6 +60,8 @@ Proof. by rewrite -{1}[y](bijK' f) bij_eq. Qed.
 
 Definition bij_id {A}: bij A A := @Bij A A id id (@erefl A) (@erefl A).
 
+Definition bij_ord {T : finType} : bij T 'I_#|T| := Bij enum_rankK enum_valK.
+
 Definition bij_sym {A B}: bij A B -> bij B A.
 Proof. move=>f. econstructor; apply f. Defined.
 
@@ -71,7 +73,6 @@ Defined.
 
 Instance bij_Equivalence: Equivalence bij.
 Proof. constructor. exact @bij_id. exact @bij_sym. exact @bij_comp. Defined.
-
 
 (* bijections about [sum] *)
 

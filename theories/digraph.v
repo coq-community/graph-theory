@@ -23,6 +23,10 @@ Record relType := RelType { rel_car :> finType; edge_rel : rel rel_car }.
 Notation "x -- y" := (edge_rel x y) (at level 30).
 Prenex Implicits edge_rel.
 
+(** experimental notation for passing [edge_rel] or [sedge] *)
+(* TODO/TOTHINK : use this pervasively *)
+Notation "(--)" := (fun x y => x -- y).
+
 (** maintain the notation [x -- y] under simplification *)
 
 Arguments edge_rel : simpl never.
@@ -40,15 +44,17 @@ this by providing a type family of packaged paths [Path x y] which abstracts
 away this asymmetry. We then lift many of the lemmas from the path library to
 the setting of simple graphs. *)
 
+
+
 (** ** Unpackaged Paths *)
 
 Section PathP.
 Variable (T : relType).
 Implicit Types (x y : T) (p : seq T).
 
-Definition pathp x y p := path (@edge_rel T) x p && (last x p == y).
+Definition pathp x y p := path (--) x p && (last x p == y).
 
-Lemma pathpW y x p : pathp x y p -> path edge_rel x p.
+Lemma pathpW y x p : pathp x y p -> path (--) x p.
 Proof. by case/andP. Qed.
 
 Lemma pathp_last y x p : pathp x y p -> last x p = y.
@@ -78,7 +84,7 @@ Proof. by rewrite -cat1s pathp_cat {1}/pathp /= eqxx !andbT. Qed.
 Lemma pathp_rcons x y z p: pathp x y (rcons p z) -> y = z.
 Proof. case/andP => _ /eqP <-. exact: last_rcons. Qed.
 
-Lemma rcons_pathp x y p : path edge_rel x (rcons p y) = pathp x y (rcons p y).
+Lemma rcons_pathp x y p : path (--) x (rcons p y) = pathp x y (rcons p y).
 Proof. by rewrite /pathp last_rcons eqxx andbT. Qed.
 
 CoInductive pathp_split z x y : seq T -> Prop := 
@@ -102,7 +108,7 @@ Definition upath x y p := uniq (x::p) && pathp x y p.
 Lemma upathW x y p : upath x y p -> pathp x y p.
 Proof. by case/andP. Qed.
 
-Lemma upathWW x y p : upath x y p -> path edge_rel x p.
+Lemma upathWW x y p : upath x y p -> path (--) x p.
 Proof. by move/upathW/pathpW. Qed.
 
 Lemma upath_uniq x y p : upath x y p -> uniq (x::p).
@@ -196,6 +202,14 @@ Section PathDef.
 
 End PathDef.
 End Pack.
+
+(** constructor for [Path x (last x p)] given [pth_p : path (--) x p] *)
+Lemma Path_of_proof (G : relType) (x : G) (p : seq G) : 
+  path (--) x p -> pathp x (last x p) p.
+Proof. by rewrite /pathp eqxx andbT. Qed.
+
+Definition Path_of_path (G : relType) (x : G) (p : seq G) (pth_p : path (--) x p)
+  := Build_Path (Path_of_proof pth_p).
 
 Section PathOps.
 Variables (T : relType) (x y z : T) (p : Path x y) (q : Path y z).
@@ -412,7 +426,6 @@ Prenex Implicits di_edge.
 
 Notation diGraph := relType.
 Notation DiGraph := RelType.
-Notation di_edge := edge_rel (only parsing).
 Goal forall (T : diGraph) (A : pred T), A \subset [set: T]. by []. Qed.
 
 Section DiGraphTheory.
@@ -434,13 +447,13 @@ Proof.
   apply/negP. apply: disjointE C _. by rewrite -(pathp_last sp1) // mem_last. 
 Qed.
 
-Lemma upathP x y : reflect (exists p, upath x y p) (connect di_edge x y).
+Lemma upathP x y : reflect (exists p, upath x y p) (connect (--) x y).
 Proof.
   apply: (iffP connectP) => [[p p1 p2]|[p /and3P [p1 p2 /eqP p3]]]; last by exists p.
   exists (shorten x p). case/shortenP : p1 p2 => p' ? ? _ /esym/eqP ?. exact/and3P. 
 Qed.
 
-Lemma pathpP x y : reflect (exists p, pathp x y p) (connect di_edge x y).
+Lemma pathpP x y : reflect (exists p, pathp x y p) (connect (--) x y).
 Proof. 
   apply: (iffP idP) => [|[p] /andP[A /eqP B]]; last by apply/connectP; exists p.
   case/upathP => p /upathW ?. by exists p.
@@ -514,14 +527,14 @@ Qed.
 End Fixed.
 
 Lemma connect_irredP x y : 
-  reflect (exists p : Path x y, irred p) (connect di_edge x y).
+  reflect (exists p : Path x y, irred p) (connect (--) x y).
 Proof.
   apply: (iffP (upathP _ _)) => [[p /andP [U P]]|[p I]].
   + exists (Sub p P).  by rewrite /irred nodesE.
   + exists (val p). apply/andP;split; by [rewrite /irred nodesE in I| exact: valP].
 Qed.
 
-Lemma Path_connect x y (p : Path x y) : connect di_edge x y.
+Lemma Path_connect x y (p : Path x y) : connect (--) x y.
 Proof. apply/pathpP. exists (val p). exact: valP. Qed.
 
 
@@ -630,7 +643,7 @@ Qed.
 paths are never empty *)
 Lemma connect_irredRP {A : pred D} x y : x != y ->
   reflect (exists2 p: Path x y, irred p & p \subset A) 
-          (connect (restrict A edge_rel) x y).
+          (connect (restrict A (--)) x y).
 Proof.
   move => Hxy. apply: (iffP connect_restrictP) => //.
   - case => p [pth_p lst_p uniq_p sub_A]. 
@@ -643,8 +656,8 @@ Qed.
 
 (* This is only useful if the [x = y] case does not require [x \in A] *)
 Lemma connect_restrict_case x y (A : pred D) : 
-  connect (restrict A edge_rel) x y -> 
-  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A edge_rel) x y].
+  connect (restrict A (--)) x y -> 
+  x = y \/ [/\ x != y, x \in A, y \in A & connect (restrict A (--)) x y].
 Proof.
   case: (altP (x =P y)) => [|? conn]; first by left. 
   case/connect_irredRP : (conn) => // p _ /subsetP subA. 
@@ -652,7 +665,7 @@ Proof.
 Qed.
 
 Lemma connectRI (A : pred D) x y (p : Path x y) :
-  {subset p <= A} -> connect (restrict A edge_rel) x y.
+  {subset p <= A} -> connect (restrict A (--)) x y.
 Proof. 
   case: (boolP (x == y)) => [/eqP ?|]; first by subst y; rewrite connect0. 
   move => xy subA. apply/connect_irredRP => //. case: (uncycle p) => p' p1 p2.
@@ -758,7 +771,7 @@ Notation "'IPATH' G x y" := (@IPath G x y) (at level 4) : implicit_scope.
 Section InducedSubgraph.
   Variables (G : diGraph) (S : {set G}).
 
-  Definition induced_type := sig [eta mem S].
+  Definition induced_type := { x | x \in S}.
 
   Definition induced_rel := [rel x y : induced_type | val x -- val y].
 
@@ -771,7 +784,7 @@ Lemma path_to_induced (G : diGraph) (S : {set G}) (x y : induced S) p' :
   exists2 p, pathp x y p & p' = map val p.
 Proof.
   move=> pth_p' sub_p'.
-  case: (lift_pathp _ _ pth_p' _) => //; first exact: val_inj.
+  case: (lift_pathp _ _ pth_p' _) => //.
   - move=> z /sub_p' z_S. by apply/codomP; exists (Sub z z_S).
   - move=> p [pth_p /esym eq_p']. by exists p.
 Qed.
@@ -1125,16 +1138,16 @@ Notation "N( x )" := (@open_neigh _ x)
 Notation "N[ x ]" := (@closed_neigh _ x) 
    (at level 0, x at level 99, format "N[ x ]").
 Notation "N( G ; x )" := (@open_neigh G x)
-   (at level 0, G at level 99, x at level 99, format "N( G ; x )", only parsing).
+   (at level 0, G at level 99, x at level 99, only parsing).
 Notation "N[ G ; x ]" := (@closed_neigh G x)
-   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]", only parsing).
+   (at level 0, G at level 99, x at level 99, only parsing).
    
 Notation "NS( G ; D )" := (@open_neigh_set G D) 
-   (at level 0, G at level 99, D at level 99, format "NS( G ; D )", only parsing).
+   (at level 0, G at level 99, D at level 99, only parsing).
 Notation "NS( D )" := (open_neigh_set D) 
    (at level 0, D at level 99, format "NS( D )").
 Notation "NS[ G ; D ]" := (@closed_neigh_set G D) 
-   (at level 0, G at level 99, D at level 99, format "NS[ G ; D ]", only parsing).
+   (at level 0, G at level 99, D at level 99, only parsing).
 Notation "NS[ D ]" := (closed_neigh_set D) 
    (at level 0, D at level 99, format "NS[ D ]").
 

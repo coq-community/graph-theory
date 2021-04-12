@@ -15,6 +15,7 @@ theories/set_tac.v
 theories/bij.v
 theories/finite_quotient.v
 theories/equiv.v
+theories/arc.v
 
 ## general purpose graph library (JAR19)
 theories/digraph.v
@@ -26,6 +27,7 @@ theories/minor.v
 theories/excluded.v
 theories/checkpoint.v
 theories/cp_minor.v
+theories/smerge.v
 
 ## soundness and completeness for 2pdom (CPP20)
 theories/structures.v

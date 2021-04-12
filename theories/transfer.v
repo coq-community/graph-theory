@@ -1051,7 +1051,10 @@ Qed.
 (** We need one expansion lemma for every rule *)
 
 (* TODO: why is [simple apply] unable to use the non-instantiated lemmas? *)
-Hint Resolve (@in_vsetDV tm) (@in_vsetDE tm) (@in_vsetAE tm) (@in_vsetAV tm) (@in_vsetAV' tm) : vset.
+(* Hint Resolve in_vsetDV in_vsetDE in_vsetAE in_vsetAV in_vsetAV' : vset. *)
+Set Warnings "-fragile-hint-constr".
+Local Hint Resolve (@in_vsetDV tm) (@in_vsetDE tm) (@in_vsetAE tm) (@in_vsetAV tm) (@in_vsetAV' tm) : vset.
+Set Warnings "+fragile-hint-constr".
 
 Lemma expand_isolated (G : pre_graph) (z : VT) (isG : is_graph G) (isH : is_graph (G \ z)) :
     z \in vset G -> edges_at G z = fset0 -> pack G ≃2 pack (G \ z) ∔ lv G z.

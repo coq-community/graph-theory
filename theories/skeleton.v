@@ -57,7 +57,7 @@ Definition skeleton (G : graph) :=
 Lemma skelP (G : graph) (P : G -> G -> Prop) : 
   Symmetric P -> 
   (forall e : edge G, source e != target e -> P (source e) (target e)) ->
-  (forall x y : G,  sk_rel x y -> P x y).
+  (forall x y : skeleton G, x -- y -> P x y).
 Proof. 
   move => S H x y. case/andP=> xNy. case/existsP=> e He. move: He xNy. rewrite !inE.
   case/orP=> /andP[/eqP<- /eqP<-]; last rewrite eq_sym; move=> /H//. exact: S.
@@ -97,10 +97,10 @@ Proof.
 Qed.
 
 
-Lemma hom_skel (G1 G2 : graph) (h: iso G1 G2) :
-  forall x y, @edge_rel (skeleton G1) x y -> @edge_rel (skeleton G2) (h x) (h y).
+Lemma hom_skel (G1 G2 : graph) (h: iso G1 G2) : 
+  {homo h : x y / (x : skeleton _) -- y}.
 Proof.
-  apply skelP. 
+  apply: skelP.
   - move => x y. by rewrite sgP.
   - move => e He. rewrite /edge_rel/=/sk_rel. 
     rewrite bij_eq ?He //=. apply/existsP; exists (h.e e). 
@@ -245,7 +245,7 @@ Proof.
   apply: connect_sub x y. move=> /=. apply skelP.
   - by move=> x y; rewrite connect_symI //; exact: sk_rel_sym (remove_edges E).
   - move=> e sNt. case: (boolP (e \in E)) => [/E_conn//|He].
-    apply: connect1. rewrite /sk_rel/= sNt /=.
+    apply: connect1. rewrite /edge_rel/=/sk_rel sNt /=.
     by apply/existsP; exists (Sub e He); rewrite !inE !eqxx.
 Qed.
 
@@ -555,7 +555,7 @@ Qed.
 (* Is this the most general type? *)
 Lemma card_val (T : finType) (P : pred T) (s : subFinType P) (A : pred s) : 
   #|val @: A| = #|A|.
-Proof. rewrite card_imset //. exact: val_inj. Qed.
+Proof. by rewrite card_imset. Qed.
 
 (* lifting connectedness from the skeleton *)
 Lemma connected_skeleton' (G : graph) V E (con : @consistent _ _ G V E) :
