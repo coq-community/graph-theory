@@ -156,6 +156,9 @@ End Stable_Set.
 Lemma stable0 : stable set0.
 Proof. by apply/stableP=> ? ? ; rewrite in_set0. Qed.
 
+Lemma stable1 x : stable [set x].
+Proof. by apply/stableP => ? ? /set1P -> /set1P ->; rewrite sgP. Qed.
+
 (* if D is stable, any subset of D is also stable *)
 Lemma st_hereditary : hereditary stable.
 Proof.
@@ -167,6 +170,12 @@ Proof.
   exact: Dstable.
 Qed.
 
+(* TOTHINK: do we need that [hereditary] is a boolean predicate? *)
+Lemma sub_stable (B A : {set G}) : 
+  A \subset B -> stable B -> stable A.
+Proof.
+move => subAB stB. exact: (hereditaryP _ st_hereditary _ _ subAB).
+Qed.
 
 (**********************************************************************************)
 Section Dominating_Set.

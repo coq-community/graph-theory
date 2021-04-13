@@ -124,7 +124,7 @@ Section InducedSubgraph.
   Lemma induced_sub : subgraph induced G.
   Proof. by exists val. Qed.
 
-  Lemma induced_val_edge (x y : induced) : val x -- val y = (x -- y). 
+  Lemma induced_edge (x y : induced) : (x -- y) = (val x -- val y).
   Proof. by []. Qed.
 
   Lemma ucycle_induced (s : seq induced) : 
@@ -134,9 +134,38 @@ Section InducedSubgraph.
     rewrite /cycle; case: s => //= x s. rewrite -map_rcons.
     by elim: (rcons s x) {1 3}x => //= {x s} y s <- x.
   Qed.
-
+  
+  Lemma sub_induced (A : {set induced}) : val @: A \subset S.
+  Proof. by apply/subsetP => ? /imsetP[x xH ->]; apply: valP. Qed.
 
 End InducedSubgraph.
+
+(** Link to isubgraph *)
+Lemma induced_isubgraph (G : sgraph) (A : {set G}) : induced A ⇀ G.
+Proof.
+pose f (x : induced A) : G := val x.
+have : {mono f : x y / x -- y} by abstract by move => x y; rewrite induced_edge.
+apply: ISubgraph; exact: val_inj.
+Defined.
+
+Lemma isubgraph_induced (F G : sgraph) (i : F ⇀ G) : 
+  F ≃ induced [set x in codom i].
+Proof.
+set A := [set _ in _].
+have jP (x : induced A) : val x \in codom i. 
+  abstract by move: (valP x); rewrite inE.
+pose j (x : induced A) : F := iinv (jP x).
+have iP (x : F) : i x \in A by abstract by rewrite inE codom_f.
+pose i' (x : F) : induced A := Sub (i x) (iP x).
+have can_i : cancel i' j. 
+  abstract by move=> x; apply: (isubgraph_inj i); rewrite f_iinv.
+have can_j : cancel j i'. 
+  abstract by move => [x xA]; apply: val_inj; rewrite /j/=f_iinv.
+apply: Diso' can_i can_j _. 
+  abstract by move => x y; rewrite induced_edge /= isubgraph_mono.
+Defined.
+
+
 
 
 Definition srestrict (G : sgraph) (A : pred G) :=
@@ -1326,6 +1355,20 @@ Section AddNode.
 End AddNode.
 Arguments add_node : clear implicits.
 
+Lemma diso_add_nodeK (G : sgraph) (A : {set G}) : 
+  G ≃ @induced (add_node G A) [set~ None].
+Proof.
+set H := induced _. (* todo: factor out the bijetion *)
+have h_proof (x : G) : Some x \in [set~ None] by rewrite !inE.
+pose h (x : G) : H := Sub (Some x) (h_proof x).
+have default (x : H) : G by case: x => -[x//|]; rewrite !inE eqxx.
+pose g (x : H) : G := if val x is Some z then z else default x.
+have can_h : cancel h g by [].
+have can_g : cancel g h. 
+  move => [[x|] p]; [exact: val_inj|by exfalso; rewrite !inE eqxx in p].
+exact: Diso' can_h can_g _.
+Defined.
+
 (** recursive characterization of ['K_n] *)
 Lemma diso_add_edge_KSn n : diso 'K_n.+1 (add_node 'K_n setT).
 Proof.
@@ -1363,6 +1406,57 @@ Lemma add_node_diso (G : sgraph) (A : {set G}) (x : G) :
   x \in A -> 
   diso (add_edges2 (add_node G [set x]) [set None] (Some @: (A :\ x))) (add_node G A).
 Proof. by move=> x_A; exact/eq_diso/add_node_diso_proof. Defined.
+
+(** Complement Graph *)
+Section complement.
+Variable (G : sgraph).
+Definition compl_rel := [rel x y : G | (x != y) && ~~ x -- y].
+
+Fact compl_rel_irrefl : irreflexive compl_rel. 
+Proof. by move=> x; rewrite /= eqxx. Qed.
+
+Fact compl_rel_sym : symmetric compl_rel. 
+Proof. by move=> x y; rewrite /= eq_sym sgP. Qed.
+
+Definition compl := SGraph compl_rel_sym compl_rel_irrefl.
+
+End complement.
+
+Lemma diso_compl (G : sgraph) : compl (compl G) ≃ G.
+Proof.
+apply: (@Diso' (compl (compl G)) G id id) => // x y.
+abstract 
+ by rewrite [RHS]/edge_rel/= [in RHS]/edge_rel/= negb_and !negbK; 
+ case: eqVneq => /= [->|]; rewrite sgP.
+Defined.
+
+Open Scope implicit_scope.
+
+Lemma isubgraph_compLR_mono (F G : sgraph) (i : compl F ⇀ G) (x y : F) :
+  i x -- i y :> compl G = x -- y.
+Proof.
+have I := isubgraph_inj i.
+rewrite [LHS]/edge_rel/= isubgraph_mono [in LHS]/edge_rel/= inj_eq //.
+rewrite negb_and !negbK andb_orr andbC andbN orFb andb_idl //.
+by move/sg_edgeNeq ->.
+Qed. 
+
+Lemma isubgraph_complLR (F G : sgraph) (i : compl F ⇀ G) : F ⇀ compl G.
+Proof.
+have I := isubgraph_inj i; apply: (@ISubgraph F (compl G) i) => // x y.
+exact: isubgraph_compLR_mono.
+Defined.
+
+Lemma iso_isubgraph (F G : sgraph) (i : F ≃ G) : F ⇀ G.
+Proof. exists i. exact: bij_injective. exact: edge_diso. Defined.
+
+Lemma isubgraph_compl (F G : sgraph) (i : F ⇀ G) : compl F ⇀ compl G.
+Proof.
+apply: isubgraph_complLR. exact: isubgraph_comp (iso_isubgraph (diso_compl F)) i.
+Defined.
+
+Close Scope implicit_scope.
+
 
 (** ** Neighboring sets *)
 
@@ -1752,6 +1846,9 @@ Proof.
 rewrite /symmetric /dominates /closed_neigh => x y ; by rewrite sg_sym eq_sym. 
 Qed.
 
+Lemma opn_cln u : N(u) = N[u] :\ u.
+Proof. by apply/setP => v; rewrite !inE; case: (eqVneq u v ) => //= ->; rewrite sgP. Qed.
+
 Lemma opn_proper_cln v : N(v) \proper N[v].
 Proof. 
   apply/properP; rewrite subsetUr; split => //.
@@ -1763,6 +1860,38 @@ Proof.
   apply/eqP ; rewrite eqEsubset ; apply/andP ; split.
   - by apply/subsetP=> w ; rewrite in_opn in_set in_edges.
   - by apply/subsetP=> w ; rewrite in_opn in_set in_edges.
+Qed.
+
+Lemma cln_eq (x x' y : G) : 
+  N[x] = N[x'] -> y != x -> y != x' -> x -- y = x' -- y.
+Proof.
+by move/setP=> /(_ y); rewrite !inE; case: (eqVneq x y); case: (eqVneq x' y).
+Qed.
+
+Lemma eq_cln_iso (v v' : G) : N[v] = N[v'] -> induced [set~ v'] ≃ induced [set~ v].
+Proof.
+have [-> _|vDv' Nvv'] := eqVneq v v'; first exact: diso_id.
+have vv' : v -- v'. 
+  by move/setP/(_ v') : Nvv'; rewrite v_in_clneigh in_cln /dominates (negbTE vDv').
+set Hv := induced [set~ v']; set Hv' := induced _.
+have [vI v'I] : v \in [set~ v'] /\ v' \in [set~ v] 
+  by rewrite !inE [v' == _]eq_sym (sg_edgeNeq vv').
+pose f (x : Hv) : Hv' := insubd (Sub v' v'I) (val x).
+pose g (x : Hv') : Hv := insubd (Sub v vI) (val x).
+have can_f : cancel f g.
+{ move => x. apply: val_inj. rewrite /f/g/= !val_insubd !inE !SubK. 
+  have [/= ->|/=] := eqVneq (val x) v; rewrite ?eqxx // ifT // -in_set1 -in_setC. 
+  exact (valP x). }
+have can_g : cancel g f. 
+{ move => x. apply: val_inj. rewrite /f/g/= !val_insubd !inE !SubK. 
+  have [/= ->|/=] := eqVneq (val x) v'; rewrite ?eqxx // ifT // -in_set1 -in_setC.
+  exact (valP x). }
+apply: Diso' can_f can_g _.
+move => [x px] [y py]; rewrite /f/=. rewrite /edge_rel/= !val_insubd !SubK !inE.
+rewrite !inE in px py. 
+have [?/=|/=] := eqVneq x v; subst.
+  have [->|/= yDv] := eqVneq y v; [by rewrite !sgP | by rewrite (cln_eq Nvv')].
+by have [->/= xDv|//] := eqVneq y v; rewrite [RHS]sgP (cln_eq Nvv') // sgP.
 Qed.
 
 End Neighborhood_theory.

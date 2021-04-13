@@ -47,11 +47,24 @@ Tactic Notation "existsb" uconstr(x) := apply/existsP;exists x.
 #[export]
 Hint Extern 0 (injective Some) => exact: @Some_inj : core.
 
-(** *** Notations *) 
+(** Σ-Types *)
+
+Declare Scope sigT_scope.
+Open Scope sigT_scope.
 
 Notation "'Σ' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p%type)) ..))
-  (at level 200, x binder, y binder, right associativity).
+  (at level 200, x binder, y binder, right associativity) : sigT_scope.
+
+Notation "⟨ x , m ⟩" := (existT _ x m) : sigT_scope.
+
+Lemma tagged_eq (T : eqType) (T_ : T -> eqType) (x : T) (u v : T_ x) : 
+  (⟨ x , u ⟩ == ⟨ x , v ⟩) = (u == v).
+Proof. by rewrite -tag_eqE/tag_eq/= eqxx tagged_asE. Qed.
+
+Lemma tagged_eqF (T : eqType) (T_ : T -> eqType) (x y : T) (u : T_ x) (v : T_ y) : 
+  x != y -> (⟨ x , u ⟩ == ⟨ y , v ⟩) = false.
+Proof. by rewrite -tag_eqE/tag_eq/= => /negbTE ->. Qed.
 
 (** *** Generic Trivialities *)
 
@@ -69,6 +82,25 @@ Proof. by rewrite /enum_mem unlock. Qed.
 Definition rwT (b : bool) := @id (is_true b).
 (** [rewrite [pat]rwF] replaces [pat] with [false] and creates [~~ pat] as a subgoal *)
 Definition rwF := negbTE.
+
+Lemma forall_imset (aT rT : finType) (f : aT -> rT) (p : {pred aT}) (q : {pred rT}) :
+  [forall x in [set f z | z in p], q x] = [forall x in p, q (f x)].
+Proof.
+apply/forall_inP/forall_inP=>[allQ x xp|]; first by apply: allQ; rewrite imset_f.
+by move => allQ ? /imsetP[z zp ->]; apply: allQ.
+Qed.
+
+Lemma forall2_imset (aT rT : finType) (f g : aT -> rT) (p : {pred aT}) (q : rel rT) :
+  [forall x in [set f z | z in p], forall y in [set g z | z in p], q x y] = 
+  [forall x in p, forall y in p, q (f x) (g y)].
+Proof.
+by rewrite forall_imset; under eq_forallb => y do rewrite forall_imset.
+Qed.
+
+Lemma eq_forall_in (T : finType) (A P1 P2 : {pred T}) : 
+  {in A, P1 =1 P2} -> [forall x in A, P1 x] = [forall x in A, P2 x].
+Proof. move=> eqP. apply/eq_forallb => x; case xA: (x \in A) => //=. exact: eqP. Qed.
+
 
 Lemma insubdT (T : Type) (P : pred T) (sT : subType P) (d : sT) (x : T) (Px : P x) : 
   insubd d x = Sub x Px.
@@ -199,6 +231,44 @@ Proof. exact/inj_eq/inr_inj. Qed.
 
 Definition sum_eqE := (inl_eqE,inr_eqE).
 
+Lemma sum_nat_mulnr [I : finType] (A : pred I) (n : nat) (F : I -> nat) :
+  (n * \sum_(i in A) F i)%N = \sum_(i in A) n * F i.
+Proof.
+by elim/big_ind2 : _ => // [|? m1 ? m2 <- <-]; rewrite ?muln0 ?mulnDr.
+Qed.
+
+Lemma sum_cardI (T : finType) (A B : {set T}): 
+  \sum_(x in A) (x \in B) = #|A :&: B|.
+Proof. 
+rewrite -sum1_card; under [RHS]eq_bigl do rewrite inE.
+by rewrite [RHS]big_mkcondr /=; apply: eq_bigr => i _; case: (_ \in _).
+Qed.
+
+Lemma sum_cond1 (I : finType) (r : seq I) (P Q : I -> bool) : 
+  \sum_(x <- r | Q x ) P x = \sum_(x <- r | Q x && P x) 1.
+Proof.
+by rewrite [RHS]big_mkcondr; apply: eq_bigr => x _; case: (P x).
+Qed.
+
+Lemma card_gtnE (T : finType) n (p : {pred T}) : n < #|p| -> { x | x \in p }.
+Proof. by move=> n_p; apply/sigW/card_gt0P; apply: leq_trans n_p. Qed.
+
+(** getting the "n-th element" of a set of ordinals *)
+(** TOTHINK: generalize ot aribtaryy ordered types? *)
+Lemma nth_ord (k n : nat) (A : {set 'I_k}) : 
+  n < #|A| -> { i : 'I_k | i \in A & #|[set j in A | j < i]| = n}.
+Proof.
+elim: n A => [|n IHn] A ltA; have [/= i0 i0A] := card_gtnE ltA.
+- pose i := [arg min_(i < i0 | i \in A) i].
+  exists i; rewrite /i; case: arg_minnP => // j jA min_j. apply/eq_card0 => o.
+  by rewrite !inE; apply: contraTF isT => /andP[oA]; rewrite ltnNge min_j.
+- pose i := [arg min_(i < i0 | i \in A) i].
+  have [iA min_i] : i \in A /\ forall j, j \in A -> i <= j by rewrite /i; case: arg_minnP.
+  rewrite (cardsD1 i) iA add1n ltnS in ltA. 
+  have [j /setD1P [jDi jA] <-] := IHn _ ltA.
+  exists j; rewrite // [in LHS](cardsD1 i) inE iA ltn_neqAle eq_sym jDi min_i //=.
+  by rewrite add1n; congr (_.+1); apply/eq_card => o; rewrite !inE -andbA eq_sym.
+Qed.
 
 Lemma inj_omap T1 T2 (f : T1 -> T2) : injective f -> injective (omap f).
 Proof. by move=> f_inj [x1|] [x2|] //= []/f_inj->. Qed.
@@ -247,6 +317,15 @@ Qed.
 
 Lemma leq_cardsD1 (T : finType) (a : T) (A : {set T}) : #|A|.-1 <= #|A :\ a|.
 Proof. by rewrite (cardsD1 a); case: (a \in A); case: (#|_|). Qed.
+
+
+Lemma setE (T : finType) (A : {set T}) : [set x in A] = A.
+Proof. by apply/setP => ?; rewrite inE. Qed.
+
+Lemma setDK (T : finType) (A B : {set T}) : B \subset A -> (A :\: B :|: B) = A.
+Proof. 
+by move => subBA; rewrite setDE setUIl (setUidPl subBA) setUC setUCr setIT.
+Qed.
 
 (* what's a good name? *)
 Lemma setUUC (T : finType) (A B : {set T}) : (A :|: B) :&: (~: A :|: B) = B.
@@ -564,6 +643,9 @@ Proof. by rewrite (@eq_disjoint1 _ x) // => y; rewrite !inE. Qed.
 
 End Disjoint.
 
+Lemma disjoints0 (T : finType) (A : {set T}) : [disjoint set0 & A].
+Proof. by rewrite -setI_eq0 set0I. Qed.
+
 Lemma disjointP (T : finType) (A B : pred T):
   reflect (forall x, x \in A -> x \in B -> False) [disjoint A & B].
 Proof. by rewrite disjoint_subset; apply:(iffP subsetP) => H x; move/H/negP. Qed.
@@ -578,9 +660,6 @@ Proof.
   move => a b. 
   apply/disjointP => x /setUP[]; by move: x; apply/disjointP.
 Qed.
-
-Lemma disjoints0 (T : finType) (A : {set T}) : [disjoint set0 & A].
-Proof. by rewrite eq_disjoint0 // => z; rewrite !inE. Qed.
 
 (** *** Function Update *)
 
@@ -910,6 +989,15 @@ Lemma mem_preim (aT rT : finType) (f : aT -> rT) x y :
   (f x == y) = (x \in f @^-1 y).
 Proof. by rewrite !inE. Qed.
 
+Lemma can_preimset (aT rT : finType) (f : aT -> rT) (A : {set rT}) : 
+  A \subset codom f -> [set f x | x in f @^-1: A] = A.
+Proof. 
+move/subsetP => subAi; apply/setP => z; apply/imsetP/idP => [[x]|zA].
+  by rewrite inE => ? ->.
+by exists (iinv (subAi _ zA)); rewrite ?inE f_iinv.
+Qed.
+Arguments can_preimset [aT rT] f [A] _.
+
 Lemma preim_omap_Some (aT rT : finType) (f : aT -> rT) y :
   (omap f @^-1 Some y) = Some @: (f @^-1 y).
 Proof.
@@ -956,8 +1044,36 @@ Proof.
   + move=> z_P; by exists (Sub z z_P); last rewrite SubK.
 Qed.
 
+Lemma imset_codom (aT rT : finType) (f : aT -> rT) (A : {set aT}) : 
+  [set f x | x in A] \subset codom f.
+Proof. apply/subsetP => ? /imsetP[x xA ->]; exact: codom_f. Qed.
+
 Lemma memKset (T : finType) (A : {set T}) : finset (mem A) = A.
 Proof. apply/setP=> x; by rewrite !inE. Qed.
+
+Lemma inj_card_preimset (aT rT : finType) (f : aT -> rT) (A : {set rT}) : 
+  injective f -> A \subset codom f -> #|f @^-1: A| = #|A|.
+Proof. 
+move=> inj_f /subsetP => subAf.
+have [->|[y yA]] := set_0Vmem A; first by rewrite preimset0 !cards0.
+have x0 : aT := (iinv (subAf _ yA)).
+pose g (x : rT) : aT := if @idP (x \in codom f) is ReflectT p then iinv p else x0.
+apply: on_card_preimset; exists g. 
+- by move => x /subAf; rewrite /g; case E : {1}_ / idP; rewrite // iinv_f.
+- by move => x /subAf; rewrite /g; case E : {1}_ / idP; rewrite // f_iinv.
+Qed.
+
+Lemma inj_imsetS (aT rT : finType) (f : aT -> rT) (A B : {pred aT}) : 
+  injective f -> (f @: A \subset f @: B) = (A \subset B).
+Proof.
+move=> inj_f; apply/subsetP/subsetP => [/= subAB x xA|subAB ? /imsetP[x xA ->]]. 
+  by move: (subAB (f x)); rewrite !(mem_imset_eq _ _ inj_f); apply.
+by rewrite (mem_imset_eq _ _ inj_f); apply: subAB.
+Qed.
+
+Lemma val_subset (T: finType) (H : {set T}) (A B : {set sig [eta mem H]}) :
+  (val @: A \subset val @: B) = (A \subset B).
+Proof. by rewrite inj_imsetS //; exact: val_inj. Qed.
 
 (** *** Replacement for partial functions *)
 

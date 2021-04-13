@@ -48,6 +48,9 @@ Proof.
   case => x0 xA. by move/(@bij_injective _ _ f) ->.
 Qed.
 
+Lemma imset_bijT (aT rT : finType) (i : bij aT rT) : i @: setT = setT.
+Proof. by apply/setP => x; rewrite -[x in LHS](bijK' i) bij_imset_f !inE. Qed.
+
 Lemma bij_imsetC (aT rT : finType) (f : bij aT rT) (A : {set aT}) : 
   ~: [set f x | x in A] = [set f x | x in ~: A].
 Proof. apply/setP => x. by rewrite -[x](bijK' f) !inE !bij_imset_f inE. Qed.
