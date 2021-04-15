@@ -642,7 +642,7 @@ Global Instance dom_iso2: CProper (iso2 ==> iso2) g2_dom.
 Proof. intros F F' f. eexists; apply f. Qed.
 
 (** 2p-graphs form a 2pdom algebra (Proposition 5.2) *)
-Definition g2_ptt: Ptt_of_Ops.axioms_ g2_setoid g2_ops.
+Definition g2_ptt: Ptt_of_Ops.axioms_ graph2 g2_ops g2_setoid.
   refine (Ptt_of_Ops.Build (mgraph2.graph2 LvS LeS) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
      abstract apply CProper2, dot_iso2. 
      abstract apply CProper2, par_iso2. 
@@ -661,7 +661,6 @@ Definition g2_ptt: Ptt_of_Ops.axioms_ g2_setoid g2_ops.
      abstract (exists; apply g2_A12).
 Defined.
 HB.instance (mgraph2.graph2 LvS LeS) g2_ptt. 
-HB.instance (mgraph2.graph2 LvS LeS) (pttdom_of_ptt graph2_is_a_Ptt).
 
 (** ** additional laws required for the completeness proof *)
 

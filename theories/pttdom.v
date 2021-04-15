@@ -14,7 +14,7 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** NOTE: we let Ops inherit from Setoid, to avoid having a
 "criss-cross" inheritance pattern that is not (yet) supported by HB *)
-HB.mixin Record Ops_of_Type A of Setoid_of_Type A :=
+HB.mixin Record Ops_of_Type A :=
   { dot: A -> A -> A;
     par: A -> A -> A;
     cnv: A -> A;
@@ -206,7 +206,7 @@ Section derived.
  Proof. move=> /= -> ->. apply cnvI. Qed.
 
  HB.instance Definition pttdom_elabel := 
-   Elabel_of_Setoid.Build (Pttdom.sort X) eqv'_sym eqv01 eqv11.
+   Elabel_of_Setoid.Build X eqv'_sym eqv01 eqv11.
  
  (* Lemmas to turn pttdom expressions into (projections of) tests *)
  Lemma par1tst u : 1 ∥ u = elem_of [1∥u]. by []. Qed.
@@ -248,13 +248,15 @@ Section derived.
  Lemma eqvbN u v : u ≡[false] v -> u ≡ v. by []. Qed.
  Lemma eqvbT u v : u ≡[true] v -> u ≡ v°. by []. Qed.
 
- Arguments Elabel.Exports.eqv' _ _ _ /.
- 
+ Lemma eqvE' u v : (u ≡' v) = (u ≡ v°).  by []. Qed.
+
  Lemma eqvb_neq u v (b : bool) : u ≡[~~b] v <-> u ≡[b] v°.
- Proof. by split; apply: eqvb_transL; rewrite ?(addbN,addNb) addbb //= ?cnvI. Qed.
+ Proof. by split; apply: eqvb_transL; rewrite ?(addbN,addNb) addbb /= ?eqvE' ?cnvI. Qed.
  
 End derived.
 (* Coercion pttdom_labels: pttdom >-> labels.  *)
+
+
 
  Notation "[ x ]" := (@Test _ x _).
 
@@ -307,7 +309,7 @@ Section terms.
    u ≡ v -> eval f u ≡ eval f v. 
  Proof. exact. Qed.
 
- Definition tm_pttdom : Pttdom_of_Ops.axioms_ tm_setoid tm_ops.
+ Definition tm_pttdom : Pttdom_of_Ops.axioms_ term tm_ops tm_setoid.
  Proof.
    refine (Pttdom_of_Ops.Build term _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
    abstract (by repeat intro; simpl; apply dot_eqv; apply: tm_eqv_eqv).
@@ -326,10 +328,11 @@ Section terms.
    abstract (by repeat intro; simpl; apply A13; apply: tm_eqv_eqv).
    abstract (by repeat intro; simpl; apply A14; apply: tm_eqv_eqv).
  Defined.
- HB.instance term tm_pttdom.
- HB.instance term (pttdom_elabel term_is_a_Pttdom).
 
- Notation test := (test term_is_a_Pttdom).
+ HB.instance term tm_pttdom.
+ HB.instance Definition _ := Elabel.copy term [the pttdom of term].
+
+ Notation test := (test [the pttdom of term]).
  
  (** ** normal terms and normalisation function (Section 7)*)
 
@@ -396,7 +399,7 @@ Section terms.
           | |- context[tm_dot ?u ?v] => change (tm_dot u v) with (u · v)
           | |- context[tm_cnv ?u] => change (tm_cnv u) with (u°)
           | |- context[tm_dom ?u] => change (tm_dom u) with (dom u)
-          | |- context[tm_one ?A] => change (tm_one A) with (@one term_is_a_Ops)
+          | |- context[tm_one ?A] => change (tm_one A) with one
           | |- tm_eqv ?u ?v => change (u ≡ v)
          end.
 

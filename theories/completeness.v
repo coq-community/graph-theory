@@ -14,12 +14,12 @@ Section s.
 Variable A: Type. 
 Notation term := (pttdom.term A).  
 Notation nterm := (pttdom.nterm A).
-Notation test := (test (term_is_a_Pttdom A)). 
+Notation test := (test [the pttdom of term]). 
 Notation tgraph2 := (graph2 test term).
 Notation graph := (graph unit (flat A)).
 Notation graph2 := (graph2 unit (flat A)).
-Notation step := (@step (term_is_a_Pttdom A)).
-Notation steps := (@steps (term_is_a_Pttdom A)).
+Notation step := (@step [the pttdom of term]).
+Notation steps := (@steps [the pttdom of term]).
 
 (* local confluence of the additive, packaged system (Proposition 8.1) *)
 Proposition local_confluence G G' H H':
