@@ -12,60 +12,78 @@ Set Bullet Behavior "Strict Subproofs".
 
 (** ** 2p algebras (2pdom algebras with top) *)
 
-(** TOTHINK: We could also let [ptt] inherit from [pttdom] and turn the record below into a factory *)
+(** We define [ptt] as a substructure of [pttdom] where [top] is
+interpreted appropriately. We also provide a factory where the laws
+for [dom], (i.e., [A13] and [A14]) can be omitted, as they are
+derivable *)
 
-(* 2p axioms *)
-HB.mixin Record Ptt_of_Ops A of Ops_of_Type A & Setoid_of_Type A := 
-  { dot_eqv_: Proper (eqv ==> eqv ==> eqv) (dot : A -> A -> A);
-    par_eqv_: Proper (eqv ==> eqv ==> eqv) (par : A -> A -> A);
-    cnv_eqv_: Proper (eqv ==> eqv) (cnv : A -> A);
+HB.mixin Record Ptt_of_Pttdom A of Pttdom A := 
+  { A11: forall x: A, x · top ≡ dom x · top;
+    A12: forall x y: A, (x∥1) · y ≡ (x∥1)·top ∥ y;
+    domE: forall x: A, dom x ≡ 1 ∥ x·top }.
+HB.structure Definition Ptt := { A of Ptt_of_Pttdom A & }.
+Notation ptt := Ptt.type.
+
+HB.factory Record Ptt_of_Ops A of Ops_of_Type A & Setoid_of_Type A :=
+  { dot_eqv: Proper (eqv ==> eqv ==> eqv) (dot : A -> A -> A);
+    par_eqv: Proper (eqv ==> eqv ==> eqv) (par : A -> A -> A);
+    cnv_eqv: Proper (eqv ==> eqv) (cnv : A -> A);
     domE: forall x: A, dom x ≡ 1 ∥ x·top;
-    parA_: forall x y z: A, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
-    parC_: forall x y: A, x ∥ y ≡ y ∥ x;
-    dotA_: forall x y z: A, x · (y · z) ≡ (x · y) · z;
-    dotx1_: forall x: A, x · 1 ≡ x;
-    cnvI_: forall x: A, x°° ≡ x;
-    cnvpar_: forall x y: A, (x ∥ y)° ≡ x° ∥ y°;
-    cnvdot_: forall x y: A, (x · y)° ≡ y° · x°;
-    par11_: 1 ∥ 1 ≡ 1 :> A ;
-    A10_: forall x y: A, 1 ∥ x·y ≡ dom (x ∥ y°);
+    parA: forall x y z: A, x ∥ (y ∥ z) ≡ (x ∥ y) ∥ z;
+    parC: forall x y: A, x ∥ y ≡ y ∥ x;
+    dotA: forall x y z: A, x · (y · z) ≡ (x · y) · z;
+    dotx1: forall x: A, x · 1 ≡ x;
+    cnvI: forall x: A, x°° ≡ x;
+    cnvpar: forall x y: A, (x ∥ y)° ≡ x° ∥ y°;
+    cnvdot: forall x y: A, (x · y)° ≡ y° · x°;
+    par11: 1 ∥ 1 ≡ 1 :> A ;
+    A10: forall x y: A, 1 ∥ x·y ≡ dom (x ∥ y°);
     A11: forall x: A, x · top ≡ dom x · top;
     A12: forall x y: A, (x∥1) · y ≡ (x∥1)·top ∥ y
   }.
-HB.structure Definition Ptt := { A of Ptt_of_Ops A & }.
-Notation ptt := Ptt.type.
+
+HB.builders Context A (F : Ptt_of_Ops A).
+
+  Instance ptt_equivalence : Equivalence (@eqv [the setoid of A]).
+  Proof. exact: Eqv. Qed.
+
+  Instance ptt_par_eqv : Proper (eqv ==> eqv ==> eqv) (par : A -> A -> A).
+  Proof. exact: par_eqv. Qed.
+
+  Instance ptt_dot_eqv : Proper (eqv ==> eqv ==> eqv) (dot : A -> A -> A).
+  Proof. exact: dot_eqv. Qed.
+
+  Lemma A13_ (x y: A): dom(x·y) ≡ dom(x·dom y).
+  Proof. by rewrite domE -dotA A11 dotA -domE. Qed.
+
+  Lemma A14_ (x y z: A): dom x·(y∥z) ≡ dom x·y ∥ z.
+  Proof. by rewrite domE parC A12 (A12 _ y) parA. Qed.
+
+  Lemma dom_eqv_ : Proper (eqv ==> eqv) (dom : A -> A).
+  Proof. by move=> x y xy; rewrite !domE xy. Qed.
+
+  HB.instance Definition Pttdom_of_Ops := 
+    Pttdom_of_Ops.Build A 
+      dot_eqv par_eqv cnv_eqv dom_eqv_ 
+      parA parC dotA dotx1 cnvI cnvpar cnvdot par11 A10 A13_ A14_.
+
+  HB.instance Definition Ptt_of_Ops := 
+    Ptt_of_Pttdom.Build A A11 A12 domE.
+
+HB.end.
+
+Instance ptt_equivalence (A : ptt) : Equivalence (@eqv [the ptt of A]).
+Proof. exact: Eqv. Qed.
+
+Instance ptt_par_eqv (A : ptt) : Proper (eqv ==> eqv ==> eqv) (par : A -> A -> A).
+Proof. exact: par_eqv. Qed.
+
+Instance ptt_dot_eqv (A : ptt) : Proper (eqv ==> eqv ==> eqv) (dot : A -> A -> A).
+Proof. exact: dot_eqv. Qed.
 
 (** ** basic derivable laws  *)
 Section derived.
  Variable X: ptt.
- Existing Instances dot_eqv_ par_eqv_ cnv_eqv_.
-  
- Instance dom_eqv_: Proper (eqv ==> eqv) (@dom X).
- Proof. intros ?? H. by rewrite 2!domE H. Qed.
- 
- Lemma A13_ (x y: X): dom(x·y) ≡ dom(x·dom y).
- Proof. by rewrite domE -dotA_ A11 dotA_ -domE. Qed.
-
- Lemma A14_ (x y z: X): dom x·(y∥z) ≡ dom x·y ∥ z.
- Proof. by rewrite domE parC_ A12 (A12 _ y) parA_. Qed.
-
- HB.instance Definition pttdom_of_ptt := 
-   Pttdom_of_Ops.Build (Ptt.sort X)
-    (@dot_eqv_ X)
-    (@par_eqv_ X)
-    (@cnv_eqv_ X)
-    (dom_eqv_)
-    (@parA_ X)
-    (@parC_ X)
-    (@dotA_ X)
-    (@dotx1_ X)
-    (@cnvI_ X)
-    (@cnvpar_ X)
-    (@cnvdot_ X)
-    (@par11_ X)
-    (@A10_ X)
-    (A13_)
-    (A14_).
  
  Lemma parxtop (x: X): x ∥ top ≡ x.
  Proof.
@@ -126,23 +144,23 @@ Section terms.
  Proof. exact. Qed.
  
  (* quotiented terms indeed form a 2p algebra *)
- Definition tm_ptt : Ptt_of_Ops.axioms_ tm_setoid tm_ops.
+ Definition tm_ptt : Ptt_of_Ops.axioms_ term tm_ops tm_setoid.
   refine (Ptt_of_Ops.Build term _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-    abstract (repeat intro; simpl; by apply dot_eqv_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply par_eqv_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply cnv_eqv_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply domE; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply parA_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply parC_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply dotA_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply dotx1_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply cnvI_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply cnvpar_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply cnvdot_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply par11_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply A10_; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply A11; apply: tm_eqv_eqv).
-    abstract (repeat intro; simpl; by apply A12; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: dot_eqv; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: par_eqv; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: cnv_eqv; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: domE; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: parA; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: parC; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: dotA; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: dotx1; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: cnvI; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: cnvpar; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: cnvdot; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: par11; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: A10; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: A11; apply: tm_eqv_eqv).
+    abstract (repeat intro; simpl; by apply: A12; apply: tm_eqv_eqv).
  Defined.
  HB.instance term tm_ptt.
 
