@@ -387,7 +387,7 @@ have [] := @plane_add_node' _ g2 x2 x1 s2 [set z in X] => //.
       by rewrite inG2E. }
     have dhom_fwd : is_dhom fwd. 
     { move => [[u|]|] [[v|]|] //=.
-      - move => uv. by rewrite (@smerge2_val_edge _ x y) ?induced_val_edge //; exact: G2Dx.
+      - move => uv. by rewrite (@smerge2_val_edge _ x y) ?induced_edge //; exact: G2Dx.
       - by rewrite {1}/edge_rel/={1}/edge_rel/= inE mem_filter sgP => /andP[-> _].
       - by rewrite {1}/edge_rel/= !(inE, inj_imset) // orFb mem_filter sgP => /andP[-> _].
       - by rewrite {1}/edge_rel/={1}/edge_rel/= inE mem_filter => /andP[-> _].
@@ -414,7 +414,7 @@ have [] := @plane_add_node' _ g2 x2 x1 s2 [set z in X] => //.
       have [?|vDx] := eqVneq v x; first subst v.
         by rewrite /edge_rel/= /edge_rel/= inE inG2X.
       rewrite /edge_rel /= /edge_rel/= /edge_rel/=. 
-      rewrite induced_val_edge. rewrite /edge_rel/= !inG2E /=.
+      rewrite -induced_edge /edge_rel/= !inG2E /=.
       by rewrite -(@smerge2_val_edge _ x y). }
     exact: (@Diso _ _ (Bij can_fwd can_bwd) dhom_fwd dhom_bwd).
 Qed.
