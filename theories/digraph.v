@@ -814,6 +814,7 @@ Proof.
   move=> z; rewrite mem_path nodesE /= -map_cons => /mapP[z' _ ->]; exact: valP.
 Qed.
 
+
 (** *** Edge Deletion *)
 
 Definition num_edges (G : diGraph) := #|[pred x : G * G | x.1 -- x.2]|.
@@ -1015,6 +1016,9 @@ Proof.
   move/(diso_hom' h). by rewrite 2!bijK.
 Qed.
 
+(* TODO: scope ... *)
+Notation "F ≃ G" := (diso F G) (at level 79).
+
 Definition diso_id {A}: diso A A := @Diso A A bij_id (@dhom_id A) (@dhom_id A). 
 
 Definition diso_sym {A B}: diso A B -> diso B A.
@@ -1032,22 +1036,56 @@ constructor. exact @diso_id. exact @diso_sym. exact @diso_comp. Defined.
 Lemma edge_diso' F G (h: diso F G) x y: h^-1 x -- h^-1 y = x -- y.
 Proof. apply (edge_diso (diso_sym h)). Qed.
 
-Lemma Diso' (F G: diGraph) (f: F -> G) (g: G -> F):
-  cancel f g -> cancel g f -> (forall x y, x--y <-> f x -- f y) -> diso F G.
-Proof.
-  move=> fg gf H. 
-  exists (Bij fg gf). 
-  abstract (firstorder).
-  abstract (move => x y /=; by rewrite H !gf).
+Lemma Diso' [F G : diGraph] [f : F -> G] [g : G -> F] : 
+  cancel f g -> cancel g f -> {mono f : x y / x -- y} -> F ≃ G.
+Proof. 
+move => can_f can_g mono_f. 
+exists (Bij can_f can_g) => /= x y; first abstract by rewrite mono_f.
+abstract by rewrite -{1}[x]can_g -{1}[y]can_g mono_f.
 Defined.
 
 Lemma Diso'' (F G: diGraph) (f: F -> G) (g: G -> F):
   cancel f g -> cancel g f ->
   (forall x y, x--y -> f x -- f y) -> (forall x y, x--y -> g x -- g y) -> diso F G.
 Proof.
-  move=>fg gf H H'. eapply Diso'. apply fg. apply gf.
-  move=>x y. split. apply H.
-  abstract by move=> /H' E; rewrite 2!fg in E. 
+  move=> can_f can_g H H'. apply: Diso' (can_f) can_g _.
+  abstract by move => x y; apply/idP/idP => [/H'|/H //]; rewrite !can_f.
+Defined.
+
+(** *** Induced Subgraphs *)
+
+(** A graph [G] contains a graph [F] as in induced subgraph, written
+[F ⇀ G], if there exists an injection from [F] to [G] that preserves
+edges in both directions. In particular, we have [induced A ⇀ G] for
+every [A : {set G}]. *)
+
+(* This is almost the same statement as the [Diso'] constructor in
+digraph.v, but the {mono f: ...} assumtion is better behaved in
+proofs. So this should replace the old lemma. *)
+
+(** [G] contains [F] as an induced subgraph *)
+Record isubgraph (F G : diGraph) := 
+  ISubgraph { isubgraph_fun :> F -> G ; 
+              isubgraph_inj : injective isubgraph_fun ; 
+              isubgraph_mono : {mono isubgraph_fun : x y / x -- y} }.
+Arguments isubgraph_inj [F G] i.
+Notation "F ⇀ G" := (isubgraph F G) (at level 30).
+
+Lemma isubgraph_iso (F G : diGraph) (i : F ⇀ G) : #|G| <= #|F| -> F ≃ G.
+Proof.
+move: i => [f inj_f mono_f] leqGF. 
+have onto_f : forall y, y \in codom f by apply: inj_card_onto.
+pose g (y : G) : F := iinv (onto_f y).
+have can_f : cancel f g by abstract by move => x; rewrite /g iinv_f.
+have can_g : cancel g f by abstract by move => x; rewrite /g f_iinv.
+exact: Diso' can_f can_g mono_f.
+Defined.
+
+Lemma isubgraph_comp (F G H : diGraph) (i : F ⇀ G) (j : G ⇀ H) : F ⇀ H.
+Proof.
+apply: ISubgraph (j \o i) _ _. 
+exact: inj_comp (isubgraph_inj j) (isubgraph_inj i).
+abstract by move=> x y /=; rewrite !isubgraph_mono.
 Defined.
 
 (** ** Unindexed paths *)

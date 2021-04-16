@@ -672,13 +672,13 @@ have hom_g : is_dhom g.
 have hom_h : is_dhom h.
 { move => u v uv. rewrite /h/edge_rel/=. 
   case: (h_dec u) => [uV1|[uV2 p]]; case: (h_dec v) => [vV1|[vV2 q]] /=.
-  1,4 : by rewrite -induced_val_edge.
+  1,4 : by rewrite induced_edge.
   - rewrite !inE -!val_eqE /= -in_set2 in q.
-    rewrite -!val_eqE -!induced_val_edge /=. 
+    rewrite -!val_eqE !induced_edge /=. 
     have := separation_capN sepV uV1 vV2 uv; rewrite capV (negbTE q) orbF.
     by case/set2P => ?; subst u; rewrite eqxx uv.
   - rewrite !inE -!val_eqE /= -in_set2  in p.
-    rewrite -!val_eqE -!induced_val_edge /=; rewrite sgP in uv.
+    rewrite -!val_eqE !induced_edge /=; rewrite sgP in uv.
     have := separation_capN sepV vV1 uV2 uv; rewrite capV (negbTE p) orbF.
     by case/set2P => ?; subst v; rewrite eqxx uv. }
 exact: Diso'' hom_g hom_h.

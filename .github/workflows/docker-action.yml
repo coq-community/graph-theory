@@ -4,7 +4,7 @@ name: Docker CI
 
 on:
   schedule:
-    - cron: '25 5 * * *' #nightly build at 5:25
+    - cron: '25 5 * * *'
   push:
     branches:
       - master
@@ -22,7 +22,6 @@ jobs:
           - 'mathcomp/mathcomp-dev:coq-dev'
           - 'mathcomp/mathcomp:1.12.0-coq-8.13'
           - 'mathcomp/mathcomp:1.12.0-coq-8.12'
-          - 'mathcomp/mathcomp:1.11.0-coq-8.12'
       fail-fast: false
     steps:
       - uses: actions/checkout@v2

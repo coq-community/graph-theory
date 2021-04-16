@@ -46,7 +46,7 @@ isomorphism).
 - License: [CeCILL-B](LICENSE)
 - Compatible Coq versions: 8.12 or later
 - Additional dependencies:
-  - MathComp's SSReflect library, version 1.11 or later
+  - MathComp's SSReflect library, version 1.12 or later
   - MathComp's finmap library
   - Hierarchy Builder, version 1.0.0 or later
 - Coq namespace: `GraphTheory`

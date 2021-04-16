@@ -51,3 +51,7 @@ theories/extraction_top.v
 ## Domination Theory
 theories/dom.v
 
+## Graph Coloring
+theories/partition.v
+theories/coloring.v
+theories/wpgt.v
