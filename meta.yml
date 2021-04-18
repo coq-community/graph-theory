@@ -72,9 +72,9 @@ ci_cron_schedule: '25 5 * * *'
 
 dependencies:
 - opam:
-    name: coq-mathcomp-ssreflect
+    name: coq-mathcomp-algebra
     version: '{(>= "1.12" & < "1.13~") | (= "dev")}'
-  description: MathComp's SSReflect library, version 1.12 or later
+  description: MathComp's Algebra library, version 1.12 or later
 - opam:
     name: coq-mathcomp-finmap
   description: MathComp's finmap library
@@ -82,6 +82,9 @@ dependencies:
     name: coq-hierarchy-builder
     version: '{ (>= "1.1.0") }'
   description: Hierarchy Builder, version 1.0.0 or later
+- opam:
+    name: coq-fourcolor
+  description: Gonthier's Formal Proof of the Four-Color Theorem (optional)
 
 namespace: GraphTheory
 

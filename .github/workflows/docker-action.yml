@@ -1,5 +1,3 @@
-# This file was generated from `meta.yml`, please do not edit manually.
-# Follow the instructions on https://github.com/coq-community/templates to regenerate.
 name: Docker CI
 
 on:
@@ -29,6 +27,15 @@ jobs:
         with:
           opam_file: 'coq-graph-theory.opam'
           custom_image: ${{ matrix.image }}
+          # we manually install the optional dependency coq-fourcolor
+          install: |
+            startGroup "Install dependencies"
+              opam pin add -n -y -k path $PACKAGE $WORKDIR
+              opam update -y
+              opam install -y -j 2 $PACKAGE --deps-only
+              opam install -y -j 2 coq-fourcolor
+            endGroup
+
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme

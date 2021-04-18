@@ -3,6 +3,8 @@
 -arg -w -arg -projection-no-head-constant
 -arg -w -arg -duplicate-clear
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
+-arg -w -arg -ambiguous-paths
+
 -R theories GraphTheory
 
 ## preliminary modules
@@ -27,7 +29,7 @@ theories/minor.v
 theories/excluded.v
 theories/checkpoint.v
 theories/cp_minor.v
-theories/smerge.v
+theories/smerge.v #(ITP 21)
 
 ## soundness and completeness for 2pdom (CPP20)
 theories/structures.v
