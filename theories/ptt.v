@@ -162,7 +162,7 @@ Section terms.
     abstract (repeat intro; simpl; by apply: A11; apply: tm_eqv_eqv).
     abstract (repeat intro; simpl; by apply: A12; apply: tm_eqv_eqv).
  Defined.
- HB.instance term tm_ptt.
+ HB.instance Definition _ := tm_ptt.
 
 End terms.
 Declare Scope ptt_ops.

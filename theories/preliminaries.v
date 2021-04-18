@@ -12,13 +12,6 @@ Unset Printing Implicit Defensive.
 (* Definition Symmetric := Relation_Definitions.symmetric. *)
 (* Definition Transitive := Relation_Definitions.transitive. *)
 
-(** This triggers the deprecation warning only once and maintains compatibiltiy *)
-Definition imset_f (aT rT : finType) (f : aT -> rT) (D : {pred aT}) (x : aT) : 
-  x \in D -> f x \in [set f x | x in D].
-Proof. exact: mem_imset. Qed.
-
-(** *** Tactics *)
-
 (** *** Tactics *)
 
 (** Coq treats axioms of type [False] specially: the [Print Asssumptions] command
@@ -1246,13 +1239,6 @@ Proof.
   right; split => //. rewrite [RHS]setUC in E.
   by move/doubleton_eq_left : E.
 Qed.
-
-Lemma sorted_leq_nth s (srt_s : sorted leq s) : 
-  forall i j, i < j -> i < size s -> j < size s -> nth 0 s i <= nth 0 s j.
-Proof. 
-move => i j /ltnW i_j i_s j_s. apply: sorted_le_nth => //. exact: leq_trans.
-Qed.
-Arguments sorted_leq_nth : clear implicits. 
 
 End Preliminaries_dom.
 

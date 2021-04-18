@@ -568,8 +568,12 @@ Qed.
 
 (* Usage: [apply: (Cockayne_Hedetniemi_w i j)] with i,j concrete
 indices into the above list [i < j] *)
+
+Definition Cockayne_Hedetniemi_w_leq := 
+  @sorted_leq_nth nat leq leq_trans leqnn 0 _ Cockayne_Hedetniemi_chain_w.
+
 Notation Cockayne_Hedetniemi_w i j := 
-  (@sorted_leq_nth _ Cockayne_Hedetniemi_chain_w i j erefl erefl erefl).
+  (@Cockayne_Hedetniemi_w_leq i j erefl erefl erefl).
 
 (** Example *)
 Let gamma_w_leq_Gamma_w: gamma_w <= Gamma_w. 
@@ -658,8 +662,17 @@ rewrite /sorted /= ir_leq_gamma gamma_leq_ii ii_leq_alpha.
 by rewrite alpha_leq_Gamma Gamma_leq_IR.
 Qed.
 
+Definition Cockayne_Hedetniemi_leq := 
+  @sorted_leq_nth nat leq leq_trans leqnn 0 _ Cockayne_Hedetniemi_chain.
+
 Notation Cockayne_Hedetniemi i j := 
-  (@sorted_leq_nth _ Cockayne_Hedetniemi_chain i j erefl erefl erefl).
+  (@Cockayne_Hedetniemi_leq i j erefl erefl erefl).
+
+(** Example *)
+Let gamma_leq_Gamma: gamma <= Gamma. 
+Proof. exact: (Cockayne_Hedetniemi 1 4). Qed.
+
+
 
 End Classic_domination_parameters.
 

@@ -329,7 +329,7 @@ Section terms.
    abstract (by repeat intro; simpl; apply A14; apply: tm_eqv_eqv).
  Defined.
 
- HB.instance term tm_pttdom.
+ HB.instance Definition _ := tm_pttdom.
  HB.instance Definition _ := Elabel.copy term [the pttdom of term].
 
  Notation test := (test [the pttdom of term]).
