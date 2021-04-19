@@ -1028,11 +1028,11 @@ case: (skipP x_a) => n _ N1 N2. case: (skipP y_a) => m _ M1 M2 eqI.
 suff/eqP ? : n == m by subst; apply: iter_inj eqI.
 case: (ltngtP n m) => // n_lt_m. (* TODO: proper symmetry reasoning *)
 - have eq_x : x = iter (m - n.+1).+1 f y. 
-  { rewrite subnSK //. rewrite -(subnK (ltnW n_lt_m)) -addnS addnC iter_add in eqI.
+  { rewrite subnSK //. rewrite -(subnK (ltnW n_lt_m)) -addnS addnC iterD in eqI.
     exact: iter_inj eqI. }
   rewrite eq_x in x_a. move: (M2 _ x_a). destruct m => //. by rewrite subSS ltn_subrR.
 - have eq_y : y = iter (n - m.+1).+1 f x. 
-  { rewrite subnSK //. rewrite -(subnK (ltnW n_lt_m)) -addnS addnC iter_add in eqI.
+  { rewrite subnSK //. rewrite -(subnK (ltnW n_lt_m)) -addnS addnC iterD in eqI.
     symmetry. exact: iter_inj eqI. }
   rewrite eq_y in y_a. move: (N2 _ y_a). destruct n => //. by rewrite subSS ltn_subrR.
 Qed.
@@ -1052,8 +1052,8 @@ move => x y x_a y_a; apply/idP/idP.
     apply: connect_trans (IHm _ _ _ _ iter_k_f) _ => //. by apply: leq_trans n_leq_m.
     apply: connect_trans (IHm (n.+1 - k.+1) _ _ _ _) _ => //. 
     * apply: leq_trans n_leq_m. by rewrite subSS ltnS leq_subr.
-    * by rewrite -iter_add subnK // ltnW.
-    * by rewrite -iter_add subnK // ltnW.
+    * by rewrite -iterD subnK // ltnW.
+    * by rewrite -iterD subnK // ltnW.
   + move/existsPn => Hn. rewrite (_ : iter n.+1 f x = skip x) ?fconnect1 //.
     case: skipP => // k _ K1 K2. rewrite (_ : n = k) //; apply/eqP. 
     rewrite eqn_leq K2 // andbT leqNgt. 

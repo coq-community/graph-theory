@@ -575,7 +575,7 @@ have gt0m : 0 < m.
 have gt0n : 0 < n by apply: leq_trans gt0m _.
 have/min_n : iter (n - m) (prev s) x \in p. 
 { have En : n = m + (n - m) by rewrite subnKC.
-  move: iter_n. rewrite -mem_next -iter_m /z {1}En iter_add iterK //.
+  move: iter_n. rewrite -mem_next -iter_m /z {1}En iterD iterK //.
   exact: next_prev. }
 by rewrite leqNgt ltn_subrL gt0m gt0n.
 Qed.
