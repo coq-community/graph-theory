@@ -1839,7 +1839,7 @@ have -> : order add_node_face IcpX = (arity x).+2.
     case: (eqVneq z IcpXe) => [->|]; first by rewrite connect1.
     have ? := @faceI h_add_node.
     case: z => [z||]//= z _ _; rewrite same_fconnect1 //= same_fconnect1 //=.
-    rewrite /IcpF inj_imset // inE. exact: add_node_cfaceE. }
+    rewrite /IcpF mem_imset_eq // inE. exact: add_node_cfaceE. }
 rewrite /=; congr [:: _ , _ & _].
 apply: (@eq_from_nth _ (Icp x)); first by rewrite size_map !size_traject.
 move => n; rewrite size_traject => lt_n_st. 

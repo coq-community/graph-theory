@@ -180,14 +180,14 @@ Lemma smerge2_separator (G : sgraph) (x y : G) (S : {set smerge2 G x y}) :
 Proof.
 move => [u[v [uNS vNS sep_uv]]]. 
 exists (val u),(val v); split => [||p].
-- rewrite !inE (negbTE (valP u)) /= inj_imset //; exact: val_inj.
-- rewrite !inE (negbTE (valP v)) /= inj_imset //; exact: val_inj.
+- rewrite !inE (negbTE (valP u)) /= mem_imset_eq //; exact: val_inj.
+- rewrite !inE (negbTE (valP v)) /= mem_imset_eq //; exact: val_inj.
 - have [|yNp] := boolP (y \in p); first by exists y => //; rewrite !inE eqxx.
   have [|//||q eq_q _] := lift_Path (p' := p).
   + exact: smerge2_edge.
   + move => z z_p. have zDy : z != y by apply: contraTneq z_p => ->.
     by apply/mapP; exists (Sub z zDy) => //; rewrite mem_enum.
-  + have [z z_q z_S] := sep_uv q; exists (val z); last by rewrite !inE inj_imset ?z_S.
+  + have [z z_q z_S] := sep_uv q; exists (val z); last by rewrite !inE mem_imset_eq ?z_S.
     by rewrite mem_path -eq_q mem_map.
 Qed. 
 
@@ -240,7 +240,7 @@ split; first split.
   rewrite /edge_rel/=. rewrite (negbTE vDx) /= andbT.
   by case: (eqVneq u x) => [<-|//]; rewrite [v -- u]sgP uv.
 - case: psepV => _ [u [v [u_V1 v_V2]]]. 
-  exists (val u),(val v). by rewrite !(inE,inj_imset) // negb_or (valP v).
+  exists (val u),(val v). by rewrite !(inE,mem_imset_eq) // negb_or (valP v).
 Qed.
 
 Lemma edge_separator (G : sgraph) (x y : G) : 

@@ -152,13 +152,11 @@ Proof.
   case/imfsetP : (valP y) => /= x _ ->. by exists x.
 Qed.
 
-(** uses maxnP *)
-
 Lemma mem_maxn n m (A : {fset nat}) : n \notin A -> m \notin A -> maxn n m \notin A.
-Proof. by case: maxnP. Qed.
+Proof. by case: leqP. Qed.
 
 Lemma maxn_fset2 n m : maxn n m \in [fset n; m].
-Proof. case: maxnP; by rewrite !in_fset2 eqxx. Qed.
+Proof. case: leqP; by rewrite !in_fset2 eqxx. Qed.
   
 Lemma maxn_fsetD n m (A : {fset nat}) : maxn n m \notin A `\` [fset n; m]. 
 Proof. by rewrite inE negb_and negbK maxn_fset2. Qed.
