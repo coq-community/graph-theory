@@ -10,6 +10,7 @@ digraph dependencies {
 		"finite_quotient";
 		"equiv";
 		"setoid_bigop";
+		"partition";
 	}
 	subgraph { # general purpose graph lib
 		node [style=filled; color="orange"];
@@ -22,6 +23,8 @@ digraph dependencies {
 		"excluded";
 		"checkpoint";
 		"dom";
+		 "coloring";
+		 "wpgt";
 	}
 	subgraph { # 2p algebra of multigraphs (JAR19 generalised in CPP20)
 		node [style=filled; color="magenta3"];
@@ -48,10 +51,20 @@ digraph dependencies {
 		"transfer";
 		"completeness";
 	}
+	subgraph { # Wagner's theorem (ITP21)
+		node [style=filled; color="green"];
+		"hmap_ops";
+		"arc";
+		"hcycle";
+		"smerge";
+		"embedding";
+		"K4plane";
+		"wagner";
+	}
 	subgraph {
 		rank="same";
 		"edone";
-		"bounded";
+		"preliminaries";
 	}
 	subgraph {
 		rank="same";
