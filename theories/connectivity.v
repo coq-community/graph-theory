@@ -408,12 +408,12 @@ Lemma induced_separates (V : {set G}) (S : {set induced V}) (x y : induced V) :
   separates x y S -> separates (val x) (val y) (val @: S :|: ~:V).
 Proof.
 case => xS yS sepS.
-split => [||p]; rewrite ?inE ?negb_or ?negbK ?inj_imset ?xS ?yS ?(valP x) ?(valP y) //=. 
+split => [||p]; rewrite ?inE ?negb_or ?negbK ?mem_imset_eq ?xS ?yS ?(valP x) ?(valP y) //=. 
 case: (boolP (p \subset V)) => [/subsetP subA|/subsetPn [z Z1 Z2]]; last first.
    by exists z; rewrite ?inE ?Z1 ?Z2.
 have [q nodes_q] := Path_to_induced subA.
 have [z Z1 Z2] := sepS q.
-exists (val z); by [rewrite mem_path -nodes_q map_f|rewrite !inE inj_imset ?Z2].
+exists (val z); by [rewrite mem_path -nodes_q map_f|rewrite !inE mem_imset_eq ?Z2].
 Qed.
 
 

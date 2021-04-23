@@ -4,10 +4,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* compat: mathcomp-1.11 *)
-Require Import preliminaries.         (* compatibiltiy fixes *)
-Definition mem_imset_eq := inj_imset. (* temporary name in mathcomp-1.12 *)
-
 (** *** partitions and related properties *)
 
 (** The majority of the lemmas in this file is part of mathcomp PR 731 *)

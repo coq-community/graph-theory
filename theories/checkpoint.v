@@ -159,7 +159,7 @@ Section CheckPoints.
   Definition link_rel := [rel x y | (x != y) && (cp x y \subset [set x; y])].
 
   Lemma link_sym : symmetric link_rel.
-  Proof. move => x y. by rewrite /= eq_sym cp_sym set2C. Qed.
+  Proof. move => x y. by rewrite /= eq_sym cp_sym setUC. Qed.
 
   Lemma link_irrefl : irreflexive link_rel.
   Proof. move => x /=. by rewrite eqxx. Qed.
@@ -531,10 +531,10 @@ Section CheckPoints.
     connected (interval x y).
   Proof using G_conn.
     apply: connected_center (intervalL x y) => z.
-    rewrite {1}/interval set2C -setUA in_setU1 orbC.
+    rewrite {1}/interval [[set _;_]]setUC -setUA in_setU1 orbC.
     case/orP=> [/(sinterval_connectedL (setU11 _ _))|/eqP{z}->].
     { apply: connect_mono => {z}. apply: restrict_mono => z /=.
-      by rewrite /interval set2C -setUA (in_setU1 z y) => ->. }
+      by rewrite /interval [[set _;_]]setUC -setUA (in_setU1 z y) => ->. }
     case/connect_irredP: (G_conn x y) => p Ip. apply: connectRI (p) _ => z z_p.
     rewrite inE -implyNb in_set2 negb_or inE. apply/implyP.
     wlog suff Hyp : x y p Ip z_p / z != x -> x \notin cp z y.

@@ -12,13 +12,6 @@ Unset Printing Implicit Defensive.
 (* Definition Symmetric := Relation_Definitions.symmetric. *)
 (* Definition Transitive := Relation_Definitions.transitive. *)
 
-(** This triggers the deprecation warning only once and maintains compatibiltiy *)
-Definition imset_f (aT rT : finType) (f : aT -> rT) (D : {pred aT}) (x : aT) : 
-  x \in D -> f x \in [set f x | x in D].
-Proof. exact: mem_imset. Qed.
-
-(** *** Tactics *)
-
 (** *** Tactics *)
 
 (** Coq treats axioms of type [False] specially: the [Print Asssumptions] command
@@ -123,48 +116,12 @@ Lemma xchooseP' (T : choiceType) (P : pred T) (E : ex P) :
 Proof. constructor; exact: xchooseP. Qed.
 
 
-(** The [contra] lemmas below have been proposed for inclusion in Coq/mathcomp 
-    (https://github.com/math-comp/math-comp/pull/499) *)
-
-Lemma contra_not (P Q : Prop) : (Q -> P) -> (~ P -> ~ Q). Proof. by auto. Qed.
-Lemma contraPnot (P Q : Prop) : (Q -> ~ P) -> (P -> ~ Q). Proof. by auto. Qed.
-
-Lemma contraTnot b (P : Prop) : (P -> ~~ b) -> (b -> ~ P).
-Proof. by case: b => //= H _ /H. Qed.
-
-Lemma contraNnot (b : bool) (P : Prop) : (P -> b) -> (~~ b -> ~ P).
-Proof. rewrite -{1}[b]negbK; exact: contraTnot. Qed.
-
-Lemma contraPT (P : Prop) (b : bool) : (~~ b -> ~ P) -> P -> b.
-Proof. case: b => //= H1 H2. by case: (H1 isT H2). Qed.
-
-Lemma contra_notT (b : bool) (P : Prop) : (~~ b -> P) -> ~ P -> b.
-Proof. by case: b => //= /(_ isT) HP /(_ HP). Qed.
-
-Lemma contra_notN (b : bool) (P : Prop) : (b -> P) -> ~ P -> ~~ b.
-Proof. rewrite -{1}[b]negbK; exact: contra_notT. Qed.
-
-Lemma contraPN (b : bool) (P : Prop) : (b -> ~ P) -> (P -> ~~ b).
-Proof. by case: b => //=; move/(_ isT) => HP /HP. Qed.
-
-Lemma contraPneq (T:eqType) (a b : T) (P : Prop) : (a = b -> ~ P) -> (P -> a != b).
-Proof. by move => ?; by apply: contraPN => /eqP. Qed.
-
-Lemma contraPeq (T:eqType) (a b : T) (P : Prop) : (a != b -> ~ P) -> (P -> a = b).
-Proof. move => Hab HP. by apply: contraTeq isT => /Hab /(_ HP). Qed.
-
 Lemma exists_inPnn {T : finType} {D P : pred T} : 
   reflect (forall x : T, x \in D -> P x) (~~ [exists x in D, ~~ P x]).
 Proof. 
 rewrite negb_exists_in; under eq_forallb => ? do rewrite negbK.
 exact: forall_inP.
 Qed.
-
-
-
-Lemma existsb_eq (T : finType) (P Q : pred T) : 
-  (forall b, P b = Q b) -> [exists b, P b] = [exists b, Q b].
-Proof. move => E. apply/existsP/existsP; case => b Hb; exists b; congruence. Qed.
 
 Lemma existsb_case (P : pred bool) : [exists b, P b] = P true || P false.
 Proof. apply/existsP/idP => [[[|] -> //]|/orP[H|H]]; eexists; exact H. Qed.
@@ -190,6 +147,7 @@ Proof. by case: b1; case: b2. Qed.
 Lemma orb_sum (a b : bool) : a || b -> (a + b)%type.
 Proof. by case: a => /=; [left|right]. Qed.
 
+(* should possibly be called [inj_leq] but that's aleady used *)
 Lemma inj_card_leq (A B: finType) (f : A -> B) : injective f -> #|A| <= #|B|.
 Proof. move => inj_f. by rewrite -[#|A|](card_codom (f := f)) // max_card. Qed.
 
@@ -305,9 +263,6 @@ Proof. move => x y /setP /(_ y). by rewrite !inE eqxx => /eqP. Qed.
 Lemma id_bij T : bijective (@id T).
 Proof. exact: (Bijective (g := id)). Qed.
 
-Lemma set2C (T : finType) (x y : T) : [set x;y] = [set y;x]. 
-Proof. apply/setP => z. apply/set2P/set2P; tauto. Qed.
-
 Lemma card_ltnT (T : finType) (p : pred T) x : ~~ p x -> #|p| < #|T|.
 Proof. 
   move => A. apply/proper_card. rewrite properE. 
@@ -388,9 +343,6 @@ suff S: {in A, all_equal_to x} by rewrite -{1}(S y).
 by move => z /H /negPn/eqP.
 Qed.
 
-Lemma take_uniq (T : eqType) (s : seq T) n : uniq s -> uniq (take n s).
-Proof. exact/subseq_uniq/take_subseq. Qed.
-
 Lemma sub_filter (T : eqType) (p : {pred T}) (s : seq T) : 
   {subset [seq x <- s | p x] <= s}.
 Proof. by move=> x; rewrite mem_filter => /andP[_ ->]. Qed.
@@ -410,62 +362,6 @@ move => uniq_s subAs leq_n_A; exists (take n [seq x <- s | x \in A]); split.
   by rewrite mem_filter x_A subAs.
 - apply: subseq_trans (take_subseq _ _) _. exact: filter_subseq.
 Qed.
-
-(** this is part of mathcomp-1.12, but it's proof could be based on the lemma above *)
-Lemma card_geqP {T : finType} {A : pred T} {n} : 
-  reflect (exists s, [/\ uniq s, size s = n & {subset s <= A}]) (n <= #|A|).
-Proof.
-apply: (iffP idP) => [n_le_A|[s] [uniq_s size_s /subsetP subA]]; last first.
-  by rewrite -size_s -(card_uniqP uniq_s); exact: subset_leq_card. 
-exists (take n (enum A)); rewrite take_uniq ?enum_uniq // size_take.
-split => //; last by move => x /mem_take; rewrite mem_enum.
-case: (ltnP n (size (enum A))) => // size_A.
-by apply/eqP; rewrite eqn_leq size_A -cardE n_le_A.
-Qed.
-
-Lemma card_gt1P {T : finType}  {A : pred T} : 
-  reflect (exists x y, [/\ x \in A, y \in A & x != y]) (1 < #|A|).
-Proof. 
-apply: (iffP card_geqP) => [[s] []|[x] [y] [xA yA xDy]].
-- case: s => [|a [|b [|]]] //=; rewrite inE andbT => aDb _ subD.
-  by exists a; exists b; rewrite aDb !subD ?inE ?eqxx.
-- exists [:: x;y]; rewrite /= !inE xDy ; split => // z. 
-  by rewrite !inE; case/pred2P => ->.
-Qed.
-
-Lemma card_gt2P {T : finType}  {A : pred T} : 
-  reflect (exists x y z, [/\ x \in A, y \in A & z \in A] /\ [/\ x!=y, y!=z & z!=x]) 
-          (2 < #|A|).
-Proof.
-apply: (iffP card_geqP) => [[s] []|[x] [y] [z] [[xD yD zD] [xDy xDz yDz]]].
-- case: s => [|x [|y [|z [|]]]] //=; rewrite !inE !andbT negb_or -andbA. 
-  case/and3P => xDy xDz yDz _ subA.
-  by exists x;exists y;exists z; rewrite xDy yDz eq_sym xDz !subA ?inE ?eqxx.
-- exists [:: x;y;z]; rewrite /= !inE negb_or xDy xDz eq_sym yDz; split => // u.
-  by rewrite !inE => /or3P [] /eqP->.
-Qed.
-
-Lemma card_le1_eqP {T : finType} {A : pred T} : 
-  reflect {in A&, forall x, all_equal_to x} (#|A| <= 1).
-Proof.
-apply: (iffP card_le1P) => [Ale1 x y xA yA /=|all_eq x xA y]. 
-  by apply/eqP; rewrite -[_ == _]/(y \in pred1 x) -Ale1.
-by rewrite inE; case: (altP (y =P x)) => [->//|]; exact/contra_neqF/all_eq.
-Qed.
-
-Lemma fintype_le1P (T : finType) : reflect (forall x : T, all_equal_to x) (#|T| <= 1).
-Proof. apply: (iffP card_le1_eqP); [exact: in2T|exact: in2W]. Qed.
-
-Lemma cards2P (T : finType) (A : {set T}): 
-  reflect (exists x y : T, x != y /\ A = [set x;y]) (#|A| == 2).
-Proof.
-  apply: (iffP idP) => [H|[x] [y] [xy ->]]; last by rewrite cards2 xy.
-  have/card_gt1P [x [y] [H1 H2 H3]] : 1 < #|A| by rewrite (eqP H).
-  exists x; exists y. split => //. apply/setP => z. rewrite !inE.
-  apply/idP/idP => [zA|/orP[] /eqP-> //]. apply: contraTT H.
-  rewrite negb_or neq_ltn => /andP [z1 z2]. apply/orP;right.
-  apply/card_gt2P. exists x;exists y;exists z => //. by rewrite [_ == z]eq_sym. 
-Qed.  
 
 Lemma bigcup_set1 (T I : finType) (i0 : I) (F : I -> {set T}) :
   \bigcup_(i in [set i0]) F i = F i0.
@@ -548,20 +444,6 @@ Qed.
 
 End Smallest.
 
-(** compat:mathcomp-1.10 / in mathcomp-1.11, this will be subsumed by leqP *)
-Inductive maxn_cases n m : nat -> Type := 
-| MaxnR of n <= m : maxn_cases n m m
-| MaxnL of m < n : maxn_cases n m n.
-
-Lemma maxnP n m : maxn_cases n m (maxn n m).
-Proof.
-(* compat:mathcomp-1.10.0 *)
-by case: (leqP n m) => H; rewrite ?(maxn_idPr H) ?(maxn_idPl (ltnW H)); constructor.
-Qed.
-
-Lemma maxn_eq n m : (maxn n m == n) || (maxn n m == m).
-Proof. case: maxnP; by rewrite !eqxx. Qed.
-
 Lemma sub_in2W (T1 : predArgType) (D1 D2 D1' D2' : pred T1) (P1 : T1 -> T1 -> Prop) :
  {subset D1 <= D1'} -> {subset D2 <= D2'} -> 
  {in D1' & D2', forall x y : T1, P1 x y} -> {in D1&D2, forall x y: T1, P1 x y}.
@@ -614,37 +496,13 @@ Proof. firstorder. Qed.
 
 (** *** Disjointness *)
 
-(* This section is part of >=mathcomp-8.12 *)
-Section Disjoint.
-Variable (T : finType).
-Implicit Types (A B C D: {pred T}) (P Q : pred T) (x y : T) (s : seq T).
-
-Lemma disjointFr A B x : [disjoint A & B] -> x \in A -> x \in B = false.
-Proof. by move/pred0P/(_ x) => /=; case: (x \in A). Qed.
-
-Lemma disjointFl A B x : [disjoint A & B] -> x \in B -> x \in A = false.
-Proof. rewrite disjoint_sym; exact: disjointFr. Qed.
-
-Lemma disjointWl A B C :
-   A \subset B -> [disjoint B & C] -> [disjoint A & C].
-Proof. by rewrite 2!disjoint_subset; apply: subset_trans. Qed.
-
-Lemma disjointWr A B C : A \subset B -> [disjoint C & B] -> [disjoint C & A].
-Proof. rewrite ![[disjoint C & _]]disjoint_sym. exact:disjointWl. Qed.
-
-Lemma disjointW A B C D :
-  A \subset B -> C \subset D -> [disjoint B & D] -> [disjoint A & C].
-Proof.
-by move=> subAB subCD BD; apply/(disjointWl subAB)/(disjointWr subCD).
-Qed.
-
-Lemma disjoints1 A x : [disjoint [set x] & A] = (x \notin A).
+(* Lemma in mathcomp-1.12 has [A : {set T}] *)
+Lemma disjoints1 (T : finType) (A : {pred T}) x : 
+  [disjoint [set x] & A] = (x \notin A).
 Proof. by rewrite (@eq_disjoint1 _ x) // => y; rewrite !inE. Qed.
 
-End Disjoint.
-
-Lemma disjoints0 (T : finType) (A : {set T}) : [disjoint set0 & A].
-Proof. by rewrite -setI_eq0 set0I. Qed.
+Lemma disjoints0 (T : finType) (A : {pred T}) : [disjoint set0 & A].
+Proof. by apply/pred0Pn => -[x /=]; rewrite inE. Qed.
 
 Lemma disjointP (T : finType) (A B : pred T):
   reflect (forall x, x \in A -> x \in B -> False) [disjoint A & B].
@@ -687,46 +545,6 @@ Proof. move => y. rewrite /update. by case: (altP (y =P x)) => [->|]. Qed.
 
 
 (** *** Sequences and Paths *)
-
-(** from mathcomp-master / will become part of mathcomp-1.12 *)
-(* Generalized versions of splitP (from path.v): split_find_nth and split_find  *)
-Section FindNth.
-Variables (T : Type).
-Implicit Types (x : T) (p : pred T) (s : seq T).
-
-Lemma has_take p s i : has p s -> has p (take i s) = (find p s < i).
-Proof. by elim: s i => [|y s ihs] [|i]//=; case: (p _) => //= /ihs ->. Qed.
-
-Variant split_find_nth_spec p : seq T -> seq T -> seq T -> T -> Type :=
-  FindNth x s1 s2 of p x & ~~ has p s1 :
-    split_find_nth_spec p (rcons s1 x ++ s2) s1 s2 x.
-
-Lemma split_find_nth x0 p s (i := find p s) :
-  has p s -> split_find_nth_spec p s (take i s) (drop i.+1 s) (nth x0 s i).
-Proof.
-move=> p_s; rewrite -[X in split_find_nth_spec _ X](cat_take_drop i s).
-rewrite (drop_nth x0 _) -?has_find// -cat_rcons.
-by constructor; [apply: nth_find | rewrite has_take -?leqNgt].
-Qed.
-
-Variant split_find_spec p : seq T -> seq T -> seq T -> Type :=
-  FindSplit x s1 s2 of p x & ~~ has p s1 :
-    split_find_spec p (rcons s1 x ++ s2) s1 s2.
-
-Lemma split_find p s (i := find p s) :
-  has p s -> split_find_spec p s (take i s) (drop i.+1 s).
-Proof.
-by case: s => // x ? in i * => ?; case: split_find_nth => //; constructor.
-Qed.
-
-Lemma nth_rcons_cat_find x0 p s1 s2 x (s := rcons s1 x ++ s2) :
-   p x -> ~~ has p s1 -> nth x0 s (find p s) = x.
-Proof.
-move=> pz pNs1; rewrite /s  cat_rcons find_cat (negPf pNs1).
-by rewrite nth_cat/= pz addn0 subnn ltnn.
-Qed.
-
-End FindNth.
 
 Lemma eq_in_pmap (aT : eqType) rT (f1 f2 : aT -> option rT) (s : seq aT) : 
   {in s, f1 =1 f2} -> pmap f1 s = pmap f2 s.
@@ -1014,18 +832,11 @@ Proof. apply/setP => x. rewrite -mem_preim !inE. by case: x => [x|]. Qed.
 
 (** *** Set image *)
 
-(* [imset_f] in mathcomp-1.12 *)
-Lemma inj_imset (aT rT : finType) (f : aT -> rT) (A : {pred aT}) (x : aT) :
-  injective f -> (f x \in f @: A) = (x \in A).
-Proof.
-move=> f_inj; apply/imsetP/idP;[by case=> [y] ? /f_inj-> | by move=> ?; exists x].
-Qed.
-
 Lemma imset_inj (aT rT : finType) (f : aT -> rT) : 
   injective f -> injective (fun A : {set aT} => f @: A).
 Proof.
 move=> inj_f A B eq_AB; apply/setP => x.
-by rewrite -(inj_imset _ _ inj_f) eq_AB inj_imset.
+by rewrite -(mem_imset_eq _ _ inj_f) eq_AB mem_imset_eq.
 Qed.
 
 Lemma imset_pre_val (T : finType) (P : pred T) (s : subFinType P) (A : {set T}) :
@@ -1247,13 +1058,6 @@ Proof.
   by move/doubleton_eq_left : E.
 Qed.
 
-Lemma sorted_leq_nth s (srt_s : sorted leq s) : 
-  forall i j, i < j -> i < size s -> j < size s -> nth 0 s i <= nth 0 s j.
-Proof. 
-move => i j /ltnW i_j i_s j_s. apply: sorted_le_nth => //. exact: leq_trans.
-Qed.
-Arguments sorted_leq_nth : clear implicits. 
-
 End Preliminaries_dom.
 
 Arguments in11_in2 [T1 T2 P] A1 A2.
@@ -1272,7 +1076,7 @@ Proof. rewrite inE; exact: idP. Qed.
 
 Lemma Sub_imset (T : finType) (P : {pred T}) (s : subFinType P) {A : {set s}} (x : T) (Px : P x) :
   (Sub x Px \in A) = (x \in val @: A).
-Proof. by rewrite -[X in X \in val @: _](SubK s Px) inj_imset. Qed.
+Proof. by rewrite -[X in X \in val @: _](SubK s Px) mem_imset_eq. Qed.
 
 Lemma Sub_map (T : eqType) (P : {pred T}) (s : subType P) {A : seq s} (x : T) (Px : P x) :
   (Sub x Px \in A) = (x \in map val A).

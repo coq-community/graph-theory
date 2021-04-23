@@ -1001,7 +1001,7 @@ Proof with eauto with typeclass_instances vset.
       { by rewrite add_edgeKl ?add_edgeKr ?add_vertexK ?freshP. }
       apply: oiso2_trans _ (oiso2_sym _). 2: apply: open_add_edge.
       unshelve apply: oiso2_add_edge'. apply: eqvG_iso2R E.
-      1: { rewrite (sameE E). case: maxnP => _; rewrite ?freshP //. apply: freshP'. apply: fsubsetUr. }
+      1: { rewrite (sameE E). case: (leqP e1 e2) => _; rewrite ?freshP //. apply: freshP'. apply: fsubsetUr. }
       all: rewrite ?eqvG_iso2E ?freshP //=.
       all: by rewrite ?inE ?inj_v_open ?inj_vNfresh.
   - (* E0 *) move => G x u. 

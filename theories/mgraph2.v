@@ -660,7 +660,7 @@ Definition g2_ptt: Ptt_of_Ops.axioms_ graph2 g2_ops g2_setoid.
      abstract (exists; apply g2_A11).
      abstract (exists; apply g2_A12).
 Defined.
-HB.instance (mgraph2.graph2 LvS LeS) g2_ptt. 
+HB.instance Definition _ := g2_ptt. 
 
 (** ** additional laws required for the completeness proof *)
 

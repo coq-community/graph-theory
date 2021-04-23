@@ -28,15 +28,9 @@ Notation "x ≡ y :> X" := ((x : X) ≡ (y : X))
 Global Existing Instance Eqv.
 
 Definition flat (A : Type) := A.
-Definition flat_setoid_mixin (A : Type) := 
-  Setoid_of_Type.Build A (@eq_equivalence A).
-Section A.
 
-(** TODO: Remove the section wrapper once HB supports this *)
-Variable (A : Type).
-HB.instance (flat A) (flat_setoid_mixin A).
-End A.
-HB.instance unit (flat_setoid_mixin unit).
+HB.instance Definition _ (A : Type) := Setoid_of_Type.Build (flat A) (@eq_equivalence A).
+HB.instance Definition _ := Setoid_of_Type.Build unit (@eq_equivalence unit).
 
 Lemma eqvxx (X : setoid) (x : X) : x ≡ x. reflexivity. Qed.
 Arguments eqvxx {X x}.

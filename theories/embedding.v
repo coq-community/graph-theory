@@ -656,9 +656,9 @@ Lemma add_node_diso_proof (G : sgraph) (A : {set G}) (x : G) : x \in A ->
   =2 add_node_rel A.
 Proof.
 move=> x_A [u|] [v|] //=; rewrite [in LHS]/edge_rel/= ?inE //.
-- rewrite andbT andFb /= inj_imset ?inE; last exact: Some_inj.
+- rewrite andbT andFb /= mem_imset_eq ?inE; last exact: Some_inj.
   by have [->|//] := eqVneq u x; rewrite x_A.
-- rewrite andbF andTb orbF inj_imset ?inE; last exact: Some_inj.
+- rewrite andbF andTb orbF mem_imset_eq ?inE; last exact: Some_inj.
   by have [->|//] := eqVneq v x; rewrite x_A.
 Qed.
 
@@ -776,7 +776,7 @@ case => [_ _ _ _ _|z As /= /ltnSE lt_As_n].
   + set G' := add_edges2 _ _ _. 
     have @i: diso (add_edges2 (add_edge G x z) [set x] (y |: [set z0 in As])) G'.
     { apply: eq_diso.
-      abstract (rewrite set_cons setUA set2C -setUA; exact: add_edge1n_diso_proof). }
+      abstract (rewrite set_cons setUA [[set _;_]]setUC -setUA; exact: add_edge1n_diso_proof). }
     exists (diso_plane_embedding h i). 
     by move/(diso_face h i): face_h; rewrite map_id_in.
 Qed.

@@ -738,7 +738,7 @@ Lemma eqvG_edges_at G H : G ≡G H -> edges_at G =1 edges_at H.
 Proof. 
   move => GH. move => x. apply/fsetP => e. 
   rewrite !edges_atE -(sameE GH). case E : (_ \in _) => //=. 
-  apply: existsb_eq => b. by rewrite (same_endpt GH).
+  apply: eq_existsb => b. by rewrite (same_endpt GH).
 Qed.
 
 Global Instance remove_vertex_morphism : Proper (eqvG ==> eq ==> eqvG) remove_vertex.
@@ -1139,7 +1139,7 @@ Proof with eauto with typeclass_instances.
       * set e12 := maxn _ _. set a := lv G z. set b := lv G z'. set a' := lv _ z. set b' := lv _ z'. 
         have <- : a = a' by []. have <- : b = b'. rewrite /b /b' /= updateE //. 
         rewrite remove_vertexC -remove_vertex_add_test add_edge_test. rewrite -remove_vertex_add_edge //. 
-        by rewrite /= inE negb_and negbK Iz' !inE maxn_eq.
+        by rewrite /= inE negb_and negbK Iz' !inE /e12; case: (leqP e1' e2'); rewrite eqxx.
   - (* V1 / E0 - no nontrivial interaction *)
     have De : e != e'. 
     { apply: contra_neq xDz => ?; subst e'. exact: oarc_loop arc_e arc_e'. }
@@ -1208,7 +1208,7 @@ Proof with eauto with typeclass_instances.
           case: (same_oarc arc_e2 arc_e2') => [[? ? U']|[? ? U']]; first by subst;rewrite eqxx in D.
           subst y y'.
           have ?: (maxn e1 e2 |` [fset e1; e2] `\` [fset e1; e2]) `\ maxn e1 e2 = fset0.
-          { apply/fsetP => e; rewrite !inE; case: maxnP => _.
+          { apply/fsetP => e; rewrite !inE; case: leqP => _.
             all: case (altP (e =P e1)) => [?|?]; subst; rewrite ?(negbTE e1De2) //=.
             all: by case: (altP (e =P e2)). }
           e2split.
@@ -1259,7 +1259,7 @@ Proof with eauto with typeclass_instances.
          apply/fsetDidPl. by rewrite fdisjoint_sym.
        * rewrite /=. rewrite -!remove_vertex_add_edge /= ?Iz ?Iz' 1?eq_sym ?maxn_fsetD //.
          rewrite remove_vertexC add_edge_edge //. 
-         by case: maxnP => _; rewrite fset2_maxn_neq // D1 // !inE eqxx.
+         by case: leqP => _; rewrite fset2_maxn_neq // D1 // !inE eqxx.
      + (* overlap in one edge *) 
        wlog ? : e1 e2 x y u v  arc_e1 arc_e2 Iz e1De2 zIO xDz yDz He / e = e2 ; [move => W|subst e]. 
        { have: e \in [fset e1;e2]. { move/fsetP : He => /(_ e). rewrite in_fset1 eqxx. by case/fsetIP. }
@@ -1289,7 +1289,7 @@ Proof with eauto with typeclass_instances.
          6: apply: oarc_add_edge. 7: apply: oarc_remove_vertex arc_e2'. 
          all: try done. 
          -- exact: edges_replace.
-         -- by case/orP : (maxn_eq e1 e2) => /eqP ->.
+         -- by case: (leqP e1 e2).
          -- apply: contraTneq (oarc_edge_atL arc_e1) => ->. by rewrite Iz' !inE negb_or e1De2.
          -- apply: fset2_maxn_neq. by rewrite in_fset2 ![e2' == _]eq_sym negb_or E1.
          -- by rewrite Iz !inE negb_or eq_sym E1 eq_sym.
@@ -1298,7 +1298,7 @@ Proof with eauto with typeclass_instances.
          6: apply: oarc_add_edge. 7: apply: oarc_remove_vertex arc_e1.
          all: try done. 
          -- rewrite edges_atC fsetUC maxnC. apply: edges_replace; by rewrite // 1?fsetUC 1?eq_sym.
-         -- by case/orP : (maxn_eq e2 e2') => /eqP ->.
+         -- by case: (leqP e2 e2'). 
          -- apply: contraTneq (oarc_edge_atR arc_e2') => ->.
             by rewrite Iz !inE negb_or eq_sym E1 eq_sym.
          -- apply: fset2_maxn_neq. by rewrite in_fset2 negb_or e1De2.
@@ -1358,8 +1358,9 @@ Proof with eauto with typeclass_instances.
       * rewrite /= !updateE.
         rewrite -remove_vertex_add_test add_edgeKr /= ?maxn_fsetD //.
         rewrite add_edge_remove_edgesK ?inE ?eqxx // remove_vertex_edges. 
-        rewrite !remove_edges_vertexK ?fsubUset ?fsub1set ?Iz ?in_fset2 ?eqxx ?maxn_eq //.
-        apply: add_test_morphism => //=. by rewrite eqv_testE -Eu -Ev critical_pair1.
+        rewrite !remove_edges_vertexK ?fsubUset ?fsub1set ?Iz ?in_fset2 ?eqxx //.
+          apply: add_test_morphism => //=. by rewrite eqv_testE -Eu -Ev critical_pair1.
+        by case: (leqP e1 e2); rewrite eqxx.
     + (* independent case *)
       rewrite in_fset2 negb_or ![z == _]eq_sym in Hz. case/andP : Hz => xDz' yDz'.
       gen have H,H1 : e1' u' {e1De2'} arc_e1' / e1' \notin edges_at G z.
@@ -1372,7 +1373,7 @@ Proof with eauto with typeclass_instances.
       { apply/negP. by case/fset2P => ?; subst; rewrite Iz !in_fset2 !eqxx ?orbT in H1 H2. }
       set e := maxn e1 e2. set e' := maxn e1' e2'.
       have ? : e' != e. 
-      { rewrite /e /e' eq_sym. case: (maxnP e1 e2) => _; exact: fset2_maxn_neq. }
+      { rewrite /e /e' eq_sym. case: (leqP e1 e2) => _; exact: fset2_maxn_neq. }
       e2split. 
       * eapply ostep_step,ostep_e2. 
         3:{ apply: oarc_add_edge. 2:exact: oarc_remove_vertex arc_e2'. 
@@ -1484,7 +1485,7 @@ Proof with eauto with typeclass_instances.
            ++ apply: oarc_remove_edges arc_e2. by rewrite D1 // !inE eqxx.
       * rewrite !add_edge_remove_edges ?D1 ?D2 ?maxn_fset2 //.
         rewrite !remove_edges_edges fsetUC add_edge_edge //. 
-        case: maxnP => _; by rewrite fset2_maxn_neq // ?D1 ?D2 // !inE eqxx.
+        case: leqP => _; by rewrite fset2_maxn_neq // ?D1 ?D2 // !inE eqxx.
     + (* associativity case *)
       wlog ? : e1 e2 x y u v  arc_e1 arc_e2 e1De2 He / e = e2 ; [move => W|subst e]. 
       { have: e \in [fset e1;e2]. { move/fsetP : He => /(_ e). rewrite in_fset1 eqxx. by case/fsetIP. }
@@ -1520,12 +1521,12 @@ Proof with eauto with typeclass_instances.
         2: exact: oarc_added_edge.
         2: { apply: oarc_add_edge. 2:exact: oarc_remove_edges arc_e2'.
              exact: fset2_maxn_neq. }
-        by case: maxnP.
+        by case: leqP.
       * eapply ostep_step,ostep_e2.
         3: exact: oarc_added_edge.
         2: { apply: oarc_add_edge. 2: exact: oarc_remove_edges arc_e1. 
              exact: fset2_maxn_neq. }
-        by case: maxnP.
+        by case: leqP.
       * rewrite maxnA. set f := maxn (maxn _ _) _. 
         rewrite !add_edge_remove_edgesK ?inE ?eqxx // !remove_edges_edges. 
         apply: add_edge_morphism' => //; last by rewrite Hu parA.
@@ -1534,7 +1535,7 @@ Proof with eauto with typeclass_instances.
         rewrite [_ `|` [fset maxn _ _]]fsetUC. 
         all: rewrite fsetUC -!fsetUA. 
         all: rewrite [maxn _ _ |` _]mem_fset1U. 
-        all: try by case: maxnP; rewrite !inE eqxx.
+        all: try by case: leqP; rewrite !inE eqxx.
         by rewrite fsetUA.
         by rewrite fsetUC.
 Qed.
