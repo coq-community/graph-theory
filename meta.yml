@@ -7,6 +7,10 @@ action: true
 coqdoc: false
 doi: 10.1007/s10817-020-09543-2
 
+chat:
+  url: https://coq.zulipchat.com/#narrow/stream/284683-GraphTheory
+  shield: Zulip
+
 synopsis: >-
   Graph theory results in Coq and MathComp
 
@@ -81,10 +85,10 @@ dependencies:
 - opam:
     name: coq-hierarchy-builder
     version: '{ (>= "1.1.0") }'
-  description: Hierarchy Builder, version 1.0.0 or later
+  description: Hierarchy Builder, version 1.1.0 or later
 - opam:
     name: coq-fourcolor
-  description: Gonthier's Formal Proof of the Four-Color Theorem (optional)
+  description: Gonthier's Formal Proof of the Four-Color Theorem (optional dependency)
 
 namespace: GraphTheory
 
@@ -96,6 +100,28 @@ keywords:
 
 categories:
 - name: Computer Science/Graph Theory
+
+build: |-
+  ## Building and installation instructions
+
+  The easiest way to install the latest released version of Graph Theory
+  is via [OPAM](https://opam.ocaml.org/doc/Install.html):
+
+  ```shell
+  opam repo add coq-released https://coq.inria.fr/opam/released
+  opam install coq-fourcolor # optional, enables building Wagner's theorem
+  opam install coq-graph-theory
+  ```
+
+  To instead build and install manually, do:
+
+  ``` shell
+  git clone https://github.com/coq-community/graph-theory.git
+  cd graph-theory
+  cat _CoqProject.wagner >>_CoqProject # Wagner's theorem, requires coq-fourcolor
+  make   # or make -j <number-of-cores-on-your-machine> 
+  make install
+  ```
 
 documentation: |-
   ## Additional Documentation
