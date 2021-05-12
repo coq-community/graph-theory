@@ -17,100 +17,8 @@ Qed.
 Lemma leq_subl n m o : n <= m -> n - o <= m.
 Proof. move => A. rewrite -[m]subn0. exact: leq_sub. Qed.
 
-(** ** Lemmas on [rot] *)
-
-Section RotAddMod.
-Variables (T : eqType).
-Implicit Type (s : seq T).
-
-Lemma rot_minn n s : rot n s = rot (minn n (size s)) s.
-Proof.
-by case: (leqP n (size s)) => // /leqW ?; rewrite rot_size rot_oversize.
-Qed.
-
-Definition rot_sum n m s := locked
-  (if minn m (size s) + minn n (size s) <= size s
-   then minn m (size s) + minn n (size s)
-   else minn m (size s) + minn n (size s) - size s).
-
-Lemma leq_rot_sum n m s : rot_sum n m s <= size s.
-Proof. 
-unlock rot_sum. 
-by case:ifP => // _; rewrite -subnBA // ?geq_minr // leq_subl // geq_minr.
-Qed.
-
-Lemma rot_rot_sum n m s : rot m (rot n s) = rot (rot_sum n m s) s.
-Proof. 
-unlock rot_sum.
-by rewrite (rot_minn n) (rot_minn m) rot_add_mod ?size_rot ?geq_minr.
-Qed.
-
-Lemma rot_sumC n m s : rot_sum n m s = rot_sum m n s.
-Proof. by unlock rot_sum; rewrite ![minn n _ + _]addnC. Qed.
-
-End RotAddMod.
-
 (** ** Lemmas on [index], [mask], and [subseq] *)
 (** could go to seq.v *)
-
-Lemma rev_mask (T : Type) (m : bitseq) (s : seq T) : 
-  size m = size s -> rev (mask m s) = mask (rev m) (rev s).
-Proof.
-elim: m s => [|b m IHm] [|x s] //= /eqP m_s.
-have ? : size m = size s by exact/eqP.
-rewrite fun_if !rev_cons -!cats1 IHm // mask_cat ?size_rev //.
-by case: b => //=; rewrite cats0.
-Qed.
-
-Lemma subseq_rev (T : eqType) (s1 s2 : seq T) : 
-  subseq (rev s1) (rev s2) = subseq s1 s2.
-Proof. 
-wlog suff W : s1 s2 / subseq s1 s2 -> subseq (rev s1) (rev s2).
-  by apply/idP/idP => /W //; rewrite !revK.
-move/subseqP => [m size_m mask_m]; apply/subseqP.
-by exists (rev m); rewrite ?size_rev // -rev_mask // -mask_m.
-Qed.
-
-Lemma subseq_cat2l (T : eqType) (l s1 s2 : seq T) : 
-  subseq (l ++ s1) (l ++ s2) = subseq s1 s2.
-Proof. elim: l => // x l IHl. by rewrite !cat_cons /= eqxx. Qed.
-
-Lemma subseq_cat2r (T : eqType) (l s1 s2 : seq T) : 
-  subseq (s1 ++ l) (s2 ++ l) = subseq s1 s2.
-Proof. by rewrite -subseq_rev !rev_cat subseq_cat2l subseq_rev. Qed.
-
-
-Lemma eqseq_pivot (T : eqType) (s1 s2 s3 s4 : seq T) (x : T) :
-  uniq (s3 ++ x :: s4) -> s1 ++ x :: s2 == s3 ++ x :: s4 = (s1 == s3) && (s2 == s4).
-Proof. 
-move=> uniq34; apply/idP/idP => [E|/andP [/eqP-> /eqP->] //].
-suff S : size s1 = size s3 by rewrite eqseq_cat // eqseq_cons eqxx in E.
-gen have I,I1 : s3 s4 uniq34 {E} / size s3 = index x (s3 ++ x :: s4).
-  rewrite index_cat index_head addn0 ifN //.
-  by apply: contraTN uniq34 => x_s3; rewrite cat_uniq /= x_s3 /= andbF.
-by rewrite I1 -(eqP E) -I // (eqP E).
-Qed.
-
-Lemma subseq_pivot (T : eqType) (s1 s2 s3 s4 : seq T) x : 
-  uniq (s3 ++ x :: s4) -> 
-  subseq (s1 ++ x :: s2) (s3 ++ x :: s4) -> subseq s1 s3 /\ subseq s2 s4.
-Proof.
-move => uniq_s' sub_s_s'; have uniq_s := subseq_uniq sub_s_s' uniq_s'. 
-have/eqP {sub_s_s' uniq_s'} := subseq_uniqP uniq_s' sub_s_s'.
-rewrite !filter_cat /= mem_cat inE eqxx orbT /= => E.
-move: (E); rewrite eqseq_pivot -?(eqP E) // => /andP [/eqP -> /eqP ->].
-by rewrite !filter_subseq.
-Qed.
-
-Lemma subseq_rot (T : eqType) (p s : seq T) n : 
-  subseq p s -> exists2 k, k <= n & subseq (rot k p) (rot n s).
-Proof.
-move => /subseqP [m size_m ->]. 
-exists (count id (take n m)); last by rewrite -mask_rot // mask_subseq.
-apply: leq_trans (count_size _ _) _; rewrite size_take.
-by case: (ltnP n (size m)).
-Qed.
-
 
 Lemma mem2_index (T : eqType) (x y : T) (s : seq T) : 
   uniq s -> y \in s -> mem2 s x y = (index x s <= index y s).
@@ -132,7 +40,6 @@ move=> y_s1 sub_s1_s2 uniq_s2; have uniq_s1 := subseq_uniq sub_s1_s2 uniq_s2.
 rewrite -!mem2_index ?mem2E // => [?|]; last exact: (mem_subseq sub_s1_s2).
 exact: subseq_trans sub_s1_s2.
 Qed.
-
 
 (** ** Lemmas on [next] and [rot] *)
 (** could go to path.v *)
@@ -356,7 +263,7 @@ rewrite rot_n !findex_head // -(next_rot m) //; rewrite rot_n in sub.
 have [p' P] : exists p', rot m p = x :: p'. 
 { rewrite -(mem_rot m) in x_p; rewrite -(rot_uniq m) in (uniq_p).
   case: (splitPr x_p) sub => p1 p2. rewrite -[x::s']cat0s.
-  move/subseq_pivot => /(_ uniq_xs). 
+  rewrite uniq_subseq_pivot // => /andP.
   by rewrite subseq0 => -[/eqP -> _]; exists p2. }
 rewrite P next_nth mem_head index_head.
 case: p' P => [|y' p' P]; first by rewrite /= eqxx leq0n.
@@ -418,18 +325,18 @@ Qed.
 Lemma subcycle_rot_l n p s : subcycle (rot n p) s = subcycle p s.
 Proof. 
 apply/subcycleP/subcycleP => [[m]|[m sub]].
-  rewrite rot_rot_sum => sub; eexists; exact: sub.
-exists (rot_sum ((size (rot n p)) - n) m (rot n p)). 
-by rewrite -rot_rot_sum -/(rotr _ _) rotK.
+  rewrite rot_rot_add => sub; eexists; exact: sub.
+exists (rot_add (rot n p) ((size (rot n p)) - n) m). 
+by rewrite -rot_rot_add -/(rotr _ _) rotK.
 Qed.
 
 Lemma subcycle_rot_r n p s : subcycle p (rot n s) = subcycle p s.
 Proof.
 apply/subcycleP/subcycleP => -[m sub].
   have [k _ sub'] := subseq_rot (size (rot n s) - n) sub.
-  rewrite -/(rotr _ _) rotK rot_rot_sum in sub'; eexists; exact sub'.
+  rewrite -/(rotr _ _) rotK rot_rot_add in sub'; eexists; exact sub'.
 have [k _ sub'] := subseq_rot n sub. 
-by exists (rot_sum m k p); rewrite -rot_rot_sum.
+by exists (rot_add p m k); rewrite -rot_rot_add.
 Qed.
 
 Lemma subcycle_rot n m s p : subcycle (rot n p) (rot m s) = subcycle p s.
