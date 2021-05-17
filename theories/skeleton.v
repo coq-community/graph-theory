@@ -120,8 +120,7 @@ Proof.
 Qed.
 Arguments pi_hom [G] e.
 
-(** ** Strong skeletons *)
-
+(** *** Strong skeletons *)
 
 Definition sskeleton (G : graph2) := @sgraph.add_edge (skeleton G) input output.
 
@@ -671,7 +670,7 @@ Proof.
 Qed.
 
 
-(** ** Disjoint Union of a connected component and the remainder of the graph *)
+(** *** Disjoint Union of a connected component and the remainder of the graph *)
 
 Lemma edge_component (G : graph) (e : edge G) :
   @component_of G (source e) = @component_of G (target e).

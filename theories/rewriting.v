@@ -13,7 +13,11 @@ Notation test := (test X).
 Notation graph := (graph test X).
 Notation graph2 := (graph2 test X).
 
-(** * Rewrite System on Packaged Graphs *)
+(** * Rewrite System for 2p-graphs (additive presentation) *)
+
+(** In this file we define a rewrite system for reducing 2p-graphs
+labeled with elements of a 2pdom algebra.  *)
+
 
 (** note: 
 - we need everything to be finite to get a terminating rewrite system
@@ -21,8 +25,6 @@ Notation graph2 := (graph2 test X).
 - the vertex type has to be an eqType at various places since we regularly compare vertices (e.g., [add_vlabel])
 - the vertex type has to be a finType for the [merge] operation, but only in order to express the new vertex labeling function... we could imagine a [finitary_merge] operation that would not impose this restriction
 - the vertex type has to be finite also when we go to open graphs (although maybe countable would suffice) *)
-
-(** additive presentation *)
 
 Inductive step: graph2 -> graph2 -> Prop :=
   | step_v0: forall G alpha,
@@ -71,4 +73,4 @@ Proof. reflexivity. Qed.
 
 End s.
 #[export]
-Hint Resolve steps_refl : core.        (* in order [by] to get it *)
+Hint Resolve steps_refl : core.

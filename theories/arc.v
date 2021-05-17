@@ -17,7 +17,7 @@ Qed.
 Lemma leq_subl n m o : n <= m -> n - o <= m.
 Proof. move => A. rewrite -[m]subn0. exact: leq_sub. Qed.
 
-(** ** Lemmas on [index], [mask], and [subseq] *)
+(** *** Lemmas on [index] and [subseq] *)
 (** could go to seq.v *)
 
 Lemma mem2_index (T : eqType) (x y : T) (s : seq T) : 
@@ -40,9 +40,6 @@ move=> y_s1 sub_s1_s2 uniq_s2; have uniq_s1 := subseq_uniq sub_s1_s2 uniq_s2.
 rewrite -!mem2_index ?mem2E // => [?|]; last exact: (mem_subseq sub_s1_s2).
 exact: subseq_trans sub_s1_s2.
 Qed.
-
-(** ** Lemmas on [next] and [rot] *)
-(** could go to path.v *)
 
 Section Path.
 
@@ -115,7 +112,7 @@ move=> inj_f; case: s => //= a s.
 by elim: s a {2 4}a => /= [|y s IHs] a b; rewrite inj_eq // ?IHs -fun_if.
 Qed.
 
-(** ** Lemmas on [index] *)
+(** *** Lemmas on [index] *)
 (** could go to [fingraph.v] *)
 
 Lemma eq_findex (T : finType) (f g : T -> T) : 

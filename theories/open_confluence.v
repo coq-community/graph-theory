@@ -853,8 +853,9 @@ Proof.
   - move => e' /fsetDP [A B]. rewrite updateE //. by apply: contraNneq B => ->.
 Qed.
 
+(** * Local Confluence of Rewrite System for 2p (open variant)  *)
 
-(** * Open Step relation  *)
+(** ** Open Step relation  *)
 
 Section ostep.
 Implicit Types (x y z : VT) (e : ET).

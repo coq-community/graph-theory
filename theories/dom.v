@@ -7,9 +7,8 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
 
-(**********************************************************************************)
-(** * Domination Theory                                                           *)
-(**********************************************************************************)
+(** * Domination Theory *)
+
 (** ** Hereditary and superhereditary properties *)
 Section Hereditary.
 Variable (T : finType).

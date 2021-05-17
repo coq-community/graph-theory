@@ -40,7 +40,7 @@ Tactic Notation "existsb" uconstr(x) := apply/existsP;exists x.
 #[export]
 Hint Extern 0 (injective Some) => exact: @Some_inj : core.
 
-(** Σ-Types *)
+(** *** Σ-Types *)
 
 Declare Scope sigT_scope.
 Open Scope sigT_scope.
@@ -970,9 +970,8 @@ Instance ex2_iff_morphism (A : Type) :
   Proper (pointwise_relation A iff ==> pointwise_relation A iff ==> iff) (@ex2 A).
 Proof. by firstorder. Qed.
 
+(** *** Extra Preliminaries used in Domination Theory *)
 
-(*********************************************************************************)
-(** * Preliminaries (used in Domination Theory) *)
 Section Preliminaries_dom.
 
 Lemma properC (T : finType) (A B : {set T}) : A \proper B = (~: B \proper ~: A).
@@ -1065,7 +1064,7 @@ Arguments maxset_properP {T p D}.
 Arguments minset_properP {T p D}.
 
 
-(** * Extra Preliminaries from Kuratowski/Wagner development *)
+(** *** Extra Preliminaries from Kuratowski/Wagner development *)
 
 #[export] Hint Extern 0 (injective val) => exact val_inj : core.
 #[export] Hint Extern 0 (injective sval) => exact val_inj : core.

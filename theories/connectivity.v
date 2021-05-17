@@ -1189,7 +1189,7 @@ Proof.
 Qed.
 
 
-(** * k-connectivity *)
+(** ** k-connectivity *)
 
 Definition kconnected (k : nat) (G : sgraph) := 
   k < #|G| /\ forall S : {set G}, vseparator S -> k <= #|S|.
