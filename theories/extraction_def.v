@@ -25,9 +25,11 @@ Local Notation link_rel := checkpoint.link_rel.
    (the latter start from a 2pdom term rather than a 2p term) *)
 Definition graph_of_term: term sym -> graph2 := eval (fun a : flat sym => @g2_var _ _ a).
 
-(** * Term Extraction Function *)
+(** * Term Extraction for 2p-graphs in TW2 *)
 
-(** ** Termination Metric *)
+(** ** Extraction function for connected graphs *)
+
+(** *** Termination Metric *)
 
 Definition term_of_measure (G : graph2) :=
   (input == output :> G) + 2*#|edge G|.
@@ -79,7 +81,7 @@ Proof.
   move: He. by rewrite !inE => /orP[/andP[/eqP<- _]|/andP[_ /eqP<-]].
 Qed.
 
-(** ** Subroutines *)
+(** *** Subroutines *)
 
 Definition lens (G : graph2) := 
   [&& edge_set G (@bag G IO input)  == set0 ,
@@ -216,7 +218,7 @@ Definition tm_ (G : graph2) (e : edge G): term sym :=
 
 Definition tmEs (G : graph2) : seq (term sym) := [seq tm_ e | e in edge_set G IO].
 
-(** ** The Extraction Functional *)
+(** *** The Extraction Functional *)
 
 (** Here we define the extraction function. The case distinctions are chosen
 such that we can make use of induced subgraphs (rather than the more generic
@@ -256,7 +258,7 @@ Definition term_of_rec (term_of : graph2 -> term sym) (G : graph2) :=
 
 Definition term_of := Fix top term_of_measure term_of_rec.
 
-(** ** Termination Argument *)
+(** *** Termination Argument *)
 
 
 Notation sigraph := cp_minor.igraph.

@@ -8,7 +8,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Bullet Behavior "Strict Subproofs". 
 
-(** * Completeness *)
+(** * Completeness of the 2pdom axioms *)
 
 Section s.
 Variable A: Type. 
@@ -153,10 +153,8 @@ Proof.
   apply relabel2_iso=>//.
   case=>//=??/=->//.  
 Qed.
-
-(** ** Main Result *)
                   
-(* main completeness theorem *)
+(** main completeness theorem *)
 Theorem completeness (u v: term): graph_of_term u ≃2p graph_of_term v -> u ≡ v.
 Proof.
   move=>/tgraph_graph_iso h.
@@ -168,7 +166,7 @@ Proof.
   apply normal_iso. by rewrite HF'. 
 Qed.
 
-(* actually an iff since graphs from a 2pdom algebra *)
+(** actually an iff since graphs from a 2pdom algebra *)
 Theorem soundness_and_completeness (u v: term): graph_of_term u ≃2p graph_of_term v <-> u ≡ v.
 Proof.
   split => [|uv]; first exact: completeness.

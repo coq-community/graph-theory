@@ -12,7 +12,7 @@ DOCDIR = docs
 COQDOCDIR = $(DOCDIR)/coqdoc
 
 COQDOCHTMLFLAGS = --toc -s --external 'http://math-comp.github.io/htmldoc/' mathcomp --html \
-  --with-header $(HEADER) --with-footer $(FOOTER) --index indexpage --parse-comments
+  --with-header $(HEADER) --with-footer $(FOOTER) --index indexpage --parse-comments --toc-depth 2
 
 coqdoc: $(GLOBFILES) $(VFILES) $(HEADER) $(FOOTER) $(RESOURCES)
 	$(SHOW)'COQDOC -d $(COQDOCDIR)'

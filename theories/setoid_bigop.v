@@ -11,9 +11,6 @@ Unset Strict Implicit.
 [mathcomp.ssreflect.bigop] to the setting where monoid laws only hold
 up to the equivalence of some setoid. *)
 
-(** ** setoids *)
-
-
 HB.mixin Record Setoid_of_Type A := 
   { eqv : relation A; Eqv : Equivalence eqv }.
 
@@ -35,9 +32,8 @@ HB.instance Definition _ := Setoid_of_Type.Build unit (@eq_equivalence unit).
 Lemma eqvxx (X : setoid) (x : X) : x ≡ x. reflexivity. Qed.
 Arguments eqvxx {X x}.
 
-(** This allows [trivia] (and hence [done]) to solve [x ≡ x]. *)
-#[export]
-Hint Extern 0 => reflexivity : core.
+(** This allows [trivial] (and hence [done]) to solve [x ≡ x]. *)
+#[export] Hint Extern 0 => reflexivity : core.
 
 Class monoidLaws {X : setoid} (mon0 : X) (mon2 : X -> X -> X) :=
   MonoidLaws {

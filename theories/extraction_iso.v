@@ -21,7 +21,7 @@ Notation graph2 := (graph2 unit (flat sym)).
 Notation g2_top := (g2_top : graph2).
 Notation g2_one := (g2_one : graph2).
 
-(** * Isomorphim Theorem *)
+(** ** Correctness of the Extraction Function *)
 
 (** In this file we prove correctness of the extraction function. This
 mainly amounts to establishing a variety of isomorphisms corresponding

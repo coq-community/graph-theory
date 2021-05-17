@@ -7,7 +7,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(** * Constructions on Hypermaps *)
+(** * Combinatorial Hypermaps (requires coq-fourcolor) *)
 
 (** ** Preliminaries *)
 
@@ -220,9 +220,9 @@ move => G G' i iE x z. by rewrite (hiso_glink i) !iE.
 Qed.
 Arguments hiso_id_glink [D] [e n f]%function_scope [eK] [e' n' f']%function_scope [eK'].
 
-(** * Operations on Hypermaps *)
+(** ** Operations on Hypermaps *)
 
-(** ** The Switch Construct *)
+(** *** The Switch Construct *)
 
 (** The switch function switches the successors of two elements of a
 permutation. (The definition doesn't require injectivity, but we
@@ -452,7 +452,7 @@ Qed.
 
 End switch.
 
-(** ** The merge operation *)
+(** *** The merge operation *)
 
 (** When called on two darts [x] and [y] from distinct node cycles,
 [merge G x y] merges the node cycles of [x] and [x] at [x] and [y] by
@@ -741,7 +741,7 @@ Qed.
 
 End MergeAdjn.
 
-(** ** Disjoint Union *)
+(** *** Disjoint Union *)
 
 Arguments inl_inj {A B}.
 Arguments inr_inj {A B}.
@@ -886,7 +886,7 @@ Qed.
 
 Definition union_adjn := (union_adjn_l,union_adjn_lr,union_adjn_r, union_adjn_rl).
 
-(** ** Deleting a node (and incident edges) *)
+(** *** Deleting a node (and incident edges) *)
 
 (** [frestrict] restricts a function [T -> T] to a function [sig P ->
 sig P], provided [P] is closed under [f]. *)
@@ -1453,7 +1453,7 @@ case => x Nx /=. rewrite skip1 // unfold_in -fclosed1 //.
 exact/closure_closed/cedgeC.
 Qed.
 
-(** ** Adding an Edge. *)
+(** *** Adding an Edge. *)
 
 (** [h_add_edge x y] connects [cnode x] and [cnode y] with an edge. The
 darts of this edge [IcpX] and [IcpXe] are added to the nodes after [x]

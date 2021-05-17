@@ -17,7 +17,7 @@ Lemma plain_face (D : hypermap) (x : D) :
   plain D -> face x = finv node (edge x).
 Proof. by move=> plainD; rewrite -plain_eq' // finv_f. Qed.
 
-(** * Hypermaps as embeddings of (planar) grahs *)
+(** * Hypermaps as Embeddings of (planar) Grahps *)
 
 (** This is mainly usedful when takling about embeddings, as hypermaps
 cannot represent isolated vertices. *)

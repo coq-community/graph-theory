@@ -21,7 +21,7 @@ Notation graph2 := (graph2 unit (flat sym)).
 Open Scope ptt_ops.
 
 
-(** * Extraction from Disconnected Graphs *)
+(** ** Extraction from Disconnected Graphs *)
 
 Arguments iso_id {Lv Le G}.
 Arguments merge_union_K_l [Lv Le F K i o h] k.
