@@ -205,6 +205,7 @@ Section derived.
  Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
  Proof. move=> /= -> ->. apply cnvI. Qed.
 
+ #[non_forgetful_inheritance]
  HB.instance Definition pttdom_elabel := 
    Elabel_of_Setoid.Build X eqv'_sym eqv01 eqv11.
  
