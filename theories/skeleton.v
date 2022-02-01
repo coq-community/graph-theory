@@ -570,7 +570,7 @@ Proof.
   rewrite (lock edge_rel) /= -!andbA -lock. case/and4P=> _ a_U' xa.
   have Ha : a \in V by case/imsetP: a_U' => b _ ->; exact: valP.
   set b : subgraph_for con := Sub a Ha. rewrite -[a]/(val b) => p_path p_last.
-  have b_U : b \in U by rewrite -(mem_imset_eq _  _ val_inj).
+  have b_U : b \in U by rewrite -(mem_imset _  _ val_inj).
   apply: connect_trans (IH b b_U p_path p_last). apply: connect1 => /=.
   apply/andP; split; first by apply/andP; split. move: xa.
 

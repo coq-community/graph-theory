@@ -8,11 +8,12 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 [![Chat][chat-shield]][chat-link]
 [![Contributing][contributing-shield]][contributing-link]
 [![Code of Conduct][conduct-shield]][conduct-link]
+[![Zulip][zulip-shield]][zulip-link]
 [![DOI][doi-shield]][doi-link]
 
 [docker-action-shield]: https://github.com/coq-community/graph-theory/workflows/Docker%20CI/badge.svg?branch=master
 [docker-action-link]: https://github.com/coq-community/graph-theory/actions?query=workflow:"Docker%20CI"
-[chat-shield]: https://img.shields.io/badge/zulip-join_chat-brightgreen.svg
+[chat-shield]: https://img.shields.io/badge/Zulip-join_chat-brightgreen.svg
 [chat-link]: https://coq.zulipchat.com/#narrow/stream/284683-GraphTheory
 
 [contributing-shield]: https://img.shields.io/badge/contributions-welcome-%23f7931e.svg

@@ -42,9 +42,8 @@ Lemma inj_e_inj : injective inj_e.
 Proof. move => x y. by move/ord_inj/enum_rank_inj. Qed.
 
 End inject.
-#[export]
-Hint Resolve inj_v_inj inj_e_inj : core.
-Instance VT_inh_type : inh_type VT := Build_inh_type 0. 
+#[export] Hint Resolve inj_v_inj inj_e_inj : core.
+#[export] Instance VT_inh_type : inh_type VT := Build_inh_type 0. 
 Arguments inj_v {T}.
 Arguments inj_e {T}.
 
@@ -1286,4 +1285,3 @@ Qed.
 
 
 End PttdomGraphTheory.
-

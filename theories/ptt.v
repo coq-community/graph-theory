@@ -72,12 +72,15 @@ HB.builders Context A (F : Ptt_of_Ops A).
 
 HB.end.
 
+#[export]
 Instance ptt_equivalence (A : ptt) : Equivalence (@eqv [the ptt of A]).
 Proof. exact: Eqv. Qed.
 
+#[export]
 Instance ptt_par_eqv (A : ptt) : Proper (eqv ==> eqv ==> eqv) (par : A -> A -> A).
 Proof. exact: par_eqv. Qed.
 
+#[export]
 Instance ptt_dot_eqv (A : ptt) : Proper (eqv ==> eqv ==> eqv) (dot : A -> A -> A).
 Proof. exact: dot_eqv. Qed.
 

@@ -74,6 +74,7 @@ Proof.
   econstructor; apply can_comp. apply g. apply f. apply f. apply g. 
 Defined.
 
+#[export]
 Instance bij_Equivalence: Equivalence bij.
 Proof. constructor. exact @bij_id. exact @bij_sym. exact @bij_comp. Defined.
 
@@ -82,6 +83,7 @@ Proof. constructor. exact @bij_id. exact @bij_sym. exact @bij_comp. Defined.
 Definition sumf {A B C D} (f: A -> B) (g: C -> D) (x: A+C): B+D :=
   match x with inl a => inl (f a) | inr c => inr (g c) end. 
 
+#[export]
 Instance sum_bij: Proper (bij ==> bij ==> bij) sum.
 Proof.
   intros A A' f B B' g.

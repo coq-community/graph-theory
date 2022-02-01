@@ -389,28 +389,28 @@ have [] := @plane_add_node' _ g2 x2 x1 s2 [set z in X] => //.
     { move => [[u|]|] [[v|]|] //=.
       - move => uv. by rewrite (@smerge2_val_edge _ x y) ?induced_edge //; exact: G2Dx.
       - by rewrite {1}/edge_rel/={1}/edge_rel/= inE mem_filter sgP => /andP[-> _].
-      - by rewrite {1}/edge_rel/= !(inE, mem_imset_eq) // orFb mem_filter sgP => /andP[-> _].
+      - by rewrite {1}/edge_rel/= !(inE, mem_imset) // orFb mem_filter sgP => /andP[-> _].
       - by rewrite {1}/edge_rel/={1}/edge_rel/= inE mem_filter => /andP[-> _].
-      - by rewrite {1}/edge_rel/= !(inE, mem_imset_eq) // orFb mem_filter => /andP[-> _].
+      - by rewrite {1}/edge_rel/= !(inE, mem_imset) // orFb mem_filter => /andP[-> _].
       - by rewrite [y -- x]sgP. }
     have inG2Y u : u != x -> u != y -> u -- y -> inG2 u \in Y.
-    { move=> uDx uDy uy. rewrite inG2E -!(@mem_imset_eq _ _ val) // -imset_comp eq_Y /=.
+    { move=> uDx uDy uy. rewrite inG2E -!(@mem_imset _ _ val) // -imset_comp eq_Y /=.
       by rewrite !inE uDx sgP. }
     have inG2X u : u != x -> u != y -> u -- x -> inG2 u \in X.
-    { move=> uDx uDy uy. rewrite inG2E -!(@mem_imset_eq _ _ val) // -imset_comp eq_X /=.
+    { move=> uDx uDy uy. rewrite inG2E -!(@mem_imset _ _ val) // -imset_comp eq_X /=.
       by rewrite !inE uDy sgP. }
     have dhom_bwd : is_dhom bwd. 
     { move => u v uv; rewrite /bwd. 
       have [?|uDy] := eqVneq u y; first subst u. 
         have [E|vDy] := eqVneq v y; first by rewrite E sgP in uv.
         have [?|vDx] := eqVneq v x; first by rewrite /edge_rel/= !inE eqxx.
-        by rewrite /edge_rel/= inE mem_imset_eq // inE inG2Y 1?sgP.
+        by rewrite /edge_rel/= inE mem_imset // inE inG2Y 1?sgP.
       have [?|uDx] := eqVneq u x;first subst u. 
         have [E|vDx] := eqVneq v x; first by rewrite E sgP in uv.
         have [?|vDy] := eqVneq v y; first by rewrite /edge_rel/= !inE eqxx.
         by rewrite /edge_rel/= /edge_rel/= inE inG2X 1?sgP.
       have [?|vDy] := eqVneq v y; first subst v. 
-        by rewrite /edge_rel/= inE mem_imset_eq // inE inG2Y.
+        by rewrite /edge_rel/= inE mem_imset // inE inG2Y.
       have [?|vDx] := eqVneq v x; first subst v.
         by rewrite /edge_rel/= /edge_rel/= inE inG2X.
       rewrite /edge_rel /= /edge_rel/= /edge_rel/=. 

@@ -710,7 +710,7 @@ have sum_j i : \sum_(j | i != j) #|K i :&: S j| >= a * w.
   under eq_bigr => x x_Ki; first rewrite muln1 -(cutS x); first over. 
   move: x x_Ki; apply/subsetP. by move: (maxK i); rewrite !inE -andbA => /and3P[]. (* fixme *)
   rewrite exchange_big/=. under eq_bigr => j do rewrite sum_cardI.
-  by rewrite [X in _ <= X]big_uncond // => j /negPn/eqP<-. }
+  by rewrite [X in _ <= X]big_rmcond // => j /negPn/eqP<-. }
 move => i j iDj; apply: contraTeq (sum_j i).
 rewrite eqn_leq negb_and le_KiSj -leqNgt leqn0 /= -ltnNge => /eqP KiSj0.
 rewrite (bigD1 j) //= KiSj0 add0n.

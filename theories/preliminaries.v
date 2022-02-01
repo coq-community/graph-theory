@@ -836,7 +836,7 @@ Lemma imset_inj (aT rT : finType) (f : aT -> rT) :
   injective f -> injective (fun A : {set aT} => f @: A).
 Proof.
 move=> inj_f A B eq_AB; apply/setP => x.
-by rewrite -(mem_imset_eq _ _ inj_f) eq_AB mem_imset_eq.
+by rewrite -(mem_imset _ _ inj_f) eq_AB mem_imset.
 Qed.
 
 Lemma imset_pre_val (T : finType) (P : pred T) (s : subFinType P) (A : {set T}) :
@@ -878,8 +878,8 @@ Lemma inj_imsetS (aT rT : finType) (f : aT -> rT) (A B : {pred aT}) :
   injective f -> (f @: A \subset f @: B) = (A \subset B).
 Proof.
 move=> inj_f; apply/subsetP/subsetP => [/= subAB x xA|subAB ? /imsetP[x xA ->]]. 
-  by move: (subAB (f x)); rewrite !(mem_imset_eq _ _ inj_f); apply.
-by rewrite (mem_imset_eq _ _ inj_f); apply: subAB.
+  by move: (subAB (f x)); rewrite !(mem_imset _ _ inj_f); apply.
+by rewrite (mem_imset _ _ inj_f); apply: subAB.
 Qed.
 
 Lemma val_subset (T: finType) (H : {set T}) (A B : {set sig [eta mem H]}) :
@@ -966,6 +966,7 @@ Qed.
 
 (** Extra Morphism declatations *)
 
+#[export]
 Instance ex2_iff_morphism (A : Type) :  
   Proper (pointwise_relation A iff ==> pointwise_relation A iff ==> iff) (@ex2 A).
 Proof. by firstorder. Qed.
@@ -1075,7 +1076,7 @@ Proof. rewrite inE; exact: idP. Qed.
 
 Lemma Sub_imset (T : finType) (P : {pred T}) (s : subFinType P) {A : {set s}} (x : T) (Px : P x) :
   (Sub x Px \in A) = (x \in val @: A).
-Proof. by rewrite -[X in X \in val @: _](SubK s Px) mem_imset_eq. Qed.
+Proof. by rewrite -[X in X \in val @: _](SubK s Px) mem_imset. Qed.
 
 Lemma Sub_map (T : eqType) (P : {pred T}) (s : subType P) {A : seq s} (x : T) (Px : P x) :
   (Sub x Px \in A) = (x \in map val A).

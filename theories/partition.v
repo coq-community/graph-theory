@@ -115,15 +115,15 @@ Let fP := [set f @: (S : {set T}) | S in P].
 Lemma imset_inj : injective (fun A : {set T} => f @: A).
 Proof. 
 move => A B => /setP E; apply/setP => x. 
-by rewrite -(mem_imset_eq (mem A) x inj_f) E mem_imset_eq.
+by rewrite -(mem_imset (mem A) x inj_f) E mem_imset.
 Qed.
 
 Lemma imset_disjoint (A B : {pred T}) :
   [disjoint f @: A & f @: B] = [disjoint A & B].
 Proof.
 apply/pred0Pn/pred0Pn => /= [[? /andP[/imsetP[x xA ->]] xB]|].
-  by exists x; rewrite xA -(mem_imset_eq (mem B) x inj_f).
-by move => [x /andP[xA xB]]; exists (f x); rewrite !mem_imset_eq ?xA.
+  by exists x; rewrite xA -(mem_imset (mem B) x inj_f).
+by move => [x /andP[xA xB]]; exists (f x); rewrite !mem_imset ?xA.
 Qed.
 
 Lemma imset_trivIset : trivIset P = trivIset fP.

@@ -656,9 +656,9 @@ Lemma add_node_diso_proof (G : sgraph) (A : {set G}) (x : G) : x \in A ->
   =2 add_node_rel A.
 Proof.
 move=> x_A [u|] [v|] //=; rewrite [in LHS]/edge_rel/= ?inE //.
-- rewrite andbT andFb /= mem_imset_eq ?inE; last exact: Some_inj.
+- rewrite andbT andFb /= mem_imset ?inE; last exact: Some_inj.
   by have [->|//] := eqVneq u x; rewrite x_A.
-- rewrite andbF andTb orbF mem_imset_eq ?inE; last exact: Some_inj.
+- rewrite andbF andTb orbF mem_imset ?inE; last exact: Some_inj.
   by have [->|//] := eqVneq v x; rewrite x_A.
 Qed.
 

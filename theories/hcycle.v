@@ -308,4 +308,3 @@ apply/and3P; split.
     * by rewrite (disjointFl dis_q_f) // def_c' !(inE,mem_rcons,mem_cat) H in Z1. 
 Qed.
 
-Print Assumptions two_connected_cyle.

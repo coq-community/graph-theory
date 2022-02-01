@@ -61,7 +61,7 @@ HB.mixin Record Pttdom_of_Ops A of Ops_of_Type A & Setoid_of_Type A :=
   }.
 HB.structure Definition Pttdom := { A of Pttdom_of_Ops A & }.
 Notation pttdom := Pttdom.type.
-Existing Instances dot_eqv par_eqv cnv_eqv dom_eqv.
+#[export] Existing Instances dot_eqv par_eqv cnv_eqv dom_eqv.
 
 Class is_test (X : pttdom) (x : X) := { testE : dom x ≡ x }.
 
@@ -205,6 +205,7 @@ Section derived.
  Lemma eqv11 x y z: eqv' x y -> eqv' y z -> x ≡ z.
  Proof. move=> /= -> ->. apply cnvI. Qed.
 
+ #[export,non_forgetful_inheritance]
  HB.instance Definition pttdom_elabel := 
    Elabel_of_Setoid.Build X eqv'_sym eqv01 eqv11.
  

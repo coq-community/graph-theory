@@ -1396,9 +1396,9 @@ Lemma add_node_diso_proof (G : sgraph) (A : {set G}) (x : G) : x \in A ->
   =2 add_node_rel A.
 Proof.
 move=> x_A [u|] [v|] //=; rewrite [in LHS]/edge_rel/= ?inE //.
-- rewrite andbT andFb /= mem_imset_eq ?inE; last exact: Some_inj.
+- rewrite andbT andFb /= mem_imset ?inE; last exact: Some_inj.
   by have [->|//] := eqVneq u x; rewrite x_A.
-- rewrite andbF andTb orbF mem_imset_eq ?inE; last exact: Some_inj.
+- rewrite andbF andTb orbF mem_imset ?inE; last exact: Some_inj.
   by have [->|//] := eqVneq v x; rewrite x_A.
 Qed.
 
@@ -1721,14 +1721,14 @@ Qed.
 Lemma opn_Knm_l n m (x : 'I_n) : 
   N(inl x : 'K_n,m) = [set inr y | y in [set: 'I_m]].
 Proof.
-apply/setP=> -[z|z]; rewrite ?mem_imset_eq ?inE //; last exact: inr_inj.
+apply/setP=> -[z|z]; rewrite ?mem_imset ?inE //; last exact: inr_inj.
 by symmetry; apply: contraTF isT => /imsetP [z']. 
 Qed.
 
 Lemma opn_Knm_r n m (y : 'I_m) : 
   N(inr y : 'K_n,m) = [set inl x | x in [set: 'I_n]].
 Proof.
-apply/setP=> -[z|z]; rewrite ?mem_imset_eq ?inE //; first exact: inl_inj.
+apply/setP=> -[z|z]; rewrite ?mem_imset ?inE //; first exact: inl_inj.
 by symmetry; apply: contraTF isT => /imsetP [z']. 
 Qed.
 
@@ -1767,7 +1767,7 @@ rewrite edges_add_node cardsU disjoint_setI0 ?cards0 ?subn0; first congr (_ + _)
 - apply: card_imset => x y /setP /(_ (Some y)); rewrite !inE eqxx orbT.
   by rewrite Some_eqE => /eqP ->.
 - apply: card_imset => e1 e2 eq_Some; apply/setP => x.
-  by rewrite -[LHS](mem_imset_eq _ _ Some_inj) eq_Some mem_imset_eq.
+  by rewrite -[LHS](mem_imset _ _ Some_inj) eq_Some mem_imset.
 - apply/disjointP => e E1 E2. 
   have: None \in e by case/imsetP : E1 => x _ ->; rewrite !inE eqxx.
   suff: None \notin e by move/negPf->.

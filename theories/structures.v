@@ -73,7 +73,7 @@ HB.mixin Record ComMonoid_of_Setoid A of Setoid_of_Type A :=
 HB.structure Definition ComMonoid := { A of ComMonoid_of_Setoid A & }.
 Notation comMonoid := ComMonoid.type.
 
-Existing Instance cm_laws.
+#[export] Existing Instance cm_laws.
 Arguments cm_op {_} _ _.
 Declare Scope cm_scope.
 Delimit Scope cm_scope with CM.

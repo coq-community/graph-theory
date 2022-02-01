@@ -449,7 +449,7 @@ by apply: sub_clique clK; rewrite sub_imset_pre preimsetS.
 Qed.
 
 Lemma can_inj_imset (A : {set F}) : i @^-1: (i @: A) = A.
-Proof. by apply/setP => x; rewrite !inE (mem_imset_eq). Qed.
+Proof. by apply/setP => x; rewrite !inE (mem_imset). Qed.
 
 Lemma omega_isubgraph (B : {set F}) : ω(B) = ω(i @: B).
 Proof.

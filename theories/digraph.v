@@ -1030,7 +1030,7 @@ Proof.
   apply Diso with (bij_comp f g); apply dhom_comp. apply f. apply g. apply g. apply f. 
 Defined.
 
-Instance diso_Equivalence: Equivalence diso.
+#[export] Instance diso_Equivalence: Equivalence diso.
 constructor. exact @diso_id. exact @diso_sym. exact @diso_comp. Defined.
 
 Lemma edge_diso' F G (h: diso F G) x y: h^-1 x -- h^-1 y = x -- y.
