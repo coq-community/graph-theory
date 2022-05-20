@@ -519,7 +519,7 @@ Section CheckPoints.
     z \in cp x y -> interval x z :&: interval z y = [set z].
   Proof using.
     move=> z_cpxy. apply/setP=> u.
-    rewrite inE ![_ \in interval _ _]inE (lock sinterval) !inE -lock -!orbA.
+    rewrite [LHS]inE ![_ \in interval _ _]inE (lock sinterval) !inE -lock -!orbA.
     apply/idP/idP; last by move=>->.
     case/andP=> /or3P[/eqP->|->//|u_sIxz] /or3P[->//|/eqP u_y|u_sIzy].
     - move: z_cpxy. by rewrite -u_y cpxx inE eq_sym.

@@ -322,7 +322,7 @@ Qed.
 Lemma subcycle_rot_l n p s : subcycle (rot n p) s = subcycle p s.
 Proof. 
 apply/subcycleP/subcycleP => [[m]|[m sub]].
-  rewrite rot_rot_add => sub; eexists; exact: sub.
+  rewrite rot_rot_add => subs; eexists; exact: subs.
 exists (rot_add (rot n p) ((size (rot n p)) - n) m). 
 by rewrite -rot_rot_add -/(rotr _ _) rotK.
 Qed.

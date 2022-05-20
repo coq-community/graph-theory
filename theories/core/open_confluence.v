@@ -1,3 +1,4 @@
+From HB Require Import structures.
 Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
@@ -40,12 +41,8 @@ of the element in the enumeration (i.e., [enum_rank]) *)
 Definition VT := nat.
 Definition ET := nat.
 
-Canonical VT_eqType := [eqType of VT].
-Canonical VT_choiceType := [choiceType of VT].
-Canonical VT_countType := [countType of VT].
-Canonical ET_eqType := [eqType of ET].
-Canonical ET_choiceType := [choiceType of ET].
-Canonical ET_countType := [countType of ET].
+HB.instance Definition _ := Countable.on VT.
+HB.instance Definition _ := Countable.on ET.
 
 (** Unlike the typed graphs in mgraph.v and mgraph2.v, the definition of open
 graphs is split into a Record for the computational content and a Class for the

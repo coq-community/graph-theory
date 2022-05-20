@@ -136,7 +136,6 @@ Definition replicate (G : sgraph) (v : G) := add_node G N[v].
 Lemma diso_replicate (G : sgraph) (v : G) : G ≃ @induced (replicate v) [set~ None].
 Proof. exact: diso_add_nodeK. Qed.
 
-Arguments val : simpl never.
 Arguments Sub : simpl never.
 
 (* [v != v'] would suffice *)

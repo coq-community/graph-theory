@@ -1,3 +1,4 @@
+From HB Require Import structures.
 Require Import Setoid CMorphisms.
 Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
@@ -182,23 +183,13 @@ Section PathDef.
 
   Record Path : predArgType := { pval : seq T; _ : pathp x y pval }.
 
-  Canonical Path_subType := [subType for pval].
-  Definition Path_eqMixin := Eval hnf in [eqMixin of Path by <:].
-  Canonical Path_eqType := Eval hnf in EqType Path Path_eqMixin.
-  Definition Path_choiceMixin := Eval hnf in [choiceMixin of Path by <:].
-  Canonical Path_choiceType := Eval hnf in ChoiceType Path Path_choiceMixin.
-  Definition Path_countMixin := Eval hnf in [countMixin of Path by <:].
-  Canonical Path_countType := Eval hnf in CountType Path Path_countMixin.
+  HB.instance Definition _ := [isSub for pval].
+  HB.instance Definition _ := [Countable of Path by <:].
 
   Record UPath : predArgType := { uval : seq T; _ : upath x y uval }.
 
-  Canonical UPath_subType := [subType for uval].
-  Definition UPath_eqMixin := Eval hnf in [eqMixin of UPath by <:].
-  Canonical UPath_eqType := Eval hnf in EqType UPath UPath_eqMixin.
-  Definition UPath_choiceMixin := Eval hnf in [choiceMixin of UPath by <:].
-  Canonical UPath_choiceType := Eval hnf in ChoiceType UPath UPath_choiceMixin.
-  Definition UPath_countMixin := Eval hnf in [countMixin of UPath by <:].
-  Canonical UPath_countType := Eval hnf in CountType UPath UPath_countMixin.
+  HB.instance Definition _ := [isSub for uval].
+  HB.instance Definition _ := [Countable of UPath by <:].
 
 End PathDef.
 End Pack.
@@ -699,8 +690,7 @@ Section Finite.
     by move=> Up'; rewrite (bool_irrelevance Up' Up).
   Qed.
 
-  Definition UPath_finMixin := Eval hnf in PcanFinMixin UPath_tupleK.
-  Canonical UPath_finType := Eval hnf in FinType UPath UPath_finMixin.
+  HB.instance Definition _ : isFinite UPath := PCanIsFinite UPath_tupleK.
 
   Definition UPathW (up : UPath) : Path x y := let (p, Up) := up in Sub p (upathW Up).
 End Finite.
@@ -715,14 +705,9 @@ with a finType structure. *)
 Section IPath.
   Variables (x y : G).
   Record IPath : predArgType := { ival : Path x y; ivalP : irred ival }.
-  
-  Canonical IPath_subType := [subType for ival].
-  Definition IPath_eqMixin := Eval hnf in [eqMixin of IPath by <:].
-  Canonical IPath_eqType := Eval hnf in EqType IPath IPath_eqMixin.
-  Definition IPath_choiceMixin := Eval hnf in [choiceMixin of IPath by <:].
-  Canonical IPath_choiceType := Eval hnf in ChoiceType IPath IPath_choiceMixin.
-  Definition IPath_countMixin := Eval hnf in [countMixin of IPath by <:].
-  Canonical IPath_countType := Eval hnf in CountType IPath IPath_countMixin.
+
+  HB.instance Definition _ := [isSub for ival].
+  HB.instance Definition _ := [Countable of IPath by <:].
 
   Lemma upath_irred p (Up : upath x y p) : irred (Build_Path (upathW Up)).
   Proof. rewrite irredE nodesE. exact: upath_uniq Up. Qed.
@@ -741,8 +726,7 @@ Section IPath.
   Lemma can_irred_of : cancel upath_of irred_of. 
   Proof. (do 2 case) => p ? ?. by do 2 apply: val_inj. Qed.
 
-  Definition IPath_finMixin := Eval hnf in CanFinMixin can_irred_of.
-  Canonical IPath_finType := Eval hnf in FinType IPath IPath_finMixin.
+  HB.instance Definition _ : isFinite IPath := CanIsFinite can_irred_of.
 
   Definition path_of_ipath (p : IPath) := ival p. 
   Definition in_ipath p x := x \in path_of_ipath p.

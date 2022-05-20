@@ -1,3 +1,4 @@
+From HB Require Import structures.
 Require Import Setoid CMorphisms.
 Require Import mathcomp.ssreflect.all_ssreflect.
 From GraphTheory Require Import preliminaries bij.
@@ -16,12 +17,10 @@ Variables (D : Type) (C : finType) (CD : C -> D) (DC : D -> C).
 Variables (eD : equiv_rel D) (encD : encModRel CD DC eD).
 Notation eC := (encoded_equiv encD).
 
-Notation ereprK := (@EquivQuot.ereprK D C CD DC eD encD). 
+Notation ereprK := (@EquivQuot.ereprK D C CD DC eD encD).
 
-Fact eq_quot_finMixin : Finite.mixin_of [eqType of {eq_quot encD}].
-Proof. apply: CanFinMixin. exact: ereprK. Qed.
-
-Canonical eq_quot_finType := Eval hnf in FinType {eq_quot encD} eq_quot_finMixin.
+HB.instance Definition _ : isFinite {eq_quot encD} :=
+  @CanIsFinite {eq_quot encD} _ _ _ ereprK.
 
 End FinEncodingModuloRel.
 
@@ -39,7 +38,7 @@ End QUOT.
 Module Export quot: QUOT.
 Section s.
   Variables (T: finType) (e: equiv_rel T).
-  Definition quot: finType := [finType of {eq_quot e}]. (* TODO: avoid clones? (under module abstraction anyway *)
+  Definition quot: finType := {eq_quot e}. (* TODO: avoid clones? (under module abstraction anyway *)
   Definition pi (x: T): quot := \pi x.
   Definition repr(x: quot): T := repr x.
   Lemma reprK: cancel repr pi.
@@ -347,25 +346,25 @@ Definition merge_union_bwd (x : sig (U :|: V)) : sig U + sig V :=
   end.
 
 Inductive merge_union_bwd_spec : sig (U :|: V) -> sig U + sig V ->  Type :=
-| merge_union_bwdL x (inU : x \in U) (inUV : x \in U :|: V) : 
+| merge_union_bwdL x (inU : x \in U) (inUV : x \in U :|: V) :
     merge_union_bwd_spec (Sub x inUV) (inl (Sub x inU))
-| merge_union_bwdR x (inV : x \in V) (inUV : x \in U :|: V) : 
+| merge_union_bwdR x (inV : x \in V) (inUV : x \in U :|: V) :
     x \notin U -> merge_union_bwd_spec (Sub x inUV) (inr (Sub x inV)).
 
 Lemma merge_union_bwdP x : merge_union_bwd_spec x (merge_union_bwd x).
 Proof.
   rewrite /merge_union_bwd. 
   case: (setU_dec _) => p.
-  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). exact: merge_union_bwdL. 
+  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). exact: merge_union_bwdL.
     by rewrite valK'.
-  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). apply: merge_union_bwdR. 
+  - rewrite {1}[x](_ : x = Sub (val x) (valP x)). apply: merge_union_bwdR.
     by rewrite p.  by rewrite valK'.
 Qed.
 
-Definition merge_union_bwdEl x (p : x \in U :|: V) (inU : x \in U) : 
+Definition merge_union_bwdEl x (p : x \in U :|: V) (inU : x \in U) :
   merge_union_bwd (Sub x p) = inl (Sub x inU).
 Proof.
-  rewrite /merge_union_bwd. case: (setU_dec _) => p'. 
+  rewrite /merge_union_bwd. case: (setU_dec _) => p'.
   - rewrite /=. congr inl. exact: val_inj.
   - exfalso. move: p'. rewrite /= inU. by case.
 Qed.
@@ -414,7 +413,7 @@ Section NonDisjoint.
     - by rewrite merge_union_bwdEl valK'.
     - case: (boolP (val x \in U)) => H. rewrite (merge_union_bwdEl H). 
       + case: x H => x p H. exact: eqvI.
-      + by rewrite (merge_union_bwdEr _ H) // valK'.
+      + by rewrite (merge_union_bwdEr (valP x) H) valK'.
   Qed.
 
   Lemma merge_union_can' x : merge_union_fwd (merge_union_bwd x) = x %[mod merge_union_rel].

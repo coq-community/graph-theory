@@ -48,7 +48,7 @@ Definition unit_graph a := Graph (fun _ => vfun) (fun _: unit => a) vfun.
 
 (** adding an edge to a graph *)
 Definition add_edge (G: graph) (x y: G) (u: Le): graph :=
-  @Graph (vertex G) (option_finType (edge G))
+  @Graph (vertex G) (option (edge G))
          (fun b e => match e with Some e => endpoint b e | None => if b then y else x end)
          (@vlabel _ _ G)
          (fun e => match e with Some e => elabel e | None => u end).
@@ -59,8 +59,8 @@ Notation "G ∔ [ x , u , y ]" := (@add_edge G x y u) (at level 20, left associa
 (** We use an explicit [sum_finType F G], because [[finType of F + G]]
 generates a significantly bigger term *)
 Definition union (F G : graph) : graph :=
-  {| vertex := sum_finType F G;
-     edge := sum_finType (edge F) (edge G);
+  {| vertex := (F + G)%type;
+     edge := (edge F + edge G)%type;
      endpoint b := sumf (@endpoint _ _ F b) (@endpoint _ _ G b);
      vlabel e := match e with inl e => vlabel e | inr e => vlabel e end;
      elabel e := match e with inl e => elabel e | inr e => elabel e end;
@@ -80,9 +80,9 @@ Section Subgraphs.
   Variables (G : graph) (V : {set G}) (E : {set edge G}).
   Definition consistent := forall e b, e \in E -> endpoint b e \in V.
   Hypothesis in_V : consistent.
-  
-  Definition sub_vertex := sig_finType (fun x => x \in V).
-  Definition sub_edge := sig_finType (fun e => e \in E).
+
+  Definition sub_vertex : finType := {x | x \in V}.
+  Definition sub_edge : finType := {e | e \in E}.
 
   Definition subgraph_for := 
     {| vertex := sub_vertex;
@@ -97,7 +97,7 @@ Section Subgraphs.
 
   Definition remove_edges := 
     {| vertex := G;
-       edge := sig_finType (fun e: edge G => e \notin E);
+       edge := {e : edge G | e \notin E};
        endpoint b e := endpoint b (val e); 
        vlabel x := vlabel x;
        elabel e := elabel (val e); |}.
@@ -823,7 +823,9 @@ Lemma subgraph_sub : subgraph (subgraph_for con) G.
 Proof. exists val, val, xpred0. split => //=. Qed.
 
 Lemma remove_edges_sub : subgraph (remove_edges E) G.
-Proof. exists id, val, xpred0. split => //=. split. apply inj_id. apply val_inj. Qed.
+Proof.
+exists id, val, xpred0; split=> //; split; first exact: inj_id; exact: val_inj.
+Qed.
 End Sub.
 
 Lemma induced_sub (G: graph) (S : {set G}) : subgraph (induced S) G.
