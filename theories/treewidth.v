@@ -506,7 +506,7 @@ Section DecompTheory.
         exists z; exists x. rewrite sgP. split => //. apply: contraNT zNC => H.
         rewrite 2!inE /= in xC. case/andP : xC => H1 H2.
         rewrite 2!inE /= (negbTE H) /=. apply: connect_trans H2 _.
-        apply: connect1 => /=. by  rewrite 2!inE H1 2!inE xz H. }
+        apply: connect1 => /=; by rewrite !in_simpl H1 xz H. }
       (* Every path into [C] must use this edge (and [c0]) *)
       have t0P c' (p : Path t0 c') : irred p -> c' \in C -> c0 \in p.
       { move => Ip inC'.
