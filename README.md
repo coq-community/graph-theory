@@ -55,6 +55,7 @@ isomorphism).
   - Gonthier's Formal Proof of the Four-Color Theorem (optional dependency)
 - Coq namespace: `GraphTheory`
 - Related publication(s):
+  - [A Variant of Wagner's Theorem Based on Combinatorial Hypermaps](https://hal.inria.fr/hal-03142192) doi:[10.4230/LIPIcs.ITP.2021.17](https://doi.org/10.4230/LIPIcs.ITP.2021.17)
   - [Graph Theory in Coq - Minors, Treewidth, and Isomorphisms](https://hal.archives-ouvertes.fr/hal-02316859) doi:[10.1007/s10817-020-09543-2](https://doi.org/10.1007/s10817-020-09543-2)
   - [Completeness of an Axiomatization of Graph Isomorphism via Graph Rewriting in Coq](https://hal.archives-ouvertes.fr/hal-02333553) doi:[10.1145/3372885.3373831](https://doi.org/10.1145/3372885.3373831)
   - [A Formal Proof of the Minor-Exclusion Property for Treewidth-Two Graphs](https://hal.archives-ouvertes.fr/hal-01703922) doi:[10.1007/978-3-319-94821-8_11](https://doi.org/10.1007/978-3-319-94821-8_11)

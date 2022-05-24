@@ -2,7 +2,7 @@
 # Follow the instructions on https://github.com/coq-community/templates to regenerate.
 
 opam-version: "2.0"
-maintainer: "christian.doczkal@inria.fr"
+maintainer: "christian.doczkal@mpi-sp.org"
 version: "dev"
 
 homepage: "https://github.com/coq-community/graph-theory"
