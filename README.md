@@ -49,7 +49,7 @@ isomorphism).
 - License: [CeCILL-B](LICENSE)
 - Compatible Coq versions: 8.12 or later
 - Additional dependencies:
-  - MathComp's Algebra library, version 1.12 or later
+  - MathComp's Algebra library, version 1.13 or later
   - MathComp's finmap library
   - Hierarchy Builder, version 1.1.0 or later
   - Gonthier's Formal Proof of the Four-Color Theorem (optional dependency)

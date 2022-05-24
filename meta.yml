@@ -79,8 +79,8 @@ ci_cron_schedule: '25 5 * * *'
 dependencies:
 - opam:
     name: coq-mathcomp-algebra
-    version: '{(>= "1.12" & < "1.15~") | (= "dev")}'
-  description: MathComp's Algebra library, version 1.12 or later
+    version: '{(>= "1.13" & < "1.15~") | (= "dev")}'
+  description: MathComp's Algebra library, version 1.13 or later
 - opam:
     name: coq-mathcomp-finmap
   description: MathComp's finmap library
