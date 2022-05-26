@@ -49,7 +49,8 @@ axiomatization of graph isomorphism).
 - License: [CeCILL-B](LICENSE)
 - Compatible Coq versions: 8.14 or later
 - Additional dependencies:
-  - MathComp's [Algebra library](https://math-comp.github.io), version 1.13 or later
+  - MathComp's [SSReflect library](https://math-comp.github.io), version 1.13 or later
+  - MathComp's [Algebra library](https://math-comp.github.io)
   - MathComp's [finmap library](https://github.com/math-comp/finmap)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.1.0 or later
   - Gonthier's [formal proof](https://github.com/coq-community/fourcolor) of the Four-Color Theorem (optional dependency)

@@ -78,9 +78,12 @@ ci_cron_schedule: '25 5 * * *'
 
 dependencies:
 - opam:
-    name: coq-mathcomp-algebra
+    name: coq-mathcomp-ssreflect
     version: '{(>= "1.13" & < "1.15~") | (= "dev")}'
-  description: MathComp's [Algebra library](https://math-comp.github.io), version 1.13 or later
+  description: MathComp's [SSReflect library](https://math-comp.github.io), version 1.13 or later
+- opam:
+    name: coq-mathcomp-algebra
+  description: MathComp's [Algebra library](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-finmap
   description: MathComp's [finmap library](https://github.com/math-comp/finmap)
