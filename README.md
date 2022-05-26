@@ -30,12 +30,12 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 [doi-link]: https://doi.org/10.1007/s10817-020-09543-2
 
 A library of formalized graph theory results, including various
-standard results from the literature (e.g., Menger’s Theorem, Hall’s
-Marriage Theorem, and the excluded minor characterization of
-treewidth-two graphs) as well as some more recent results arising
-from the study of relation algebra within the ERC CoVeCe project
-(e.g., soundness and completeness of an axiomatization of graph
-isomorphism).
+standard results from the literature (e.g., Menger's Theorem, Hall's
+Marriage Theorem, the excluded minor characterization of
+treewidth-two graphs, and Wagner's Theorem) as well as some more
+recent results arising from the study of relation algebra within
+the ERC CoVeCe project (e.g., soundness and completeness of an
+axiomatization of graph isomorphism).
 
 ## Meta
 
@@ -47,12 +47,12 @@ isomorphism).
   - Christian Doczkal ([**@chdoc**](https://github.com/chdoc))
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [CeCILL-B](LICENSE)
-- Compatible Coq versions: 8.12 or later
+- Compatible Coq versions: 8.14 or later
 - Additional dependencies:
-  - MathComp's Algebra library, version 1.13 or later
-  - MathComp's finmap library
-  - Hierarchy Builder, version 1.1.0 or later
-  - Gonthier's Formal Proof of the Four-Color Theorem (optional dependency)
+  - MathComp's [Algebra library](https://math-comp.github.io), version 1.13 or later
+  - MathComp's [finmap library](https://github.com/math-comp/finmap)
+  - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.1.0 or later
+  - Gonthier's [formal proof](https://github.com/coq-community/fourcolor) of the Four-Color Theorem (optional dependency)
 - Coq namespace: `GraphTheory`
 - Related publication(s):
   - [A Variant of Wagner's Theorem Based on Combinatorial Hypermaps](https://hal.inria.fr/hal-03142192) doi:[10.4230/LIPIcs.ITP.2021.17](https://doi.org/10.4230/LIPIcs.ITP.2021.17)
@@ -82,5 +82,24 @@ make   # or make -j <number-of-cores-on-your-machine>
 make install
 ```
 
-## Additional Documentation
-Documentation describing the contents of the individual files is available on the [project website](https://perso.ens-lyon.fr/damien.pous/covece/graphs/)
+## Documentation
+
+This project contains:
+
+- a general purpose Coq library about graph theory:
+  - directed graphs, simple graphs, multigraphs
+  - paths, trees, forests
+  - minors
+  - tree decompositions
+  - Menger's theorem and some of its corollaries (Hall's marriage theorem and König's theorem)
+  - the excluded-minor characterisation of treewidth at most two graphs (as those excluding K4 as a minor)
+
+- a study on treewidth at most two graphs and their links with algebraic structures:
+  - isomorphisms on multigraphs
+  - TW2 graphs form a 2p algebra and thus also a 2pdom algebra (2p stands for "2 pointed", which becomes `ptt` in the code)
+  - every K4-free graph can be represented by a 2p-term
+  - 2pdom axioms are complete w.r.t graph isomorphism
+
+- a statement and proof of Wagner's theorem on graph planarity
+
+Additional information on the contents of individual files is available at the [project website](https://perso.ens-lyon.fr/damien.pous/covece/graphs/).
