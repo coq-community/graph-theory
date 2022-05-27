@@ -133,19 +133,19 @@ documentation: |-
 
   This project contains:
 
-- a general purpose Coq library about graph theory:
+  - a general purpose Coq library about graph theory:
     - directed graphs, simple graphs, multigraphs
     - paths, trees, forests, isomorphism, connected components, etc.
     - minors and tree decompositions
     - Menger's theorem and some of its corollaries (Hall's marriage theorem and König's theorem)
     - the excluded-minor characterisation of treewidth at most two graphs (as those excluding K4 as a minor)
-  - soundness and completeness of an axiomatization of isomorphism of two-pointed treewidth-two (`2p`) multigraphs 
+  - soundness and completeness of an axiomatization of isomorphism of two-pointed treewidth-two (`2p`) multigraphs:
     - isomorphisms up to label-equivalence and edge-flipping for multigraphs
     - 2p graphs form a 2p algebra and thus also a 2pdom algebra
     - every K4-free graph can be represented by a 2p-term
     - 2pdom axioms are complete w.r.t graph isomorphism for connected 2p graphs.
   - a proof of Wagner's theorem (planarity of K5 and K3,3 graphs) based on combinatorial hypermaps
-  - two proofs of the weak perfect graph theorem (WPGT)
+  - two proofs of the weak perfect graph theorem (WPGT):
     - one proof based on Lovasz's replication lemma
     - one proof based on a matrix rank argument
 
