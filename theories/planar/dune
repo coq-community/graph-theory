@@ -1,0 +1,10 @@
+(coq.theory
+ (name GraphTheory.planar)
+ (package coq-graph-theory-planar)
+ (synopsis "Graph theory definitions and results on planarity in Coq and MathComp")
+ (flags :standard
+   -w -notation-overridden
+   -w -redundant-canonical-projection
+   -w -projection-no-head-constant
+   -w -duplicate-clear
+   -w -ambiguous-paths))

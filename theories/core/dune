@@ -1,0 +1,11 @@
+(coq.theory
+ (name GraphTheory.core)
+ (package coq-graph-theory)
+ (synopsis "Graph theory definitions and results in Coq and MathComp")
+ (flags :standard
+   -w -notation-overridden
+   -w -redundant-canonical-projection
+   -w -projection-no-head-constant
+   -w -duplicate-clear
+   -w -elpi.add-const-for-axiom-or-sectionvar
+   -w -ambiguous-paths))

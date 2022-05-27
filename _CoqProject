@@ -5,55 +5,62 @@
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 -arg -w -arg -ambiguous-paths
 
--R theories GraphTheory
+-Q theories GraphTheory
 
 ## preliminary modules
-theories/edone.v
-theories/bounded.v
-theories/preliminaries.v
-theories/setoid_bigop.v
-theories/finmap_plus.v
-theories/set_tac.v
-theories/bij.v
-theories/finite_quotient.v
-theories/equiv.v
-theories/arc.v
+theories/core/edone.v
+theories/core/bounded.v
+theories/core/preliminaries.v
+theories/core/setoid_bigop.v
+theories/core/finmap_plus.v
+theories/core/set_tac.v
+theories/core/bij.v
+theories/core/finite_quotient.v
+theories/core/equiv.v
+theories/core/arc.v
 
 ## general purpose graph library (JAR19)
-theories/digraph.v
-theories/sgraph.v
-theories/helly.v
-theories/connectivity.v
-theories/treewidth.v
-theories/minor.v
-theories/excluded.v
-theories/checkpoint.v
-theories/cp_minor.v
-theories/smerge.v #(ITP 21)
+theories/core/digraph.v
+theories/core/sgraph.v
+theories/core/helly.v
+theories/core/connectivity.v
+theories/core/treewidth.v
+theories/core/minor.v
+theories/core/excluded.v
+theories/core/checkpoint.v
+theories/core/cp_minor.v
+theories/core/smerge.v #(ITP 21)
 
 ## soundness and completeness for 2pdom (CPP20)
-theories/structures.v
-theories/pttdom.v
-theories/mgraph.v
-theories/mgraph2.v
-theories/rewriting.v
-theories/reduction.v
-theories/open_confluence.v
-theories/transfer.v
-theories/completeness.v
+theories/core/structures.v
+theories/core/mgraph.v
+theories/core/pttdom.v
+theories/core/mgraph2.v
+theories/core/rewriting.v
+theories/core/reduction.v
+theories/core/open_confluence.v
+theories/core/transfer.v
+theories/core/completeness.v
 
 ## extraction for of 2p terms from TW2 graphs (ITP18 / JAR19)
-theories/ptt.v
-theories/skeleton.v
-theories/mgraph2_tw2.v
-theories/extraction_def.v
-theories/extraction_iso.v
-theories/extraction_top.v
+theories/core/ptt.v
+theories/core/skeleton.v
+theories/core/mgraph2_tw2.v
+theories/core/extraction_def.v
+theories/core/extraction_iso.v
+theories/core/extraction_top.v
 
 ## Domination Theory
-theories/dom.v
+theories/core/dom.v
 
 ## Graph Coloring
-theories/partition.v
-theories/coloring.v
-theories/wpgt.v
+theories/core/partition.v
+theories/core/coloring.v
+theories/core/wpgt.v
+
+## Kuratowski's/Wagner's theorem (ITP 21)
+theories/planar/hmap_ops.v
+theories/planar/hcycle.v
+theories/planar/embedding.v
+theories/planar/K4plane.v
+theories/planar/wagner.v
