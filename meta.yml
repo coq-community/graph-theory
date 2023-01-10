@@ -112,23 +112,23 @@ categories:
 build: |-
   ## Building and installation instructions
 
-  The easiest way to install the latest released version of Graph Theory
-  is via [OPAM](https://opam.ocaml.org/doc/Install.html):
-
-  ```shell
-  opam repo add coq-released https://coq.inria.fr/opam/released
-  opam install coq-fourcolor # optional, enables building Wagner's theorem
-  opam install coq-graph-theory
-  ```
-
-  To instead build and install manually, do:
+  To build and install the whole project, including Wagner's theorem which requires
+  the Coq proof of the Four-Color Theorem, do:
 
   ``` shell
   git clone https://github.com/coq-community/graph-theory.git
   cd graph-theory
-  cat _CoqProject.wagner >>_CoqProject # Wagner's theorem, requires coq-fourcolor
   make   # or make -j <number-of-cores-on-your-machine> 
   make install
+  ```
+
+  However, the easiest way to install released versions of Graph Theory
+  libraries selectively is via [opam](https://opam.ocaml.org/doc/Install.html):
+
+  ```shell
+  opam repo add coq-released https://coq.inria.fr/opam/released
+  opam install coq-graph-theory # core library
+  opam install coq-graph-theory-planar # planarity results depending on coq-fourcolor
   ```
 
 documentation: |-
@@ -146,7 +146,7 @@ documentation: |-
     - isomorphisms up to label-equivalence and edge-flipping for multigraphs
     - 2p graphs form a 2p algebra and thus also a 2pdom algebra
     - every K4-free graph can be represented by a 2p-term
-    - 2pdom axioms are complete w.r.t graph isomorphism for connected 2p graphs.
+    - 2pdom axioms are complete w.r.t. graph isomorphism for connected 2p graphs.
   - a proof of Wagner's theorem (planarity of K5 and K3,3 graphs) based on combinatorial hypermaps
   - two proofs of the weak perfect graph theorem (WPGT):
     - one proof based on Lovasz's replication lemma

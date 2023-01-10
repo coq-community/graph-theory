@@ -7,29 +7,25 @@ dev-repo: "git+https://github.com/coq-community/graph-theory.git"
 bug-reports: "https://github.com/coq-community/graph-theory/issues"
 license: "CECILL-B"
 
-synopsis: "General graph theory definitions and results in Coq and MathComp"
+synopsis: "Graph theory results on planarity in Coq and MathComp"
 description: """
-Formalized general graph theory definitions and results using Coq and
-the Mathematical Components library, including various standard results
-from the literature (e.g., Menger's Theorem and Hall's Marriage Theorem)."""
+Formal definitions and results on graph planarity in Coq using the Mathematical Components
+library, including Wagner's Theorem. Relies on hypermaps and other notions developed
+as part of the Coq proof of the Four-Color Theorem."""
 
 build: ["dune" "build" "-p" name "-j" jobs]
 depends: [
-  "dune" {>= "2.5"}
   "coq" {(>= "8.14" & < "8.17~") | (= "dev")}
   "coq-mathcomp-ssreflect" {(>= "1.13" & < "1.16~") | (= "dev")}
-  "coq-mathcomp-algebra" 
-  "coq-mathcomp-finmap" 
-  "coq-hierarchy-builder" {>= "1.1.0"}
+  "coq-graph-theory" {= version}
+  "coq-fourcolor"
 ]
 
 tags: [
   "category:Computer Science/Graph Theory"
   "keyword:graph theory"
-  "keyword:minors"
-  "keyword:treewidth"
-  "keyword:algebra"
-  "logpath:GraphTheory.core"
+  "keyword:planarity"
+  "logpath:GraphTheory.planar"
 ]
 authors: [
   "Christian Doczkal"
