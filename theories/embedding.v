@@ -406,7 +406,7 @@ Lemma rot_face n (s : seq G) : sface s -> sface (rot n s).
 Proof.
 have [n_lt_s face_s|?] := ltnP n (size s); last by rewrite rot_oversize.
 case: face_s n n_lt_s => x -> n; rewrite size_map size_orbit => n_lt_o.
-rewrite -map_rot rot_orbit //; [by eexists|exact: faceI].
+rewrite -map_rot rot_orbit; [by eexists|exact: faceI|done].
 Qed.
 
 Lemma rotr_face n (s : seq G) : sface s -> sface (rotr n s). 
