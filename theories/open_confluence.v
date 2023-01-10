@@ -725,7 +725,7 @@ Proof.
   move => G H [EV EE Eep Elv Ele Ei Eo] ? e ? ? x ? u v uv ? y ?. subst. 
   split => //= [|b|e'].
   - by rewrite EE.
-  - apply: in_eqv_update => // ?. exact: Eep.
+  - by apply: in_eqv_update => // ?; apply: Eep.
   - exact: in_eqv_update.
 Qed.
 
