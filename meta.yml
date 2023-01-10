@@ -65,10 +65,13 @@ license:
 
 supported_coq_versions:
   text: 8.14 or later
-  opam: '{(>= "8.14" & < "8.16~") | (= "dev")}'
+  opam: '{(>= "8.14" & < "8.17~") | (= "dev")}'
 
 tested_coq_opam_versions:
-- version: 'dev-ocaml-4.13-flambda'
+- version: 'coq-dev'
+  repo: 'mathcomp/mathcomp-dev'
+- version: '1.15.0-coq-8.16'
+  repo: 'mathcomp/mathcomp'
 - version: '1.14.0-coq-8.15'
   repo: 'mathcomp/mathcomp'
 - version: '1.13.0-coq-8.14'
@@ -79,7 +82,7 @@ ci_cron_schedule: '25 5 * * *'
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{(>= "1.13" & < "1.15~") | (= "dev")}'
+    version: '{(>= "1.13" & < "1.16~") | (= "dev")}'
   description: MathComp's [SSReflect library](https://math-comp.github.io), version 1.13 or later
 - opam:
     name: coq-mathcomp-algebra
