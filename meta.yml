@@ -77,7 +77,7 @@ tested_coq_opam_versions:
 - version: '1.13.0-coq-8.14'
   repo: 'mathcomp/mathcomp'
 
-ci_cron_schedule: '25 5 * * *'
+ci_cron_schedule: '25 5 * * 5'
 
 dependencies:
 - opam:
