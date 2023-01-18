@@ -2,7 +2,7 @@ name: Docker CI
 
 on:
   schedule:
-    - cron: '25 5 * * *'
+    - cron: '25 5 * * 5'
   push:
     branches:
       - master
