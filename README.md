@@ -47,7 +47,7 @@ axiomatization of graph isomorphism).
   - Christian Doczkal ([**@chdoc**](https://github.com/chdoc))
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [CeCILL-B](LICENSE)
-- Compatible Coq versions: 8.14 or later
+- Compatible Coq versions: 8.16 or later
 - Additional dependencies:
   - MathComp's [SSReflect library](https://math-comp.github.io), version 2.0 or later
   - MathComp's [Algebra library](https://math-comp.github.io)
@@ -64,7 +64,7 @@ axiomatization of graph isomorphism).
 
 ## Building and installation instructions
 
-To build and install the whole project, including Wagner's theorem which requires
+To manually build and install the whole project, including Wagner's theorem which requires
 the Coq proof of the Four-Color Theorem, do:
 
 ``` shell

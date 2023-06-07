@@ -64,8 +64,8 @@ license:
   identifier: CECILL-B
 
 supported_coq_versions:
-  text: 8.14 or later
-  opam: '{(>= "8.14" & < "8.18~") | (= "dev")}'
+  text: 8.16 or later
+  opam: '{>= "8.16"}'
 
 tested_coq_opam_versions:
 - version: '2.0.0-coq-8.17'
@@ -78,7 +78,7 @@ ci_cron_schedule: '25 5 * * 5'
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{>= "2.0" & < "2.1~"}'
+    version: '{>= "2.0"}'
   description: MathComp's [SSReflect library](https://math-comp.github.io), version 2.0 or later
 - opam:
     name: coq-mathcomp-algebra
@@ -108,7 +108,7 @@ categories:
 build: |-
   ## Building and installation instructions
 
-  To build and install the whole project, including Wagner's theorem which requires
+  To manually build and install the whole project, including Wagner's theorem which requires
   the Coq proof of the Four-Color Theorem, do:
 
   ``` shell
