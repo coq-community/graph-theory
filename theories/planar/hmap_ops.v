@@ -1365,7 +1365,7 @@ elim: n x xDz {px} Y2 N1 N2 => [|n IHn] x xDz Y2  N1 N2.
   have npfx : ~~ p' wfx. apply/negP => pfx. move: (N2 0) => /=. by case/(_ _)/Wrap. 
   pose fx := (if f x == z then f z else f x).
   rewrite [n.+1]lock /wfx {2}/walkup.skip. move: (skip_subproof _ _) => /= fxDz.
-  rewrite -[exist _ _ _]/(Sub fx fxDz). rewrite -lock IHn.
+  rewrite -lock IHn.
   + rewrite /fx. case: (altP (f x =P z)) => [EQ|NEQ]; last first.
     * rewrite [RHS](skip_first y) //. 
       apply: contraNN npfx. by rewrite /wfx/walkup.skip/p'/= (negbTE NEQ).
@@ -1424,10 +1424,10 @@ case: (boolP [forall x, p x]) => [/forallP all_p|/forallPn [z npz]].
   have can_bwd : cancel i_bwd i_fwd by move => x; do 2 apply: val_inj.
   hiso (Bij can_fwd can_bwd).
   * case => x px /=. do ! apply: val_inj => /=. rewrite sameE /=.
-    move: (fwd_proof1 _) => /= xDz; rewrite -[exist _ _ _]/(Sub x xDz). 
+    move: (fwd_proof1 _) => /= xDz.
     exact: skip_skip1.
   * case => x px /=. do ! apply: val_inj => /=. rewrite sameN /=.
-    move: (fwd_proof1 _) => /= xDz; rewrite -[exist _ _ _]/(Sub x xDz). 
+    move: (fwd_proof1 _) => /= xDz.
     exact: skip_skip1.
 Qed.
 

@@ -157,12 +157,13 @@ Proof.
   rewrite eqn_leq (inj_card_leq (f := f)) ?(inj_card_leq (f := g)) //; exact: can_inj.
 Qed.
 
-(** Note: [u : sig_subType P] provides for the decidable equality *)
-Lemma sub_val_eq (T : eqType) (P : pred T) (u : sig_subType P) x (Px : x \in P) :
+(** Note: [u : [the subType P of {x : T | P x}]] provides for the decidable equality *)
+Lemma sub_val_eq (T : eqType) (P : pred T)
+    (u : [the subType P of {x : T | P x}]) x (Px : x \in P) :
   (u == Sub x Px) = (val u == x).
 Proof. by case: (SubP u) => {u} u Pu. Qed.
 
-Lemma valK' (T : Type) (P : pred T) (sT : subType P) (x : sT) (p : P (val x)) : 
+Lemma valK' (T : Type) (P : pred T) (sT : subType P) (x : sT) (p : P (val x)) :
   Sub (val x) p = x.
 Proof. apply: val_inj. by rewrite SubK. Qed.
 
@@ -1067,7 +1068,8 @@ Arguments minset_properP {T p D}.
 
 (** *** Extra Preliminaries from Kuratowski/Wagner development *)
 
-#[export] Hint Extern 0 (injective val) => exact val_inj : core.
+#[export] Hint Extern 0 (injective (isSub.val_subdef _)) =>
+  exact val_inj : core.
 #[export] Hint Extern 0 (injective sval) => exact val_inj : core.
 
 Lemma in_setP (T : finType) (p : {pred T}) (x : T) : 
@@ -1078,7 +1080,7 @@ Lemma Sub_imset (T : finType) (P : {pred T}) (s : subFinType P) {A : {set s}} (x
   (Sub x Px \in A) = (x \in val @: A).
 Proof. by rewrite -[X in X \in val @: _](SubK s Px) mem_imset. Qed.
 
-Lemma Sub_map (T : eqType) (P : {pred T}) (s : subType P) {A : seq s} (x : T) (Px : P x) :
+Lemma Sub_map (T : eqType) (P : {pred T}) (s : subType P) {A : seq (sub_type s)} (x : T) (Px : P x) :
   (Sub x Px \in A) = (x \in map val A).
 Proof. by rewrite -[X in X \in map val _](SubK s Px) mem_map. Qed.
 

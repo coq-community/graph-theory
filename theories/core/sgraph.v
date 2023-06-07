@@ -1101,7 +1101,7 @@ Proof.
   move => Ip Iq. exact: fP.
 Qed.
 
-Definition sunit := @SGraph unit_finType rel0 rel0_sym rel0_irrefl.
+Definition sunit := @SGraph unit rel0 rel0_sym rel0_irrefl.
 
 Definition unit_forest : is_forest [set: sunit].
 Proof. by move => [] [] p1 p2 [/irredxx -> _] [/irredxx -> _]. Qed.

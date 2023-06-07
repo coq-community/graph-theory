@@ -47,12 +47,12 @@ axiomatization of graph isomorphism).
   - Christian Doczkal ([**@chdoc**](https://github.com/chdoc))
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [CeCILL-B](LICENSE)
-- Compatible Coq versions: 8.14 or later
+- Compatible Coq versions: 8.16 or later
 - Additional dependencies:
-  - MathComp's [SSReflect library](https://math-comp.github.io), version 1.13 or later
+  - MathComp's [SSReflect library](https://math-comp.github.io), version 2.0 or later
   - MathComp's [Algebra library](https://math-comp.github.io)
   - MathComp's [finmap library](https://github.com/math-comp/finmap)
-  - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.1.0 or later
+  - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.4.0 or later
   - Gonthier's [formal proof](https://github.com/coq-community/fourcolor) of the Four-Color Theorem (optional dependency)
 - Coq namespace: `GraphTheory`
 - Related publication(s):
@@ -64,7 +64,7 @@ axiomatization of graph isomorphism).
 
 ## Building and installation instructions
 
-To build and install the whole project, including Wagner's theorem which requires
+To manually build and install the whole project, including Wagner's theorem which requires
 the Coq proof of the Four-Color Theorem, do:
 
 ``` shell

@@ -1,3 +1,4 @@
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import edone preliminaries bij digraph.
 From GraphTheory Require Import sgraph connectivity minor excluded.
@@ -130,7 +131,7 @@ have maxXY : #|XY| <= 2.
     + exists u1,(last u3 (arc s u3 u1)). by rewrite !inE last_mem head_s // sgP arc_edge.
     + exists (last u2 (arc s u2 u3)), u3. by rewrite !inE last_mem head_s // arc_edge. }
 have no_cross : ~ exists x1 x2 y1 y2, [/\ x1 \in X, x2 \in X, y1 \in Y , y2 \in Y & subcycle [:: x1; y1; x2; y2] s].
-{ apply: contra_not K33_free => -[x1] [x2] [y1] [y2] [x1X x2X y1Y y2Y sub]. 
+{ apply: contra_not K33_free => -[x1] [x2] [y1] [y2] [x1X x2X y1Y y2Y subs]. 
   pose u := [:: x1; y1; x2; y2].
   pose phi (i : 'K_3,3) : {set G} := 
     match i with 
@@ -146,9 +147,9 @@ have no_cross : ~ exists x1 x2 y1 y2, [/\ x1 \in X, x2 \in X, y1 \in Y , y2 \in 
   have head_s := head_arc _ uniq_s.
   have xz z : z \in X -> x -- z by rewrite !mem_filter => /andP[-> _].
   have yz z : z \in Y -> y -- z by rewrite !mem_filter => /andP[-> _].
-  have : uniq u. apply: subcycle_uniq sub _. apply: ucycle_uniq ucycle_s.
+  have : uniq u. apply: subcycle_uniq subs _. apply: ucycle_uniq ucycle_s.
   rewrite /u /= !inE !negb_or -!andbA andbT => /and5P[? ? ? ? /andP [? ?]].
-  have u_sub_s := mem_subcycle sub.
+  have u_sub_s := mem_subcycle subs.
   apply: ordered_rmap; first exact: pickle_Knn_inj; split.
   - case; case; case => [|[|[|//]]] /= _; try exact: set10.
     all: match goal with |- is_true ([set _ in arc _ ?u1 _] != set0) => 
@@ -162,7 +163,7 @@ have no_cross : ~ exists x1 x2 y1 y2, [/\ x1 \in X, x2 \in X, y1 \in Y , y2 \in 
     3: by rewrite sg_edgeNeq.
     all: try solve [apply: contraNN xNs; apply: mem_arc].
     all: try solve [apply: contraNN yNs; apply: mem_arc].
-    all: apply: (arc_subcycle_disjoints uniq_s sub). 
+    all: apply: (arc_subcycle_disjoints uniq_s subs). 
     all: by rewrite ?inE /= ?eqxx // ?ifN // 1?eq_sym.    
   - case; case; case => [|[|[|//]]] /= i; case; case; case => [|[|[|//]]] //= {i} _ _ _.
     4,7 : rewrite neighborC.
@@ -347,7 +348,7 @@ have [x1 x1_X Y_segment] : exists2 x1,
     rewrite -next_map; last exact: val2_inj. 
     have -> : map val2 X = X' by rewrite /X' /s !filter_map /= -map_comp.
     apply: Z2. move: u_Y. rewrite !mem_filter => /andP[->] /=.
-    by rewrite /s !mem_map. }
+    by rewrite /s /val2 !mem_map. }
 set x2 := next X x1 in Y_segment.
 have x2_X : x2 \in X by rewrite mem_next.
 have x1Dx2 : x1 != x2 by apply next_neq.
@@ -405,13 +406,13 @@ have [] := @plane_add_node' _ g2 x2 x1 s2 [set z in X] => //.
       have [?|uDy] := eqVneq u y; first subst u. 
         have [E|vDy] := eqVneq v y; first by rewrite E sgP in uv.
         have [?|vDx] := eqVneq v x; first by rewrite /edge_rel/= !inE eqxx.
-        by rewrite /edge_rel/= inE mem_imset // inE inG2Y 1?sgP.
+        by rewrite /edge_rel/= inE mem_imset // !inE inG2Y 1?sgP.
       have [?|uDx] := eqVneq u x;first subst u. 
         have [E|vDx] := eqVneq v x; first by rewrite E sgP in uv.
         have [?|vDy] := eqVneq v y; first by rewrite /edge_rel/= !inE eqxx.
         by rewrite /edge_rel/= /edge_rel/= inE inG2X 1?sgP.
       have [?|vDy] := eqVneq v y; first subst v. 
-        by rewrite /edge_rel/= inE mem_imset // inE inG2Y.
+        by rewrite /edge_rel/= inE mem_imset // !inE inG2Y.
       have [?|vDx] := eqVneq v x; first subst v.
         by rewrite /edge_rel/= /edge_rel/= inE inG2X.
       rewrite /edge_rel /= /edge_rel/= /edge_rel/=. 
@@ -576,12 +577,8 @@ Section color.
 Let Cs := [:: Color0; Color1 ; Color2; Color3].
 Lemma color_enumP : Finite.axiom Cs. Proof. by case. Qed.
 Lemma color_pcanP : cancel (index^~ Cs) (nth Color0 Cs). Proof. by case. Qed.
-Definition color_countMixin : Countable.mixin_of color := CanCountMixin color_pcanP.
-Definition color_choiceMixin := Countable.ChoiceMixin color_countMixin.
-Canonical color_choiceType := ChoiceType color color_choiceMixin.
-Canonical color_countType := CountType color color_countMixin.
-Definition color_finMixin := Finite.EnumMixin color_enumP. 
-Canonical color_finType := FinType color color_finMixin.
+HB.instance Definition _ := Countable.copy color (can_type color_pcanP).
+HB.instance Definition _ := isFinite.Build color color_enumP.
 End color.
 
 Lemma adjn_color (D : hypermap) (k : D -> color) x y : 

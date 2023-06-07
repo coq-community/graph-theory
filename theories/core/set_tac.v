@@ -57,7 +57,7 @@ the "same" fact might be added multiple times *)
 these remove their hypotheses, the trivial subset assumption 
 [[set _] \subset A] can be modified in place *)
 
-Local Notation pos := SetDef.pred_of_set.
+Local Notation pos := pred_of_set.
 
 (** TODO:
 - reverse propagation for subset 
