@@ -567,7 +567,7 @@ Proof.
   - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
     move => H /=. by rewrite imfset_bij_bwdE.
   - rewrite /vfun_of/= vfun_bodyE. exact: inj_v_open.
-    move => H /=. by rewrite imfset_bij_bwdE //=.
+    move => H /=. by rewrite imfset_bij_bwdE.
 Qed.
 
 (* This follows the same pattern as open_add_vertex. Lemma? *)
