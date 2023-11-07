@@ -132,7 +132,7 @@ Notation "x ⊗ y" := (mon2 x y) (left associativity, at level 25).
 
 Lemma big_split I r (P : pred I) (F1 F2 : I -> X) :
   \big[*%M/1]_(i <- r | P i) (F1 i ⊗ F2 i) ≡
-  (\big[*%M/1]_(i <- r | P i) F1 i) ⊗ \big[*%M/1]_(i <- r | P i) F2 i.
+  (\big[*%M/1]_(i <- r | P i) F1 i) ⊗ (\big[*%M/1]_(i <- r | P i) F2 i).
 Proof.
   elim/big_rec3 : _ => [|i x y z Pi ->]; rewrite ?monU //.
   rewrite -!monA. apply: mon_eqv => //. by rewrite monA [_ ⊗ y]monC monA.
@@ -154,7 +154,7 @@ Qed.
 
 Lemma bigID (I:eqType) r (a P : pred I) (F : I -> X) :
   \big[*%M/1]_(i <- r | P i) F i ≡
-  (\big[*%M/1]_(i <- r | P i && a i) F i) ⊗ \big[*%M/1]_(i <- r | P i && ~~ a i) F i.
+  (\big[*%M/1]_(i <- r | P i && a i) F i) ⊗ (\big[*%M/1]_(i <- r | P i && ~~ a i) F i).
 Proof.
   rewrite !(@big_mkcond _ I r _ F) -big_split. 
   apply: eqv_bigr => i; case: (a i); by rewrite /= ?andbT ?andbF ?monU ?monUl.
@@ -163,7 +163,7 @@ Arguments bigID [I r] a P F.
 
 
 Lemma bigD1 (I : finType) j (P : pred I) (F : I -> X) : 
-  P j -> \big[*%M/1]_(i | P i) F i ≡ F j ⊗ \big[*%M/1]_(i | P i && (i != j)) F i.
+  P j -> \big[*%M/1]_(i | P i) F i ≡ F j ⊗ (\big[*%M/1]_(i | P i && (i != j)) F i).
 Proof.
   move=> Pj; rewrite (bigID (pred1 j)); apply mon_eqv => //.
   apply: big_pred1 => i /=. by rewrite /= andbC; case: eqP => // ->.

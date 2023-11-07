@@ -22,7 +22,7 @@ Hypothesis (conn_G : connected [set: G]).
 (** ** Collapsing Bags *)
 
 Lemma collapse_bags (U : {set G}) u0' (inU : u0' \in U) :
-  let T := U :|: ~: \bigcup_(x in U) bag U x in 
+  let T := U :|: ~: (\bigcup_(x in U) bag U x) in
   let G' := sgraph.induced T in 
   exists phi : G -> G',
     [/\ total_minor_map phi,

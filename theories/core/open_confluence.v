@@ -430,7 +430,7 @@ Global Instance add_test_graph (G : pre_graph) {graph_G : is_graph G} x a :
 Proof. split => //=; apply graph_G. Qed.
 
 Notation "G [adt x <- a ]" := (add_test G x a) 
-   (at level 2, left associativity, format "G [adt  x  <-  a ]") : open_scope.
+   (at level 1, left associativity, format "G [adt  x  <-  a ]") : open_scope.
 
 
 Definition flip_edge (G : pre_graph) (e : ET) :=
@@ -1576,7 +1576,7 @@ Notation "G - E" := (remove_edges G E) : open_scope.
 Notation "G ∔ [ x , u , y ]" := (add_edge G x u y) (at level 20,left associativity) : open_scope.
 Notation "G ∔ [ e , x , u , y ]" := (add_edge' G e x u y) (at level 20,left associativity) : open_scope.
 Notation "G [adt x <- a ]" := (add_test G x a) 
-   (at level 2, left associativity, format "G [adt  x  <-  a ]") : open_scope.
+   (at level 1, left associativity, format "G [adt  x  <-  a ]") : open_scope.
 
 #[export]
 Hint Resolve in_vsetDV in_vsetDE in_vsetAV in_vsetAE in_vsetAV' : vset.

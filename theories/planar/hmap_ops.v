@@ -1103,14 +1103,14 @@ Definition del_node := Hypermap del_node_can3.
 Hypothesis plainG : plain G.
 
 Let NP x : reflect (cnode z x || cnode z (edge x)) (x \in N).
-Proof using plainG.
-apply: (iffP (closureP _ _ _)) => [[y /=]|]; last first.
+Proof.
+clear -plainG; apply: (iffP (closureP _ _ _)) => [[y /=]|]; last first.
   by case/orP; [exists x|exists (edge x); rewrite // -cedge1r].
 by rewrite plain_orbit // !inE => zy /pred2P [?|?]; subst y; rewrite zy.
 Qed.
 
 Let edgeN x : edge x \in N = (x \in N). 
-Proof using. symmetry. apply: closure_closed => //=. exact: cedgeC. Qed.
+Proof. clear. symmetry. apply: closure_closed => //=. exact: cedgeC. Qed.
 
 Lemma del_node_cnode (u v : del_node) : cnode u v = cnode (val u) (val v).
 Proof. by rewrite fconnect_frestrict fconnect_skip //; apply: valP. Qed.

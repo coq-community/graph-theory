@@ -1138,10 +1138,10 @@ Section Neighborhood_def.
 Variable G : diGraph.
 
 Definition open_neigh (u : G) := [set v | u -- v].
-Local Notation "N( x )" := (open_neigh x) (at level 0, x at level 99, format "N( x )").
+Local Notation "N( x )" := (open_neigh x) (at level 0, format "N( x )").
 
 Definition closed_neigh (u : G) := u |: N(u).
-Local Notation "N[ x ]" := (closed_neigh x) (at level 0, x at level 99, format "N[ x ]").
+Local Notation "N[ x ]" := (closed_neigh x) (at level 0, format "N[ x ]").
 
 Definition dominates (u v : G) : bool := (u == v) || (u -- v).
 
@@ -1156,27 +1156,27 @@ End Neighborhood_def.
 Notation "x -*- y" := (dominates x y) (at level 30).
 
 Notation "N( x )" := (@open_neigh _ x) 
-   (at level 0, x at level 99, format "N( x )").
+   (at level 0, format "N( x )").
 Notation "N[ x ]" := (@closed_neigh _ x) 
-   (at level 0, x at level 99, format "N[ x ]").
+   (at level 0, format "N[ x ]").
 Notation "N( G ; x )" := (@open_neigh G x)
-   (at level 0, G at level 99, x at level 99, only parsing).
+   (at level 0, only parsing).
 Notation "N[ G ; x ]" := (@closed_neigh G x)
-   (at level 0, G at level 99, x at level 99, only parsing).
+   (at level 0, only parsing).
    
 Notation "NS( G ; D )" := (@open_neigh_set G D) 
-   (at level 0, G at level 99, D at level 99, only parsing).
+   (at level 0, only parsing).
 Notation "NS( D )" := (open_neigh_set D) 
-   (at level 0, D at level 99, format "NS( D )").
+   (at level 0, format "NS( D )").
 Notation "NS[ G ; D ]" := (@closed_neigh_set G D) 
-   (at level 0, G at level 99, D at level 99, only parsing).
+   (at level 0, only parsing).
 Notation "NS[ D ]" := (closed_neigh_set D) 
-   (at level 0, D at level 99, format "NS[ D ]").
+   (at level 0, format "NS[ D ]").
 
 Notation "N( G ; x )" := (@open_neigh G x)
-   (at level 0, G at level 99, x at level 99, format "N( G ; x )") : implicit_scope.
+   (at level 0, format "N( G ; x )") : implicit_scope.
 Notation "N[ G ; x ]" := (@closed_neigh G x)
-   (at level 0, G at level 99, x at level 99, format "N[ G ; x ]") : implicit_scope.
+   (at level 0, format "N[ G ; x ]") : implicit_scope.
 
 Section Basic_Facts_Neighborhoods.
 

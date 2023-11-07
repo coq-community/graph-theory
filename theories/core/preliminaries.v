@@ -534,7 +534,7 @@ Proof. by rewrite /update eqxx. Qed.
 
 End update.
 Definition updateE := (update_eq,update_neq).
-Notation "f [upd x := y ]" := (update f x y) (at level 2, left associativity, format "f [upd  x  :=  y ]").
+Notation "f [upd x := y ]" := (update f x y) (at level 1, left associativity, format "f [upd  x  :=  y ]").
 
 Lemma update_same (aT : eqType) (rT : Type) (f : aT -> rT) x a b : 
   f[upd x := a][upd x := b] =1 f[upd x := b].

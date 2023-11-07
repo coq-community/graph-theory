@@ -293,8 +293,8 @@ Record iso (F G: graph): Type@{S} :=
         iso_d: edge F -> bool;
         iso_ihom: is_ihom iso_v iso_e iso_d }.
 Infix "≃" := iso (at level 79).
-Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'"). 
-Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
+Notation "h '.e'" := (iso_e h) (at level 1, left associativity, format "h '.e'").
+Notation "h '.d'" := (iso_d h) (at level 1, left associativity, format "h '.d'").
 Global Existing Instance iso_ihom.
 Global Instance iso_hom (F G : graph) (h : F ≃ G) : is_hom h h.e h.d. 
 Proof. exact: ihom_hom. Qed.
@@ -869,8 +869,8 @@ Notation merge_seq G l := (merge G (eqv_clot l)).
 Arguments iso {Lv Le}.
 Arguments iso_id {_ _ _}.
 Infix "≃" := iso (at level 79).
-Notation "h '.e'" := (iso_e h) (at level 2, left associativity, format "h '.e'").
-Notation "h '.d'" := (iso_d h) (at level 2, left associativity, format "h '.d'"). 
+Notation "h '.e'" := (iso_e h) (at level 1, left associativity, format "h '.e'").
+Notation "h '.d'" := (iso_d h) (at level 1, left associativity, format "h '.d'").
 
 Tactic Notation "Iso" uconstr(f) uconstr(g) uconstr(h) :=
   match goal with |- ?F ≃ ?G => refine (@Iso _ _ F G f g h _) end.
