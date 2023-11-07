@@ -45,7 +45,7 @@ Section CheckPoints.
 
   Hypothesis G_conn' : connected [set: G].
   Let G_conn : forall x y:G, connect sedge x y.
-  Proof using G_conn'. exact: connectedTE. Qed.
+  Proof. clear -G_conn'. exact: connectedTE. Qed.
 
   Lemma cp_sym x y : cp x y = cp y x.
   Proof using.
