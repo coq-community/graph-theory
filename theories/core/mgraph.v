@@ -1,5 +1,5 @@
-Require Import Morphisms RelationClasses.
-Require CMorphisms CRelationClasses. (* To be used explicitly *)
+From Coq Require Import Morphisms RelationClasses.
+From Coq Require CMorphisms CRelationClasses. (* To be used explicitly *)
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import edone finite_quotient preliminaries bij.
 From GraphTheory Require Import equiv digraph setoid_bigop structures.

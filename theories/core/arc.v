@@ -1,4 +1,4 @@
-Require Import Setoid Morphisms.
+From Coq Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.

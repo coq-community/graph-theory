@@ -1,6 +1,5 @@
-
 From mathcomp Require Import all_ssreflect.
-Require Export mathcomp.finmap.finmap.
+From mathcomp Require Export finmap.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -111,7 +110,7 @@ Arguments fset1U1 {K x B}.
 Arguments fset1U1 {K x B}.
 
 (** Things that also depend on preliminaries.v *)
-Require Import Coq.Relations.Relation_Definitions.
+From Coq Require Import Relations.Relation_Definitions.
 From GraphTheory Require Import edone preliminaries.
 
 Lemma fset2_inv (T : choiceType) (x y x' y' : T) : x != y ->

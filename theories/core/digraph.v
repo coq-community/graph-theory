@@ -1,6 +1,6 @@
 From HB Require Import structures.
-Require Import Setoid CMorphisms.
-Require Relation_Definitions.
+From Coq Require Import Setoid CMorphisms.
+From Coq Require Relation_Definitions.
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import edone preliminaries bij.
 
