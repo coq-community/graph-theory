@@ -1,4 +1,4 @@
-Require Import Setoid CMorphisms.
+From Coq Require Import Setoid CMorphisms.
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import edone preliminaries bij digraph.
 

@@ -1,4 +1,4 @@
-Require Import Setoid Morphisms.
+From Coq Require Import Setoid Morphisms.
 
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import edone finite_quotient bij preliminaries.

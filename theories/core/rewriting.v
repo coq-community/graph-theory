@@ -1,4 +1,4 @@
-Require Import Setoid Morphisms.
+From Coq Require Import Setoid Morphisms.
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import setoid_bigop structures pttdom mgraph mgraph2.
 

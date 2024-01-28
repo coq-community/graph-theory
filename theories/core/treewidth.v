@@ -1,4 +1,4 @@
-Require Import RelationClasses.
+From Coq Require Import RelationClasses.
 
 From mathcomp Require Import all_ssreflect.
 From GraphTheory Require Import edone preliminaries digraph sgraph.

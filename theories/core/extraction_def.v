@@ -1,4 +1,4 @@
-Require Import RelationClasses Morphisms Setoid Lia.
+From Coq Require Import RelationClasses Morphisms Setoid Lia.
 
 From mathcomp Require Import all_ssreflect.
 

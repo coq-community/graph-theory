@@ -1,4 +1,4 @@
-Require Import Relation_Definitions Morphisms RelationClasses.
+From Coq Require Import Relation_Definitions Morphisms RelationClasses.
 From mathcomp Require Import all_ssreflect.
 
 From GraphTheory Require Import edone finite_quotient preliminaries bij equiv.

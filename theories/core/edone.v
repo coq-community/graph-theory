@@ -9,9 +9,8 @@ We replace the default implementation of [done] by one that
 - applies the right hand side simplifications for Boolean operations 
 *)
 
-Require Import Setoid Morphisms.
-Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp Require Import ssrbool.
+From Coq Require Import Setoid Morphisms.
+From mathcomp Require Import ssreflect ssrbool.
 
 Ltac done := trivial; hnf in |- *; intros;
 (
