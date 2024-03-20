@@ -16,11 +16,11 @@ from the literature (e.g., Menger's Theorem and Hall's Marriage Theorem)."""
 build: ["dune" "build" "-p" name "-j" jobs]
 depends: [
   "dune" {>= "3.5"}
-  "coq" {>= "8.16"}
+  "coq" {>= "8.18"}
   "coq-mathcomp-ssreflect" {>= "2.0"}
   "coq-mathcomp-algebra" 
   "coq-mathcomp-finmap" 
-  "coq-hierarchy-builder" {>= "1.4.0"}
+  "coq-hierarchy-builder" {>= "1.5.0"}
 ]
 
 tags: [

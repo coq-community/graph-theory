@@ -46,7 +46,7 @@ Global Existing Instance mon_eqv.
 
 Class comMonoidLaws {X:setoid} (mon0 : X) (mon2 : X -> X -> X) :=
   ComMonoidLaws { 
-      mon_of_com :> monoidLaws mon0 mon2;
+      mon_of_com :: monoidLaws mon0 mon2;
       monC : forall x y, mon2 x y ≡ mon2 y x 
     }.
 
