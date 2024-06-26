@@ -574,7 +574,7 @@ Qed.
 Lemma open_add_edge (x y : G) u : 
   open (G ∔ [x, u, y]) ⩭2 open G ∔ [inj_v x, u, inj_v y].
 Proof. 
-  have X : is_graph (add_edge (open G) (inj_v x) u (inj_v y)). 
+  have @X : is_graph (add_edge (open G) (inj_v x) u (inj_v y)).
   { exact: add_edge_graph. }
   econstructor.
   apply: iso2_comp (iso2_sym _) _. apply: openK.
@@ -651,21 +651,21 @@ Proof.
   move: j => [isF isG i] Vz IOz /=.
   unshelve econstructor. 
   { apply remove_vertex_graph => //; constructor. rewrite (oiso2_pIO (OIso2 i)) // in IOz. }
-  have E1 : [fset vfun_body i z] = [fset val (i x) | x : vset F & val x \in [fset z]]. (* : / in?? *)
+  have @E1 : [fset vfun_body i z] = [fset val (i x) | x : vset F & val x \in [fset z]]. (* : / in?? *)
   { apply/fsetP => k. rewrite inE vfun_bodyE. apply/eqP/imfsetP => /= [->|[x] /= ].
     - exists (Sub z Vz) => //. by rewrite !inE.
     - rewrite !inE => /eqP X ->. move: Vz. rewrite -X => Vz. by rewrite fsvalK. }
-  have E2 : edges_at G (vfun_body i z) = [fset val (i.e x) | x : eset F & val x \in edges_at F z].
+  have @E2 : edges_at G (vfun_body i z) = [fset val (i.e x) | x : eset F & val x \in edges_at F z].
   { rewrite (@oiso2_edges_at _ _ (OIso2 i)) //=. apply/fsetP => k. apply/imfsetP/imfsetP.
     - case => /= x Ix ->. 
-      have Hx : x \in eset F. move: Ix. rewrite edges_atE. by case: (_ \in _).
+      have @Hx : x \in eset F. move: Ix. rewrite edges_atE. by case: (_ \in _).
       exists (Sub x Hx) => //. by rewrite efun_bodyE. 
     - case => /= x. rewrite inE => Hx ->. exists (fsval x) => //. by rewrite efun_bodyE fsvalK. }
-  - have P e (p : e \in eset (F \ z)) : val (i.e (Sub e (fsetDl p))) \in eset G `\` edges_at G (vfun_body i z).
+  - have @P e (p : e \in eset (F \ z)) : val (i.e (Sub e (fsetDl p))) \in eset G `\` edges_at G (vfun_body i z).
     { rewrite inE [_ \in eset G]valP andbT E2. apply: contraTN (p).
       case/imfsetP => /= e0. rewrite inE => A. move/val_inj. move/(@bij_injective _ _ i.e) => ?; subst.
       by rewrite inE A. }
-    have Q v (p : v \in vset (F \ z)) : val (i (Sub v (fsetDl p))) \in vset G `\ vfun_body i z.
+    have @Q v (p : v \in vset (F \ z)) : val (i (Sub v (fsetDl p))) \in vset G `\ vfun_body i z.
     { rewrite inE [_ \in vset G]valP andbT E1. apply: contraTN (p).
       case/imfsetP => /= v0. rewrite inE => A. move/val_inj. move/(@bij_injective _ _ i) => ?; subst.
       by rewrite inE A. }
@@ -713,8 +713,8 @@ Lemma oiso2_add_edge (F G : pre_graph) (i : F ⩭2 G) e1 e2 x y u v :
   F ∔ [e1,x,u,y] ⩭2 G ∔ [e2,i x,v,i y].
 Proof.
   case: i => isF isG i fresh_e1 fresh_e2 Vx Vy uv /=.
-  have isF' : is_graph (F ∔ [e1, x, u, y]) by abstract exact: add_edge_graph'.
-  have isG' : is_graph (G ∔ [e2, vfun_body i x, v, vfun_body i y]).
+  have @isF' : is_graph (F ∔ [e1, x, u, y]) by abstract exact: add_edge_graph'.
+  have @isG' : is_graph (G ∔ [e2, vfun_body i x, v, vfun_body i y]).
     by abstract (apply: add_edge_graph'; exact: (oiso2_vset (OIso2 i))).
   econstructor.
   apply: iso2_comp. apply: pack_add_edge'. assumption. 
@@ -728,13 +728,13 @@ Lemma oiso2_remove_edges (F G : pre_graph) (i : F ⩭2 G) E E':
   E' = [fset efun_of i e | e in E] -> (F - E) ⩭2 (G - E').
 Proof.
   case: i => isF isG i /= S EE'. econstructor.
-  have X :  E' = [fset val (i.e x) | x : eset F & val x \in E].
+  have @X :  E' = [fset val (i.e x) | x : eset F & val x \in E].
   { subst. apply/fsetP => k. apply/imfsetP/imfsetP.
     - case => /= x Ix ->.  
-      have Hx : x \in eset F. move: Ix. apply: (fsubsetP S). 
+      have @Hx : x \in eset F. move: Ix. apply: (fsubsetP S).
       exists (Sub x Hx) => //. by rewrite efun_bodyE. 
     - case => /= x. rewrite inE => Hx ->. exists (fsval x) => //. by rewrite efun_bodyE fsvalK. }
-  have P e (p : e \in eset (F - E)) : val (i.e (Sub e (fsetDl p))) \in eset G `\` E'.
+  have @P e (p : e \in eset (F - E)) : val (i.e (Sub e (fsetDl p))) \in eset G `\` E'.
   { rewrite inE [_ \in eset G]valP andbT X. apply: contraTN (p).
     case/imfsetP => /= e0. rewrite inE => A. move/val_inj. move/(@bij_injective _ _ i.e) => ?; subst.
     by rewrite inE A. }
@@ -775,8 +775,8 @@ Lemma oiso2_add_edge' (F G : pre_graph) (i : F ⩭2 G)
 Proof with eauto with typeclass_instances.
   case: i => isF isG i.
   move => E1 E2 Vx Vy Vx' Vy' Ix Iy uv. 
-  have isF' : is_graph ( F ∔ [e1, x, u, y] ). apply add_edge_graph'...
-  have isG' : is_graph (  G ∔ [e2, x', v, y']). apply add_edge_graph'...
+  have @isF' : is_graph ( F ∔ [e1, x, u, y] ). apply add_edge_graph'...
+  have @isG' : is_graph (  G ∔ [e2, x', v, y']). apply add_edge_graph'...
   econstructor. 
   apply: iso2_comp. apply: pack_add_edge'. assumption.
   apply: iso2_comp (iso2_sym _). 2: apply: pack_add_edge'; try assumption.
