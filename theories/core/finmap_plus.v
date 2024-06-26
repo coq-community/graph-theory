@@ -219,12 +219,12 @@ Proof.
     if x is Some z then Sub (val (f z)) (fset1Ur (valP (f z))) else Sub e fset1U1.
   pose g_inv  (x : e |` E) : option T := 
     match fsetULVR (valP x) with inl _ => None | inr p => Some (f^-1 (Sub (val x) p)) end.
-  have can_g : cancel g g_inv.
+  have @can_g : cancel g g_inv.
   { move => [x|]; rewrite /g/g_inv/=; case: (fsetULVR _) => [|p] //=. 
     - by rewrite inE fsval_eqF.
     - by rewrite valK' bijK.
     -  exfalso. by rewrite p in He. }
-  have can_g_inv : cancel g_inv g.
+  have @can_g_inv : cancel g_inv g.
   { move => [x Hx]; rewrite /g/g_inv/=. case: (fsetULVR _) => [|p] //=. 
     - rewrite !inE => A. apply: val_inj => /=. by rewrite (eqP A).
     - apply: val_inj => //=. by rewrite bijK'. }
@@ -243,12 +243,12 @@ Proof.
     if x is inl z then Sub (val (f z)) (fset1Ur (valP (f z))) else Sub e fset1U1.
   pose g_inv  (x : e |` E) : T + unit := 
     match fsetULVR (valP x) with inl _ => inr tt | inr p => inl (f^-1 (Sub (val x) p)) end.
-  have can_g : cancel g g_inv.
+  have @can_g : cancel g g_inv.
   { move => [x|[]]; rewrite /g/g_inv/=; case: (fsetULVR _) => [|p] //=. 
     - by rewrite inE fsval_eqF.
     - by rewrite valK' bijK.
     -  exfalso. by rewrite p in He. }
-  have can_g_inv : cancel g_inv g.
+  have @can_g_inv : cancel g_inv g.
   { move => [x Hx]; rewrite /g/g_inv/=. case: (fsetULVR _) => [|p] //=. 
     - rewrite !inE => A. apply: val_inj => /=. by rewrite (eqP A).
     - apply: val_inj => //=. by rewrite bijK'. }
@@ -265,18 +265,18 @@ Definition bij_setD (aT : finType) (C : choiceType) (rT : {fset C}) (A : {set aT
   bij { x | x \in ~: A} (rT `\` [fset val (f x) | x in A]).
 Proof.
   set aT' := ({ x | _ }). set rT' := _ `\` _.
-  have g_proof (x : aT') : val (f (val x)) \in rT'.
+  have @g_proof (x : aT') : val (f (val x)) \in rT'.
   { rewrite !inE (valP (f (val x))) andbT. apply: contraTN (valP x).
     case/imfsetP => /= x0 inA /val_inj /(@bij_injective _ _ f) ->. by rewrite inE negbK. }
   pose g (x : aT') : rT' := Sub (val (f (val x))) (g_proof x).
-  have g_inv_proof (x : rT') :  f^-1 (Sub (fsval x) (fsetDEl x)) \in ~: A.
+  have @g_inv_proof (x : rT') :  f^-1 (Sub (fsval x) (fsetDEl x)) \in ~: A.
   { rewrite inE. case/fsetDP: (valP x) => ?. apply: contraNN => X. apply/imfsetP.
     exists (f^-1 (Sub (fsval x) (fsetDEl x))) => //. by rewrite bijK'. }
   pose g_inv (x : rT') : aT' := Sub (f^-1 (Sub (val x) (fsetDEl x))) (g_inv_proof x). 
-  have can1 : cancel g g_inv.
+  have @can1 : cancel g g_inv.
   { move => [x Hx]. rewrite /g/g_inv. apply: val_inj => /=. apply: (@bij_injective _ _ f).
     rewrite bijK'. exact: val_inj. }
-  have can2 : cancel g_inv g.
+  have @can2 : cancel g_inv g.
   { move => [x Hx]. rewrite /g/g_inv. apply: val_inj => /=. by rewrite bijK'. }
   apply: Bij can1 can2.
 Defined.

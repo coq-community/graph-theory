@@ -144,24 +144,24 @@ End InducedSubgraph.
 Lemma induced_isubgraph (G : sgraph) (A : {set G}) : induced A ⇀ G.
 Proof.
 pose f (x : induced A) : G := val x.
-have : {mono f : x y / x -- y} by abstract by move => x y; rewrite induced_edge.
-apply: ISubgraph; exact: val_inj.
+have @H : {mono f : x y / x -- y} by abstract by move => x y; rewrite induced_edge.
+move: H; apply: ISubgraph; exact: val_inj.
 Defined.
 
 Lemma isubgraph_induced (F G : sgraph) (i : F ⇀ G) : 
   F ≃ induced [set x in codom i].
 Proof.
 set A := [set _ in _].
-have jP (x : induced A) : val x \in codom i. 
+have @jP (x : induced A) : val x \in codom i.
   abstract by move: (valP x); rewrite inE.
 pose j (x : induced A) : F := iinv (jP x).
-have iP (x : F) : i x \in A by abstract by rewrite inE codom_f.
+have @iP (x : F) : i x \in A by abstract by rewrite inE codom_f.
 pose i' (x : F) : induced A := Sub (i x) (iP x).
-have can_i : cancel i' j. 
+have @can_i : cancel i' j.
   abstract by move=> x; apply: (isubgraph_inj i); rewrite f_iinv.
-have can_j : cancel j i'. 
+have @can_j : cancel j i'.
   abstract by move => [x xA]; apply: val_inj; rewrite /j/=f_iinv.
-apply: Diso' can_i can_j _. 
+apply: Diso' can_i can_j _.
   abstract by move => x y; rewrite induced_edge /= isubgraph_mono.
 Defined.
 
@@ -1443,7 +1443,7 @@ Qed.
 
 Lemma isubgraph_complLR (F G : sgraph) (i : compl F ⇀ G) : F ⇀ compl G.
 Proof.
-have I := isubgraph_inj i; apply: (@ISubgraph F (compl G) i) => // x y.
+have @I := isubgraph_inj i; apply: (@ISubgraph F (compl G) i) => // x y.
 exact: isubgraph_compLR_mono.
 Defined.
 
