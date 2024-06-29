@@ -94,7 +94,7 @@ Proof.
       suff E: input=output :>G by congruence.
       apply/(card_le1_eqP (A := predT)) => //.
       apply iso_v, card_bij in L. rewrite !card_sum !card_unit addnC in L.
-        by injection L=>->.
+      by case: L; rewrite ?add0n => ->.
     * have E: forall y, L (inr tt) <> L (inl y) by intros y H; generalize (bij_injective (f:=L) H). 
       case_eq (L (inr tt)); case.
        generalize (E input). simpl in *. congruence. 
