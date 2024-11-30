@@ -49,7 +49,7 @@ axiomatization of graph isomorphism).
 - License: [CeCILL-B](LICENSE)
 - Compatible Coq versions: 8.18 or later
 - Additional dependencies:
-  - MathComp's [SSReflect library](https://math-comp.github.io), version 2.0 or later
+  - MathComp's [SSReflect library](https://math-comp.github.io), version 2.1.0 or later
   - MathComp's [Algebra library](https://math-comp.github.io)
   - MathComp's [finmap library](https://github.com/math-comp/finmap)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.5.0 or later

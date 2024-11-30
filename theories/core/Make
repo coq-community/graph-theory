@@ -1,0 +1,48 @@
+-arg -w -arg -notation-overridden
+-arg -w -arg -redundant-canonical-projection
+-arg -w -arg -projection-no-head-constant
+-arg -w -arg -duplicate-clear
+-arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
+-arg -w -arg -ambiguous-paths
+
+-Q . GraphTheory.core
+
+edone.v
+bounded.v
+preliminaries.v
+setoid_bigop.v
+finmap_plus.v
+set_tac.v
+bij.v
+finite_quotient.v
+equiv.v
+arc.v
+digraph.v
+sgraph.v
+helly.v
+connectivity.v
+treewidth.v
+minor.v
+excluded.v
+checkpoint.v
+cp_minor.v
+smerge.v #(ITP 21)
+structures.v
+mgraph.v
+pttdom.v
+mgraph2.v
+rewriting.v
+reduction.v
+open_confluence.v
+transfer.v
+completeness.v
+ptt.v
+skeleton.v
+mgraph2_tw2.v
+extraction_def.v
+extraction_iso.v
+extraction_top.v
+dom.v
+partition.v
+coloring.v
+wpgt.v

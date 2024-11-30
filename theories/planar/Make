@@ -1,0 +1,14 @@
+-arg -w -arg -notation-overridden
+-arg -w -arg -redundant-canonical-projection
+-arg -w -arg -projection-no-head-constant
+-arg -w -arg -duplicate-clear
+-arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
+-arg -w -arg -ambiguous-paths
+
+-Q . GraphTheory.planar
+
+hmap_ops.v
+hcycle.v
+embedding.v
+K4plane.v
+wagner.v
