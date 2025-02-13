@@ -52,6 +52,7 @@ axiomatization of graph isomorphism).
   - MathComp's [SSReflect library](https://math-comp.github.io), version 2.1.0 or later
   - MathComp's [Algebra library](https://math-comp.github.io)
   - MathComp's [finmap library](https://github.com/math-comp/finmap)
+  - MathComp's [Algebra tactics](https://github.com/math-comp/algebra-tactics)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.5.0 or later
   - Gonthier's [formal proof](https://github.com/coq-community/fourcolor) of the Four-Color Theorem (optional dependency)
 - Coq namespace: `GraphTheory`
