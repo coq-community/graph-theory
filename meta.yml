@@ -93,6 +93,9 @@ dependencies:
     name: coq-mathcomp-finmap
   description: MathComp's [finmap library](https://github.com/math-comp/finmap)
 - opam:
+    name: coq-mathcomp-algebra-tactics
+  description: MathComp's [Algebra tactics](https://github.com/math-comp/algebra-tactics)
+- opam:
     name: coq-hierarchy-builder
     version: '{>= "1.5.0"}'
   description: '[Hierarchy Builder](https://github.com/math-comp/hierarchy-builder), version 1.5.0 or later'

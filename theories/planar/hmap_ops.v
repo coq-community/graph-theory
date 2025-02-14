@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ring.
 From GraphTheory Require Import edone preliminaries bij.
 From fourcolor Require Import hypermap geometry cfmap jordan color coloring combinatorial4ct.
 From fourcolor Require Import walkup.
